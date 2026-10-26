@@ -1,8 +1,6 @@
 # ethskills import  
 
-## Status
-
-`.claude/skills/ship/SKILL.md` has been imported (the index/router skill).
+`.claude/skills/ship/SKILL.md` to be imported among others (the index/router skill).
 
 | Skill | URL |
 |---|---|
