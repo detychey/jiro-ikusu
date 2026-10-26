@@ -19,8 +19,11 @@ Each vector maps (level bytes, run nonce, journal bytes) to a per-tick trace of 
 - a fast cut closing on its first sub-step;
 - the shield;
 - respawn after the bottom border was captured;
+- a player stranded off the rail by their own capture;
+- several hits in one tick, with and without a shield charge or invulnerability;
+- end conditions that meet on the same tick, such as clearing the level and losing the last life;
 - the Commit key;
-- the time limit;
+- the time limit, including events at tick T − 1 and T;
 - a full journal.
 
 ## Property tests

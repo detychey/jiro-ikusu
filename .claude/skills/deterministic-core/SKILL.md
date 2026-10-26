@@ -13,7 +13,7 @@ The core is the single implementation of the game rules. It is compiled for the 
 - **No time.** No delta-time, no clocks, no skipped ticks. State changes once per tick, in the order of README §4.4. Within a step, iterate in a fixed order: minions by index, cells in row-major order.
 - **No hidden inputs.** Randomness comes only from the seed derivation in README §6.4. Never use a hardware RNG, memory addresses, or iteration over a hash map.
 - **No heap, no recursion.** Use fixed-size arrays, with the capacities from README §2. Fills use an explicit stack.
-- **Explicit integer semantics.** Use fixed-width types and explicit casts. Use `checked_*` or `wrapping_*` wherever overflow is possible.
+- **Explicit integer semantics.** Use fixed-width types and explicit casts. Use `checked_*` or `wrapping_*` wherever overflow is possible. Set `overflow-checks = true` in every Cargo profile: a plain `+` otherwise panics in debug builds and wraps in release builds.
 - **No panics in stepping code.** A panic means a rejected journal. Validate everything at the boundary, in the decoder, so that stepping can never panic.
 - **Reflection** is axis-separated inversion (README §4.6). Velocities are always ±1.
 

@@ -9,10 +9,16 @@ README §6 defines the formats. Rules for implementing them:
 
 - **One implementation, in the core.** Every target calls it. The browser and the contracts never re-encode by hand.
 - **Big-endian, fixed width, no memory dumps.** C struct padding makes `{ uint16_t tick; uint8_t mask; }` 4 bytes long, not 3.
-- **Strict decoders.** Reject unknown versions, reserved bits, truncation, trailing bytes, ticks that don't increase, and events after the level ended.
+- **Strict decoders.** Reject all of these:
+  - unknown format or rules versions;
+  - reserved bits;
+  - truncation or trailing bytes;
+  - ticks that don't increase;
+  - events that don't change the mask;
+  - events after the level ended.
 - **The journal records exactly what the core consumed:** inputs → journal → core.
 - **keccak256 for derivation and commitments only.** It is cheap onchain and available in `no_std` Rust (`tiny-keccak`, `sha3`). Seeds are derived once per level, and every derivation has its own domain tag. v1 has no per-tick randomness; if it is ever needed, use an integer PRNG inside the core with explicit 32-bit wrapping, not keccak256 per tick.
-- **Version every format:** the journal's `version` byte, `RULES_VERSION`, and the state-hash version. A format change bumps its version and regenerates `vectors/`.
+- **Version every format:** the journal's `version` byte and `rulesVersion` field (the core's `RULES_VERSION`), and the state-hash version. A change bumps the matching version and regenerates `vectors/`.
 
 ## Done when
 

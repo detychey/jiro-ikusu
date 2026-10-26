@@ -66,6 +66,8 @@ The draft names the keys Key0–Key3. They map to A, B, X, Y in that order *(D8)
 | Key2 = X | **Commit:** end the level now and keep its claim |
 | Key3 = Y, joystick press | Unused and not journaled |
 
+The draft's Key2 is "Commit/Forfeit (ends game immediately)". Here it ends the current level, not the whole run, and the level keeps its claim.
+
 Everything is allocated statically. The RP2040 has 270,336 bytes of SRAM:
 
 | Buffer | Bytes |
@@ -109,7 +111,7 @@ A tick changes only a handful of cells. So the renderer redraws the changed 4×4
 
 - **Existing pipeline.** ethblockdigger already has a `no_std` Rust referee crate, its Stylus packaging, pinned wasm builds and cross-language conformance tests ([§10](#10-reuse-from-ethblockdigger)). Jiro can reuse that pipeline instead of building one.
 - **On-chain targets are Rust-first.** Stylus contracts and zkVM guests (RISC Zero, SP1) are written in Rust, so the core can become the onchain referee or a proof guest without a port.
-- **No undefined behavior.** Integer overflow is explicit (`wrapping_*`, `checked_*`), so there is nothing to audit across compilers.
+- **No undefined behavior.** Overflow can be made explicit everywhere: `wrapping_*` and `checked_*` in the code, plus `overflow-checks = true` in every build profile so that debug and release builds behave the same.
 
 The Pico shell can be written in Rust (`embassy-rp`). Or it can be the draft's C++ on the Pico SDK, linking the core as a static library through a C ABI. Either way, the rules exist exactly once.
 
@@ -147,28 +149,34 @@ All entity fields are small integers:
 |---|---|
 | Player | position; cutting flag; cut start cell; lives; shield charges; invulnerability ticks; previous direction; slow-move phase |
 | Boss | position; vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) |
-| Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period |
+| Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period; respawn countdown |
 
 ### 4.4 Tick order
 
-The order is part of the rules: a different order is a different game. Once per tick, in this order:
+- **Tick numbering.** Ticks are numbered from 0 within each level. A level with a time limit of T ticks runs at most ticks 0 to T − 1.
+- **Periodic movement.** An entity with a move period of N moves on the ticks where `tick % N == 0`. The phase is global and never resets.
+- **Order.** The order of steps is part of the rules: a different order is a different game.
+- **Ending a level.** The level ends at the first step where an end condition occurs ([§4.10](#410-end-of-level)), and the remaining steps don't run on that tick.
+
+Once per tick, in this order:
 
 1. **Input.** A journal event at this tick replaces the current input mask ([§6](#6-input-journal-and-byte-formats)).
 2. **Commit.** If X is pressed, the level ends. An unfinished cut is discarded: its trail is erased and nothing is captured.
-3. **Player.** The player moves 0, 1 or 2 sub-steps ([§4.5](#45-player)). A cut that reaches `CLAIMED` captures at once ([§4.8](#48-capture)), and the player moves no further this tick.
+3. **Player.** The player moves 0, 1 or 2 sub-steps ([§4.5](#45-player)). A cut that reaches `CLAIMED` captures at once ([§4.8](#48-capture)), and the player moves no further this tick. If the capture brings the claim to the level's target, the level is cleared.
 4. **Boss.** The boss moves ([§4.6](#46-boss)). If it bumps into `TRAIL`, the player is hit.
-5. **Minions.** The minions move, in index order ([§4.7](#47-minions)).
-6. **Collisions.** Hits are resolved ([§4.9](#49-hits-lives-and-respawn)).
-7. **End checks** ([§4.10](#410-end-of-level)).
+5. **Minions.** The minions move, in index order ([§4.7](#47-minions)). Respawn countdowns also tick down here.
+6. **Collisions.** The tick's hits are resolved ([§4.9](#49-hits-lives-and-respawn)).
+7. **Time.** If this was tick T − 1, the level ends.
 
 ### 4.5 Player
 
-- **Direction.** If the previous tick's direction is still held, keep it. Otherwise take the first held direction in the order up, down, left, right. If none is held, stand still. The draft doesn't say what happens when two directions are held, but a 5-way joystick reports two at once while rolling from one direction to the next.
+- **Direction.** The direction is resolved on every tick, whether or not the player moves. If the direction resolved on the previous tick is still held, keep it. Otherwise take the first held direction in the order up, down, left, right. If none is held, the direction is none, and the player stands still. The draft doesn't say what happens when two directions are held, but a 5-way joystick reports two at once while rolling from one direction to the next.
 - **On the rail,** the player moves only from rail cell to rail cell *(D3)*. Stepping into `EMPTY` starts a cut: the cell the player leaves becomes the **cut start**, and every `EMPTY` cell entered becomes `TRAIL`.
+- **Off the rail.** A capture can leave the player's own cell off the rail, for example when a cut closes into a pocket next to an obstacle. While off the rail, the player may step onto any `CLAIMED` cell, until back on the rail.
 - **Own trail.** The player cannot step onto `TRAIL`; the move is ignored *(D4)*. The draft only forbids moving backward, which is one case of this rule.
-- **Closing a cut.** Stepping from `TRAIL` onto `CLAIMED` completes the cut and triggers a capture. Such a `CLAIMED` cell is always a rail cell.
+- **Closing a cut.** Stepping from `TRAIL` onto `CLAIMED` completes the cut and triggers a capture. That cell is a rail cell at that moment, though the capture can take it off the rail (see "Off the rail" above).
 - **Fast cut (A).** If the player is cutting at the start of the tick and A is held, the player takes two sub-steps. On the rail, speed stays normal.
-- **Slow shield (B).** While B is held, the player moves on the tick B was pressed and every second tick after that. If A and B are both held, B wins.
+- **Slow shield (B).** While B is held, the player moves only on the ticks where `(tick − press_tick) % 2 == 0`. `press_tick` is the tick on which B went from released to held. If A and B are both held, B wins.
 - **Stopping mid-cut** is allowed: there is no *Qix*-style fuse *(D4)*.
 
 ### 4.6 Boss
@@ -192,19 +200,19 @@ The draft tests `grid[next_x][y]` and `grid[x][next_y]` from the same starting c
 
 Testing one axis at a time, with the second test made after the first move, never enters a solid cell and needs no special cases. This is how the Xonix reference moves its enemies ([§11](#11-reference-implementations)).
 
-The boss is a single cell *(D9)*. Its start cell and diagonal direction come from the level's spawn area and the level seed ([§6.4](#64-seeds-and-commitments)).
+The boss is a single cell *(D9)*. The draft starts it at (30, 30). Here the level defines a spawn area, and the level seed picks the start cell inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)).
 
 ### 4.7 Minions
 
 - **Movement.** Minions walk on rail cells only, one cell per move.
 - **Right-hand rule** (from the draft). A minion tries to turn right, then to go straight, then to turn left, then to turn back, and takes the first direction whose target is a rail cell.
 - **Orientation.** At spawn, at respawn and after every capture, a minion turns to the first heading, in the order N, E, S, W, that has open field (`EMPTY` or `TRAIL`) on its right and a rail cell ahead. If no heading qualifies, it keeps its current heading. With the field on their right, minions circle it clockwise.
-- **Known gap** *(D7)*. Where the rail is two cells thick (2-wide peninsulas, junctions), a minion whose right side faces the band instead of the field circles a 2×2 block forever. A throwaway simulation on random boards measured this:
+- **Known gap** *(D7)*. Where the rail is two cells thick (2-wide peninsulas, junctions), a minion whose right side faces the band instead of the field circles a 2×2 block forever. A quick simulation on random boards (not committed) measured this:
   - with random starting headings, the draft's rule trapped minions in about 2% of runs;
   - with the orientation step, about 0.15% of runs were still trapped.
 
   The orientation step helps but is not a guarantee. M1 must either prove the rule with the coverage property test (see the `parity-testing` skill) or replace it, for example with contour tracing of the field's boundary.
-- **Stranded minions.** After a capture, a minion whose cell is no longer on the rail is destroyed. It respawns R ticks later at its spawn cell, or at the first rail cell in row-major order if its spawn is no longer on the rail *(D7)*. The draft doesn't cover this case.
+- **Stranded minions.** After a capture, a minion whose cell is no longer on the rail is destroyed *(D7)*. The draft doesn't cover this case. Its respawn countdown starts at the level's respawn delay R and drops by one at step 5 of each tick. When it reaches zero, the minion respawns, oriented, at its spawn cell. If the spawn is no longer on the rail, it respawns at the first rail cell in row-major order instead.
 
 ### 4.8 Capture
 
@@ -228,20 +236,29 @@ Why this procedure:
   - the player tries to step onto the boss's cell. The move doesn't happen, so the boss never stands on the trail.
   - the player and a minion share a cell after the minions have moved;
   - a minion and the player swap cells in the same tick. Without this rule they would pass through each other. With fast cut, both sub-step cells count.
-- **Shield.** If B is held and a shield charge is left, the charge absorbs the hit *(D6)*.
-- **Losing a life.** Otherwise the player loses a life and the trail is erased. The player returns to the cut start, or stays in place if they were not cutting. They are then invulnerable for 30 ticks (2 s) or until they leave the rail, whichever comes first. Without that limit, invulnerability would be a window for a risk-free cut.
+
+  Hits set a single flag for the tick, so several hits in one tick count as one.
+- **Resolution** (at step 6), in this order:
+  1. If the player is invulnerable, nothing happens.
+  2. Otherwise, if B is held and a shield charge is left, the charge is spent and nothing else happens *(D6)*.
+  3. Otherwise, the player loses a life (see the next point).
+- **Losing a life.** The trail is erased. The player returns to the cut start, or stays in place if they were not cutting. They are then invulnerable during the 30 ticks (2 s) after the hit tick, or until they start a cut, whichever comes first. Without that limit, invulnerability would be a window for a risk-free cut.
 - **Respawn point.** The draft respawns the player at (30, 59). That stops working after the first capture along the bottom border: (30, 59) is no longer a rail cell, so a rail-bound player would be stuck there. The cut start, by contrast, is always a rail cell, because the rail only changes on capture.
 
 ### 4.10 End of level
 
-| Condition | Result |
-|---|---|
-| `claim_bp` reaches the level's target (default 7,500) | Cleared |
-| X pressed | Committed, claim kept |
-| Time limit reached (default 2,700 ticks = 3 min) | Over, claim kept |
-| No lives left (default 3) | Over, the level scores zero *(D5)* |
+The first condition met ends the level, in tick-step order:
 
-Scoring zero when the lives run out is what gives Commit its purpose: bank the claim, or risk it for more. The core computes the level score from the season's scoring parameters ([§8.4](#84-season-scoring)).
+| Condition | Step | Result |
+|---|---|---|
+| X pressed | 2 | Committed: claim kept, unfinished cut discarded |
+| `claim_bp` reaches the level's target (default 7,500) | 3 | Cleared |
+| No lives left (default 3) | 6 | Over, and the level scores zero *(D5)* |
+| Tick T − 1 processed (default T = 2,700, i.e. 3 min) | 7 | Over, claim kept |
+
+Scoring zero when the lives run out is what gives Commit its purpose: bank the claim, or risk it for more.
+
+**Ticks used** is the number of ticks processed: the index of the last tick, plus one. The core computes the level score from the season's scoring parameters ([§8.4](#84-season-scoring)).
 
 ## 5. Levels and map generator
 
@@ -251,17 +268,18 @@ A level is data, not code. The 16 built-in levels and player-made Superchallenge
 |---|---|
 | Obstacles | Cells that start `CLAIMED` (a 3,600-bit bitmap, 450 bytes) |
 | Boss | Spawn area; move period |
-| Minions | Count (0–3); spawn cells; move period |
-| Rules | Time limit, lives, target claim (defaults: 2,700 ticks, 3 lives, 7,500 bp) |
+| Minions | Count (0–3); spawn cells; move period; respawn delay R |
+| Rules | Time limit (at most 2,700 ticks), lives, target claim. Defaults: 2,700 ticks, 3 lives, 7,500 bp. |
 
 `level_id = keccak256(level bytes)`. Contracts store level ids, clients ship the level bytes, and the referee checks the bytes against the id.
 
-**Validity.** The core checks every level: built-in, generated and hand-made alike. A valid level meets four conditions:
+**Validity.** The core checks every level: built-in, generated and hand-made alike. A valid level meets five conditions:
 
-- the open area is a single 4-connected region of a minimum size;
+- the open area is a single 4-connected region, at least a minimum size (threshold frozen in M0);
 - the boss spawn area lies inside that region;
 - every minion spawn is a rail cell;
-- the player start (30, 59) is a rail cell.
+- the player start (30, 59) is a rail cell;
+- the time limit is at most 2,700 ticks, the size of the static journal buffer ([§6.2](#62-events)).
 
 **The 16 levels** ramp up difficulty with the knobs in the table above: boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the season 1 scoring weights ([§8.4](#84-season-scoring)).
 
@@ -279,8 +297,8 @@ Inputs are sampled once per tick, at the tick boundary. Sampling at 15 Hz also d
 
 ### 6.2 Events
 
-- **Format.** An event is `(u16 tick, u8 mask)`, recorded only when the mask changes, as in the draft. A mask applies from its tick until the next event. Before the first event, the mask is 0.
-- **Capacity.** Ticks strictly increase, so a level has at most one event per tick. A static array sized to the time limit (2,700 events, 8,100 bytes) can therefore never overflow. This replaces the "dynamic array" that the draft's Phase 2 asks for, which contradicts the draft's own no-heap rule.
+- **Format.** An event is `(u16 tick, u8 mask)`, recorded only when the mask changes, as in the draft. A mask applies from its tick until the next event. Before the first event, the mask is 0, so every event must change the mask; a first event with mask 0 is invalid.
+- **Capacity.** Ticks strictly increase, so a level has at most one event per tick. Time limits are capped at 2,700 ticks ([§5](#5-levels-and-map-generator)), so a static array of 2,700 events (8,100 bytes) can never overflow. This replaces the "dynamic array" that the draft's Phase 2 asks for, which contradicts the draft's own no-heap rule.
 - **Single input path.** The core reads the journal, never the raw inputs: inputs → journal → core, on every target. The device and the referee therefore run on identical inputs by construction.
 
 ### 6.3 Journal bytes (v1)
@@ -288,7 +306,8 @@ Inputs are sampled once per tick, at the tick boundary. Sampling at 15 Hz also d
 The encoding is big-endian and fixed-width. It is frozen in M0:
 
 ```text
-u8       version       1
+u8       version       1: the format version
+u16      rulesVersion  the core's RULES_VERSION the journal was played under
 u8       mode          0 training · 1 challenge · 2 superchallenge
 bytes32  runNonce      from the chain in paid modes; any value in training
 bytes32  levelId       keccak256 of the level bytes
@@ -297,19 +316,28 @@ u16      eventCount
 eventCount × (u16 tick, u8 mask)
 ```
 
+**Rules version.** `RULES_VERSION` is bumped on every rule change. Each season names the rules version it accepts, and the referee rejects any other, so a journal is always replayed under the rules it was played with.
+
 **Strict decoding.** The decoder rejects a journal with any of these, as ethblockdigger's codec does:
 
-- an unknown version or mode;
+- an unknown format version, rules version or mode;
 - a reserved bit set;
 - ticks that don't increase;
+- an event that doesn't change the mask;
 - events after the level ended;
 - truncated input or trailing bytes.
 
 **No struct dumps.** Never serialize an event as a C struct: padding makes `struct { uint16_t tick; uint8_t mask; }` 4 bytes long, not 3.
 
+**Absolute ticks.** The draft's State Mapper prompt suggests packing tick deltas. This format keeps absolute ticks, which make decoding trivial, and a full journal is at most about 8 KB. Revisit only if calldata cost matters.
+
 ### 6.4 Seeds and commitments
 
-- **Level seed:** `keccak256("jiro.level" ‖ runNonce ‖ levelIndex)`. The core reads the boss start cell, the boss direction and the minions' starting state from it with a fixed procedure. keccak256 runs once per level, never per tick: v1 has no per-tick randomness. Every derivation has its own domain tag, so two derivations never share an input.
+- **Level seed:** `keccak256("jiro.level" ‖ runNonce ‖ levelIndex)`.
+  - **What it decides.** The core derives two things from it with a fixed procedure, frozen in M0: the boss start cell inside the level's spawn area, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
+  - **Once per level.** keccak256 runs once per level, never per tick: v1 has no per-tick randomness.
+  - **Packing.** Inputs are packed as Solidity's `abi.encodePacked` would pack them: the tag as ASCII bytes, `runNonce` as 32 bytes, `levelIndex` as one byte.
+  - **Domain tags.** Every derivation has its own tag, so two derivations never share an input.
 - **The chain chooses the seed** in paid modes ([§7.2](#72-run-flow)), never the client. Otherwise a player could try seeds offline until the spawns were easy.
 - **Run commitment** (Challenge): `keccak256(keccak256(journal₀) ‖ … ‖ keccak256(journal₅))`. Each level can then be replayed in its own transaction.
 - **State hash** (tests and debugging): keccak256 over a fixed-order, fixed-width serialization of the whole state: tick, grid at 2 bits per cell, player, boss, minions, counters. The layout is frozen and versioned in M0.
@@ -324,9 +352,9 @@ The Pico has no network, but it is powered over USB anyway, so USB is the link:
 - **Transport:** CDC serial on the Pico, the Web Serial API in the dApp. Web Serial works in desktop Chrome and Edge, not in Firefox or Safari.
 - **Down:** the dApp sends the level bytes and the run nonce.
 - **Up:** the Pico streams journal events as they happen.
-- **Commit:** the dApp commits the journal hash as soon as the level ends.
+- **Commit:** the dApp commits the run commitment ([§6.4](#64-seeds-and-commitments)) as soon as the run ends.
 
-This has to happen live: the commit window is measured in wall-clock time ([§7.2](#72-run-flow)), so a journal cannot wait for a later sync.
+This has to happen live: the commit deadline counts the time the journals actually took to play ([§7.2](#72-run-flow)), so a journal cannot wait for a later sync.
 
 ## 7. Verification and trust model
 
@@ -342,12 +370,14 @@ The flow is the same keyless one as ethblockdigger's `Vault`:
 
 1. **Pay.** The payment transaction commits to entropy from a future Arbitrum block (`ArbBlockhashEntropy`).
 2. **Reveal.** About 10 seconds later, the run nonce is derived from that block's hash. The hash did not exist when the player paid, so nobody can preview the levels and pay only for easy ones.
-3. **Play and commit.** Within the commit window, the player commits `keccak256` of the journals. The window covers the levels' time limits plus 60 seconds of slack. Inputs must be produced at roughly real-time speed, which is what stops slow-motion play and slow offline search.
+3. **Play and commit.** The player commits the run commitment ([§6.4](#64-seeds-and-commitments)) before a deadline. The deadline is the reveal time, plus the time the journals actually took to play (their ticks used, at 15 Hz), plus a small slack for level transitions and transaction latency (frozen in M0). The contract records the commit time and checks the deadline at settlement, once the journals' lengths are known.
+   - **Why the actual duration.** A fixed window, like ethblockdigger's 450 s, would leave every early-ending level's unused minutes free. The player could replay a level whose seed they already know and commit the best attempt, or practice the next level before playing it for real. With a deadline that follows the journals' own length, any time spent that way makes the commit late.
+   - **Real-time play.** Inputs must therefore be produced at roughly real-time speed, which is what stops slow-motion play and offline search.
 4. **Settle.** The journal bytes are submitted. The contract checks them against the commitment, the run's nonce and the level ids, and the referee replays them.
 
 ### 7.3 Referee backend and gas
 
-Which backend runs the replay is decision *D2*. The draft's gas skill asks for full replay verification under 1,000,000 gas. That is not achievable on the EVM. A 3-minute level is 2,700 ticks, so 1M gas leaves about 370 gas per tick: a few dozen opcodes to cover the player, the boss, three minions and the collision checks. For scale, ethblockdigger measured its Solidity replay at 11.6k–54.6k gas per tick. Jiro's tick is lighter, but a rough estimate is still 5–20M gas per 3-minute level, before captures. The M4 gas spike will replace this estimate with a measurement.
+Which backend runs the replay is decision *D2*. The draft's gas skill asks for full replay verification under 1,000,000 gas. That is not achievable on the EVM. A 3-minute level is 2,700 ticks, so 1M gas leaves about 370 gas per tick: a few dozen opcodes to cover the player, the boss, three minions and the collision checks. For scale, ethblockdigger's gas spike measured a synthetic Solidity tick of its tower-defense simulation (`contracts/src/spike/ReplayTickSpike.sol`) at 11.6k–54.6k gas, with 10 to 50 enemies. Jiro's tick is lighter, but a rough estimate is still 5–20M gas per 3-minute level, before captures. The M4 gas spike will replace this estimate with a measurement.
 
 | Backend | Cost | Status |
 |---|---|---|
@@ -355,11 +385,17 @@ Which backend runs the replay is decision *D2*. The draft's gas skill asks for f
 | **zkVM proof** (core as RISC Zero or SP1 guest) | About 300k gas to verify, on any chain; proving cost and latency still to be measured | Available |
 | **EVM referee** (Yul, bitboard grid) | Roughly 5–20M gas per level (estimate); one level per transaction | Available, but a second implementation of the rules |
 
+The draft's "optimistic rollup" model is a layer on top of these backends, not a replacement:
+
+- **How it works.** Settlement records the claimed score, and anyone can dispute it within a window.
+- **Resolving a dispute.** Either replay the disputed level onchain with one of the backends above, or bisect the per-tick state hashes down to a single tick and replay only that tick. Bisection is cheap per dispute but is an interactive protocol to build.
+- **Trade-off.** It saves gas on undisputed runs, at the cost of a dispute window before rewards pay out.
+
 Recommendation: keep the core usable by all three backends, and choose in M4 after measuring. Whatever the backend, a run only needs settling if money depends on it. Players settle the run they want ranked; an unsettled run costs only its commit transaction.
 
 ### 7.4 Bots
 
-The game is deterministic and the simulation is tiny. Once the run nonce is revealed, a bot can search for strong inputs *within* the commit window, which only stops slow search. ethblockdigger reached the same conclusion: nothing cryptographic stops a competent real-time bot.
+The game is deterministic and the simulation is tiny. Once the run nonce is revealed, a bot can search for strong inputs *within* the commit deadline, which only stops slow search. ethblockdigger reached the same conclusion: nothing cryptographic stops a competent real-time bot.
 
 The levers are economic and social:
 
@@ -380,7 +416,7 @@ All 16 levels, offline, on the Pico or in the browser. Scores stay local and no 
 
 ### 8.2 Challenge: $0.10 per run
 
-- **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a Fisher–Yates shuffle driven by `keccak256("jiro.draw" ‖ runNonce ‖ i)`. The exact procedure is frozen in M0.
+- **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a Fisher–Yates shuffle driven by `keccak256("jiro.draw" ‖ runNonce ‖ i)`, with `i` packed as one byte. The exact procedure is frozen in M0.
 - **Score.** The run score is the sum of the six level scores.
 - **Ranking.** Players are ranked by their best settled run of the season *(D10)*. Ranking by cumulative score would let spending buy rank.
 - **Rewards.** The season pot is the entry fees minus a rake capped at 20%, as in ethblockdigger's `Season`, including its rollover of empty seasons and its claims. The pot is shared pro-rata among qualified players; ethblockdigger chose pro-rata because top-heavy payouts invite collusion when there are few players. Top-K payouts are the alternative *(D10)*.
@@ -413,7 +449,7 @@ The draft reads as follows:
 |---|---|
 | Mint | $1 buys a map NFT (ethblockdigger's `MapNFT`). The layout is either random, from a pay-then-reveal seed, or hand-made and passing the validity check. |
 | Opening | The map opens to challengers after its first verified clear, normally the minter's. That run sets the opening record. |
-| Runs | $0.01 each, prepaid in batches (e.g. 20 for $0.20) to amortize the payment transaction. Every run gets its own post-payment seed for the spawns, so a journal prepared for one run is useless in another. The minter's only edge is knowing the layout. |
+| Runs | $0.01 each. Every run gets its own post-payment seed for the spawns, so a journal prepared for one run is useless in another, and the minter's only edge is knowing the layout. That seed needs a start transaction per run, so prepaying runs in batches would save token transfers but not transactions. Problem 5 stays open: price runs higher, or accept gas comparable to the fee. |
 | Fee split | Illustrative: 70% bounty pot, 20% minter royalty, 10% protocol. The minter earns when the map is played, not when challengers fail. |
 | Record | Taking the record requires a minimum improvement, e.g. +1% claim. |
 | Payout | The map runs in rounds of, e.g., 7 days. A round is extended if the record changes in its last hour, so a record can't be sniped at the bell. The record holder at the end of the round takes that round's pot. Beating your own record from a second wallet earns nothing extra. |
@@ -435,7 +471,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 
 | Milestone | Deliverable | Draft phases | Done when |
 |---|---|---|---|
-| **M0** Rules freeze | Close the open decisions; freeze the tick order, journal v1, level format and state hash | none | No open decision blocks M1 |
+| **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
 | **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed |
 | **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
 | **M3** Pico | Firmware shell; vector run on the device | 1, 2 | Device state-hash traces match the native build |
@@ -464,18 +500,18 @@ Before reusing, note:
 
 - **Prices differ.** ethblockdigger charges 0.02 USDC per run; the draft's $0.01 is a new parameter.
 - **Not audited, not live.** ethblockdigger's testnet deployment is superseded and waiting for a full redeploy, which needs Stylus activations ([§7.3](#73-referee-backend-and-gas)). Its own docs require a professional audit before mainnet.
-- **Known residuals come along.** For example, a player can compute their run nonce up to about a minute before the commit window opens (ethblockdigger `TOKENOMICS.md` §6.2).
+- **Known residuals come along.** For example, a player can compute their run nonce up to 256 Arbitrum blocks before the reveal starts the commit deadline: about a minute at 0.25 s per block (ethblockdigger `TOKENOMICS.md` §6.2).
 - **Chain coupling.** `ArbBlockhashEntropy` relies on Arbitrum's ArbSys precompile; `block.prevrandao` is a constant on Arbitrum. Moving off Arbitrum needs a new entropy source.
 
 ## 11. Reference implementations
 
-The draft lists four references and asks to study three mechanics in them: grid representation, iterative flood fill and integer enemy reflection. All four exist, but they don't all show what the draft says:
+The draft lists four references, plus a general pointer to the many Xonix and Qix clones in JavaScript on GitHub, which vary too much to assess as a group. It asks to study three mechanics in them: grid representation, iterative flood fill and integer enemy reflection. All four references exist, but they don't all show what the draft says:
 
 | Reference | What it is | Adopt | Avoid |
 |---|---|---|---|
 | [yanbrod/volfied_clone](https://github.com/yanbrod/volfied_clone) | TypeScript and Canvas | Flat `Uint8Array` grid, `y * w + x`, 4-pixel cells, border pre-claimed. Iterative fill with an explicit stack, seeded from every enemy, cells marked when pushed, one sweep afterwards. | Enemies don't reflect: a blocked enemy picks a random new direction with `Math.random()`, and 10% of moves are random anyway. Enemies ignore the trail, which is kept as a separate list of pixel positions. Updates are timed by `requestAnimationFrame`. |
 | [Przemekkkth/Xonix_Qt-Cpp](https://github.com/Przemekkkth/Xonix_Qt-Cpp) | C++ and Qt, `int grid[25][40]` | One-axis-at-a-time reflection: move, test, and undo with `dx = -dx` on a hit. One sweep after the fill (−1 becomes 0, everything else becomes 1). | The flood fill (`Game::drop`) is **recursive**: the stack overflow the draft warns about, in the very C++ reference it cites. Velocities are pixel-scale values from `rand()` and can be zero. Timing uses a float accumulator. |
-| [aferust/drawee](https://github.com/aferust/drawee) | D, SDL and OpenGL | Nothing for the rules | No grid at all: the field is a polygon, capture is point-in-polygon, and enemies are bodies in the Chipmunk physics engine, with float velocities. |
+| [aferust/drawee](https://github.com/aferust/drawee) | D, SDL and OpenGL | Nothing for the rules | No grid at all: the field is a polygon. A capture splices the polygon along the cut and keeps the larger piece, by float area; point-in-polygon tests then remove the enemies left outside. Enemies are bodies in the Chipmunk physics engine, with float velocities. |
 | [Qixie](https://milasoft64.itch.io/qixie) by milasoft64 | 6502 assembly, Commodore PET | Fill the enemy's side with an invisible marker, then swap it back: the same idea as `BOSS_ZONE`. Size the explicit stack for the worst case: theirs overflowed the 6502's 256-byte stack after 128 cells, and moving it to a 16-bit stack in zero page fixed it. | (none) |
 
 Corrections to the draft:
@@ -532,7 +568,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D9 | Boss size | One cell for v1. A larger body, closer to *Volfied*, changes every reflection test, so decide before M1. |
 | D10 | Challenge ranking and payout | Best settled run per season; pro-rata payout among qualified players, for example those with at least one cleared level |
 | D11 | Superchallenge design | Bounty rounds ([§8.3](#83-superchallenge-critique-and-proposal)), or the simpler fallback if the legal read is negative |
-| D12 | Chain, currency, season length | USDC on Arbitrum One, reusing ethblockdigger's contracts; one-month seasons, as in ethblockdigger |
+| D12 | Chain, currency, season length | USDC on Arbitrum One, reusing ethblockdigger's contracts. One-month seasons, as in ethblockdigger's spec; its testnet `Season` contract uses 14 days. |
 | D13 | Names | The repository is "jiro-ikusu"; the draft's file was named "Jiru-ikusu". Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
 
 ## Repository files

@@ -23,7 +23,7 @@ The firmware is a thin shell around the core. It samples inputs, appends them to
 
 ## Always
 
-- Size static buffers from README §2: grid 3,600 B, capture stack 6,728 B, journal 8,100 B. There is at most one event per tick, so the journal cannot overflow.
+- Size static buffers from README §2: grid 3,600 B, capture stack 6,728 B, journal 8,100 B. There is at most one event per tick and levels are capped at 2,700 ticks (README §5), so the journal cannot overflow.
 - Run this sequence every tick:
   1. Sample all inputs once.
   2. Append an event to the journal if the mask changed.
@@ -41,7 +41,7 @@ USB CDC serial on the Pico, Web Serial in the dApp (README §6.5):
 - **Stream** journal events as they happen.
 - **At level end,** send the journal and the final state hash.
 
-The commit window is wall-clock bound, so streaming is not optional in paid modes.
+The commit deadline counts the time the journals actually took to play (README §7.2), so streaming is not optional in paid modes.
 
 ## Done when
 
