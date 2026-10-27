@@ -384,11 +384,17 @@ So the verifier runs the Rust core itself, in one of two ways:
 | Path | How it works | Cost | Status |
 |---|---|---|---|
 | **Stylus referee** | The core, compiled to wasm, is deployed as an Arbitrum Stylus contract that replays the journal. | Measured by ethblockdigger on Arbitrum Sepolia: 0.84M–3.25M gas per full replay of its heavier game, with games of up to 6 minutes ([`docs/DEPLOYMENT.md`](https://github.com/detychey/ethblockdigger/blob/main/docs/DEPLOYMENT.md) B2). A 3-minute Jiro level should land around or below the draft's 1M target. | New Stylus activations on Arbitrum One, Nova and Sepolia [are paused since 2026-10-02](https://cryptobriefing.com/arbitrum-pauses-new-stylus-activations/), with no reopening date announced |
-| **zkVM proof** | The core runs as a RISC Zero or SP1 guest, and a proof of the replay is verified onchain. | About 300k gas per verification, on any chain, and many proofs can be aggregated into one. Proving cost and latency are still to be measured. | Available |
+| **zkVM proof** | The core, compiled to RISC-V, runs as the guest of a RISC-V zkVM (RISC Zero, SP1 or another), and a proof of the replay is verified onchain. | About 300k gas per verification, on any chain, and many proofs can be aggregated into one. Proving cost and latency are still to be measured. | Available |
+
+**zkVM target: standard RISC-V.**
+
+- **The target.** Most zkVMs prove RISC-V programs. The Ethereum Foundation's [zkVM standards v0](https://zkevm.ethereum.foundation/blog/zkevm-standards-v0-release) (February 2026) make RV64IM their common target, and eight zkVMs are working toward it. The core needs nothing beyond RV64IM: it uses integers only, no floats and no heap.
+- **Thin wrappers.** Each zkVM still needs its own build, because memory layouts differ. So the core has no zkVM dependency, and each zkVM gets a thin guest wrapper: read the journal, replay it, commit the outcome. That keeps the prover choice open, to be made on measured cycles and price, and replaceable later behind the same verifier interface.
+- **A naming clash.** Brevis's zkVM is also called Pico. In this repository, "Pico" always means the Raspberry Pi board.
 
 **Proposed approach *(D2)*:**
 
-1. **Measure first.** In M1, count zkVM cycles per level on the golden vectors; that count sets the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
+1. **Measure first.** In M1, run the golden vectors in the executors of two or three RV64IM zkVMs. Executors run a guest without proving it, which yields cycle counts per level, and cycles set the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
 2. **Verify by exception.** Playing a run costs one small commit transaction, and its journals are published so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its $0.10 entry fee, even on Stylus. The payout curve *(D10)* sets how many runs need verifying.
 3. **One verifier interface.** Settlement calls `verify(journal) → outcome`, like ethblockdigger's `IReferee`, backed either by the Stylus referee or by a proof verifier. The money contracts don't change when the backend does.
 4. **Stylus first, zk as the fallback.** If activations reopen, the Stylus referee needs no prover infrastructure. If they don't, each verified run gets a zk proof, and a season's proofs are aggregated so verification gas stays nearly constant.
@@ -443,7 +449,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 | Milestone | Deliverable | Draft phases | Done when |
 |---|---|---|---|
 | **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
-| **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; zkVM cycle count per level | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; cycle counts recorded |
+| **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; cycle counts per level in two or three RV64IM zkVMs | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; cycle counts recorded |
 | **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
 | **M3** Pico | Firmware shell; vector run on the device | 1, 2 | Device state-hash traces match the native build |
 | **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
