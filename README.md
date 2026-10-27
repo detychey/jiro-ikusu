@@ -10,7 +10,7 @@ A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and
 2. [Hardware target](#2-hardware-target)
 3. [Architecture](#3-architecture)
 4. [Game rules](#4-game-rules)
-5. [Levels and map generator](#5-levels-and-map-generator)
+5. [Levels](#5-levels)
 6. [Input journal and byte formats](#6-input-journal-and-byte-formats)
 7. [Verification and trust model](#7-verification-and-trust-model)
 8. [Game modes and economy](#8-game-modes-and-economy)
@@ -34,7 +34,7 @@ There are three modes ([§8](#8-game-modes-and-economy)):
 
 - **Training:** free, all 16 levels.
 - **Challenge:** $0.10 for 6 random levels, with a seasonal ranking and rewards.
-- **Superchallenge:** player-minted maps with bounties, redesigned in [§8.3](#83-superchallenge-critique-and-proposal).
+- **Superchallenge:** player-minted maps with bounties, deferred ([`TODO.md`](TODO.md)).
 
 ## 2. Hardware target
 
@@ -104,10 +104,10 @@ A tick changes only a handful of cells. So the renderer redraws the changed 4×4
 | `web/` | `wasm32` module | Canvas rendering, keyboard, replay viewer, level editor, wallet, Web Serial bridge |
 | `referee/` | Stylus contract or zkVM guest *(D2)* | `verify(journal) → outcome` |
 | `contracts/` | (Solidity) | Payments, entropy, runs, seasons, maps |
-| `levels/` | (data) | The 16 levels and the map generator |
+| `levels/` | (data) | The 16 levels |
 | `vectors/` | output of the native build | Golden test vectors that every target must reproduce |
 
-**Core language *(D1)*.** The draft specifies C++. This spec recommends Rust for the core, for three reasons:
+**Core language: Rust** *(D1, decided)*. The draft specifies C++; the core is written in Rust instead, for three reasons:
 
 - **Existing pipeline.** ethblockdigger already has a `no_std` Rust referee crate, its Stylus packaging, pinned wasm builds and cross-language conformance tests ([§10](#10-reuse-from-ethblockdigger)). Jiro can reuse that pipeline instead of building one.
 - **On-chain targets are Rust-first.** Stylus contracts and zkVM guests (RISC Zero, SP1) are written in Rust, so the core can become the onchain referee or a proof guest without a port.
@@ -260,9 +260,9 @@ Scoring zero when the lives run out is what gives Commit its purpose: bank the c
 
 **Ticks used** is the number of ticks processed: the index of the last tick, plus one. The core computes the level score from the season's scoring parameters ([§8.4](#84-season-scoring)).
 
-## 5. Levels and map generator
+## 5. Levels
 
-A level is data, not code. The 16 built-in levels and player-made Superchallenge maps share one format:
+A level is data, not code. The 16 built-in levels use this format, and so will Superchallenge maps if that mode comes back ([`TODO.md`](TODO.md)):
 
 | Field | Meaning |
 |---|---|
@@ -273,7 +273,7 @@ A level is data, not code. The 16 built-in levels and player-made Superchallenge
 
 `level_id = keccak256(level bytes)`. Contracts store level ids, clients ship the level bytes, and the referee checks the bytes against the id.
 
-**Validity.** The core checks every level: built-in, generated and hand-made alike. A valid level meets five conditions:
+**Validity.** The core checks every level before play. A valid level meets five conditions:
 
 - the open area is a single 4-connected region, at least a minimum size (threshold frozen in M0);
 - the boss spawn area lies inside that region;
@@ -283,7 +283,7 @@ A level is data, not code. The 16 built-in levels and player-made Superchallenge
 
 **The 16 levels** ramp up difficulty with the knobs in the table above: boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the season 1 scoring weights ([§8.4](#84-season-scoring)).
 
-**The map generator** (Superchallenge) turns a seed into level bytes. It draws obstacle shapes from the seed, then runs the validity check. If the check fails, the next attempt uses the next derived seed, so generation stays deterministic. The browser level editor produces the same bytes for hand-made maps.
+**The level editor** in the browser produces level bytes, and the 16 levels are authored with it. The Superchallenge map generator is deferred with its mode.
 
 ## 6. Input journal and byte formats
 
@@ -298,7 +298,7 @@ Inputs are sampled once per tick, at the tick boundary. Sampling at 15 Hz also d
 ### 6.2 Events
 
 - **Format.** An event is `(u16 tick, u8 mask)`, recorded only when the mask changes, as in the draft. A mask applies from its tick until the next event. Before the first event, the mask is 0, so every event must change the mask; a first event with mask 0 is invalid.
-- **Capacity.** Ticks strictly increase, so a level has at most one event per tick. Time limits are capped at 2,700 ticks ([§5](#5-levels-and-map-generator)), so a static array of 2,700 events (8,100 bytes) can never overflow. This replaces the "dynamic array" that the draft's Phase 2 asks for, which contradicts the draft's own no-heap rule.
+- **Capacity.** Ticks strictly increase, so a level has at most one event per tick. Time limits are capped at 2,700 ticks ([§5](#5-levels)), so a static array of 2,700 events (8,100 bytes) can never overflow. This replaces the "dynamic array" that the draft's Phase 2 asks for, which contradicts the draft's own no-heap rule.
 - **Single input path.** The core reads the journal, never the raw inputs: inputs → journal → core, on every target. The device and the referee therefore run on identical inputs by construction.
 
 ### 6.3 Journal bytes (v1)
@@ -308,7 +308,7 @@ The encoding is big-endian and fixed-width. It is frozen in M0:
 ```text
 u8       version       1: the format version
 u16      rulesVersion  the core's RULES_VERSION the journal was played under
-u8       mode          0 training · 1 challenge · 2 superchallenge
+u8       mode          0 training · 1 challenge · 2 reserved (superchallenge)
 bytes32  runNonce      from the chain in paid modes; any value in training
 bytes32  levelId       keccak256 of the level bytes
 u8       levelIndex    position of the level in the run
@@ -373,25 +373,40 @@ The flow is the same keyless one as ethblockdigger's `Vault`:
 3. **Play and commit.** The player commits the run commitment ([§6.4](#64-seeds-and-commitments)) before a deadline. The deadline is the reveal time, plus the time the journals actually took to play (their ticks used, at 15 Hz), plus a small slack for level transitions and transaction latency (frozen in M0). The contract records the commit time and checks the deadline at settlement, once the journals' lengths are known.
    - **Why the actual duration.** A fixed window, like ethblockdigger's 450 s, would leave every early-ending level's unused minutes free. The player could replay a level whose seed they already know and commit the best attempt, or practice the next level before playing it for real. With a deadline that follows the journals' own length, any time spent that way makes the commit late.
    - **Real-time play.** Inputs must therefore be produced at roughly real-time speed, which is what stops slow-motion play and offline search.
-4. **Settle.** The journal bytes are submitted. The contract checks them against the commitment, the run's nonce and the level ids, and the referee replays them.
+4. **Settle,** only when money depends on the run ([§7.3](#73-verification-cost)). The journal bytes are submitted, and the contract checks them against the commitment, the run's nonce and the level ids. Then the verifier either replays them (Stylus) or checks a proof of their replay (zkVM).
 
-### 7.3 Referee backend and gas
+### 7.3 Verification cost
 
-Which backend runs the replay is decision *D2*. The draft's gas skill asks for full replay verification under 1,000,000 gas. That is not achievable on the EVM. A 3-minute level is 2,700 ticks, so 1M gas leaves about 370 gas per tick: a few dozen opcodes to cover the player, the boss, three minions and the collision checks. For scale, ethblockdigger's gas spike measured a synthetic Solidity tick of its tower-defense simulation (`contracts/src/spike/ReplayTickSpike.sol`) at 11.6k–54.6k gas, with 10 to 50 enemies. Jiro's tick is lighter, but a rough estimate is still 5–20M gas per 3-minute level, before captures. The M4 gas spike will replace this estimate with a measurement.
+The draft's gas skill asks for full replay verification under 1,000,000 gas. A replay written in Solidity can't meet that. A 3-minute level is 2,700 ticks, so 1M gas leaves about 370 gas per tick: a few dozen opcodes to cover the player, the boss, three minions and the collision checks. For scale, ethblockdigger's gas spike measured a synthetic Solidity tick of its tower-defense simulation (`contracts/src/spike/ReplayTickSpike.sol`) at 11.6k–54.6k gas, with 10 to 50 enemies. A Solidity referee would also be a second implementation of the rules, which the one-engine decision rules out ([§3](#3-architecture)).
 
-| Backend | Cost | Status |
-|---|---|---|
-| **Stylus referee** (core compiled to wasm) | Compute about 10–100× cheaper than the EVM (ethblockdigger's figures); likely one transaction per run | New Stylus activations on Arbitrum One, Nova and Sepolia [are paused since 2026-10-02](https://cryptobriefing.com/arbitrum-pauses-new-stylus-activations/), with no reopening date announced |
-| **zkVM proof** (core as RISC Zero or SP1 guest) | About 300k gas to verify, on any chain; proving cost and latency still to be measured | Available |
-| **EVM referee** (Yul, bitboard grid) | Roughly 5–20M gas per level (estimate); one level per transaction | Available, but a second implementation of the rules |
+So the verifier runs the Rust core itself, in one of two ways:
 
-The draft's "optimistic rollup" model is a layer on top of these backends, not a replacement:
+| Path | How it works | Cost | Status |
+|---|---|---|---|
+| **Stylus referee** | The core, compiled to wasm, is deployed as an Arbitrum Stylus contract that replays the journal. | Measured by ethblockdigger on Arbitrum Sepolia: 0.84M–3.25M gas per full replay of its heavier game, with games of up to 6 minutes ([`docs/DEPLOYMENT.md`](https://github.com/detychey/ethblockdigger/blob/main/docs/DEPLOYMENT.md) B2). A 3-minute Jiro level should land around or below the draft's 1M target. | New Stylus activations on Arbitrum One, Nova and Sepolia [are paused since 2026-10-02](https://cryptobriefing.com/arbitrum-pauses-new-stylus-activations/), with no reopening date announced |
+| **zkVM proof** | The core, compiled to RISC-V, runs as the guest of a RISC-V zkVM (RISC Zero, SP1 or another), and a proof of the replay is verified onchain. | About 300k gas per verification, on any chain, and many proofs can be aggregated into one. Proving cost and latency are still to be measured. | Available |
 
-- **How it works.** Settlement records the claimed score, and anyone can dispute it within a window.
-- **Resolving a dispute.** Either replay the disputed level onchain with one of the backends above, or bisect the per-tick state hashes down to a single tick and replay only that tick. Bisection is cheap per dispute but is an interactive protocol to build.
-- **Trade-off.** It saves gas on undisputed runs, at the cost of a dispute window before rewards pay out.
+**zkVM target: standard RISC-V.**
 
-Recommendation: keep the core usable by all three backends, and choose in M4 after measuring. Whatever the backend, a run only needs settling if money depends on it. Players settle the run they want ranked; an unsettled run costs only its commit transaction.
+- **The target.** Most zkVMs prove RISC-V programs. The Ethereum Foundation's [zkVM standards v0](https://zkevm.ethereum.foundation/blog/zkevm-standards-v0-release) (February 2026) make RV64IM their common target, and eight zkVMs are working toward it. The core needs nothing beyond RV64IM: it uses integers only, no floats and no heap.
+- **Thin wrappers.** Each zkVM still needs its own build, because memory layouts differ. So the core has no zkVM dependency, and each zkVM gets a thin guest wrapper: read the journal, replay it, commit the outcome. The prover stays replaceable behind the same verifier interface.
+- **Choosing the zkVM: tooling first.** The framework is the one whose tooling the coding agent can rely on best. In practice, it must pass four checks:
+  - it installs and runs in the agent's cloud environment;
+  - it executes guests locally, with cycle counts and without a GPU;
+  - it has a fast mock or dev mode for tests;
+  - it has a verifier contract on Arbitrum, with Foundry test support.
+
+  Among the frameworks that pass, measured cycles and price decide. If the best-tooled zkVM still targets 32-bit RISC-V, that's fine: the core builds unchanged for either width.
+- **A naming clash.** Brevis's zkVM is also called Pico. In this repository, "Pico" always means the Raspberry Pi board.
+
+**Proposed approach *(D2)*:**
+
+1. **Measure first.** In M1, try two or three zkVMs hands-on, pick the one with the best tooling, and run the golden vectors in its executor. Executors run a guest without proving it, which yields cycle counts per level, and cycles set the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
+2. **Verify by exception.** Playing a run costs one small commit transaction, and its journals are published so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its $0.10 entry fee, even on Stylus. The payout curve *(D10)* sets how many runs need verifying.
+3. **One verifier interface.** Settlement calls `verify(journal) → outcome`, like ethblockdigger's `IReferee`, backed either by the Stylus referee or by a proof verifier. The money contracts don't change when the backend does.
+4. **Stylus first, zk as the fallback.** If activations reopen, the Stylus referee needs no prover infrastructure. If they don't, each verified run gets a zk proof, and a season's proofs are aggregated so verification gas stays nearly constant.
+
+The draft's 1M-gas figure stays as the M4 gate, applied per level on Stylus rather than to a whole game in Solidity. The approach is also the draft's "optimistic" model in its simplest form: nothing is verified until money depends on it, and then it is proven rather than disputed.
 
 ### 7.4 Bots
 
@@ -422,40 +437,9 @@ All 16 levels, offline, on the Pico or in the browser. Scores stay local and no 
 - **Rewards.** The season pot is the entry fees minus a rake capped at 20%, as in ethblockdigger's `Season`, including its rollover of empty seasons and its claims. The pot is shared pro-rata among qualified players; ethblockdigger chose pro-rata because top-heavy payouts invite collusion when there are few players. Top-K payouts are the alternative *(D10)*.
 - **Sybils.** Fees are paid at run start, so every point costs money, and extra wallets only pay off if they also play well.
 
-### 8.3 Superchallenge: critique and proposal
+### 8.3 Superchallenge: deferred
 
-The draft reads as follows:
-
-- a player generates a map, by hand or at random, and mints it for $1;
-- each run on the map costs $0.01;
-- once the map has been completed once, the minter claims half of its leftover value;
-- any player can then pay $0.01 per run to beat the minter's score, and win half of the accumulated value.
-
-**Problems:**
-
-1. **The minter can always play their own map.** Wallets are free, so "beat the minter" cannot exclude the minter. The minter also knows the layout before minting, so they can practice or search it offline. They can then mint, set a strong score, let challengers fill the pot, and take the pot with a better run from a second wallet. The draft's design turns maps into honeypots.
-2. **The minter profits from failure.** The pot grows when challengers fail, so the incentive is to design unfair maps rather than fun ones.
-3. **"Half the accumulated value" is ambiguous.** Both readings break:
-   - If the target stays the minter's score, each player who beats it takes half of what remains, and the pot drains geometrically.
-   - If the target becomes the new record, a winner can take another half by beating their own record from a second wallet.
-4. **Journals are public.** Unless a journal is bound to a run nonce and its player, anyone can copy a winning journal from the mempool and submit it first. ethblockdigger's commit-then-settle flow, with nonce binding, fixes this.
-5. **$0.01 is less than the gas.** A verified run takes several transactions (pay, reveal, commit, settle). On an L2 these cost about as much as the fee, or more.
-6. **"Completed once" needs proof.** A hand-made map can be impossible. Completion has to be a verified clear, and maps need validity rules ([§5](#5-levels-and-map-generator)).
-7. **Legal exposure.** Per-map pots funded by player fees and paid to a winner, with the minter profiting, look like a banked game of chance in some jurisdictions. This is a sharper version of the regulatory risk in ethblockdigger's `TOKENOMICS.md` §8. Get a legal read before mainnet.
-
-**Proposal: bounty rounds** *(D11)*
-
-| | |
-|---|---|
-| Mint | $1 buys a map NFT (ethblockdigger's `MapNFT`). The layout is either random, from a pay-then-reveal seed, or hand-made and passing the validity check. |
-| Opening | The map opens to challengers after its first verified clear, normally the minter's. That run sets the opening record. |
-| Runs | $0.01 each. Every run gets its own post-payment seed for the spawns, so a journal prepared for one run is useless in another, and the minter's only edge is knowing the layout. That seed needs a start transaction per run, so prepaying runs in batches would save token transfers but not transactions. Problem 5 stays open: price runs higher, or accept gas comparable to the fee. |
-| Fee split | Illustrative: 70% bounty pot, 20% minter royalty, 10% protocol. The minter earns when the map is played, not when challengers fail. |
-| Record | Taking the record requires a minimum improvement, e.g. +1% claim. |
-| Payout | The map runs in rounds of, e.g., 7 days. A round is extended if the record changes in its last hour, so a record can't be sniped at the bell. The record holder at the end of the round takes that round's pot. Beating your own record from a second wallet earns nothing extra. |
-| Dormancy | After N days without runs, the pot goes to the record holder and the map closes. |
-
-**Simpler fallback:** no per-map pots at all. Superchallenge fees feed the season pot, each map gets its own leaderboard, and minters earn royalties.
+Player-minted maps with bounties are deferred. The draft's design, its problems and a redesign proposal are kept in [`TODO.md`](TODO.md).
 
 ### 8.4 Season scoring
 
@@ -472,12 +456,12 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 | Milestone | Deliverable | Draft phases | Done when |
 |---|---|---|---|
 | **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
-| **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed |
+| **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; a hands-on tooling trial of two or three zkVMs, and cycle counts per level in the one chosen | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; zkVM chosen; cycle counts recorded |
 | **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
 | **M3** Pico | Firmware shell; vector run on the device | 1, 2 | Device state-hash traces match the native build |
-| **M4** Referee and contracts | Gas spike, then backend choice *(D2)*; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet; gas measured |
+| **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
 | **M5** dApp and season 1 | Wallet, Web Serial bridge to the Pico, Challenge UX, a testnet season | none | A full season closes and pays out on testnet |
-| **M6** Superchallenge | Map generator, map NFT, bounty rules | none | Starts after *D11* and the legal review |
+| **M6** Superchallenge | Deferred, see [`TODO.md`](TODO.md) | none | Not scheduled |
 
 ## 10. Reuse from ethblockdigger
 
@@ -486,9 +470,9 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 | ethblockdigger component | Source | Use in Jiro Ikusu |
 |---|---|---|
 | Pay-then-reveal entropy | `contracts/src/ArbBlockhashEntropy.sol`, `contracts/src/interfaces/IEntropySource.sol` | Run nonces and map seeds |
-| `Vault`: USDC ledger, solvency invariant, the start → reveal → commit → settle flow | `contracts/src/Vault.sol` | Challenge and Superchallenge runs. ethblockdigger ties runs to the map owner and pays out the map's backing; Jiro runs are bought by any player and record a score. |
+| `Vault`: USDC ledger, solvency invariant, the start → reveal → commit → settle flow | `contracts/src/Vault.sol` | Challenge runs. ethblockdigger ties runs to the map owner and pays out the map's backing; Jiro runs are bought by any player and record a score. |
 | `Season`: rake capped at 20%, empty-season rollover, pro-rata claims | `contracts/src/Season.sol` | Challenge seasons. Its points still come from an oracle-posted Merkle root. ethblockdigger plans to accrue points onchain instead; Jiro needs that from the start (best settled score per player). |
-| `MapNFT` with an onchain-rendered `tokenURI` | `contracts/src/MapNFT.sol`, `referee/map-renderer` | Superchallenge maps, rendering the 60×60 layout. The renderer is a Stylus contract, so it is subject to the activation pause too. |
+| `MapNFT` with an onchain-rendered `tokenURI` | `contracts/src/MapNFT.sol`, `referee/map-renderer` | Superchallenge maps, if that mode comes back ([`TODO.md`](TODO.md)) |
 | Referee crate: `no_std` Rust core, Stylus `verify(bytes)`, pinned wasm build | `referee/core`, `referee/stylus`, `referee/build-wasm.sh` | Template for the Jiro core and referee |
 | Determinism rules, strict input-log codec, conformance fixtures | `docs/DETERMINISM.md`, `src/sim/logCodec.ts`, `referee/core/src/codec.rs`, `src/sim/fixtures/replay` | Journal v1 and `vectors/` |
 | Replay viewer ("the onchain bytes *are* the match") | `src/ui/ReplayPage.tsx`, `src/game/replayPlayer.ts` | Watching and auditing any settled run |
@@ -498,8 +482,8 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 
 Before reusing, note:
 
-- **Prices differ.** ethblockdigger charges 0.02 USDC per run; the draft's $0.01 is a new parameter.
-- **Not audited, not live.** ethblockdigger's testnet deployment is superseded and waiting for a full redeploy, which needs Stylus activations ([§7.3](#73-referee-backend-and-gas)). Its own docs require a professional audit before mainnet.
+- **Prices differ.** ethblockdigger charges 0.02 USDC per run, against the draft's $0.10 Challenge run and $0.01 Superchallenge run.
+- **Not audited, not live.** ethblockdigger's testnet deployment is superseded and waiting for a full redeploy, which needs Stylus activations ([§7.3](#73-verification-cost)). Its own docs require a professional audit before mainnet.
 - **Known residuals come along.** For example, a player can compute their run nonce up to 256 Arbitrum blocks before the reveal starts the commit deadline: about a minute at 0.25 s per block (ethblockdigger `TOKENOMICS.md` §6.2).
 - **Chain coupling.** `ArbBlockhashEntropy` relies on Arbitrum's ArbSys precompile; `block.prevrandao` is a constant on Arbitrum. Moving off Arbitrum needs a new entropy source.
 
@@ -537,7 +521,7 @@ The draft's five system prompts, revised, live in [`.claude/skills/`](.claude/sk
 |---|---|---|
 | [`rp2040-firmware`](.claude/skills/rp2040-firmware/SKILL.md) | Embedded C++ Optimizer | Adds the real pin map and memory budget, and drops the full framebuffer. Inputs are sampled once per tick and reach the core through the journal. The firmware never re-implements a rule, and runs the test vectors on the device. |
 | [`deterministic-core`](.claude/skills/deterministic-core/SKILL.md) | Deterministic Engine Architect | Adds what breaks determinism besides floats: tick order, iteration order, hidden inputs, panics, and rule changes without a version bump. |
-| [`onchain-referee`](.claude/skills/onchain-referee/SKILL.md) | EVM / Solidity Gas Optimizer | Replaces the unreachable 1M-gas target with a measured budget, and covers the backend choice. Never trusts a client seed or score, and binds journals to their run so they can't be copied. |
+| [`onchain-referee`](.claude/skills/onchain-referee/SKILL.md) | EVM / Solidity Gas Optimizer | Drops the Solidity replay: verification runs the one core, on Stylus or behind a zk proof, with the draft's 1M gas as a per-level gate on Stylus. Never trusts a client seed or score, and binds journals to their run so they can't be copied. |
 | [`journal-codec`](.claude/skills/journal-codec/SKILL.md) | Cryptographic State Mapper | One codec for all targets, with strict decoding. keccak256 serves for seed derivation and commitments only, not as a per-tick PRNG. |
 | [`parity-testing`](.claude/skills/parity-testing/SKILL.md) | State-Machine Debugger | Per-tick state-hash traces instead of a final hash only. Adds shared golden vectors, property tests, differential fuzzing and bot playtests. |
 
@@ -557,8 +541,8 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 
 | ID | Decision | Recommendation |
 |---|---|---|
-| D1 | Language of the core and of the firmware shell | Rust core. Shell: Rust (`embassy-rp`) for a single toolchain, or the draft's C++ on the Pico SDK linking the core |
-| D2 | Referee backend | Decide in M4 after a gas spike: Stylus if activations reopen, otherwise a zkVM; an EVM referee only as a measured fallback |
+| D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target. Still open: the shell, either Rust (`embassy-rp`) for a single toolchain, or the draft's C++ on the Pico SDK linking the core. |
+| D2 | Verification backend | Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
 | D3 | Player movement on claimed cells | Rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. Free movement, as in *Xonix*, lets the player hide from them. |
 | D4 | Trail rules | The own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1 |
 | D5 | Level defaults, and running out of lives | 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
@@ -567,12 +551,14 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D8 | Key mapping | Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. |
 | D9 | Boss size | One cell for v1. A larger body, closer to *Volfied*, changes every reflection test, so decide before M1. |
 | D10 | Challenge ranking and payout | Best settled run per season; pro-rata payout among qualified players, for example those with at least one cleared level |
-| D11 | Superchallenge design | Bounty rounds ([§8.3](#83-superchallenge-critique-and-proposal)), or the simpler fallback if the legal read is negative |
+| D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | USDC on Arbitrum One, reusing ethblockdigger's contracts. One-month seasons, as in ethblockdigger's spec; its testnet `Season` contract uses 14 days. |
-| D13 | Names | The repository is "jiro-ikusu"; the draft's file was named "Jiru-ikusu". Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
+| D13 | Names | The name is settled in [`name.md`](name.md): ジロイクス, *Jirō-ikusu*. Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
 
 ## Repository files
 
 - [`plan-draft.md`](plan-draft.md): the original draft this README is built from.
 - [`GUIDELINES.md`](GUIDELINES.md): workflow rules for coding agents.
 - [`skills-import.md`](skills-import.md): the ethskills import list.
+- [`TODO.md`](TODO.md): deferred work, starting with Superchallenge mode.
+- [`name.md`](name.md): the name in Japanese and Chinese.

@@ -1,6 +1,6 @@
 ---
 name: onchain-referee
-description: Use when designing or writing smart contracts for Jiro Ikusu — run purchase, entropy, journal commit and settlement, seasons, map NFTs — or the onchain referee that replays journals (Stylus, zkVM verifier or EVM). Pair with the ethskills `ship` skill for current Ethereum facts.
+description: Use when designing or writing smart contracts for Jiro Ikusu — run purchase, entropy, journal commit and settlement, seasons — or the onchain verifier that runs the game core on journals (Stylus referee or zkVM proof verifier). Pair with the ethskills `ship` skill for current Ethereum facts.
 ---
 
 # Onchain referee and contracts
@@ -8,16 +8,15 @@ description: Use when designing or writing smart contracts for Jiro Ikusu — ru
 ## Architecture
 
 - **Money lives in Solidity.** Reuse ethblockdigger's patterns (README §10): pay-then-reveal entropy, commit-then-settle (with Jiro's duration-based deadline), keyless settlement, the solvency invariant, `Season`.
-- **Compute lives in the referee,** which replays journals through the core. The backend is decision D2 (README §7.3). Prefer reusing the core, as a Stylus contract or a zkVM guest, over writing the rules a second time in Solidity.
+- **Verification runs the one core,** never a second implementation of the rules in Solidity (D1). The core either runs as a Stylus contract that replays the journal, or as a zkVM guest whose proof is verified onchain (README §7.3, D2).
+- **One verifier interface.** Settlement calls `verify(journal) → outcome`, like ethblockdigger's `IReferee`, whatever the backend.
 
-## Gas: measure, don't assume
+## Cost: measure, don't assume
 
-- **No 1M-gas full replay on the EVM.** The estimate is 5–20M gas per 3-minute level. For comparison, ethblockdigger's synthetic Solidity tick (`contracts/src/spike/ReplayTickSpike.sol`) cost 11.6k–54.6k gas. Before choosing a backend, build a spike and measure it, as ethblockdigger did with `scripts/contracts/gasSpike.ts`.
-- **Settle levels separately when needed,** one level per transaction. The run commitment (README §6.4) lets each level settle on its own.
-- **If an EVM referee is chosen:**
-  - keep all replay state in memory, with no storage writes in the replay loop;
-  - use bitboards (60-bit rows in 64-bit lanes) for the grid and the fill;
-  - parse the journal with `calldataload` and shifts.
+- **Gate: 1M gas per level on Stylus.** ethblockdigger's Stylus referee measured 0.84M–3.25M gas per full replay of its heavier game (its `docs/DEPLOYMENT.md` B2). Measure Jiro's on a local Arbitrum node while activations on the public chains are paused.
+- **zk fallback.** About 300k gas per verification, with a season's proofs aggregated into one. Use the zkVM chosen in M1, where the agent's tooling decides first and cost second (README §7.3). Measure cycles per level and the proving cost before relying on it.
+- **Verify by exception.** Only runs that money depends on get verified; every other run costs one commit transaction.
+- **Settle levels separately if a run doesn't fit one transaction.** The run commitment (README §6.4) lets each level settle on its own.
 
 ## Security
 
@@ -26,7 +25,7 @@ description: Use when designing or writing smart contracts for Jiro Ikusu — ru
 - **Enforce the commit deadline at settlement:** reveal time, plus the journals' ticks used at 15 Hz, plus the slack (README §7.2). Never use a fixed window; it leaves the unused time of early-ending levels free for retries and practice.
 - **Decode strictly** (README §6.3) and reject anything malformed.
 - **USDC has 6 decimals.** Use `SafeERC20`.
-- **Make periodic actions permissionless.** Season close and map expiry must be callable by anyone, with a reason to call them.
+- **Make periodic actions permissionless.** Season close must be callable by anyone, with a reason to call it.
 - **No private keys** in the settlement path.
 - **Never use `block.prevrandao` on Arbitrum,** where it is a constant.
 
@@ -34,4 +33,4 @@ description: Use when designing or writing smart contracts for Jiro Ikusu — ru
 
 - Unit tests pass, and invariant tests check solvency after every operation.
 - A run goes through pay, reveal, commit and settle end to end on Arbitrum Sepolia.
-- The PR records the measured gas numbers.
+- The PR records the measured verification costs.
