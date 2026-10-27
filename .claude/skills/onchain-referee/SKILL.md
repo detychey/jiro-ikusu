@@ -14,7 +14,7 @@ description: Use when designing or writing smart contracts for Jiro Ikusu — ru
 ## Cost: measure, don't assume
 
 - **Gate: 1M gas per level on Stylus.** ethblockdigger's Stylus referee measured 0.84M–3.25M gas per full replay of its heavier game (its `docs/DEPLOYMENT.md` B2). Measure Jiro's on a local Arbitrum node while activations on the public chains are paused.
-- **zk fallback.** About 300k gas per verification, with a season's proofs aggregated into one. Measure cycles per level and the proving cost before relying on it.
+- **zk fallback.** About 300k gas per verification, with a season's proofs aggregated into one. Use the zkVM chosen in M1, where the agent's tooling decides first and cost second (README §7.3). Measure cycles per level and the proving cost before relying on it.
 - **Verify by exception.** Only runs that money depends on get verified; every other run costs one commit transaction.
 - **Settle levels separately if a run doesn't fit one transaction.** The run commitment (README §6.4) lets each level settle on its own.
 

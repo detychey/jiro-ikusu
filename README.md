@@ -389,12 +389,19 @@ So the verifier runs the Rust core itself, in one of two ways:
 **zkVM target: standard RISC-V.**
 
 - **The target.** Most zkVMs prove RISC-V programs. The Ethereum Foundation's [zkVM standards v0](https://zkevm.ethereum.foundation/blog/zkevm-standards-v0-release) (February 2026) make RV64IM their common target, and eight zkVMs are working toward it. The core needs nothing beyond RV64IM: it uses integers only, no floats and no heap.
-- **Thin wrappers.** Each zkVM still needs its own build, because memory layouts differ. So the core has no zkVM dependency, and each zkVM gets a thin guest wrapper: read the journal, replay it, commit the outcome. That keeps the prover choice open, to be made on measured cycles and price, and replaceable later behind the same verifier interface.
+- **Thin wrappers.** Each zkVM still needs its own build, because memory layouts differ. So the core has no zkVM dependency, and each zkVM gets a thin guest wrapper: read the journal, replay it, commit the outcome. The prover stays replaceable behind the same verifier interface.
+- **Choosing the zkVM: tooling first.** The framework is the one whose tooling the coding agent can rely on best. In practice, it must pass four checks:
+  - it installs and runs in the agent's cloud environment;
+  - it executes guests locally, with cycle counts and without a GPU;
+  - it has a fast mock or dev mode for tests;
+  - it has a verifier contract on Arbitrum, with Foundry test support.
+
+  Among the frameworks that pass, measured cycles and price decide. If the best-tooled zkVM still targets 32-bit RISC-V, that's fine: the core builds unchanged for either width.
 - **A naming clash.** Brevis's zkVM is also called Pico. In this repository, "Pico" always means the Raspberry Pi board.
 
 **Proposed approach *(D2)*:**
 
-1. **Measure first.** In M1, run the golden vectors in the executors of two or three RV64IM zkVMs. Executors run a guest without proving it, which yields cycle counts per level, and cycles set the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
+1. **Measure first.** In M1, try two or three zkVMs hands-on, pick the one with the best tooling, and run the golden vectors in its executor. Executors run a guest without proving it, which yields cycle counts per level, and cycles set the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
 2. **Verify by exception.** Playing a run costs one small commit transaction, and its journals are published so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its $0.10 entry fee, even on Stylus. The payout curve *(D10)* sets how many runs need verifying.
 3. **One verifier interface.** Settlement calls `verify(journal) → outcome`, like ethblockdigger's `IReferee`, backed either by the Stylus referee or by a proof verifier. The money contracts don't change when the backend does.
 4. **Stylus first, zk as the fallback.** If activations reopen, the Stylus referee needs no prover infrastructure. If they don't, each verified run gets a zk proof, and a season's proofs are aggregated so verification gas stays nearly constant.
@@ -449,7 +456,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 | Milestone | Deliverable | Draft phases | Done when |
 |---|---|---|---|
 | **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
-| **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; cycle counts per level in two or three RV64IM zkVMs | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; cycle counts recorded |
+| **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; a hands-on tooling trial of two or three zkVMs, and cycle counts per level in the one chosen | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; zkVM chosen; cycle counts recorded |
 | **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
 | **M3** Pico | Firmware shell; vector run on the device | 1, 2 | Device state-hash traces match the native build |
 | **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
@@ -535,7 +542,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | ID | Decision | Recommendation |
 |---|---|---|
 | D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target. Still open: the shell, either Rust (`embassy-rp`) for a single toolchain, or the draft's C++ on the Pico SDK linking the core. |
-| D2 | Verification backend | Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). Confirm with the M1 and M4 measurements. |
+| D2 | Verification backend | Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
 | D3 | Player movement on claimed cells | Rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. Free movement, as in *Xonix*, lets the player hide from them. |
 | D4 | Trail rules | The own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1 |
 | D5 | Level defaults, and running out of lives | 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
