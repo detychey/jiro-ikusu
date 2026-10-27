@@ -453,6 +453,8 @@ The draft adjusts the per-level scoring formula, which is based on completion, e
 
 The draft builds hardware first (its Phases 1–7). This roadmap puts the core and its test vectors first instead: they are the contract every other target is checked against, and a 240×240 screen with a flash cycle is the slowest place to debug game rules. Hardware bring-up (LCD and keys) can still run in parallel at any time.
 
+[`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) breaks these milestones into work items, one pull request each, with their dependencies, acceptance checks and the steps that need the owner.
+
 | Milestone | Deliverable | Draft phases | Done when |
 |---|---|---|---|
 | **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
@@ -562,3 +564,4 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 - [`skills-import.md`](skills-import.md): the ethskills import list.
 - [`TODO.md`](TODO.md): deferred work, starting with Superchallenge mode.
 - [`name.md`](name.md): the name in Japanese and Chinese.
+- [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md): the work breakdown of milestones M0 to M5.
