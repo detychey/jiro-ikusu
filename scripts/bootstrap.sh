@@ -3,7 +3,8 @@
 # tier is already complete, the last line printed is "nothing to install".
 set -euo pipefail
 
-readonly TIER="${1:-core}"
+[ "$#" -le 1 ] || { echo "usage: bootstrap.sh [core|web|contracts|firmware]" >&2; exit 1; }
+readonly TIER="${1-core}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
 readonly BIN_DIR=/usr/local/bin
@@ -19,8 +20,12 @@ readonly PLAYWRIGHT_CHROMIUM=/opt/pw-browsers/chromium-1243
 
 # Checks must never install a toolchain implicitly: only ensure_rust installs.
 export RUSTUP_AUTO_INSTALL=0
+# Keeps rustup and cargo errors readable in the tail that run_logged prints.
+export RUST_BACKTRACE=0
 
 installed_something=false
+download_dir=""
+trap '[ -z "$download_dir" ] || rm -rf "$download_dir"' EXIT
 
 fail() {
   echo "bootstrap: $*" >&2
@@ -43,55 +48,68 @@ run_logged() {
   rm -f "$log"
 }
 
+# Usage: ensure <description> <check function> <install function> [arguments for both]
+ensure() {
+  local description="$1" check="$2" install="$3"
+  shift 3
+  "$check" "$@" && return
+  installing "$description"
+  "$install" "$@"
+  "$check" "$@" || fail "$description was installed, but the check '$check${*:+ $*}' still fails (is it on PATH?)"
+}
+
 toolchain_field() {
   python3 -c 'import sys, tomllib
 value = tomllib.load(open(sys.argv[1], "rb"))["toolchain"][sys.argv[2]]
 print(" ".join(value) if isinstance(value, list) else value)' "$REPO_ROOT/rust-toolchain.toml" "$1"
 }
 
+rust_complete() {
+  local toolchain="$1" targets="$2" components="$3" target component
+  rustup toolchain list | grep "^$toolchain-" >/dev/null || return 1
+  for target in $targets; do
+    rustup +"$toolchain" target list --installed | grep -x "$target" >/dev/null || return 1
+  done
+  for component in $components; do
+    rustup +"$toolchain" component list --installed |
+      grep -xE "$component(-x86_64-unknown-linux-gnu)?" >/dev/null || return 1
+  done
+}
+
+install_rust() {
+  local toolchain="$1" targets="$2" components="$3"
+  run_logged rustup toolchain install "$toolchain" --profile minimal \
+    --component "${components// /,}" --target "${targets// /,}" --no-self-update
+}
+
 ensure_rust() {
   command -v rustup >/dev/null || fail "rustup is missing"
-  local toolchain
+  local toolchain targets components
   toolchain="$(toolchain_field channel)"
-
-  local missing=()
-  if ! rustup toolchain list | grep -q "^$toolchain-"; then
-    missing+=("toolchain $toolchain")
-  else
-    local target component
-    for target in $(toolchain_field targets); do
-      rustup +"$toolchain" target list --installed | grep -qx "$target" || missing+=("target $target")
-    done
-    for component in $(toolchain_field components); do
-      rustup +"$toolchain" component list --installed | grep -q "^$component-" || missing+=("component $component")
-    done
-  fi
-  [ "${#missing[@]}" -eq 0 ] && return
-
-  installing "Rust ${missing[*]}"
-  local components targets
-  components="$(toolchain_field components | tr " " ,)"
-  targets="$(toolchain_field targets | tr " " ,)"
-  run_logged rustup toolchain install "$toolchain" --profile minimal \
-    --component "$components" --target "$targets" --no-self-update
+  targets="$(toolchain_field targets)"
+  components="$(toolchain_field components)"
+  ensure "Rust $toolchain with its targets and components" rust_complete install_rust \
+    "$toolchain" "$targets" "$components"
 }
 
-cargo_install() {
-  local crate="$1" version="$2"
-  (cd "$REPO_ROOT" && cargo install --list) | grep -qx "$crate v$version:" && return
-  installing "$crate $version (cargo install, several minutes for cargo-stylus)"
-  (cd "$REPO_ROOT" && run_logged cargo install --locked "$crate" --version "$version")
+crate_installed() {
+  (cd "$REPO_ROOT" && cargo install --list) | grep -x "$1 v$2:" >/dev/null && command -v "$1" >/dev/null
 }
 
-ensure_apt_packages() {
-  local missing=() package
+install_crate() {
+  (cd "$REPO_ROOT" && run_logged cargo install --locked "$1" --version "$2")
+}
+
+packages_installed() {
+  local package
   for package in "$@"; do
-    dpkg -s "$package" >/dev/null 2>&1 || missing+=("$package")
+    dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -x 'install ok installed' >/dev/null || return 1
   done
-  [ "${#missing[@]}" -eq 0 ] && return
-  installing "apt packages ${missing[*]}"
+}
+
+install_packages() {
   run_logged apt-get update -qq
-  run_logged apt-get install -y -qq "${missing[@]}"
+  run_logged apt-get install -y -qq "$@"
 }
 
 ensure_node() {
@@ -105,35 +123,40 @@ ensure_playwright_browser() {
     fail "the preinstalled Chromium $PLAYWRIGHT_CHROMIUM is missing; see docs/TOOLING.md, Playwright"
 }
 
-ensure_web_dependencies() {
-  [ -f "$REPO_ROOT/web/package-lock.json" ] || return 0
-  [ -d "$REPO_ROOT/web/node_modules" ] && return
-  installing "web/ npm dependencies"
+web_dependencies_installed() {
+  [ ! -f "$REPO_ROOT/web/package-lock.json" ] || npm ls --prefix "$REPO_ROOT/web" >/dev/null 2>&1
+}
+
+install_web_dependencies() {
   run_logged env PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install --prefix "$REPO_ROOT/web"
 }
 
-ensure_binaryen() {
-  wasm-opt --version 2>/dev/null | grep -q "version ${BINARYEN_VERSION%%.*} " && return
-  installing "binaryen $BINARYEN_VERSION (wasm-opt)"
+binaryen_installed() {
+  wasm-opt --version 2>/dev/null | grep "version ${BINARYEN_VERSION%%.*} " >/dev/null
+}
+
+install_binaryen() {
   run_logged npm install --global "binaryen@$BINARYEN_VERSION"
 }
 
-ensure_foundry() {
-  forge --version 2>/dev/null | grep -q "Version: ${FOUNDRY_VERSION#v}" && return
-  installing "Foundry $FOUNDRY_VERSION"
-  local download archive
-  download="$(mktemp -d)"
-  archive="$download/foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz"
+foundry_installed() {
+  forge --version 2>/dev/null | grep -x "forge Version: ${FOUNDRY_VERSION#v}" >/dev/null
+}
+
+install_foundry() {
+  download_dir="$(mktemp -d)"
+  local archive="$download_dir/foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz"
   run_logged curl -fsSL -o "$archive" \
     "https://github.com/foundry-rs/foundry/releases/download/$FOUNDRY_VERSION/foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz"
   echo "$FOUNDRY_SHA256  $archive" | sha256sum -c --quiet - || fail "Foundry archive checksum mismatch"
-  tar -xzf "$archive" --no-same-owner -C "$BIN_DIR" forge cast anvil chisel
-  rm -rf "$download"
+  run_logged tar -xzf "$archive" --no-same-owner -C "$BIN_DIR" forge cast anvil chisel
 }
 
-ensure_slither() {
-  slither --version 2>/dev/null | grep -qx "$SLITHER_VERSION" && return
-  installing "slither $SLITHER_VERSION"
+slither_installed() {
+  slither --version 2>/dev/null | grep -x "$SLITHER_VERSION" >/dev/null
+}
+
+install_slither() {
   run_logged pip install --quiet "slither-analyzer==$SLITHER_VERSION"
 }
 
@@ -145,20 +168,22 @@ case "$TIER" in
     ensure_rust
     ensure_node
     ensure_playwright_browser
-    ensure_web_dependencies
+    ensure "web/ npm dependencies" web_dependencies_installed install_web_dependencies
     ;;
   contracts)
     ensure_rust
     ensure_node
-    cargo_install cargo-stylus "$CARGO_STYLUS_VERSION"
-    ensure_binaryen
-    ensure_foundry
-    ensure_slither
+    ensure "cargo-stylus $CARGO_STYLUS_VERSION (several minutes)" crate_installed install_crate \
+      cargo-stylus "$CARGO_STYLUS_VERSION"
+    ensure "binaryen $BINARYEN_VERSION (wasm-opt)" binaryen_installed install_binaryen
+    ensure "Foundry $FOUNDRY_VERSION" foundry_installed install_foundry
+    ensure "slither $SLITHER_VERSION" slither_installed install_slither
     ;;
   firmware)
     ensure_rust
-    ensure_apt_packages libudev-dev pkg-config
-    cargo_install elf2uf2-rs "$ELF2UF2_VERSION"
+    ensure "apt packages libudev-dev and pkg-config" packages_installed install_packages \
+      libudev-dev pkg-config
+    ensure "elf2uf2-rs $ELF2UF2_VERSION" crate_installed install_crate elf2uf2-rs "$ELF2UF2_VERSION"
     ;;
   *)
     fail "unknown tier '$TIER'; expected core, web, contracts or firmware"

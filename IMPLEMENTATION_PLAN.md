@@ -79,7 +79,7 @@ Each work item block has these fields:
 
 ### 1.3 Conventions for agents
 
-- **Session start.** From M0.2 on, a SessionStart hook runs `scripts/bootstrap.sh core`. An item that names another tier (`web`, `contracts`, `firmware`, `zk`) runs `bash scripts/bootstrap.sh <tier>` first.
+- **Session start.** From M0.2 on, a SessionStart hook runs `scripts/bootstrap.sh core` in cloud sessions whose working directory is this repository. Claude Code reads project hooks only from the working directory's `.claude/settings.json`, so a session started with several repositories runs `bash scripts/bootstrap.sh core` itself first. An item that names another tier (`web`, `contracts`, `firmware`, `zk`) runs `bash scripts/bootstrap.sh <tier>` first.
 - **Skills.** Load the skills an item lists before writing code. The project skills are:
   - [`deterministic-core`](.claude/skills/deterministic-core/SKILL.md)
   - [`journal-codec`](.claude/skills/journal-codec/SKILL.md)

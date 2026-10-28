@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if [ \"${CLAUDE_CODE_REMOTE:-}\" = true ]; then bash \"$CLAUDE_PROJECT_DIR/scripts/bootstrap.sh\" core; fi",
+            "command": "if [ \"${CLAUDE_CODE_REMOTE:-}\" = true ]; then bash \"$CLAUDE_PROJECT_DIR/scripts/bootstrap.sh\" core >&2 || echo '{\"systemMessage\": \"scripts/bootstrap.sh core failed: this session is not ready. Run it again to see the error.\", \"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"scripts/bootstrap.sh core failed at session start, so the pinned Rust toolchain may be missing. Run bash scripts/bootstrap.sh core and fix its error before any cargo command.\"}}'; fi",
             "timeout": 600
           }
         ]
