@@ -494,7 +494,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `cargo fmt --check && cargo clippy --workspace --all-targets --locked -- -D warnings && cargo test --workspace --locked`
   - `cargo test --workspace --release --locked`
   - `for t in thumbv6m-none-eabi wasm32-unknown-unknown riscv32im-unknown-none-elf riscv64imac-unknown-none-elf; do cargo build -p jiro-core --release --locked --target $t || exit 1; done`
-  - `bash scripts/check-no-float.sh && bash scripts/check-no-usize.sh && bash scripts/check-profiles.sh && test -z "$(bash scripts/check-rule-tags.sh)"`
+  - `bash scripts/check-no-float.sh && bash scripts/check-no-usize.sh && bash scripts/check-profiles.sh && bash scripts/check-rule-tags.sh`
 - **Skills:** `deterministic-core`. **README:** §3. **Needs user:** enable Actions if needed; if the plan allows it, make the `ci.yml` jobs required checks on `main` (round A3).
 
 #### M0.5 Rules freeze A: rule decisions, pinned details, rule tags
@@ -508,7 +508,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - D8: Key0-3 = A, B, X, Y. Y and the joystick press are unused and not journaled. In the browser, the keys are configurable (M2.1).
   - D9: a square B × B boss body, B set per level, B = 2 to 8, default 5 (README §4.6).
   - D13: the name is Jiro-ikusu (owner). Proposed for approval here, names with no Taito titles in them:
-    - crates `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-firmware`, `jiro-referee-stylus`;
+    - crates `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-firmware`, `jiro-firmware-drivers`, `jiro-referee-stylus`;
     - contracts `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`.
   - D7 stays provisional until M1.7 measures it.
 - **Tags.**
@@ -516,14 +516,14 @@ Each milestone's README §9 "done when" closes when these items merge:
   - **Exemptions.** A unit that only gives a rationale, history or an example (for example "Why this procedure" and its bullets, or the "Known gap" note of §4.7) ends with the marker `<!-- rationale -->`.
   - **Other tags.** Every pinned detail below gets `[PIN-nn]`. Every coverage bullet of the `parity-testing` skill gets `[COV-nn]`.
   - Each tag appears exactly once, where its rule is written; M1.9's coverage index finds them by regex.
-  - **`scripts/check-rule-tags.sh`** prints every unit of README §4.1-§4.10 that carries neither a tag nor the marker: each non-blank line outside code blocks that is not a heading, a table header row or a separator row, and each code block without a tag. Empty output means every rule is tagged. M0.4 runs it in CI.
+  - **`scripts/check-rule-tags.sh`** prints every unit from README §4.1 to the end of §4 that carries neither a tag nor the marker: each non-blank line outside code blocks that is not a heading, a table header row or a separator row, and each code block without a tag. It also prints every repeated, malformed or misplaced tag, and fails loudly if it finds no §4.1. Empty output and exit 0 mean every rule is tagged. M0.4 runs it in CI.
 - **Pinned details** (proposals). Each is written once, in the §4 subsection it belongs to:
-  1. `[PIN-01]` Initial player state: cell (30, 59), lives from the level, 1 shield charge, invulnerability 0, previous direction none, not cutting, no B press recorded.
-  2. `[PIN-02]` Invulnerability: a hit at tick h protects ticks h+1 to h+30 inclusive. Starting a cut ends it at step 3 of that tick, before that tick's collisions.
+  1. `[PIN-01]` Initial player state: cell (30, 59), lives from the level, 1 shield charge, invulnerability 0, previous direction none, not cutting, cut start (30, 59), `press_tick` 0.
+  2. `[PIN-02]` Invulnerability: a life lost at tick h protects ticks h+1 to h+30 inclusive; a hit absorbed by invulnerability or by the shield starts nothing. Starting a cut ends it at step 3 of that tick, before that tick's collisions.
   3. `[PIN-03]` `press_tick` is 0 when an event at tick 0 holds B.
   4. `[PIN-04]` Fast cut: if sub-step 1 is blocked by the own trail, hits the boss's body, or closes the cut, there is no sub-step 2.
   5. `[PIN-05]` A blocked move keeps the resolved direction.
-  6. `[PIN-06]` Minion orientation: "on its right" is the 4-neighbor to the right of the minion's current cell; "ahead" is the 4-neighbor in its heading.
+  6. `[PIN-06]` Minion orientation: for a tested heading h, "ahead" is the 4-neighbor in direction h, and "on its right" is the 4-neighbor a quarter turn clockwise from h (E for N, S for E, W for S, N for W).
   7. `[PIN-07]` X held at tick 0: the level is committed with claim 0, and ticks used is 1.
   8. `[PIN-08]` Ticks used is t + 1 when the level ends during tick t, whatever the step.
   9. `[PIN-09]` A clear at step 3 ends the level before that tick's hits are resolved.
@@ -542,8 +542,8 @@ Each milestone's README §9 "done when" closes when these items merge:
         - **share:** b = Pn;
         - **swap:** a = Pk and b = Pk−1, for some k in 1 … n;
         - **pass:** b = Pk for some k in 1 … n − 1, the intermediate fast-cut cell.
-      - A minion that moves into P0 after the player has left it does not hit.
-  16. `[PIN-16]` A minion's heading before its first orientation step is N. Every minion runs the orientation step at level start.
+      - When n ≥ 1, a minion that moves into P0 from any cell other than P1 does not hit.
+  16. `[PIN-16]` At level start and at every respawn, a minion's heading is set to N just before its orientation step; a destroyed minion keeps no heading. Every minion runs the orientation step at level start.
   17. `[PIN-17]` Minion lifecycle:
       - At a capture (step 3), each live minion whose cell is no longer a rail cell is destroyed, with its countdown set to R. Every other live minion runs the orientation step.
       - At step 5, minions are processed in index order:
@@ -889,7 +889,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - fast cut: two sub-steps when the player is cutting at the start of the tick and A is held, and no second sub-step after a blocked, hitting or closing first one (PIN-04);
   - the slow-shield phase from `press_tick`, with B winning over A;
   - the cells P0 … Pn of the tick, kept for the hit predicate (PIN-15).
-- **Done when:** each §4.5 rule tag and each pinned player detail (PIN-01 to PIN-05) has its own named test, at least 12 in all. These include:
+- **Done when:** each §4.5 rule tag and each §4.5 pinned detail (PIN-01, PIN-03, PIN-04, PIN-05) has its own named test, at least 12 in all; PIN-02 (§4.9) is tested in M1.8. These include:
   - a fast cut closing on its first sub-step;
   - two held directions keeping the previous one;
   - a player stranded off the rail by their own capture, walking over `CLAIMED` cells back to the rail.
@@ -948,7 +948,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 - **Goal:** a complete level simulation, and the replay API that every target calls.
 - **Deliverables:** `core/src/{game,hits,hash,replay,recorder}.rs` and their tests:
   - **Game.** `Game::new(level, runNonce, levelIndex, mode)` and `step(mask) -> Option<EndReason>`. Each step runs §4.4 steps 1-7 and stops at the first end condition.
-  - **Hits.** Four sources, one flag per tick, with the minion predicate of PIN-15. Resolution at step 6, in this order:
+  - **Hits.** Three sources (README R4.9-2 to R4.9-4: the boss's bump into `TRAIL`, a step onto the boss's body, and a minion meeting the player by PIN-15's share, swap or pass case), one flag per tick. Resolution at step 6, in this order:
     1. if the player is invulnerable, nothing happens;
     2. otherwise, if B is held and a shield charge is left, the charge is spent;
     3. otherwise, a life is lost: the trail is erased, the player returns to the cut start, and invulnerability starts (PIN-02).
@@ -2243,13 +2243,13 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | D4 | Trail rules | Owner, 2026-10-28; pinned in M0.5 | M1.6 | Decided: the own trail blocks movement; no fuse |
 | D5 | Level defaults; running out of lives | Owner, 2026-10-28; pinned in M0.5 | M1.8 | Decided: 3 lives, 2,700 ticks, 7,500 bp, adjustable per level; running out of lives scores zero |
 | D6 | Shield | Owner, 2026-10-28; pinned in M0.5 | M1.6 | Decided: one charge per level; an absorbed hit costs only the charge |
-| D7 | Minion patrol rule; stranded minions | Approach agreed by the owner, 2026-10-28; measured in M1.7; final in M1.7, or in M1.14 (and M1.15 if the rule changes) | M1.9, M1.10, M2.6 | The right-hand rule with the orientation step, if the coverage test finds 0 traps on 100,000 boards; otherwise a replacement specified in M1.14 and approved before it is built, or a bounded trap rate the user accepts, written into README §4.7. Stranded minions are destroyed and respawn after R ticks. |
+| D7 | Minion patrol rule; stranded minions | Approach agreed by the owner, 2026-10-28; measured in M1.7; final in M1.7, or in M1.14 (and M1.15 if the rule changes) | M1.9, M1.10, M2.6 | The right-hand rule with the orientation step, if the coverage test finds 0 traps on 100,000 boards; otherwise a replacement specified in M1.14 and approved before it is built, or a bounded trap rate the user accepts, written into README §4.7. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([README §4.7](README.md#47-minions), PIN-17). |
 | D8 | Key mapping | Owner, 2026-10-28; pinned in M0.5 | M1.1, M2.1 | Decided: Key0-3 = A, B, X, Y; Y and the joystick press unused and not journaled; keys configurable in the browser (M2.1) |
 | D9 | Boss size | Owner, 2026-10-28; pinned in M0.5 and M0.6 | M1.3, M1.5 | Decided: a square B × B body, B per level, B = 2 to 8, default 5 |
 | D10 | Ranking and payout | Owner, 2026-10-28; qualification and contract details in M0.7 | M4.5 | Decided: best settled run per player per season; pro-rata payout among qualified players. Proposed: ties go to fewer ticks; qualified players are those whose best run cleared at least one level. |
 | D11 | Superchallenge design | Deferred | none | Stays in [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | Owner, 2026-10-28; pinned in M0.7 | M4.3, M4.5, M4.6 | Decided: native ETH; Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing ethblockdigger's contracts; a 0.00005 ETH Challenge run; 14-day seasons on testnet (`testnet-0` aside), likely on mainnet too. |
-| D13 | Names | Owner, 2026-10-28; crate and contract names in M0.5 | M0.4 (crates), M4.1 (contracts) | Decided: Jiro-ikusu ([`name.md`](name.md)). Proposed: the crates and contracts named in M0.5 |
+| D13 | Names | Owner, 2026-10-28; crate and contract names in M0.5 | M0.4 (crates), M4.1 (contracts) | Decided: Jiro-ikusu ([`name.md`](name.md)); the crates and contracts listed in README §13 D13, approved by merging M0.5 |
 | P1 | Rust pin | M0.2 | M0.4 | 1.98.0, as ethblockdigger; otherwise the newest version that installs |
 | P2 | Contract toolchain | M0.2 | M4.3 | Foundry at a pinned version, if `forge` installs and runs: zk verifiers ship Foundry tests, and fuzz and invariant tests are built in. Otherwise ethblockdigger's harness for everything. Never both. Decided only after the pinned installer and the direct asset URL were both tried. |
 | P3 | Repository layout additions | M0.4 | M1.4, M2.1 | Add `tools/` (the native target of README §3) and `shell/` (shared code that is not consensus) to README §3 |

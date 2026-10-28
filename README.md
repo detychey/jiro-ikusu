@@ -121,11 +121,11 @@ A tick changes only a handful of cells. So the renderer redraws the changed 4×4
 
 These rules are normative. Every target implements them through the core, and the golden vectors pin them down.
 
-Every rule carries a stable tag that tests and vectors cite: `[R4.<n>-<k>]`, or `[PIN-<nn>]` for a detail pinned in M0.5. A new rule takes the next free number, and a removed rule's tag is never reused. A paragraph or bullet that only explains a rule ends with an invisible `rationale` marker; `scripts/check-rule-tags.sh` checks that every other line of §4.1-§4.10 is tagged.
+Every rule carries a stable tag that tests and vectors cite: `[R4.<n>-<k>]`, or `[PIN-<nn>]` for a detail pinned in M0.5. A new rule takes the next free number, and a removed rule's tag is never reused. A paragraph or bullet that only gives a rationale, history or an example ends with the marker `<!-- rationale -->`, which does not render. `scripts/check-rule-tags.sh` prints every other line from §4.1 to the end of §4 that carries no tag, and every repeated or misplaced tag. Tables in §4 use outer pipes.
 
 ### 4.1 Grid
 
-- **Layout.** 60×60 cells in a flat `u8` array, row-major: `index = y * 60 + x`. (0, 0) is the top-left corner, x grows to the right and y grows down. Each cell is drawn as a 4×4-pixel square. [R4.1-1]
+- **Layout.** 60×60 cells in a flat `u8` array, row-major: `index = y * 60 + x`. (0, 0) is the top-left corner, x grows to the right and y grows down. Each cell is drawn as a 4×4-pixel square. Up and N step to (x, y − 1), right and E to (x + 1, y), down and S to (x, y + 1), left and W to (x − 1, y). A neighbor outside the grid is neither open field nor a rail cell. [R4.1-1]
 - **Cell states:** [R4.1-2]
 
   | Value | State | Drawn as |
@@ -151,9 +151,11 @@ All entity fields are small integers: [R4.3-1]
 
 | Entity | State |
 |---|---|
-| Player | position; cutting flag; cut start cell; lives; shield charges; invulnerability ticks; previous direction; slow-move phase [R4.3-2] |
+| Player | position; cutting flag; cut start cell; lives; shield charges; invulnerability ticks; previous direction; `press_tick` [R4.3-2] |
 | Boss | position (the top-left cell of its body); body size B (set per level); vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) [R4.3-3] |
 | Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period; respawn countdown [R4.3-4] |
+
+- **Field values.** The cut start keeps the last cut's start cell between cuts. Invulnerability ticks counts the protected ticks left: the player is invulnerable at step 6 while it is above 0; after the hits are resolved, a life lost sets it to 30, and otherwise it drops by one if above 0; starting a cut sets it to 0 at step 3. `press_tick` is the tick on which B last went from released to held, 0 before any press. A destroyed minion's position and heading are 0 until it respawns, and a live minion's respawn countdown is 0. [R4.3-5]
 
 ### 4.4 Tick order
 
@@ -165,7 +167,7 @@ All entity fields are small integers: [R4.3-1]
 Once per tick, in this order: [R4.4-5]
 
 1. **Input.** A journal event at this tick replaces the current input mask ([§6](#6-input-journal-and-byte-formats)). [R4.4-6]
-2. **Commit.** If X is pressed, the level ends. An unfinished cut is discarded: its trail is erased and nothing is captured. [R4.4-7]
+2. **Commit.** If X is pressed, the level ends. An unfinished cut is discarded: its trail is erased, the player returns to the cut start and stops cutting, and nothing is captured. [R4.4-7]
 3. **Player.** The player moves 0, 1 or 2 sub-steps ([§4.5](#45-player)). A cut that reaches `CLAIMED` captures at once ([§4.8](#48-capture)), and the player moves no further this tick. If the capture brings the claim to the level's target, the level is cleared. [R4.4-8]
 4. **Boss.** The boss moves ([§4.6](#46-boss)). If it bumps into `TRAIL`, the player is hit. [R4.4-9]
 5. **Minions.** The minions move, in index order ([§4.7](#47-minions)). Respawn countdowns also tick down here. [R4.4-10]
@@ -174,13 +176,13 @@ Once per tick, in this order: [R4.4-5]
 
 ### 4.5 Player
 
-- **Initial state.** At level start the player stands on cell (30, 59), which level validity keeps a rail cell ([§5](#5-levels)), with the level's lives, 1 shield charge, no invulnerability, previous direction none, not cutting, and no B press recorded. [PIN-01]
+- **Initial state.** At level start the player stands on cell (30, 59), which level validity keeps a rail cell ([§5](#5-levels)), with the level's lives, 1 shield charge, invulnerability 0, previous direction none, not cutting, cut start (30, 59), and `press_tick` 0. [PIN-01]
 - **Direction.** The direction is resolved on every tick, whether or not the player moves. If the direction resolved on the previous tick is still held, keep it. Otherwise take the first held direction in the order up, down, left, right. If none is held, the direction is none, and the player stands still. The draft doesn't say what happens when two directions are held, but a 5-way joystick reports two at once while rolling from one direction to the next. [R4.5-1]
   - A move that doesn't happen (onto the own trail, onto the boss's body, or off the rail) still keeps the resolved direction as the previous direction. [PIN-05]
 - **On the rail,** the player moves only from rail cell to rail cell *(D3)*. Stepping into `EMPTY` starts a cut: the cell the player leaves becomes the **cut start**, and every `EMPTY` cell entered becomes `TRAIL`. [R4.5-2]
 - **Off the rail.** A capture can leave the player's own cell off the rail, for example when a cut closes into a pocket next to an obstacle. While off the rail, the player may step onto any `CLAIMED` cell, until back on the rail. [R4.5-3]
 - **Own trail.** The player cannot step onto `TRAIL`; the move is ignored *(D4)*. The draft only forbids moving backward, which is one case of this rule. [R4.5-4]
-- **Closing a cut.** Stepping from `TRAIL` onto `CLAIMED` completes the cut and triggers a capture. That cell is a rail cell at that moment, though the capture can take it off the rail (see "Off the rail" above). [R4.5-5]
+- **Closing a cut.** Stepping from `TRAIL` onto `CLAIMED` completes the cut and triggers a capture: from that sub-step on, the player is no longer cutting. That cell is a rail cell at that moment, though the capture can take it off the rail (see "Off the rail" above). [R4.5-5]
 - **Fast cut (A).** If the player is cutting at the start of the tick and A is held, the player takes two sub-steps. On the rail, speed stays normal. [R4.5-6]
   - If sub-step 1 is blocked by the own trail, hits the boss's body, or closes the cut, there is no sub-step 2. [PIN-04]
 - **Slow shield (B).** While B is held, the player moves only on the ticks where `(tick − press_tick) % 2 == 0`. `press_tick` is the tick on which B went from released to held. If A and B are both held, B wins. [R4.5-7]
@@ -222,8 +224,8 @@ The draft starts the boss at (30, 30). Here the level defines a spawn area, the 
 - **Right-hand rule** (from the draft). A minion tries to turn right, then to go straight, then to turn left, then to turn back, and takes the first direction whose target is a rail cell. [R4.7-2]
   - A minion with no direction leading to a rail cell, for example on a one-cell obstacle, stays in place and keeps its heading. [PIN-18]
 - **Orientation.** At spawn, at respawn and after every capture, a minion turns to the first heading, in the order N, E, S, W, that has open field (`EMPTY` or `TRAIL`) on its right and a rail cell ahead. If no heading qualifies, it keeps its current heading. With the field on their right, minions circle it clockwise. [R4.7-3]
-  - "On its right" is the 4-neighbor to the right of the minion's current cell, and "ahead" is the 4-neighbor in its heading. [PIN-06]
-  - Before its first orientation step a minion's heading is N, and every minion runs the orientation step at level start. [PIN-16]
+  - For a tested heading h, "ahead" is the 4-neighbor of the minion's cell in direction h, and "on its right" is its 4-neighbor a quarter turn clockwise from h: E for N, S for E, W for S, N for W. [PIN-06]
+  - At level start and at every respawn, a minion's heading is set to N just before its orientation step, so a minion for which no heading qualifies faces N. A destroyed minion keeps no heading. Every minion runs the orientation step at level start. [PIN-16]
 - **Known gap** *(D7)*. Where the rail is two cells thick (2-wide peninsulas, junctions), a minion whose right side faces the band instead of the field circles a 2×2 block forever. A quick simulation on random boards (not committed) measured this: <!-- rationale -->
   - with random starting headings, the draft's rule trapped minions in about 2% of runs; <!-- rationale -->
   - with the orientation step, about 0.15% of runs were still trapped. <!-- rationale -->
@@ -233,7 +235,7 @@ The draft starts the boss at (30, 30). Here the level defines a spawn area, the 
   - Let C be the 4-connected component of rail cells that contains the minion's cell. Its target cells are all the cells of C, the border corners and other cells that touch open field only diagonally included. [R4.7-4]
   - After its spawn and after each capture, while the rail stays unchanged, a minion is **trapped** if its (cell, heading) state repeats before it has visited every cell of C. [R4.7-5]
   - There are at most 4 × |C| states, so this is the same as coverage being incomplete after 4 × |C| moves. [R4.7-6]
-- **Stranded minions.** After a capture, a minion whose cell is no longer on the rail is destroyed *(D7)*. The draft doesn't cover this case. Its respawn countdown starts at the level's respawn delay R and drops by one at step 5 of each tick. When it reaches zero, the minion respawns, oriented, at its spawn cell. If the spawn is no longer on the rail, it respawns at the first rail cell in row-major order instead. [R4.7-7]
+- **Stranded minions** *(D7)*, a case the draft doesn't cover: after a capture, a minion whose cell is no longer on the rail is destroyed, and respawns later as the lifecycle below defines. It respawns, oriented, at its spawn cell, or at the first rail cell in row-major order if the spawn is no longer on the rail. [R4.7-7]
 - **Lifecycle,** step by step. [PIN-17]
   - At a capture (step 3), each live minion whose cell is no longer a rail cell is destroyed, with its countdown set to R. Every other live minion runs the orientation step. [R4.7-8]
   - At step 5, minions are processed in index order. A destroyed minion's countdown drops by one, from the tick of its destruction on. At zero, the minion respawns, oriented, and does not move on that tick: a minion destroyed at tick t respawns at step 5 of tick t + R − 1. [R4.7-9]
@@ -270,13 +272,13 @@ Why this procedure: <!-- rationale -->
     - **share:** b = Pn; [R4.9-9]
     - **swap:** a = Pk and b = Pk−1, for some k in 1 … n; [R4.9-10]
     - **pass:** b = Pk for some k in 1 … n − 1, the intermediate fast-cut cell. [R4.9-11]
-  - A minion that moves into P0 after the player has left it does not hit. [R4.9-12]
+  - When n ≥ 1, a minion that moves into P0 from any cell other than P1 does not hit: once the player has left P0, only the swap case can involve it. [R4.9-12]
   - A minion that respawns at step 5 onto the player's cell hits the player, by the share case. [PIN-11]
 - **Resolution** (at step 6), in this order: [R4.9-13]
   1. If the player is invulnerable, nothing happens. [R4.9-14]
   2. Otherwise, if B is held and a shield charge is left, the charge is spent and nothing else happens *(D6)*. [R4.9-15]
-  3. Otherwise, the player loses a life (see the next point). [R4.9-16]
-- **Losing a life.** The trail is erased. The player returns to the cut start, or stays in place if they were not cutting. They are then invulnerable during the 30 ticks (2 s) after the hit tick, or until they start a cut, whichever comes first. Without that limit, invulnerability would be a window for a risk-free cut. [R4.9-17]
+  3. Otherwise, the player loses a life (see the next point). All its effects apply even to the last life; the level then ends at step 6 ([§4.10](#410-end-of-level)). [R4.9-16]
+- **Losing a life.** The trail is erased. If the player is still cutting when the hit is resolved, they return to the cut start; otherwise, including after a cut closed at step 3 of the same tick, they stay in place. They are then invulnerable during the 30 ticks (2 s) after the hit tick, or until they start a cut, whichever comes first. Without that limit, invulnerability would be a window for a risk-free cut. [R4.9-17]
   - A life lost at tick h makes the player invulnerable on ticks h + 1 to h + 30 inclusive. Starting a cut ends that invulnerability at step 3 of that tick, before that tick's collisions. [PIN-02]
 - **Respawn point.** The draft respawns the player at (30, 59). That stops working after the first capture along the bottom border: (30, 59) is no longer a rail cell, so a rail-bound player would be stuck there. The cut start, by contrast, is always a rail cell, because the rail only changes on capture. <!-- rationale -->
 
@@ -606,13 +608,13 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
 | D5 | Level defaults, and running out of lives | **Decided:** 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
 | D6 | Shield (B) | **Decided:** one charge per level; an absorbed hit costs the charge and nothing else. |
-| D7 | Minion patrol rule, and minions stranded by a capture | **Agreed on 2026-10-28, provisional:** the right-hand rule with the orientation step ([§4.7](#47-minions)), kept if M1's coverage property test finds no traps; otherwise replaced in M1, or kept with a bounded trap rate the owner accepts. Stranded minions are destroyed and respawn after R ticks. |
+| D7 | Minion patrol rule, and minions stranded by a capture | **Agreed on 2026-10-28, provisional:** the right-hand rule with the orientation step ([§4.7](#47-minions)), kept if M1's coverage property test finds no traps; otherwise replaced in M1, or kept with a bounded trap rate the owner accepts. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([§4.7](#47-minions), PIN-17). |
 | D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. In the browser, players can rebind the keyboard keys ([§2](#2-hardware-target)). |
 | D9 | Boss size | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. |
 | D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players. **Proposed** qualification, settled in M0.7: the player's best run cleared at least one level. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)); 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
-| D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-firmware`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
+| D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-firmware`, `jiro-firmware-drivers`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
 
 ## Repository files
 
