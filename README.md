@@ -568,7 +568,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 
 | ID | Decision | Recommendation |
 |---|---|---|
-| D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target; firmware shell: Rust on `embassy-rp`, built with cargo alone (owner, 2026-10-28). M0.2's blinky build confirms it. |
+| D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target; firmware shell: Rust on `embassy-rp`, built with cargo alone (owner, 2026-10-28), confirmed by M0.2's blinky build ([`docs/TOOLING.md`](docs/TOOLING.md#d1-evidence-embassy-rp-blinky)). |
 | D2 | Verification backend | **Agreed on 2026-10-28:** Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
 | D3 | Player movement on claimed cells | **Decided:** rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. |
 | D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
