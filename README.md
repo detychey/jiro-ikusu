@@ -313,13 +313,42 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 
 `level_id = keccak256(level bytes)`. Contracts store level ids, clients ship the level bytes, and the referee checks the bytes against the id.
 
-**Validity.** The core checks every level before play. A valid level meets five conditions:
+**Level bytes v1** are 472 bytes, big-endian. The core reads them in this order and rejects the first broken rule with its code:
 
-- the open area is a single 4-connected region, at least a minimum size (threshold frozen in M0);
-- from every cell of the boss spawn area, the B × B body lies inside that region;
-- every minion spawn is a rail cell;
-- the player start (30, 59) is a rail cell;
-- the time limit is at most 2,700 ticks, the size of the static journal buffer ([§6.2](#62-events)).
+| Offset | Field | Type | Rule (code) |
+|---|---|---|---|
+| | whole level | 472 bytes | exactly 472 bytes (20) |
+| 0 | version | u8 | 1 (21) |
+| 1 | obstacle bitmap | 450 bytes | cell i = y × 60 + x is bit 7 − i % 8 of byte i / 8, so the first byte's high bit is cell (0, 0); a set bit is an obstacle; border bits must be 0 (22) |
+| 451 | boss body size B | u8 | 2 to 8 *(D9)*; the level tool defaults to 5 (23) |
+| 452 | boss spawn rectangle | 4 × u8: x0, y0, x1, y1 | the top-left cells the body may start on, inclusive. x0 ≤ x1 and y0 ≤ y1 (24). x0 ≥ 1, y0 ≥ 1, x1 ≤ 59 − B and y1 ≤ 59 − B, so the body stays inside the border; B is checked first, so 59 − B cannot underflow (25) |
+| 456 | boss move period | u8 | at least 1 (26) |
+| 457 | minion count | u8 | 0 to 3 (27) |
+| 458 | minion spawns | 3 × (u8 x, u8 y) | the first `count` slots: both coordinates below 60 (28). The other slots: all zero (29) |
+| 464 | minion move period | u8 | at least 1 with minions, 0 without (30) |
+| 465 | respawn delay R | u16 | at least 1 with minions, 0 without (31) |
+| 467 | time limit T | u16 | 1 to 2,700, the size of the static journal buffer ([§6.2](#62-events)) (32) |
+| 469 | lives | u8 | at least 1 (33) |
+| 470 | target | u16, basis points | 1 to 10,000 (34) |
+
+The zero rules keep the bytes canonical, so a level has exactly one id.
+
+**Validity.** After the bytes, the core checks the level itself, in this order. A valid level meets these conditions:
+
+- the open area, the cells `EMPTY` at level start, is a single 4-connected region (35), of at least 1,682 cells, half of the 3,364-cell interior (36). An empty open area is not a region;
+- from every cell of the boss spawn rectangle, the B × B body covers only open cells (37);
+- every minion spawn is a rail cell (38);
+- the player start (30, 59) is a rail cell (39).
+
+**Worked example.** The **open-field level** is the reference level of the worked examples and of the `open-field-*` vectors: no obstacles, B = 5, spawn rectangle (20, 20) to (34, 34), boss move period 2, no minions, T = 2,700, 3 lives and a 7,500 bp target. Its bytes are `0x01`, then 450 zero bytes, then bytes 451 to 471 below. Obstacles at (29, 58), (30, 58) and (31, 58), cells 3,509 to 3,511, set the low three bits of bitmap byte 438 (level offset 439) and leave the player start with no open neighbor. [`tools/xcheck/worked-examples.mjs`](tools/xcheck/worked-examples.mjs) prints these lines; validity 0 means valid:
+
+```text
+open-field level bytes 451-471: 0x051414222202000000000000000000000a8c031d4c
+open-field level_id: 0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9
+open-field validity: 0
+blocked-start bitmap byte 438: 0x07
+blocked-start validity: 39
+```
 
 **The 16 levels** ramp up difficulty with the knobs in the table above: boss body size, boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the season 1 scoring weights ([§8.4](#84-season-scoring)).
 
@@ -343,7 +372,7 @@ Inputs are sampled once per tick, at the tick boundary. Sampling at 15 Hz also d
 
 ### 6.3 Journal bytes (v1)
 
-The encoding is big-endian and fixed-width. It is frozen in M0:
+The encoding is big-endian and fixed-width: a 71-byte header, then 3 bytes per event.
 
 ```text
 u8       version       1: the format version
@@ -358,15 +387,25 @@ eventCount × (u16 tick, u8 mask)
 
 **Rules version.** `RULES_VERSION` starts at 1 [PIN-13]. It is bumped on every behavior change: a change that alters the outcome, error code or trace of a committed vector, or that implements an edit to §4-§6 rule text made after the rule was first implemented. Implementing a frozen rule for the first time is not a behavior change. Each season names the rules version it accepts, and the referee rejects any other, so a journal is always replayed under the rules it was played with.
 
-**Strict decoding.** The decoder rejects a journal with any of these, as ethblockdigger's codec does:
+**Decoding.** The decoder rejects what the bytes alone show. It checks in this order and returns the first broken rule's code:
 
-- an unknown format version, rules version or mode;
-- mode 2, reserved for Superchallenge: v1 decoders reject it until that mode returns [PIN-12];
-- a reserved bit set;
-- ticks that don't increase;
-- an event that doesn't change the mask;
-- events after the level ended;
-- truncated input or trailing bytes.
+1. fewer than 71 bytes: truncated (1);
+2. `version` other than 1 (3);
+3. `rulesVersion` other than the core's `RULES_VERSION` (4);
+4. `mode` 2 or above (5): unknown modes, and
+   - mode 2, reserved for Superchallenge: v1 decoders reject it until that mode returns [PIN-12];
+5. `levelIndex` 6 or above (6);
+6. `eventCount` above 2,700 (7);
+7. fewer than 71 + 3 × `eventCount` bytes: truncated (1); more: trailing bytes (2);
+8. each event in order: a tick of 2,700 or more (8), a tick not above the previous event's (9), reserved bit 7 set (10), a mask equal to the previous one, which is 0 before the first event (11).
+
+**Replay** knows the level. Before play, it rejects an invalid level, with the level's code ([§5](#5-levels)), a `levelId` other than keccak256 of the level bytes (12), and an event at or after the level's time limit (13). After play, it rejects an event after the tick on which the level ended (14).
+
+**Worked example.** The journal of `open-field-empty`, a training run of the open-field level at `levelIndex` 0 with no events, played under the worked-example `runNonce` of [§6.4](#64-seeds-and-commitments):
+
+```text
+open-field-empty journal: 0x01000100277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000
+```
 
 **No struct dumps.** Never serialize an event as a C struct: padding makes `struct { uint16_t tick; uint8_t mask; }` 4 bytes long, not 3.
 
@@ -375,16 +414,57 @@ eventCount × (u16 tick, u8 mask)
 ### 6.4 Seeds and commitments
 
 - **Level seed:** `keccak256("jiro.level" ‖ runNonce ‖ levelIndex)`.
-  - **What it decides.** The core derives two things from it with a fixed procedure, frozen in M0: the boss's start position (its body's top-left cell) inside the level's spawn area, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
+  - **What it decides.** The boss's start position (its body's top-left cell) inside the level's spawn rectangle, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
+  - **Boss start.** The candidates are the cells of the spawn rectangle in row-major order: y from y0 to y1, and within each row x from x0 to x1. Validity ensures the body covers only `EMPTY` cells at any of them. With index = the big-endian u32 of seed bytes 0 to 3, modulo the number of candidates, the start is candidate number index, counting from 0. vx = +1 if bit 0 of seed byte 4 is set, otherwise −1; vy is the same, from bit 1. There are at most 57 × 57 = 3,249 candidates, under 2^12, so the modulo bias stays below 2^12 / 2^32 = 2^−20.
   - **Once per level.** keccak256 runs once per level, never per tick: v1 has no per-tick randomness.
   - **Packing.** Inputs are packed as Solidity's `abi.encodePacked` would pack them: the tag as ASCII bytes, `runNonce` as 32 bytes, `levelIndex` as one byte.
   - **Domain tags.** Every derivation has its own tag, so two derivations never share an input.
 - **The chain chooses the seed** in paid modes ([§7.2](#72-run-flow)), never the client. Otherwise a player could try seeds offline until the spawns were easy.
 - **Run commitment** (Challenge): `keccak256(keccak256(journal₀) ‖ … ‖ keccak256(journal₅))`. Each level can then be replayed in its own transaction.
-- **State hash** (tests and debugging): keccak256 over a fixed-order, fixed-width serialization of the whole state: tick, grid at 2 bits per cell, player, boss, minions, counters. The layout is frozen and versioned in M0.
+- **State hash** (tests and debugging): keccak256 over a fixed-order, fixed-width serialization of the whole state: tick, grid at 2 bits per cell, player, boss, minions, counters. Version 1 is the 948-byte preimage below.
 - **Only the journal bytes are submitted.** The seed is not, because the chain already has it. The score is not, because the referee computes it. The draft's Phase 6 submits seed, score, claim and events; a score or claim may still travel along for display, but nothing trusts it.
 
 The draft also asks for a C++ PRNG that matches "the state-transition hashing logic of keccak256" in Solidity. With one core, and keccak used only to derive seeds, there is no second implementation to match.
+
+**State hash v1.** The core records keccak256 of this preimage after every processed tick, the ending tick included. Fields follow the order of [§4.3](#43-entities), at fixed widths, big-endian:
+
+| Bytes | Field | Encoding |
+|---|---|---|
+| 1 | version | 1 |
+| 2 | tick | u16, the tick just processed |
+| 1 | input mask | u8, the mask in force on that tick ([§6.1](#61-input-mask)) |
+| 900 | grid | 2 bits per cell: cell i is in byte i / 4, its value's high bit at bit 7 − 2 × (i % 4) |
+| 2 | player position | u8 x, u8 y |
+| 1 | cutting | u8, 1 if cutting, else 0 |
+| 2 | cut start | u8 x, u8 y |
+| 1 | lives | u8 |
+| 1 | shield charges | u8 |
+| 1 | invulnerability ticks | u8 ([§4.3](#43-entities)) |
+| 1 | previous direction | u8: 0 none, 1 up, 2 down, 3 left, 4 right |
+| 2 | `press_tick` | u16 |
+| 2 | boss position | u8 x, u8 y, the body's top-left cell |
+| 1 | boss body size B | u8 |
+| 2 | vx, vy | i8 each: +1 is `0x01`, −1 is `0xff` |
+| 1 | boss move period | u8 |
+| 21 | 3 minion slots of 7 bytes, in index order | u8 presence (0 unused slot, 1 live, 2 destroyed), u8 x, u8 y, u8 heading (0 N, 1 E, 2 S, 3 W), u8 move period, u16 respawn countdown. An unused slot is all zero. |
+| 2 | captured cells | u16, cells captured so far in the level |
+| 2 | claimable cells | u16 ([§4.1](#41-grid)) |
+| 2 | next event index | u16, the index of the first journal event not yet applied |
+
+The preimage is 948 bytes in all.
+
+**Worked examples.** The examples use `runNonce` = keccak256(`"jiro.example.9"`), chosen so that the draw of [§8.2](#82-challenge-000005-eth-per-run) both keeps a card in place and revisits a swapped position. For the open-field level ([§5](#5-levels)) at `levelIndex` 0, the seed, the boss start, and the state after tick 0 of `open-field-empty` are:
+
+```text
+runNonce: 0x277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd
+level seed (levelIndex 0): 0x3747fcd23494676303f1ee35d499ae727c0d8e373f013491d394bd9fcaacd7d7
+boss start: candidates 225, index 33, top-left (23, 22), vx -1, vy -1
+open-field-empty tick 0 boss: top-left (22, 21), vx -1, vy -1
+open-field-empty tick 0 preimage length: 948
+open-field-empty tick 0 state hash: 0xc9775c491d677d941c3ac733e1b47b51a64024cb4da22f9c05ceea58d93c76d1
+```
+
+On tick 0 the boss moves (0 % 2 = 0) one step diagonally, from (23, 22) to (22, 21), and the player stands still.
 
 ### 6.5 Device-to-browser link
 
@@ -396,6 +476,24 @@ The Pico has no network, but it is powered over USB anyway, so USB is the link:
 - **Commit:** the dApp commits the run commitment ([§6.4](#64-seeds-and-commitments)) as soon as the run ends.
 
 This has to happen live: the commit deadline counts the time the journals actually took to play ([§7.2](#72-run-flow)), so a journal cannot wait for a later sync.
+
+### 6.6 Vector files
+
+Golden vectors live in `vectors/`, one JSON file per vector, and every target must reproduce them. Each file has a `kind` key. Byte strings are lowercase hex with a `0x` prefix, and error codes are those of [§5](#5-levels) and [§6.3](#63-journal-bytes-v1).
+
+- **`journal`** (`vectors/format/journal-*.json`): `name`, `input`, and either `reencoded`, the decoded journal encoded again, or `error`.
+- **`level`** (`vectors/format/level-*.json`): `name`, `input`, and either `levelId` and `reencoded`, or `error`.
+- **`game`** (`vectors/game/*.json`):
+  - `name`, and `covers`, the README sections and rule tags it exercises;
+  - the inputs: `rulesVersion`, `level`, `runNonce`, `levelIndex`, `mode`, `weightBp` and `journal`;
+  - either the expected outcome or `error`, the code replay returns;
+  - `trace`, the file name of its trace, and `traceKeccak`, the keccak256 of that file.
+
+  M0.7 adds the outcome keys.
+
+A **trace** (`.trace`, binary) holds the 32-byte state hash of every processed tick, in tick order. Derivation fixtures (level seeds, boss starts, draws, run commitments, and later run nonces and deadline cases) live in `vectors/derivations.json`.
+
+**Diagnosis.** A target that disagrees with a vector reports the first tick whose hash differs. A target that can expose its state (native, wasm, the emulator) also prints its state-hash preimage at that tick. `jiro-tools replay --dump-tick <t> --diff <hex>` decodes that preimage, compares it with the native one, and names the fields that differ.
 
 ## 7. Verification and trust model
 
@@ -489,7 +587,18 @@ All 16 levels, offline, on the Pico or in the browser. Scores stay local and no 
 
 ### 8.2 Challenge: 0.00005 ETH per run
 
-- **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a Fisher–Yates shuffle driven by `keccak256("jiro.draw" ‖ runNonce ‖ i)`, with `i` packed as one byte. The exact procedure is frozen in M0.
+- **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a forward partial Fisher–Yates shuffle. Only the core computes it:
+  1. The deck is [0, 1, …, 15].
+  2. For i = 0 to 5: j = i + h mod (16 − i), where h is `keccak256("jiro.draw" ‖ runNonce ‖ i)` read as a 256-bit big-endian unsigned integer, with `i` packed as one byte. Swap deck[i] and deck[j].
+  3. The run's levels are deck[0] to deck[5]: the **draw slots**, indices into the season's 16 levels. The level at `levelIndex` k plays slot deck[k].
+
+  With the worked-example `runNonce` of [§6.4](#64-seeds-and-commitments):
+
+  ```text
+  draw j: 1, 1, 10, 14, 12, 10
+  draw slots: 1, 0, 10, 14, 12, 2
+  ```
+
 - **Score.** The run score is the sum of the six level scores.
 - **Ranking.** Players are ranked by their best settled run of the season *(D10)*. Ranking by cumulative score would let spending buy rank.
 - **Rewards.** The season pot is the entry fees minus a rake capped at 20%, as in ethblockdigger's `Season`, including its rollover of empty seasons and its claims. The pot is shared pro-rata among qualified players *(D10)*; ethblockdigger chose pro-rata because top-heavy payouts invite collusion when there are few players.

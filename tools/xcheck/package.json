@@ -1,0 +1,14 @@
+{
+  "name": "jiro-xcheck",
+  "private": true,
+  "description": "Independent cross-checks of the core's byte formats and derivations (README §5, §6, §8.2)",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "worked-examples": "node worked-examples.mjs",
+    "check": "node worked-examples.mjs --check ../../README.md"
+  },
+  "dependencies": {
+    "ethers": "6.17.0"
+  }
+}
