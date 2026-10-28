@@ -10,7 +10,7 @@ README §6 defines the formats. Rules for implementing them:
 - **One implementation, in the core.** Every target calls it. The browser and the contracts never re-encode by hand.
 - **Big-endian, fixed width, no memory dumps.** C struct padding makes `{ uint16_t tick; uint8_t mask; }` 4 bytes long, not 3.
 - **Strict decoders.** Reject all of these:
-  - unknown format or rules versions;
+  - unknown format versions, rules versions or modes, mode 2 included until Superchallenge returns (README §6.3, PIN-12);
   - reserved bits;
   - truncation or trailing bytes;
   - ticks that don't increase;
