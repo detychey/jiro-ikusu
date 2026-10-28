@@ -1,8 +1,8 @@
-# Jiro Ikusu
+# Jiro-ikusu
 
 A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It runs on a Raspberry Pi Pico fitted with a Waveshare Pico-LCD-1.3, and in the browser.
 
-> **Status: specification, no code yet.** This README is the project specification. It is built from [`plan-draft.md`](plan-draft.md), the original draft (kept for reference). It also fixes the parts of the draft that would break determinism or the economics, and lists the decisions still open in [§13](#13-open-decisions). A rule that depends on an open decision is tagged with its ID, e.g. *(D3)*.
+> **Status: specification, no code yet.** This README is the project specification. It is built from [`plan-draft.md`](plan-draft.md), the original draft (kept for reference). It also fixes the parts of the draft that would break determinism or the economics, and records the decisions, taken and still open, in [§13](#13-open-decisions). A rule tied to a decision is tagged with its ID, e.g. *(D3)*.
 
 ## Contents
 
@@ -22,7 +22,7 @@ A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and
 
 ## 1. Concept
 
-The player moves along the edge of a 60×60 field. Leaving the edge draws a trail, and reaching the edge again captures every region the boss cannot reach. The boss bounces around the open field and kills the player if it touches the trail, while minions patrol the edges. Claiming enough of the field clears the level.
+The player moves along the edge of a 60×60 field. Leaving the edge draws a trail, and reaching the edge again captures every region without the boss. The boss bounces around the open field and kills the player if it touches the trail, while minions patrol the edges. Claiming enough of the field clears the level.
 
 Every game must be replayable, bit for bit, by a smart contract:
 
@@ -67,6 +67,8 @@ The draft names the keys Key0–Key3. They map to A, B, X, Y in that order *(D8)
 | Key3 = Y, joystick press | Unused and not journaled |
 
 The draft's Key2 is "Commit/Forfeit (ends game immediately)". Here it ends the current level, not the whole run, and the level keeps its claim.
+
+**In the browser, the keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome.
 
 Everything is allocated statically. The RP2040 has 270,336 bytes of SRAM:
 
@@ -148,7 +150,7 @@ All entity fields are small integers:
 | Entity | State |
 |---|---|
 | Player | position; cutting flag; cut start cell; lives; shield charges; invulnerability ticks; previous direction; slow-move phase |
-| Boss | position; vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) |
+| Boss | position (the top-left cell of its body); body size B (set per level); vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) |
 | Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period; respawn countdown |
 
 ### 4.4 Tick order
@@ -181,26 +183,31 @@ Once per tick, in this order:
 
 ### 4.6 Boss
 
-The boss moves one axis at a time and inverts the velocity component that hits something:
+The boss is a square body of B × B cells *(D9)*, closer to *Volfied* than the draft's single cell. B is set per level ([§5](#5-levels)); its position (x, y) is the top-left cell of the body. The body only ever covers `EMPTY` cells.
+
+The boss moves one axis at a time, testing the whole leading edge of its body, and inverts the velocity component that hits something:
 
 ```text
 if the boss moves this tick:
-    c = cell(x + vx, y)
-    if c is CLAIMED or TRAIL:  vx = -vx;  if c is TRAIL: the player is hit
-    else:                      x = x + vx
-    c = cell(x, y + vy)                    # uses the x just computed
-    if c is CLAIMED or TRAIL:  vy = -vy;  if c is TRAIL: the player is hit
-    else:                      y = y + vy
+    edge = the B cells of column x + B (if vx = +1) or x − 1 (if vx = −1), rows y to y + B − 1
+    if any edge cell is CLAIMED or TRAIL:  vx = -vx;  if any is TRAIL: the player is hit
+    else:                                  x = x + vx
+    edge = the B cells of row y + B (if vy = +1) or y − 1 (if vy = −1), columns x to x + B − 1
+                                           # uses the x just computed
+    if any edge cell is CLAIMED or TRAIL:  vy = -vy;  if any is TRAIL: the player is hit
+    else:                                  y = y + vy
 ```
+
+The edge cells always exist: the body stays inside the border, which is `CLAIMED`. With B = 1 the procedure tests single cells.
 
 The draft tests `grid[next_x][y]` and `grid[x][next_y]` from the same starting cell, then moves diagonally. That puts the boss inside a wall in two cases:
 
 - **Outside corner:** both side cells are open but the diagonal cell is solid.
-- **One-cell corridor:** after flipping, the new direction points into the opposite wall.
+- **Corridor as wide as the boss:** after flipping, the new direction points into the opposite wall.
 
-Testing one axis at a time, with the second test made after the first move, never enters a solid cell and needs no special cases. This is how the Xonix reference moves its enemies ([§11](#11-reference-implementations)).
+Testing one axis at a time, with the second test made after the first move, never enters a solid cell and needs no special cases. This is how the Xonix reference moves its enemies ([§11](#11-reference-implementations)). A quick simulation (not committed) ran bodies with B = 2, 3, 5 and 7 for 3,000 ticks on 232 random boards, and no body ever covered a cell that wasn't `EMPTY`.
 
-The boss is a single cell *(D9)*. The draft starts it at (30, 30). Here the level defines a spawn area, and the level seed picks the start cell inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)).
+The draft starts the boss at (30, 30). Here the level defines a spawn area, the set of cells where the body's top-left cell may start. The level seed picks the start position inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)).
 
 ### 4.7 Minions
 
@@ -218,22 +225,22 @@ The boss is a single cell *(D9)*. The draft starts it at (30, 30). Here the leve
 
 When a cut reaches `CLAIMED`:
 
-1. Mark the boss cell `BOSS_ZONE` and push it on a stack. With several bosses, do this for each one.
+1. Mark every cell of the boss's body `BOSS_ZONE` and push it on a stack. With several bosses, do this for each one.
 2. Pop a cell. Mark each of its 4 neighbors that is `EMPTY` as `BOSS_ZONE`, and push it. Repeat until the stack is empty. `TRAIL` and `CLAIMED` stop the fill, so the trail acts as a wall.
 3. Make one pass over all 3,600 cells: `BOSS_ZONE` becomes `EMPTY`, and `EMPTY` and `TRAIL` become `CLAIMED`. The number of cells that became `CLAIMED` is the capture size.
 
 Why this procedure:
 
 - **No recursion.** A cell is marked when it is pushed, not when it is popped, so it is pushed at most once. A static stack of 3,364 entries can therefore never overflow. A recursive fill needs up to 3,364 nested calls, far beyond the RP2040's small default stack.
-- **Visit order doesn't matter.** The result depends only on which cells the boss can reach. A stack, a queue or a scanline fill all give the same grid.
-- **4 neighbors match the boss's movement.** Since the boss moves one axis at a time, it cannot cross a gap that is only diagonal. So it never reaches a cell that the fill treats as a separate region.
+- **Visit order doesn't matter.** The result depends only on which `EMPTY` cells are 4-connected to the boss's body. A stack, a queue or a scanline fill all give the same grid.
+- **The boss's side stays open, as one region.** Since the boss moves one axis at a time, it cannot cross a gap that is only diagonal, so it never reaches a cell that the fill treats as a separate region. The fill may include pockets narrower than the body, which the boss can't physically enter. They stay open because they connect to the boss's side: as in *Qix* and *Volfied*, a capture takes the regions without the boss, not the cells the boss can't reach.
 - **One pass instead of three.** The draft's steps 3–5 (claim unreached cells, convert the trail, revert `BOSS_ZONE`) collapse into the single pass of step 3.
 
 ### 4.9 Hits, lives and respawn
 
 - **Hits.** The player is hit in four cases:
   - the boss bumps into `TRAIL`;
-  - the player tries to step onto the boss's cell. The move doesn't happen, so the boss never stands on the trail.
+  - the player tries to step onto a cell of the boss's body. The move doesn't happen, so the body never covers the trail.
   - the player and a minion share a cell after the minions have moved;
   - a minion and the player swap cells in the same tick. Without this rule they would pass through each other. With fast cut, both sub-step cells count.
 
@@ -267,7 +274,7 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 | Field | Meaning |
 |---|---|
 | Obstacles | Cells that start `CLAIMED` (a 3,600-bit bitmap, 450 bytes) |
-| Boss | Spawn area; move period |
+| Boss | Body size B, the side of the square body (proposed: B = 2 to 8, default 5); spawn area, the cells where the body's top-left cell may start; move period |
 | Minions | Count (0–3); spawn cells; move period; respawn delay R |
 | Rules | Time limit (at most 2,700 ticks), lives, target claim. Defaults: 2,700 ticks, 3 lives, 7,500 bp. |
 
@@ -276,12 +283,12 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 **Validity.** The core checks every level before play. A valid level meets five conditions:
 
 - the open area is a single 4-connected region, at least a minimum size (threshold frozen in M0);
-- the boss spawn area lies inside that region;
+- from every cell of the boss spawn area, the B × B body lies inside that region;
 - every minion spawn is a rail cell;
 - the player start (30, 59) is a rail cell;
 - the time limit is at most 2,700 ticks, the size of the static journal buffer ([§6.2](#62-events)).
 
-**The 16 levels** ramp up difficulty with the knobs in the table above: boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the season 1 scoring weights ([§8.4](#84-season-scoring)).
+**The 16 levels** ramp up difficulty with the knobs in the table above: boss body size, boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the season 1 scoring weights ([§8.4](#84-season-scoring)).
 
 **The level editor** in the browser produces level bytes, and the 16 levels are authored with it. The Superchallenge map generator is deferred with its mode.
 
@@ -334,7 +341,7 @@ eventCount × (u16 tick, u8 mask)
 ### 6.4 Seeds and commitments
 
 - **Level seed:** `keccak256("jiro.level" ‖ runNonce ‖ levelIndex)`.
-  - **What it decides.** The core derives two things from it with a fixed procedure, frozen in M0: the boss start cell inside the level's spawn area, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
+  - **What it decides.** The core derives two things from it with a fixed procedure, frozen in M0: the boss's start position (its body's top-left cell) inside the level's spawn area, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
   - **Once per level.** keccak256 runs once per level, never per tick: v1 has no per-tick randomness.
   - **Packing.** Inputs are packed as Solidity's `abi.encodePacked` would pack them: the tag as ASCII bytes, `runNonce` as 32 bytes, `levelIndex` as one byte.
   - **Domain tags.** Every derivation has its own tag, so two derivations never share an input.
@@ -399,7 +406,7 @@ So the verifier runs the Rust core itself, in one of two ways:
   Among the frameworks that pass, measured cycles and price decide. If the best-tooled zkVM still targets 32-bit RISC-V, that's fine: the core builds unchanged for either width.
 - **A naming clash.** Brevis's zkVM is also called Pico. In this repository, "Pico" always means the Raspberry Pi board.
 
-**Proposed approach *(D2)*:**
+**Agreed approach *(D2)*:**
 
 1. **Measure first.** In M1, try two or three zkVMs hands-on, pick the one with the best tooling, and run the golden vectors in its executor. Executors run a guest without proving it, which yields cycle counts per level, and cycles set the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
 2. **Verify by exception.** Playing a run costs one small commit transaction, and its journals are published so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its $0.10 entry fee, even on Stylus. The payout curve *(D10)* sets how many runs need verifying.
@@ -423,7 +430,7 @@ The levers are economic and social:
 
 ## 8. Game modes and economy
 
-Amounts are in USDC, which has 6 decimals: $1 = `1_000_000`, $0.10 = `100_000`, $0.01 = `10_000`.
+Amounts are in USDC, which has 6 decimals: $1 = `1_000_000`, $0.10 = `100_000`, $0.01 = `10_000`. The currency is still open *(D12)*: native ETH is the alternative, with 0.0005 ETH per map and 0.000005 ETH per play suggested on 2026-10-28, the same 100:1 ratio as the draft's $1 and $0.01.
 
 ### 8.1 Training: free
 
@@ -434,7 +441,7 @@ All 16 levels, offline, on the Pico or in the browser. Scores stay local and no 
 - **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a Fisher–Yates shuffle driven by `keccak256("jiro.draw" ‖ runNonce ‖ i)`, with `i` packed as one byte. The exact procedure is frozen in M0.
 - **Score.** The run score is the sum of the six level scores.
 - **Ranking.** Players are ranked by their best settled run of the season *(D10)*. Ranking by cumulative score would let spending buy rank.
-- **Rewards.** The season pot is the entry fees minus a rake capped at 20%, as in ethblockdigger's `Season`, including its rollover of empty seasons and its claims. The pot is shared pro-rata among qualified players; ethblockdigger chose pro-rata because top-heavy payouts invite collusion when there are few players. Top-K payouts are the alternative *(D10)*.
+- **Rewards.** The season pot is the entry fees minus a rake capped at 20%, as in ethblockdigger's `Season`, including its rollover of empty seasons and its claims. The pot is shared pro-rata among qualified players *(D10)*; ethblockdigger chose pro-rata because top-heavy payouts invite collusion when there are few players.
 - **Sybils.** Fees are paid at run start, so every point costs money, and extra wallets only pay off if they also play well.
 
 ### 8.3 Superchallenge: deferred
@@ -469,7 +476,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 
 [ethblockdigger](https://github.com/detychey/ethblockdigger) already solves most of this project's onchain problems. The draft names three things to reuse: $1 map mints, $0.01 plays, and the season and payout concepts. There is more:
 
-| ethblockdigger component | Source | Use in Jiro Ikusu |
+| ethblockdigger component | Source | Use in Jiro-ikusu |
 |---|---|---|
 | Pay-then-reveal entropy | `contracts/src/ArbBlockhashEntropy.sol`, `contracts/src/interfaces/IEntropySource.sol` | Run nonces and map seeds |
 | `Vault`: USDC ledger, solvency invariant, the start → reveal → commit → settle flow | `contracts/src/Vault.sol` | Challenge runs. ethblockdigger ties runs to the map owner and pays out the map's backing; Jiro runs are bought by any player and record a score. |
@@ -508,7 +515,7 @@ Corrections to the draft:
 
 What Jiro takes from them, by mechanic:
 
-- **Grid:** volfied_clone's flat byte array, with the trail stored in the grid (state 2) instead of a list. "Does the boss touch the trail?" then costs one lookup instead of a scan of the whole trail.
+- **Grid:** volfied_clone's flat byte array, with the trail stored in the grid (state 2) instead of a list. "Does the boss touch the trail?" then costs one lookup per cell of the boss's leading edge instead of a scan of the whole trail.
 - **Flood fill:** volfied_clone's explicit stack and multi-seed start, Xonix's single sweep, and Qixie's lesson: size the explicit stack for the worst case before the hardware finds it for you ([§4.8](#48-capture)).
 - **Enemy reflection:** Xonix's one-axis-at-a-time inversion, on cells and with fixed ±1 velocities ([§4.6](#46-boss)).
 - **Avoid in all of them:** frame-timed updates (`requestAnimationFrame`, or a `QTimer` with a float accumulator), platform `rand()`, and float physics.
@@ -544,18 +551,18 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | ID | Decision | Recommendation |
 |---|---|---|
 | D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target. Still open: the shell, either Rust (`embassy-rp`) for a single toolchain, or the draft's C++ on the Pico SDK linking the core. |
-| D2 | Verification backend | Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
-| D3 | Player movement on claimed cells | Rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. Free movement, as in *Xonix*, lets the player hide from them. |
-| D4 | Trail rules | The own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1 |
-| D5 | Level defaults, and running out of lives | 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
-| D6 | Shield (B) | One charge per level; an absorbed hit costs the charge and nothing else |
-| D7 | Minion patrol rule, and minions stranded by a capture | Start from the right-hand rule with the orientation step ([§4.7](#47-minions)), and replace it in M1 if the coverage property test still finds traps. Stranded minions are destroyed and respawn after R ticks. |
-| D8 | Key mapping | Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. |
-| D9 | Boss size | One cell for v1. A larger body, closer to *Volfied*, changes every reflection test, so decide before M1. |
-| D10 | Challenge ranking and payout | Best settled run per season; pro-rata payout among qualified players, for example those with at least one cleared level |
+| D2 | Verification backend | **Agreed on 2026-10-28:** Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
+| D3 | Player movement on claimed cells | **Decided:** rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. |
+| D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
+| D5 | Level defaults, and running out of lives | **Decided:** 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
+| D6 | Shield (B) | **Decided:** one charge per level; an absorbed hit costs the charge and nothing else. |
+| D7 | Minion patrol rule, and minions stranded by a capture | **Agreed on 2026-10-28, provisional:** the right-hand rule with the orientation step ([§4.7](#47-minions)), kept if M1's coverage property test finds no traps; otherwise replaced in M1, or kept with a bounded trap rate the owner accepts. Stranded minions are destroyed and respawn after R ticks. |
+| D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. In the browser, the keys are configurable ([§2](#2-hardware-target)). |
+| D9 | Boss size | **Decided:** bigger than one cell, closer to *Volfied*. **Proposed:** a square body of B × B cells, with B set per level ([§4.6](#46-boss)), B = 2 to 8, default 5; M0.5 settles the shape and M0.6 the range. |
+| D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players. **Proposed** qualification, settled in M0.7: the player's best run cleared at least one level. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
-| D12 | Chain, currency, season length | USDC on Arbitrum One, reusing ethblockdigger's contracts. One-month seasons, as in ethblockdigger's spec; its testnet `Season` contract uses 14 days. |
-| D13 | Names | The name is settled in [`name.md`](name.md): ジロイクス, *Jirō-ikusu*. Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
+| D12 | Chain, currency, season length | **Decided:** Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; 14-day seasons on testnet, likely on mainnet too. **Still open:** the currency, USDC or native ETH ([§8](#8-game-modes-and-economy)). |
+| D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
 
 ## Repository files
 
