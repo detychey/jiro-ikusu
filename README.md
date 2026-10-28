@@ -483,7 +483,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 |---|---|---|---|
 | **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
 | **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; a hands-on tooling trial of two or three zkVMs, and cycle counts per level in the one chosen | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; zkVM chosen; cycle counts recorded |
-| **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
+| **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots; served at [jiro-ikusu.win](https://jiro-ikusu.win) | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
 | **M3** Pico | Firmware shell; vector run on the device | 1, 2 | Device state-hash traces match the native build |
 | **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
 | **M5** dApp and season 1 | Wallet, Web Serial bridge to the Pico, Challenge UX, a testnet season | none | A full season closes and pays out on testnet |
@@ -590,3 +590,6 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 - [`TODO.md`](TODO.md): deferred work, starting with Superchallenge mode.
 - [`name.md`](name.md): the name in Japanese and Chinese.
 - [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md): the work breakdown of milestones M0 to M5.
+- [`CLAUDE.md`](CLAUDE.md): the project instructions every agent session loads.
+- [`.claude/AGENTS_COMETH.md`](.claude/AGENTS_COMETH.md): Cometh's code philosophy, imported by `CLAUDE.md`.
+- [`LICENSE`](LICENSE): MIT.
