@@ -121,73 +121,80 @@ A tick changes only a handful of cells. So the renderer redraws the changed 4×4
 
 These rules are normative. Every target implements them through the core, and the golden vectors pin them down.
 
+Every rule carries a stable tag that tests and vectors cite: `[R4.<n>-<k>]`, or `[PIN-<nn>]` for a detail pinned in M0.5. A new rule takes the next free number, and a removed rule's tag is never reused. A paragraph or bullet that only explains a rule ends with an invisible `rationale` marker; `scripts/check-rule-tags.sh` checks that every other line of §4.1-§4.10 is tagged.
+
 ### 4.1 Grid
 
-- **Layout.** 60×60 cells in a flat `u8` array, row-major: `index = y * 60 + x`. (0, 0) is the top-left corner, x grows to the right and y grows down. Each cell is drawn as a 4×4-pixel square.
-- **Cell states:**
+- **Layout.** 60×60 cells in a flat `u8` array, row-major: `index = y * 60 + x`. (0, 0) is the top-left corner, x grows to the right and y grows down. Each cell is drawn as a 4×4-pixel square. [R4.1-1]
+- **Cell states:** [R4.1-2]
 
   | Value | State | Drawn as |
   |---|---|---|
-  | 0 | `EMPTY`: open field, boss territory | black |
-  | 1 | `CLAIMED`: solid (the border, obstacles, captured cells) | blue |
-  | 2 | `TRAIL`: the cut being drawn, vulnerable | red |
-  | 3 | `BOSS_ZONE`: temporary marker, exists only during a capture | not drawn |
+  | 0 | `EMPTY`: open field, boss territory | black [R4.1-3] |
+  | 1 | `CLAIMED`: solid (the border, obstacles, captured cells) | blue [R4.1-4] |
+  | 2 | `TRAIL`: the cut being drawn, vulnerable | red [R4.1-5] |
+  | 3 | `BOSS_ZONE`: temporary marker, exists only during a capture | not drawn [R4.1-6] |
 
-- **Level start.** The border (x = 0, x = 59, y = 0, y = 59) and the level's obstacles are `CLAIMED`. Everything else is `EMPTY`.
-- **Claim** is measured in basis points of the cells that were `EMPTY` at level start: `claim_bp = captured_cells * 10_000 / claimable_cells`, with integer division. The border and obstacles never count. On a level without obstacles, `claimable_cells` is the 58×58 interior: 3,364 cells.
+- **Level start.** The border (x = 0, x = 59, y = 0, y = 59) and the level's obstacles are `CLAIMED`. Everything else is `EMPTY`. [R4.1-7]
+- **Claim** is measured in basis points of the cells that were `EMPTY` at level start: `claim_bp = captured_cells * 10_000 / claimable_cells`, with integer division. The border and obstacles never count. On a level without obstacles, `claimable_cells` is the 58×58 interior: 3,364 cells. [R4.1-8]
 
 ### 4.2 Rail
 
-A **rail cell** is a `CLAIMED` cell with at least one `EMPTY` or `TRAIL` cell among its 8 neighbors. The player and the minions walk on the rail.
+A **rail cell** is a `CLAIMED` cell with at least one `EMPTY` or `TRAIL` cell among its 8 neighbors. The player and the minions walk on the rail. [R4.2-1]
 
-- **Diagonal neighbors count,** so the rail stays connected around corners. With only 4 neighbors, the four corners of the starting border would not be rail cells, and the rail would break there.
-- **`TRAIL` counts as open,** so the rail changes only on capture, never while a cut is being drawn.
+- **Diagonal neighbors count,** so the rail stays connected around corners. With only 4 neighbors, the four corners of the starting border would not be rail cells, and the rail would break there. [R4.2-2]
+- **`TRAIL` counts as open,** so the rail changes only on capture, never while a cut is being drawn. [R4.2-3]
 
 ### 4.3 Entities
 
-All entity fields are small integers:
+All entity fields are small integers: [R4.3-1]
 
 | Entity | State |
 |---|---|
-| Player | position; cutting flag; cut start cell; lives; shield charges; invulnerability ticks; previous direction; slow-move phase |
-| Boss | position (the top-left cell of its body); body size B (set per level); vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) |
-| Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period; respawn countdown |
+| Player | position; cutting flag; cut start cell; lives; shield charges; invulnerability ticks; previous direction; slow-move phase [R4.3-2] |
+| Boss | position (the top-left cell of its body); body size B (set per level); vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) [R4.3-3] |
+| Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period; respawn countdown [R4.3-4] |
 
 ### 4.4 Tick order
 
-- **Tick numbering.** Ticks are numbered from 0 within each level. A level with a time limit of T ticks runs at most ticks 0 to T − 1.
-- **Periodic movement.** An entity with a move period of N moves on the ticks where `tick % N == 0`. The phase is global and never resets.
-- **Order.** The order of steps is part of the rules: a different order is a different game.
-- **Ending a level.** The level ends at the first step where an end condition occurs ([§4.10](#410-end-of-level)), and the remaining steps don't run on that tick.
+- **Tick numbering.** Ticks are numbered from 0 within each level. A level with a time limit of T ticks runs at most ticks 0 to T − 1. [R4.4-1]
+- **Periodic movement.** An entity with a move period of N moves on the ticks where `tick % N == 0`. The phase is global and never resets. [R4.4-2]
+- **Order.** The order of steps is part of the rules: a different order is a different game. [R4.4-3]
+- **Ending a level.** The level ends at the first step where an end condition occurs ([§4.10](#410-end-of-level)), and the remaining steps don't run on that tick. [R4.4-4]
 
-Once per tick, in this order:
+Once per tick, in this order: [R4.4-5]
 
-1. **Input.** A journal event at this tick replaces the current input mask ([§6](#6-input-journal-and-byte-formats)).
-2. **Commit.** If X is pressed, the level ends. An unfinished cut is discarded: its trail is erased and nothing is captured.
-3. **Player.** The player moves 0, 1 or 2 sub-steps ([§4.5](#45-player)). A cut that reaches `CLAIMED` captures at once ([§4.8](#48-capture)), and the player moves no further this tick. If the capture brings the claim to the level's target, the level is cleared.
-4. **Boss.** The boss moves ([§4.6](#46-boss)). If it bumps into `TRAIL`, the player is hit.
-5. **Minions.** The minions move, in index order ([§4.7](#47-minions)). Respawn countdowns also tick down here.
-6. **Collisions.** The tick's hits are resolved ([§4.9](#49-hits-lives-and-respawn)).
-7. **Time.** If this was tick T − 1, the level ends.
+1. **Input.** A journal event at this tick replaces the current input mask ([§6](#6-input-journal-and-byte-formats)). [R4.4-6]
+2. **Commit.** If X is pressed, the level ends. An unfinished cut is discarded: its trail is erased and nothing is captured. [R4.4-7]
+3. **Player.** The player moves 0, 1 or 2 sub-steps ([§4.5](#45-player)). A cut that reaches `CLAIMED` captures at once ([§4.8](#48-capture)), and the player moves no further this tick. If the capture brings the claim to the level's target, the level is cleared. [R4.4-8]
+4. **Boss.** The boss moves ([§4.6](#46-boss)). If it bumps into `TRAIL`, the player is hit. [R4.4-9]
+5. **Minions.** The minions move, in index order ([§4.7](#47-minions)). Respawn countdowns also tick down here. [R4.4-10]
+6. **Collisions.** The tick's hits are resolved ([§4.9](#49-hits-lives-and-respawn)). [R4.4-11]
+7. **Time.** If this was tick T − 1, the level ends. [R4.4-12]
 
 ### 4.5 Player
 
-- **Direction.** The direction is resolved on every tick, whether or not the player moves. If the direction resolved on the previous tick is still held, keep it. Otherwise take the first held direction in the order up, down, left, right. If none is held, the direction is none, and the player stands still. The draft doesn't say what happens when two directions are held, but a 5-way joystick reports two at once while rolling from one direction to the next.
-- **On the rail,** the player moves only from rail cell to rail cell *(D3)*. Stepping into `EMPTY` starts a cut: the cell the player leaves becomes the **cut start**, and every `EMPTY` cell entered becomes `TRAIL`.
-- **Off the rail.** A capture can leave the player's own cell off the rail, for example when a cut closes into a pocket next to an obstacle. While off the rail, the player may step onto any `CLAIMED` cell, until back on the rail.
-- **Own trail.** The player cannot step onto `TRAIL`; the move is ignored *(D4)*. The draft only forbids moving backward, which is one case of this rule.
-- **Closing a cut.** Stepping from `TRAIL` onto `CLAIMED` completes the cut and triggers a capture. That cell is a rail cell at that moment, though the capture can take it off the rail (see "Off the rail" above).
-- **Fast cut (A).** If the player is cutting at the start of the tick and A is held, the player takes two sub-steps. On the rail, speed stays normal.
-- **Slow shield (B).** While B is held, the player moves only on the ticks where `(tick − press_tick) % 2 == 0`. `press_tick` is the tick on which B went from released to held. If A and B are both held, B wins.
-- **Stopping mid-cut** is allowed: there is no *Qix*-style fuse *(D4)*.
+- **Initial state.** At level start the player stands on cell (30, 59), which level validity keeps a rail cell ([§5](#5-levels)), with the level's lives, 1 shield charge, no invulnerability, previous direction none, not cutting, and no B press recorded. [PIN-01]
+- **Direction.** The direction is resolved on every tick, whether or not the player moves. If the direction resolved on the previous tick is still held, keep it. Otherwise take the first held direction in the order up, down, left, right. If none is held, the direction is none, and the player stands still. The draft doesn't say what happens when two directions are held, but a 5-way joystick reports two at once while rolling from one direction to the next. [R4.5-1]
+  - A move that doesn't happen (onto the own trail, onto the boss's body, or off the rail) still keeps the resolved direction as the previous direction. [PIN-05]
+- **On the rail,** the player moves only from rail cell to rail cell *(D3)*. Stepping into `EMPTY` starts a cut: the cell the player leaves becomes the **cut start**, and every `EMPTY` cell entered becomes `TRAIL`. [R4.5-2]
+- **Off the rail.** A capture can leave the player's own cell off the rail, for example when a cut closes into a pocket next to an obstacle. While off the rail, the player may step onto any `CLAIMED` cell, until back on the rail. [R4.5-3]
+- **Own trail.** The player cannot step onto `TRAIL`; the move is ignored *(D4)*. The draft only forbids moving backward, which is one case of this rule. [R4.5-4]
+- **Closing a cut.** Stepping from `TRAIL` onto `CLAIMED` completes the cut and triggers a capture. That cell is a rail cell at that moment, though the capture can take it off the rail (see "Off the rail" above). [R4.5-5]
+- **Fast cut (A).** If the player is cutting at the start of the tick and A is held, the player takes two sub-steps. On the rail, speed stays normal. [R4.5-6]
+  - If sub-step 1 is blocked by the own trail, hits the boss's body, or closes the cut, there is no sub-step 2. [PIN-04]
+- **Slow shield (B).** While B is held, the player moves only on the ticks where `(tick − press_tick) % 2 == 0`. `press_tick` is the tick on which B went from released to held. If A and B are both held, B wins. [R4.5-7]
+  - When the journal's event at tick 0 holds B, `press_tick` is 0. [PIN-03]
+- **Stopping mid-cut** is allowed: there is no *Qix*-style fuse *(D4)*. [R4.5-8]
 
 ### 4.6 Boss
 
-The boss is a square body of B × B cells *(D9)*, closer to *Volfied* than the draft's single cell. B is set per level ([§5](#5-levels)); its position (x, y) is the top-left cell of the body. The body only ever covers `EMPTY` cells.
+The boss is a square body of B × B cells *(D9)*, closer to *Volfied* than the draft's single cell. B is set per level ([§5](#5-levels)); its position (x, y) is the top-left cell of the body. The body only ever covers `EMPTY` cells. [R4.6-1]
 
-The boss moves one axis at a time, testing the whole leading edge of its body, and inverts the velocity component that hits something:
+The boss moves one axis at a time, testing the whole leading edge of its body, and inverts the velocity component that hits something: [R4.6-2]
 
 ```text
+# [R4.6-3]
 if the boss moves this tick:
     edge = the B cells of column x + B (if vx = +1) or x − 1 (if vx = −1), rows y to y + B − 1
     if any edge cell is CLAIMED or TRAIL:  vx = -vx;  if any is TRAIL: the player is hit
@@ -198,74 +205,98 @@ if the boss moves this tick:
     else:                                  y = y + vy
 ```
 
-The edge cells always exist: the body stays inside the border, which is `CLAIMED`. With B = 1 the procedure tests single cells.
+The edge cells always exist: the body stays inside the border, which is `CLAIMED`. With B = 1 the procedure tests single cells. [R4.6-4]
 
-The draft tests `grid[next_x][y]` and `grid[x][next_y]` from the same starting cell, then moves diagonally. That puts the boss inside a wall in two cases:
+The draft tests `grid[next_x][y]` and `grid[x][next_y]` from the same starting cell, then moves diagonally. That puts the boss inside a wall in two cases: <!-- rationale -->
 
-- **Outside corner:** both side cells are open but the diagonal cell is solid.
-- **Corridor as wide as the boss:** after flipping, the new direction points into the opposite wall.
+- **Outside corner:** both side cells are open but the diagonal cell is solid. <!-- rationale -->
+- **Corridor as wide as the boss:** after flipping, the new direction points into the opposite wall. <!-- rationale -->
 
-Testing one axis at a time, with the second test made after the first move, never enters a solid cell and needs no special cases. This is how the Xonix reference moves its enemies ([§11](#11-reference-implementations)). A quick simulation (not committed) ran bodies with B = 2, 3, 5 and 7 for 3,000 ticks on 232 random boards, and no body ever covered a cell that wasn't `EMPTY`.
+Testing one axis at a time, with the second test made after the first move, never enters a solid cell and needs no special cases. This is how the Xonix reference moves its enemies ([§11](#11-reference-implementations)). A quick simulation (not committed) ran bodies with B = 2, 3, 5 and 7 for 3,000 ticks on 232 random boards, and no body ever covered a cell that wasn't `EMPTY`. <!-- rationale -->
 
-The draft starts the boss at (30, 30). Here the level defines a spawn area, the set of cells where the body's top-left cell may start. The level seed picks the start position inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)).
+The draft starts the boss at (30, 30). Here the level defines a spawn area, the set of cells where the body's top-left cell may start. The level seed picks the start position inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)). [R4.6-5]
 
 ### 4.7 Minions
 
-- **Movement.** Minions walk on rail cells only, one cell per move.
-- **Right-hand rule** (from the draft). A minion tries to turn right, then to go straight, then to turn left, then to turn back, and takes the first direction whose target is a rail cell.
-- **Orientation.** At spawn, at respawn and after every capture, a minion turns to the first heading, in the order N, E, S, W, that has open field (`EMPTY` or `TRAIL`) on its right and a rail cell ahead. If no heading qualifies, it keeps its current heading. With the field on their right, minions circle it clockwise.
-- **Known gap** *(D7)*. Where the rail is two cells thick (2-wide peninsulas, junctions), a minion whose right side faces the band instead of the field circles a 2×2 block forever. A quick simulation on random boards (not committed) measured this:
-  - with random starting headings, the draft's rule trapped minions in about 2% of runs;
-  - with the orientation step, about 0.15% of runs were still trapped.
+- **Movement.** Minions walk on rail cells only, one cell per move. [R4.7-1]
+- **Right-hand rule** (from the draft). A minion tries to turn right, then to go straight, then to turn left, then to turn back, and takes the first direction whose target is a rail cell. [R4.7-2]
+  - A minion with no direction leading to a rail cell, for example on a one-cell obstacle, stays in place and keeps its heading. [PIN-18]
+- **Orientation.** At spawn, at respawn and after every capture, a minion turns to the first heading, in the order N, E, S, W, that has open field (`EMPTY` or `TRAIL`) on its right and a rail cell ahead. If no heading qualifies, it keeps its current heading. With the field on their right, minions circle it clockwise. [R4.7-3]
+  - "On its right" is the 4-neighbor to the right of the minion's current cell, and "ahead" is the 4-neighbor in its heading. [PIN-06]
+  - Before its first orientation step a minion's heading is N, and every minion runs the orientation step at level start. [PIN-16]
+- **Known gap** *(D7)*. Where the rail is two cells thick (2-wide peninsulas, junctions), a minion whose right side faces the band instead of the field circles a 2×2 block forever. A quick simulation on random boards (not committed) measured this: <!-- rationale -->
+  - with random starting headings, the draft's rule trapped minions in about 2% of runs; <!-- rationale -->
+  - with the orientation step, about 0.15% of runs were still trapped. <!-- rationale -->
 
-  The orientation step helps but is not a guarantee. M1 must either prove the rule with the coverage property test (see the `parity-testing` skill) or replace it, for example with contour tracing of the field's boundary.
-- **Stranded minions.** After a capture, a minion whose cell is no longer on the rail is destroyed *(D7)*. The draft doesn't cover this case. Its respawn countdown starts at the level's respawn delay R and drops by one at step 5 of each tick. When it reaches zero, the minion respawns, oriented, at its spawn cell. If the spawn is no longer on the rail, it respawns at the first rail cell in row-major order instead.
+  The orientation step helps but is not a guarantee. M1 must either prove the rule with the coverage property below or replace it, for example with contour tracing of the field's boundary. <!-- rationale -->
+- **Coverage property** *(D7)*, which M1's property test checks. [PIN-14]
+  - Let C be the 4-connected component of rail cells that contains the minion's cell. Its target cells are all the cells of C, the border corners and other cells that touch open field only diagonally included. [R4.7-4]
+  - After its spawn and after each capture, while the rail stays unchanged, a minion is **trapped** if its (cell, heading) state repeats before it has visited every cell of C. [R4.7-5]
+  - There are at most 4 × |C| states, so this is the same as coverage being incomplete after 4 × |C| moves. [R4.7-6]
+- **Stranded minions.** After a capture, a minion whose cell is no longer on the rail is destroyed *(D7)*. The draft doesn't cover this case. Its respawn countdown starts at the level's respawn delay R and drops by one at step 5 of each tick. When it reaches zero, the minion respawns, oriented, at its spawn cell. If the spawn is no longer on the rail, it respawns at the first rail cell in row-major order instead. [R4.7-7]
+- **Lifecycle,** step by step. [PIN-17]
+  - At a capture (step 3), each live minion whose cell is no longer a rail cell is destroyed, with its countdown set to R. Every other live minion runs the orientation step. [R4.7-8]
+  - At step 5, minions are processed in index order. A destroyed minion's countdown drops by one, from the tick of its destruction on. At zero, the minion respawns, oriented, and does not move on that tick: a minion destroyed at tick t respawns at step 5 of tick t + R − 1. [R4.7-9]
+  - A live minion moves when `tick % period == 0`. [R4.7-10]
+  - A respawn cell always exists: the boss's body is always on `EMPTY` cells, so the rail is never empty. [R4.7-11]
 
 ### 4.8 Capture
 
-When a cut reaches `CLAIMED`:
+When a cut reaches `CLAIMED`: [R4.8-1]
 
-1. Mark every cell of the boss's body `BOSS_ZONE` and push it on a stack. With several bosses, do this for each one.
-2. Pop a cell. Mark each of its 4 neighbors that is `EMPTY` as `BOSS_ZONE`, and push it. Repeat until the stack is empty. `TRAIL` and `CLAIMED` stop the fill, so the trail acts as a wall.
-3. Make one pass over all 3,600 cells: `BOSS_ZONE` becomes `EMPTY`, and `EMPTY` and `TRAIL` become `CLAIMED`. The number of cells that became `CLAIMED` is the capture size.
+1. Mark every cell of the boss's body `BOSS_ZONE` and push it on a stack. With several bosses, do this for each one. [R4.8-2]
+2. Pop a cell. Mark each of its 4 neighbors that is `EMPTY` as `BOSS_ZONE`, and push it. Repeat until the stack is empty. `TRAIL` and `CLAIMED` stop the fill, so the trail acts as a wall. [R4.8-3]
+3. Make one pass over all 3,600 cells: `BOSS_ZONE` becomes `EMPTY`, and `EMPTY` and `TRAIL` become `CLAIMED`. The number of cells that became `CLAIMED` is the capture size. [R4.8-4]
 
-Why this procedure:
+Why this procedure: <!-- rationale -->
 
-- **No recursion.** A cell is marked when it is pushed, not when it is popped, so it is pushed at most once. A static stack of 3,364 entries can therefore never overflow. A recursive fill needs up to 3,364 nested calls, far beyond the RP2040's small default stack.
-- **Visit order doesn't matter.** The result depends only on which `EMPTY` cells are 4-connected to the boss's body. A stack, a queue or a scanline fill all give the same grid.
-- **The boss's side stays open, as one region.** Since the boss moves one axis at a time, it cannot cross a gap that is only diagonal, so it never reaches a cell that the fill treats as a separate region. The fill may include pockets narrower than the body, which the boss can't physically enter. They stay open because they connect to the boss's side: as in *Qix* and *Volfied*, a capture takes the regions without the boss, not the cells the boss can't reach.
-- **One pass instead of three.** The draft's steps 3–5 (claim unreached cells, convert the trail, revert `BOSS_ZONE`) collapse into the single pass of step 3.
+- **No recursion.** A cell is marked when it is pushed, not when it is popped, so it is pushed at most once. A static stack of 3,364 entries can therefore never overflow. A recursive fill needs up to 3,364 nested calls, far beyond the RP2040's small default stack. <!-- rationale -->
+- **Visit order doesn't matter.** The result depends only on which `EMPTY` cells are 4-connected to the boss's body. A stack, a queue or a scanline fill all give the same grid. <!-- rationale -->
+- **The boss's side stays open, as one region.** Since the boss moves one axis at a time, it cannot cross a gap that is only diagonal, so it never reaches a cell that the fill treats as a separate region. The fill may include pockets narrower than the body, which the boss can't physically enter. They stay open because they connect to the boss's side: as in *Qix* and *Volfied*, a capture takes the regions without the boss, not the cells the boss can't reach. <!-- rationale -->
+- **One pass instead of three.** The draft's steps 3–5 (claim unreached cells, convert the trail, revert `BOSS_ZONE`) collapse into the single pass of step 3. <!-- rationale -->
 
 ### 4.9 Hits, lives and respawn
 
-- **Hits.** The player is hit in four cases:
-  - the boss bumps into `TRAIL`;
-  - the player tries to step onto a cell of the boss's body. The move doesn't happen, so the body never covers the trail.
-  - the player and a minion share a cell after the minions have moved;
-  - a minion and the player swap cells in the same tick. Without this rule they would pass through each other. With fast cut, both sub-step cells count.
+- **Hits.** The player is hit in these cases: [R4.9-1]
+  - the boss bumps into `TRAIL`; [R4.9-2]
+  - the player tries to step onto a cell of the boss's body. The move doesn't happen, so the body never covers the trail. [R4.9-3]
+  - a minion meets the player at step 5: they share a cell, swap cells, or the minion stops on the cell a fast cut passed through, as the predicate below defines. [R4.9-4]
 
-  Hits set a single flag for the tick, so several hits in one tick count as one.
-- **Resolution** (at step 6), in this order:
-  1. If the player is invulnerable, nothing happens.
-  2. Otherwise, if B is held and a shield charge is left, the charge is spent and nothing else happens *(D6)*.
-  3. Otherwise, the player loses a life (see the next point).
-- **Losing a life.** The trail is erased. The player returns to the cut start, or stays in place if they were not cutting. They are then invulnerable during the 30 ticks (2 s) after the hit tick, or until they start a cut, whichever comes first. Without that limit, invulnerability would be a window for a risk-free cut.
-- **Respawn point.** The draft respawns the player at (30, 59). That stops working after the first capture along the bottom border: (30, 59) is no longer a rail cell, so a rail-bound player would be stuck there. The cut start, by contrast, is always a rail cell, because the rail only changes on capture.
+  Hits set a single flag for the tick, so several hits in one tick count as one. [R4.9-5]
+- **Minion hits,** exactly. [PIN-15]
+  - Let P0 be the player's cell at the start of step 3, and P1 … Pn the cells it actually entered at step 3, with n = 0, 1 or 2. [R4.9-6]
+  - For each minion present after step 5, let a be its cell at the start of step 5 and b its cell at the end of step 5. a = b if it did not move; a = b = its respawn cell if it respawned this tick. A destroyed minion has no cell and cannot hit. [R4.9-7]
+  - The minion hits the player if any of these holds: [R4.9-8]
+    - **share:** b = Pn; [R4.9-9]
+    - **swap:** a = Pk and b = Pk−1, for some k in 1 … n; [R4.9-10]
+    - **pass:** b = Pk for some k in 1 … n − 1, the intermediate fast-cut cell. [R4.9-11]
+  - A minion that moves into P0 after the player has left it does not hit. [R4.9-12]
+  - A minion that respawns at step 5 onto the player's cell hits the player, by the share case. [PIN-11]
+- **Resolution** (at step 6), in this order: [R4.9-13]
+  1. If the player is invulnerable, nothing happens. [R4.9-14]
+  2. Otherwise, if B is held and a shield charge is left, the charge is spent and nothing else happens *(D6)*. [R4.9-15]
+  3. Otherwise, the player loses a life (see the next point). [R4.9-16]
+- **Losing a life.** The trail is erased. The player returns to the cut start, or stays in place if they were not cutting. They are then invulnerable during the 30 ticks (2 s) after the hit tick, or until they start a cut, whichever comes first. Without that limit, invulnerability would be a window for a risk-free cut. [R4.9-17]
+  - A life lost at tick h makes the player invulnerable on ticks h + 1 to h + 30 inclusive. Starting a cut ends that invulnerability at step 3 of that tick, before that tick's collisions. [PIN-02]
+- **Respawn point.** The draft respawns the player at (30, 59). That stops working after the first capture along the bottom border: (30, 59) is no longer a rail cell, so a rail-bound player would be stuck there. The cut start, by contrast, is always a rail cell, because the rail only changes on capture. <!-- rationale -->
 
 ### 4.10 End of level
 
-The first condition met ends the level, in tick-step order:
+The first condition met ends the level, in tick-step order: [R4.10-1]
 
 | Condition | Step | Result |
 |---|---|---|
-| X pressed | 2 | Committed: claim kept, unfinished cut discarded |
-| `claim_bp` reaches the level's target (default 7,500) | 3 | Cleared |
-| No lives left (default 3) | 6 | Over, and the level scores zero *(D5)* |
-| Tick T − 1 processed (default T = 2,700, i.e. 3 min) | 7 | Over, claim kept |
+| X pressed | 2 | Committed: claim kept, unfinished cut discarded [R4.10-2] |
+| `claim_bp` ≥ the level's target (default 7,500) | 3 | Cleared [PIN-10] |
+| No lives left (default 3) | 6 | Over, and the level scores zero *(D5)* [R4.10-3] |
+| Tick T − 1 processed (default T = 2,700, i.e. 3 min) | 7 | Over, claim kept [R4.10-4] |
 
-Scoring zero when the lives run out is what gives Commit its purpose: bank the claim, or risk it for more.
+- **X at tick 0.** If the event at tick 0 holds X, the level is committed with claim 0, and ticks used is 1. [PIN-07]
+- **A clear wins the tick.** A clear at step 3 ends the level before that tick's hits are resolved. [PIN-09]
 
-**Ticks used** is the number of ticks processed: the index of the last tick, plus one. The core computes the level score from the season's scoring parameters ([§8.4](#84-season-scoring)).
+Scoring zero when the lives run out is what gives Commit its purpose: bank the claim, or risk it for more. <!-- rationale -->
+
+**Ticks used** is t + 1 when the level ends during tick t, whatever the step that ends it: the number of ticks processed. The core computes the level score from the season's scoring parameters ([§8.4](#84-season-scoring)). [PIN-08]
 
 ## 5. Levels
 
@@ -323,11 +354,12 @@ u16      eventCount
 eventCount × (u16 tick, u8 mask)
 ```
 
-**Rules version.** `RULES_VERSION` is bumped on every rule change. Each season names the rules version it accepts, and the referee rejects any other, so a journal is always replayed under the rules it was played with.
+**Rules version.** `RULES_VERSION` starts at 1 [PIN-13]. It is bumped on every behavior change: a change that alters the outcome, error code or trace of a committed vector, or that implements an edit to §4-§6 rule text made after the rule was first implemented. Implementing a frozen rule for the first time is not a behavior change. Each season names the rules version it accepts, and the referee rejects any other, so a journal is always replayed under the rules it was played with.
 
 **Strict decoding.** The decoder rejects a journal with any of these, as ethblockdigger's codec does:
 
 - an unknown format version, rules version or mode;
+- mode 2, reserved for Superchallenge: v1 decoders reject it until that mode returns [PIN-12];
 - a reserved bit set;
 - ticks that don't increase;
 - an event that doesn't change the mask;
@@ -580,7 +612,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players. **Proposed** qualification, settled in M0.7: the player's best run cleared at least one level. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)); 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
-| D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
+| D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-firmware`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
 
 ## Repository files
 

@@ -13,26 +13,26 @@ Each vector maps (level bytes, run nonce, journal bytes) to a per-tick trace of 
 
 **Coverage.** One vector per rule in README §4, plus long random games. Include at least:
 
-- each capture shape;
-- corner reflection and a corridor exactly as wide as the boss's body, for small and large bodies;
-- the player stepping onto a cell of the boss's body other than its top-left, such as the bottom-right cell, from the right and from below;
-- the swap collision;
-- a fast cut closing on its first sub-step;
-- the shield;
-- respawn after the bottom border was captured;
-- a player stranded off the rail by their own capture;
-- several hits in one tick, with and without a shield charge or invulnerability;
-- end conditions that meet on the same tick, such as clearing the level and losing the last life;
-- the Commit key;
-- the time limit, including events at tick T − 1 and T;
-- a full journal.
+- each capture shape [COV-01];
+- corner reflection and a corridor exactly as wide as the boss's body, for small and large bodies [COV-02];
+- the player stepping onto a cell of the boss's body other than its top-left, such as the bottom-right cell, from the right and from below [COV-03];
+- the swap collision [COV-04];
+- a fast cut closing on its first sub-step [COV-05];
+- the shield [COV-06];
+- respawn after the bottom border was captured [COV-07];
+- a player stranded off the rail by their own capture [COV-08];
+- several hits in one tick, with and without a shield charge or invulnerability [COV-09];
+- end conditions that meet on the same tick, such as clearing the level and losing the last life [COV-10];
+- the Commit key [COV-11];
+- the time limit, including events at tick T − 1 and T [COV-12];
+- a full journal [COV-13].
 
 ## Property tests
 
 - No cell of the boss's body is ever `CLAIMED` or `TRAIL`.
 - Captured cells only grow, so `claim_bp` never decreases.
 - A capture doesn't depend on visit order: a stack, a queue and a scanline fill give the same grid.
-- Minions stay on rail cells and cover their whole rail component, with no local loops. The draft's plain right-hand rule fails this where the rail is two cells thick (README §4.7), so run the test on random boards with captures happening mid-patrol.
+- Minions stay on rail cells and satisfy the coverage property of [README §4.7](../../../README.md#47-minions) (PIN-14): each covers its whole rail component, with no local loops. The draft's plain right-hand rule fails it where the rail is two cells thick, so run the test on random boards with captures happening mid-patrol.
 - Journals survive an encode/decode round trip, and malformed journals are rejected.
 
 ## Differential fuzzing
