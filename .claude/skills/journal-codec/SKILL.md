@@ -8,6 +8,7 @@ description: Use when touching any byte format shared between the device, the br
 README §6 defines the formats. Rules for implementing them:
 
 - **One implementation, in the core.** Every target calls it. The browser and the contracts never re-encode by hand.
+  - The contracts never parse journal bytes or compute the draw: the referee returns the decoded header fields and the draw slot (README §7.3). They only hash journals, for the run commitment, and derive the run nonce, which the core never does (README §6.4).
 - **Big-endian, fixed width, no memory dumps.** C struct padding makes `{ uint16_t tick; uint8_t mask; }` 4 bytes long, not 3.
 - **Strict decoders,** in the order and with the codes of README §6.3 and §5. Return the first broken rule's code.
   - The journal decoder rejects what the bytes alone show: truncation or trailing bytes; an unknown format version, rules version or mode, mode 2 included until Superchallenge returns (PIN-12); a `levelIndex` of 6 or more; an `eventCount` above 2,700; a tick of 2,700 or more; ticks that don't increase; reserved bits; events that don't change the mask.

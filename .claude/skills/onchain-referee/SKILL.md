@@ -9,7 +9,7 @@ description: Use when designing or writing smart contracts for Jiro-ikusu — ru
 
 - **Money lives in Solidity.** Reuse ethblockdigger's patterns (README §10): pay-then-reveal entropy, commit-then-settle (with Jiro's duration-based deadline), keyless settlement, the solvency invariant, `Season`.
 - **Verification runs the one core,** never a second implementation of the rules in Solidity (D1). The core either runs as a Stylus contract that replays the journal, or as a zkVM guest whose proof is verified onchain (README §7.3, D2).
-- **One verifier interface.** Settlement calls `verify(journal) → outcome`, like ethblockdigger's `IReferee`, whatever the backend.
+- **One verifier interface,** `IReferee` (README §7.3), whatever the backend: `verifyRun` for a whole run, `verify` for one level, and `rulesVersion`. The referee returns the decoded header fields and the draw slot in each Outcome, so the contracts never parse journal bytes or compute the draw.
 
 ## Cost: measure, don't assume
 
@@ -21,7 +21,7 @@ description: Use when designing or writing smart contracts for Jiro-ikusu — ru
 ## Security
 
 - **Never accept a seed or a score from the client.** The seed comes from pay-then-reveal; the score comes from the referee.
-- **Bind every journal to its run.** The journal header's `runNonce` and `levelId` must match the stored run, so copying someone else's winning journal fails. Its `rulesVersion` must match the season's.
+- **Bind every journal to its run.** Each Outcome's `runNonce`, `journalHash` and `levelIndex` must match the run being settled, so copying someone else's winning journal fails. Its `levelId` must be the season's level in its `drawSlot`, its `mode` 1, and its `rulesVersion` the season's (README §7.2).
 - **Enforce the commit deadline at settlement:** reveal time, plus the journals' ticks used at 15 Hz, plus the slack (README §7.2). Never use a fixed window; it leaves the unused time of early-ending levels free for retries and practice.
 - **Decode strictly** (README §6.3) and reject anything malformed.
 - **Native ETH (D12).** Require `msg.value` to equal the season's fee exactly. Pay out by pull (claims and withdrawals), never by push, and follow checks-effects-interactions in every function that sends ETH.
