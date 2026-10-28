@@ -1,6 +1,6 @@
 ---
 name: onchain-referee
-description: Use when designing or writing smart contracts for Jiro Ikusu — run purchase, entropy, journal commit and settlement, seasons — or the onchain verifier that runs the game core on journals (Stylus referee or zkVM proof verifier). Pair with the ethskills `ship` skill for current Ethereum facts.
+description: Use when designing or writing smart contracts for Jiro-ikusu — run purchase, entropy, journal commit and settlement, seasons — or the onchain verifier that runs the game core on journals (Stylus referee or zkVM proof verifier). Pair with the ethskills `ship` skill for current Ethereum facts.
 ---
 
 # Onchain referee and contracts
@@ -24,7 +24,7 @@ description: Use when designing or writing smart contracts for Jiro Ikusu — ru
 - **Bind every journal to its run.** The journal header's `runNonce` and `levelId` must match the stored run, so copying someone else's winning journal fails. Its `rulesVersion` must match the season's.
 - **Enforce the commit deadline at settlement:** reveal time, plus the journals' ticks used at 15 Hz, plus the slack (README §7.2). Never use a fixed window; it leaves the unused time of early-ending levels free for retries and practice.
 - **Decode strictly** (README §6.3) and reject anything malformed.
-- **USDC has 6 decimals.** Use `SafeERC20`.
+- **Native ETH (D12).** Require `msg.value` to equal the season's fee exactly. Pay out by pull (claims and withdrawals), never by push, and follow checks-effects-interactions in every function that sends ETH.
 - **Make periodic actions permissionless.** Season close must be callable by anyone, with a reason to call it.
 - **No private keys** in the settlement path.
 - **Never use `block.prevrandao` on Arbitrum,** where it is a constant.

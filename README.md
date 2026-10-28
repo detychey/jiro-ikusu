@@ -1,8 +1,8 @@
-# Jiro Ikusu
+# Jiro-ikusu
 
 A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It runs on a Raspberry Pi Pico fitted with a Waveshare Pico-LCD-1.3, and in the browser.
 
-> **Status: specification, no code yet.** This README is the project specification. It is built from [`plan-draft.md`](plan-draft.md), the original draft (kept for reference). It also fixes the parts of the draft that would break determinism or the economics, and lists the decisions still open in [§13](#13-open-decisions). A rule that depends on an open decision is tagged with its ID, e.g. *(D3)*.
+> **Status: specification, no code yet.** This README is the project specification. It is built from [`plan-draft.md`](plan-draft.md), the original draft (kept for reference). It also fixes the parts of the draft that would break determinism or the economics, and records the decisions, taken and still open, in [§13](#13-open-decisions). A rule tied to a decision is tagged with its ID, e.g. *(D3)*.
 
 ## Contents
 
@@ -22,7 +22,7 @@ A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and
 
 ## 1. Concept
 
-The player moves along the edge of a 60×60 field. Leaving the edge draws a trail, and reaching the edge again captures every region the boss cannot reach. The boss bounces around the open field and kills the player if it touches the trail, while minions patrol the edges. Claiming enough of the field clears the level.
+The player moves along the edge of a 60×60 field. Leaving the edge draws a trail, and reaching the edge again captures every region without the boss. The boss bounces around the open field and kills the player if it touches the trail, while minions patrol the edges. Claiming enough of the field clears the level.
 
 Every game must be replayable, bit for bit, by a smart contract:
 
@@ -33,7 +33,7 @@ Every game must be replayable, bit for bit, by a smart contract:
 There are three modes ([§8](#8-game-modes-and-economy)):
 
 - **Training:** free, all 16 levels.
-- **Challenge:** $0.10 for 6 random levels, with a seasonal ranking and rewards.
+- **Challenge:** 0.00005 ETH for 6 random levels, with a seasonal ranking and rewards.
 - **Superchallenge:** player-minted maps with bounties, deferred ([`TODO.md`](TODO.md)).
 
 ## 2. Hardware target
@@ -67,6 +67,8 @@ The draft names the keys Key0–Key3. They map to A, B, X, Y in that order *(D8)
 | Key3 = Y, joystick press | Unused and not journaled |
 
 The draft's Key2 is "Commit/Forfeit (ends game immediately)". Here it ends the current level, not the whole run, and the level keeps its claim.
+
+**In the browser, the keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome.
 
 Everything is allocated statically. The RP2040 has 270,336 bytes of SRAM:
 
@@ -113,7 +115,7 @@ A tick changes only a handful of cells. So the renderer redraws the changed 4×4
 - **On-chain targets are Rust-first.** Stylus contracts and zkVM guests (RISC Zero, SP1) are written in Rust, so the core can become the onchain referee or a proof guest without a port.
 - **No undefined behavior.** Overflow can be made explicit everywhere: `wrapping_*` and `checked_*` in the code, plus `overflow-checks = true` in every build profile so that debug and release builds behave the same.
 
-The Pico shell can be written in Rust (`embassy-rp`). Or it can be the draft's C++ on the Pico SDK, linking the core as a static library through a C ABI. Either way, the rules exist exactly once.
+**Firmware shell: Rust on `embassy-rp`** *(D1)*. The shell uses the core as an ordinary Rust dependency, and the firmware builds with cargo alone, without `arm-none-eabi-gcc`. The draft's C++ on the Pico SDK would have linked the core as a static library through a C ABI. Either way, the rules exist exactly once.
 
 ## 4. Game rules
 
@@ -148,7 +150,7 @@ All entity fields are small integers:
 | Entity | State |
 |---|---|
 | Player | position; cutting flag; cut start cell; lives; shield charges; invulnerability ticks; previous direction; slow-move phase |
-| Boss | position; vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) |
+| Boss | position (the top-left cell of its body); body size B (set per level); vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) |
 | Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period; respawn countdown |
 
 ### 4.4 Tick order
@@ -181,26 +183,31 @@ Once per tick, in this order:
 
 ### 4.6 Boss
 
-The boss moves one axis at a time and inverts the velocity component that hits something:
+The boss is a square body of B × B cells *(D9)*, closer to *Volfied* than the draft's single cell. B is set per level ([§5](#5-levels)); its position (x, y) is the top-left cell of the body. The body only ever covers `EMPTY` cells.
+
+The boss moves one axis at a time, testing the whole leading edge of its body, and inverts the velocity component that hits something:
 
 ```text
 if the boss moves this tick:
-    c = cell(x + vx, y)
-    if c is CLAIMED or TRAIL:  vx = -vx;  if c is TRAIL: the player is hit
-    else:                      x = x + vx
-    c = cell(x, y + vy)                    # uses the x just computed
-    if c is CLAIMED or TRAIL:  vy = -vy;  if c is TRAIL: the player is hit
-    else:                      y = y + vy
+    edge = the B cells of column x + B (if vx = +1) or x − 1 (if vx = −1), rows y to y + B − 1
+    if any edge cell is CLAIMED or TRAIL:  vx = -vx;  if any is TRAIL: the player is hit
+    else:                                  x = x + vx
+    edge = the B cells of row y + B (if vy = +1) or y − 1 (if vy = −1), columns x to x + B − 1
+                                           # uses the x just computed
+    if any edge cell is CLAIMED or TRAIL:  vy = -vy;  if any is TRAIL: the player is hit
+    else:                                  y = y + vy
 ```
+
+The edge cells always exist: the body stays inside the border, which is `CLAIMED`. With B = 1 the procedure tests single cells.
 
 The draft tests `grid[next_x][y]` and `grid[x][next_y]` from the same starting cell, then moves diagonally. That puts the boss inside a wall in two cases:
 
 - **Outside corner:** both side cells are open but the diagonal cell is solid.
-- **One-cell corridor:** after flipping, the new direction points into the opposite wall.
+- **Corridor as wide as the boss:** after flipping, the new direction points into the opposite wall.
 
-Testing one axis at a time, with the second test made after the first move, never enters a solid cell and needs no special cases. This is how the Xonix reference moves its enemies ([§11](#11-reference-implementations)).
+Testing one axis at a time, with the second test made after the first move, never enters a solid cell and needs no special cases. This is how the Xonix reference moves its enemies ([§11](#11-reference-implementations)). A quick simulation (not committed) ran bodies with B = 2, 3, 5 and 7 for 3,000 ticks on 232 random boards, and no body ever covered a cell that wasn't `EMPTY`.
 
-The boss is a single cell *(D9)*. The draft starts it at (30, 30). Here the level defines a spawn area, and the level seed picks the start cell inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)).
+The draft starts the boss at (30, 30). Here the level defines a spawn area, the set of cells where the body's top-left cell may start. The level seed picks the start position inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)).
 
 ### 4.7 Minions
 
@@ -218,22 +225,22 @@ The boss is a single cell *(D9)*. The draft starts it at (30, 30). Here the leve
 
 When a cut reaches `CLAIMED`:
 
-1. Mark the boss cell `BOSS_ZONE` and push it on a stack. With several bosses, do this for each one.
+1. Mark every cell of the boss's body `BOSS_ZONE` and push it on a stack. With several bosses, do this for each one.
 2. Pop a cell. Mark each of its 4 neighbors that is `EMPTY` as `BOSS_ZONE`, and push it. Repeat until the stack is empty. `TRAIL` and `CLAIMED` stop the fill, so the trail acts as a wall.
 3. Make one pass over all 3,600 cells: `BOSS_ZONE` becomes `EMPTY`, and `EMPTY` and `TRAIL` become `CLAIMED`. The number of cells that became `CLAIMED` is the capture size.
 
 Why this procedure:
 
 - **No recursion.** A cell is marked when it is pushed, not when it is popped, so it is pushed at most once. A static stack of 3,364 entries can therefore never overflow. A recursive fill needs up to 3,364 nested calls, far beyond the RP2040's small default stack.
-- **Visit order doesn't matter.** The result depends only on which cells the boss can reach. A stack, a queue or a scanline fill all give the same grid.
-- **4 neighbors match the boss's movement.** Since the boss moves one axis at a time, it cannot cross a gap that is only diagonal. So it never reaches a cell that the fill treats as a separate region.
+- **Visit order doesn't matter.** The result depends only on which `EMPTY` cells are 4-connected to the boss's body. A stack, a queue or a scanline fill all give the same grid.
+- **The boss's side stays open, as one region.** Since the boss moves one axis at a time, it cannot cross a gap that is only diagonal, so it never reaches a cell that the fill treats as a separate region. The fill may include pockets narrower than the body, which the boss can't physically enter. They stay open because they connect to the boss's side: as in *Qix* and *Volfied*, a capture takes the regions without the boss, not the cells the boss can't reach.
 - **One pass instead of three.** The draft's steps 3–5 (claim unreached cells, convert the trail, revert `BOSS_ZONE`) collapse into the single pass of step 3.
 
 ### 4.9 Hits, lives and respawn
 
 - **Hits.** The player is hit in four cases:
   - the boss bumps into `TRAIL`;
-  - the player tries to step onto the boss's cell. The move doesn't happen, so the boss never stands on the trail.
+  - the player tries to step onto a cell of the boss's body. The move doesn't happen, so the body never covers the trail.
   - the player and a minion share a cell after the minions have moved;
   - a minion and the player swap cells in the same tick. Without this rule they would pass through each other. With fast cut, both sub-step cells count.
 
@@ -267,7 +274,7 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 | Field | Meaning |
 |---|---|
 | Obstacles | Cells that start `CLAIMED` (a 3,600-bit bitmap, 450 bytes) |
-| Boss | Spawn area; move period |
+| Boss | Body size B, the side of the square body (B = 2 to 8, default 5); spawn area, the cells where the body's top-left cell may start; move period |
 | Minions | Count (0–3); spawn cells; move period; respawn delay R |
 | Rules | Time limit (at most 2,700 ticks), lives, target claim. Defaults: 2,700 ticks, 3 lives, 7,500 bp. |
 
@@ -276,12 +283,12 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 **Validity.** The core checks every level before play. A valid level meets five conditions:
 
 - the open area is a single 4-connected region, at least a minimum size (threshold frozen in M0);
-- the boss spawn area lies inside that region;
+- from every cell of the boss spawn area, the B × B body lies inside that region;
 - every minion spawn is a rail cell;
 - the player start (30, 59) is a rail cell;
 - the time limit is at most 2,700 ticks, the size of the static journal buffer ([§6.2](#62-events)).
 
-**The 16 levels** ramp up difficulty with the knobs in the table above: boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the season 1 scoring weights ([§8.4](#84-season-scoring)).
+**The 16 levels** ramp up difficulty with the knobs in the table above: boss body size, boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the season 1 scoring weights ([§8.4](#84-season-scoring)).
 
 **The level editor** in the browser produces level bytes, and the 16 levels are authored with it. The Superchallenge map generator is deferred with its mode.
 
@@ -334,7 +341,7 @@ eventCount × (u16 tick, u8 mask)
 ### 6.4 Seeds and commitments
 
 - **Level seed:** `keccak256("jiro.level" ‖ runNonce ‖ levelIndex)`.
-  - **What it decides.** The core derives two things from it with a fixed procedure, frozen in M0: the boss start cell inside the level's spawn area, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
+  - **What it decides.** The core derives two things from it with a fixed procedure, frozen in M0: the boss's start position (its body's top-left cell) inside the level's spawn area, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
   - **Once per level.** keccak256 runs once per level, never per tick: v1 has no per-tick randomness.
   - **Packing.** Inputs are packed as Solidity's `abi.encodePacked` would pack them: the tag as ASCII bytes, `runNonce` as 32 bytes, `levelIndex` as one byte.
   - **Domain tags.** Every derivation has its own tag, so two derivations never share an input.
@@ -399,10 +406,10 @@ So the verifier runs the Rust core itself, in one of two ways:
   Among the frameworks that pass, measured cycles and price decide. If the best-tooled zkVM still targets 32-bit RISC-V, that's fine: the core builds unchanged for either width.
 - **A naming clash.** Brevis's zkVM is also called Pico. In this repository, "Pico" always means the Raspberry Pi board.
 
-**Proposed approach *(D2)*:**
+**Agreed approach *(D2)*:**
 
 1. **Measure first.** In M1, try two or three zkVMs hands-on, pick the one with the best tooling, and run the golden vectors in its executor. Executors run a guest without proving it, which yields cycle counts per level, and cycles set the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
-2. **Verify by exception.** Playing a run costs one small commit transaction, and its journals are published so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its $0.10 entry fee, even on Stylus. The payout curve *(D10)* sets how many runs need verifying.
+2. **Verify by exception.** Playing a run costs one small commit transaction, and its journals are published so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its 0.00005 ETH entry fee, even on Stylus. The payout curve *(D10)* sets how many runs need verifying.
 3. **One verifier interface.** Settlement calls `verify(journal) → outcome`, like ethblockdigger's `IReferee`, backed either by the Stylus referee or by a proof verifier. The money contracts don't change when the backend does.
 4. **Stylus first, zk as the fallback.** If activations reopen, the Stylus referee needs no prover infrastructure. If they don't, each verified run gets a zk proof, and a season's proofs are aggregated so verification gas stays nearly constant.
 
@@ -421,20 +428,37 @@ The levers are economic and social:
 
 **This is the main product risk of the paid modes.**
 
+### 7.5 Later version: proving service
+
+Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadmap)). In v1, whoever settles a run produces its proof. On Stylus there is no proof. On zk, players hand their run files to the operator before a cutoff, and the operator proves and settles them, on its own machines or through a hosted prover network on its own capped account ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M4.8, M5.5). In the later version, a third-party proving service replaces that handoff. The player, or the dApp, sends the run file (run id, run nonce, level bytes, journals) to the service's API, and the service returns the proof and settles the run. Prover marketplaces such as Succinct's prover network and RISC Zero's Boundless already sell proofs this way. Neither the Pico nor the browser ever proves anything: proving needs gigabytes of memory, and ideally a GPU.
+
+**The service is an untrusted prover, not an oracle.** An oracle's answer is believed; a proof is checked by the contract. So:
+
+- **No new trust.** A proof only attests the outcome the journals actually produce, so a compromised service cannot mint prizes. The worst it can do is refuse or delay. The contracts never accept the service's signature or word in place of a proof: that is the oracle design ethblockdigger rejected, where one compromised key could pay out.
+- **The payout goes to the run's player, whoever submits.** As in v1's settlement ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M0.7), anyone may submit and the credit goes to the run's player: each outcome carries the run nonce and its journal hash, which settlement checks against the run's stored nonce and commitment. The service can therefore settle a run without being able to redirect the money. A journal copied into another run fails, because journals are bound to their run's nonce ([§6.4](#64-seeds-and-commitments)).
+- **Gasless claims need a new `Season`.** v1's claim pays only its caller and takes no fee. For the service to claim on a player's behalf and keep a relay fee, a new `Season` generation adds a claim that pays the player's share minus a fee the player signed (EIP-712), and a relay-fee cap among the parameters each season commits at open. Without the player's signature, anyone could claim for any player and take the fee.
+- **Someone pays for proving:** the player up front, the payout (through that signed claim), or the protocol (from the rake). Verify by exception still applies: only runs that money depends on need a proof ([§7.3](#73-verification-cost)).
+- **The commit never waits for the service.** The dApp commits the run commitment itself, as in v1 ([§7.2](#72-run-flow)), and the service only receives the run after the commit. Proving can happen any time before the season's end plus its settlement grace: days after the commit, for a run played early in the season.
+- **Proving stays permissionless.** If the service refuses, the player, a second provider or the operator can produce the same proof.
+- **Effect on the backend.** v1 can already use zk without running prover infrastructure, through the operator's hosted-prover account. The service takes the operator out of the loop: players no longer hand off run files before a cutoff, and proving is paid per run *(D2)*. The deciding number is the proving price per verified run, which M1 and M4 measure, against the payout it unlocks, which the testnet season shows (M5).
+- **The device.** Nothing changes on the standard Pico: the journals still reach the dApp over USB, and the dApp commits them ([§6.5](#65-device-to-browser-link)). A Pico W or Pico 2 W could upload the run file to the service over Wi-Fi after the commit. Leaving the browser only to buy the run would need another contract change: v1's reveal and commit accept only the player, so the device would need a reveal and a commit signed by the player, or a session key the player registers.
+
+**Unchanged:** determinism, the journal format, the one core, and the bot risk ([§7.4](#74-bots)). A proof shows that a score is reachable, not that a human played.
+
 ## 8. Game modes and economy
 
-Amounts are in USDC, which has 6 decimals: $1 = `1_000_000`, $0.10 = `100_000`, $0.01 = `10_000`.
+Amounts are in native ETH *(D12)*, and the contracts hold them in wei: 0.00005 ETH = `50_000_000_000_000` wei. Each season commits its fee when it opens ([§8.4](#84-season-scoring)), so the fee can follow the ETH price from one season to the next.
 
 ### 8.1 Training: free
 
 All 16 levels, offline, on the Pico or in the browser. Scores stay local and no wallet is needed. Training uses the current season's rules and scoring, so practice carries over.
 
-### 8.2 Challenge: $0.10 per run
+### 8.2 Challenge: 0.00005 ETH per run
 
 - **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a Fisher–Yates shuffle driven by `keccak256("jiro.draw" ‖ runNonce ‖ i)`, with `i` packed as one byte. The exact procedure is frozen in M0.
 - **Score.** The run score is the sum of the six level scores.
 - **Ranking.** Players are ranked by their best settled run of the season *(D10)*. Ranking by cumulative score would let spending buy rank.
-- **Rewards.** The season pot is the entry fees minus a rake capped at 20%, as in ethblockdigger's `Season`, including its rollover of empty seasons and its claims. The pot is shared pro-rata among qualified players; ethblockdigger chose pro-rata because top-heavy payouts invite collusion when there are few players. Top-K payouts are the alternative *(D10)*.
+- **Rewards.** The season pot is the entry fees minus a rake capped at 20%, as in ethblockdigger's `Season`, including its rollover of empty seasons and its claims. The pot is shared pro-rata among qualified players *(D10)*; ethblockdigger chose pro-rata because top-heavy payouts invite collusion when there are few players.
 - **Sybils.** Fees are paid at run start, so every point costs money, and extra wallets only pay off if they also play well.
 
 ### 8.3 Superchallenge: deferred
@@ -464,15 +488,16 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 | **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
 | **M5** dApp and season 1 | Wallet, Web Serial bridge to the Pico, Challenge UX, a testnet season | none | A full season closes and pays out on testnet |
 | **M6** Superchallenge | Deferred, see [`TODO.md`](TODO.md) | none | Not scheduled |
+| **Later** Proving service | A third-party service proves and settles runs through an API, with gasless claims ([§7.5](#75-later-version-proving-service)) | none | Not scheduled |
 
 ## 10. Reuse from ethblockdigger
 
 [ethblockdigger](https://github.com/detychey/ethblockdigger) already solves most of this project's onchain problems. The draft names three things to reuse: $1 map mints, $0.01 plays, and the season and payout concepts. There is more:
 
-| ethblockdigger component | Source | Use in Jiro Ikusu |
+| ethblockdigger component | Source | Use in Jiro-ikusu |
 |---|---|---|
 | Pay-then-reveal entropy | `contracts/src/ArbBlockhashEntropy.sol`, `contracts/src/interfaces/IEntropySource.sol` | Run nonces and map seeds |
-| `Vault`: USDC ledger, solvency invariant, the start → reveal → commit → settle flow | `contracts/src/Vault.sol` | Challenge runs. ethblockdigger ties runs to the map owner and pays out the map's backing; Jiro runs are bought by any player and record a score. |
+| `Vault`: USDC ledger, solvency invariant, the start → reveal → commit → settle flow | `contracts/src/Vault.sol` | Challenge runs, paid in native ETH instead of USDC. ethblockdigger ties runs to the map owner and pays out the map's backing; Jiro runs are bought by any player and record a score. |
 | `Season`: rake capped at 20%, empty-season rollover, pro-rata claims | `contracts/src/Season.sol` | Challenge seasons. Its points still come from an oracle-posted Merkle root. ethblockdigger plans to accrue points onchain instead; Jiro needs that from the start (best settled score per player). |
 | `MapNFT` with an onchain-rendered `tokenURI` | `contracts/src/MapNFT.sol`, `referee/map-renderer` | Superchallenge maps, if that mode comes back ([`TODO.md`](TODO.md)) |
 | Referee crate: `no_std` Rust core, Stylus `verify(bytes)`, pinned wasm build | `referee/core`, `referee/stylus`, `referee/build-wasm.sh` | Template for the Jiro core and referee |
@@ -484,7 +509,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 
 Before reusing, note:
 
-- **Prices differ.** ethblockdigger charges 0.02 USDC per run, against the draft's $0.10 Challenge run and $0.01 Superchallenge run.
+- **Prices and currency differ.** ethblockdigger charges 0.02 USDC per run, against the draft's $0.10 Challenge run and $0.01 Superchallenge run. Jiro charges 0.00005 ETH per Challenge run in native ETH *(D12)*, so `Vault`'s SafeERC20 transfers become a `msg.value` check at run start and pull-based payouts.
 - **Not audited, not live.** ethblockdigger's testnet deployment is superseded and waiting for a full redeploy, which needs Stylus activations ([§7.3](#73-verification-cost)). Its own docs require a professional audit before mainnet.
 - **Known residuals come along.** For example, a player can compute their run nonce up to 256 Arbitrum blocks before the reveal starts the commit deadline: about a minute at 0.25 s per block (ethblockdigger `TOKENOMICS.md` §6.2).
 - **Chain coupling.** `ArbBlockhashEntropy` relies on Arbitrum's ArbSys precompile; `block.prevrandao` is a constant on Arbitrum. Moving off Arbitrum needs a new entropy source.
@@ -508,7 +533,7 @@ Corrections to the draft:
 
 What Jiro takes from them, by mechanic:
 
-- **Grid:** volfied_clone's flat byte array, with the trail stored in the grid (state 2) instead of a list. "Does the boss touch the trail?" then costs one lookup instead of a scan of the whole trail.
+- **Grid:** volfied_clone's flat byte array, with the trail stored in the grid (state 2) instead of a list. "Does the boss touch the trail?" then costs one lookup per cell of the boss's leading edge instead of a scan of the whole trail.
 - **Flood fill:** volfied_clone's explicit stack and multi-seed start, Xonix's single sweep, and Qixie's lesson: size the explicit stack for the worst case before the hardware finds it for you ([§4.8](#48-capture)).
 - **Enemy reflection:** Xonix's one-axis-at-a-time inversion, on cells and with fixed ±1 velocities ([§4.6](#46-boss)).
 - **Avoid in all of them:** frame-timed updates (`requestAnimationFrame`, or a `QTimer` with a float accumulator), platform `rand()`, and float physics.
@@ -543,19 +568,19 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 
 | ID | Decision | Recommendation |
 |---|---|---|
-| D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target. Still open: the shell, either Rust (`embassy-rp`) for a single toolchain, or the draft's C++ on the Pico SDK linking the core. |
-| D2 | Verification backend | Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
-| D3 | Player movement on claimed cells | Rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. Free movement, as in *Xonix*, lets the player hide from them. |
-| D4 | Trail rules | The own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1 |
-| D5 | Level defaults, and running out of lives | 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
-| D6 | Shield (B) | One charge per level; an absorbed hit costs the charge and nothing else |
-| D7 | Minion patrol rule, and minions stranded by a capture | Start from the right-hand rule with the orientation step ([§4.7](#47-minions)), and replace it in M1 if the coverage property test still finds traps. Stranded minions are destroyed and respawn after R ticks. |
-| D8 | Key mapping | Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. |
-| D9 | Boss size | One cell for v1. A larger body, closer to *Volfied*, changes every reflection test, so decide before M1. |
-| D10 | Challenge ranking and payout | Best settled run per season; pro-rata payout among qualified players, for example those with at least one cleared level |
+| D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target; firmware shell: Rust on `embassy-rp`, built with cargo alone (owner, 2026-10-28). M0.2's blinky build confirms it. |
+| D2 | Verification backend | **Agreed on 2026-10-28:** Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
+| D3 | Player movement on claimed cells | **Decided:** rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. |
+| D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
+| D5 | Level defaults, and running out of lives | **Decided:** 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
+| D6 | Shield (B) | **Decided:** one charge per level; an absorbed hit costs the charge and nothing else. |
+| D7 | Minion patrol rule, and minions stranded by a capture | **Agreed on 2026-10-28, provisional:** the right-hand rule with the orientation step ([§4.7](#47-minions)), kept if M1's coverage property test finds no traps; otherwise replaced in M1, or kept with a bounded trap rate the owner accepts. Stranded minions are destroyed and respawn after R ticks. |
+| D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. In the browser, players can rebind the keyboard keys ([§2](#2-hardware-target)). |
+| D9 | Boss size | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. |
+| D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players. **Proposed** qualification, settled in M0.7: the player's best run cleared at least one level. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
-| D12 | Chain, currency, season length | USDC on Arbitrum One, reusing ethblockdigger's contracts. One-month seasons, as in ethblockdigger's spec; its testnet `Season` contract uses 14 days. |
-| D13 | Names | The name is settled in [`name.md`](name.md): ジロイクス, *Jirō-ikusu*. Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
+| D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)); 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
+| D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
 
 ## Repository files
 

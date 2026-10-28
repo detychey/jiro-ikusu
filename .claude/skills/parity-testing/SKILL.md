@@ -14,7 +14,8 @@ Each vector maps (level bytes, run nonce, journal bytes) to a per-tick trace of 
 **Coverage.** One vector per rule in README §4, plus long random games. Include at least:
 
 - each capture shape;
-- corner reflection and the one-cell corridor;
+- corner reflection and a corridor exactly as wide as the boss's body, for small and large bodies;
+- the player stepping onto a cell of the boss's body other than its top-left, such as the bottom-right cell, from the right and from below;
 - the swap collision;
 - a fast cut closing on its first sub-step;
 - the shield;
@@ -28,7 +29,7 @@ Each vector maps (level bytes, run nonce, journal bytes) to a per-tick trace of 
 
 ## Property tests
 
-- The boss never occupies `CLAIMED` or `TRAIL`.
+- No cell of the boss's body is ever `CLAIMED` or `TRAIL`.
 - Captured cells only grow, so `claim_bp` never decreases.
 - A capture doesn't depend on visit order: a stack, a queue and a scanline fill give the same grid.
 - Minions stay on rail cells and cover their whole rail component, with no local loops. The draft's plain right-hand rule fails this where the rail is two cells thick (README §4.7), so run the test on random boards with captures happening mid-patrol.

@@ -48,6 +48,6 @@ The commit deadline counts the time the journals actually took to play (README Â
 - The on-device test build replays every vector in `vectors/` and prints state hashes identical to the native build.
 - The build's map file shows static memory and stack usage fitting with margin.
 
-## Open decision D1
+## Shell language (D1)
 
-The shell language is still open: Rust (`embassy-rp`), or C++ on the Pico SDK linking the core as a static library through a C ABI. Either way, the core is linked, never ported.
+The shell is Rust on `embassy-rp`, in its own Cargo workspace, built with cargo alone into a UF2. It uses the core as an ordinary crate: the core is linked, never ported.

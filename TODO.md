@@ -13,6 +13,8 @@ Deferred on 2026-10-26, after the specification review in [detychey/jiro-ikusu#1
 - Once the map has been completed once, the minter claims half of its leftover value.
 - Any player can then pay $0.01 per run to beat the minter's score, and win half of the accumulated value.
 
+The project's currency is native ETH ([README §13](README.md#13-open-decisions), D12). On 2026-10-28 the owner suggested 0.0005 ETH per map and 0.000005 ETH per play on a map for this mode, the draft's 100:1 ratio of $1 to $0.01; the proposal below uses them.
+
 ### Problems
 
 1. **The minter can always play their own map.** Wallets are free, so "beat the minter" cannot exclude the minter. The minter also knows the layout before minting, so they can practice or search it offline. They can then mint, set a strong score, let challengers fill the pot, and take the pot with a better run from a second wallet. The draft's design turns maps into honeypots.
@@ -29,9 +31,9 @@ Deferred on 2026-10-26, after the specification review in [detychey/jiro-ikusu#1
 
 | | |
 |---|---|
-| Mint | $1 buys a map NFT (ethblockdigger's `MapNFT`). The layout is either random, from a pay-then-reveal seed, or hand-made and passing the validity check. |
+| Mint | 0.0005 ETH buys a map NFT (ethblockdigger's `MapNFT`). The layout is either random, from a pay-then-reveal seed, or hand-made and passing the validity check. |
 | Opening | The map opens to challengers after its first verified clear, normally the minter's. That run sets the opening record. |
-| Runs | $0.01 each. Every run gets its own post-payment seed for the spawns, so a journal prepared for one run is useless in another, and the minter's only edge is knowing the layout. That seed needs a start transaction per run, so prepaying runs in batches would save token transfers but not transactions. Problem 5 stays open: price runs higher, or accept gas comparable to the fee. |
+| Runs | 0.000005 ETH each. Every run gets its own post-payment seed for the spawns, so a journal prepared for one run is useless in another, and the minter's only edge is knowing the layout. That seed needs a start transaction per run, and the ETH fee travels in that transaction, so prepaying runs in batches would save nothing. Problem 5 stays open: price runs higher, or accept gas comparable to the fee. |
 | Fee split | Illustrative: 70% bounty pot, 20% minter royalty, 10% protocol. The minter earns when the map is played, not when challengers fail. |
 | Record | Taking the record requires a minimum improvement, e.g. +1% claim. |
 | Payout | The map runs in rounds of, e.g., 7 days. A round is extended if the record changes in its last hour, so a record can't be sniped at the bell. The record holder at the end of the round takes that round's pot. Beating your own record from a second wallet earns nothing extra. |
@@ -45,3 +47,7 @@ Deferred on 2026-10-26, after the specification review in [detychey/jiro-ikusu#1
 - **A map generator.** It turns a seed into level bytes: it draws obstacle shapes from the seed, then runs the validity check. If the check fails, the next attempt uses the next derived seed, so generation stays deterministic. The browser level editor already produces the same bytes for hand-made maps.
 - **Map NFT and onchain rendering:** ethblockdigger's `MapNFT` and its Stylus map renderer ([README §10](README.md#10-reuse-from-ethblockdigger)). The renderer is subject to the same activation pause as the referee.
 - **Journal mode:** the journal's `mode` value 2 is reserved for Superchallenge ([README §6.3](README.md#63-journal-bytes-v1)).
+
+## Proving service
+
+Planned on 2026-10-28 for a version after v1, and not scheduled. A third-party service takes a player's run through an API, proves it and settles it for the player. Its design is in [README §7.5](README.md#75-later-version-proving-service).
