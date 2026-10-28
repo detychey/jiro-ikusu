@@ -118,7 +118,7 @@ Each work item block has these fields:
 
   | Secret | Store | Used by | Set in round (§13) | First item |
   |---|---|---|---|---|
-  | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | GitHub Actions repository secrets | `pages.yml` | A1 | M2.2 |
+  | `CLOUDFLARE_API_TOKEN` (Cloudflare Pages Edit on the account, DNS Edit on the `jiro-ikusu.win` zone), `CLOUDFLARE_ACCOUNT_ID` | GitHub Actions repository secrets | `pages.yml` | A1 | M2.2 |
   | `DEPLOYER_KEY` | Cloud-environment variable | `scripts/contracts/deploy.mjs` in the container | F2 | M4.14 |
   | `TESTER_KEY` | Cloud-environment variable; also an Actions secret for `season-ops.yml` | e2e on Sepolia, bot runs | F2, G2 | M4.14, M5.5 |
   | Prover-network credential (name set by the framework) | Cloud-environment variable; also an Actions secret if a workflow proves | `prove`, `season.mjs settle` | B3 or F0; G2 for the Actions secret | M4.8, M4.10 |
@@ -1224,7 +1224,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `.github/workflows/pages.yml` (P9). On `pull_request` (paths `web/`, `core/`, `shell/`, `levels/`, `vectors/` and itself) and on pushes to `main`, it:
     1. builds the wasm and `web/`, and runs the smoke test;
     2. creates the Cloudflare Pages project `jiro-ikusu` if `wrangler pages project list` doesn't show it;
-    3. deploys with wrangler, as ethblockdigger's [`deploy.yml`](https://github.com/detychey/ethblockdigger/blob/main/.github/workflows/deploy.yml) does: branch `pr-<number>` for a PR, production for `main`;
+    3. deploys with wrangler, as ethblockdigger's [`deploy.yml`](https://github.com/detychey/ethblockdigger/blob/main/.github/workflows/deploy.yml) does: branch `pr-<number>` for a PR, production for `main`. Production is served at `https://jiro-ikusu.win`, the project's custom domain: each run adds the domain and its DNS record through the Cloudflare API if the project doesn't list it yet;
     4. prints the deployment URL between log markers, and posts it as a PR comment.
 
     Its concurrency cancels in-progress pull-request runs only; production deploys on `main` are never cancelled (§1.3).
@@ -1233,15 +1233,17 @@ Each milestone's README §9 "done when" closes when these items merge:
     - presses keys on a schedule;
     - reads the state hash exposed in a data attribute;
     - compares it with a vector.
-  - A README link to the production preview.
+  - A README link to the production site, `https://jiro-ikusu.win`.
 
   GitHub Pages is not used: it cannot serve one preview per PR, and it needs a paid plan for a private repository.
 - **Done when:**
   - the smoke test is green in CI;
-  - this PR's build is served at its own preview URL, which is in the PR.
+  - this PR's build is served at its own preview URL, which is in the PR;
+  - the Pages project lists `jiro-ikusu.win` as an active custom domain.
 - **Verify with:**
   - `get_job_logs` for this PR's `pages.yml` run, reading the URL between its markers;
-  - `curl -s -o /dev/null -w '%{http_code}' <that URL>` prints 200.
+  - `curl -s -o /dev/null -w '%{http_code}' <that URL>` prints 200;
+  - the custom-domain check, printed between the log markers of the same run.
 - **Skills:** none; tier `web`. **README:** §8.1. **Needs user:** the Cloudflare secrets as Actions repository secrets (round A1). Optional, not gating: play the open-field level on this PR's preview, and comment on feel, controls and rendering (round D1).
 
 #### M2.3 Replay viewer
@@ -2351,8 +2353,8 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 ### Round A: repository and M0 decisions
 
 - [ ] **A1, critical** (M0.1 ready):
-  - Answer the repository questions in M0.1's PR: the license (§15, question 16), visibility, the Actions plan and a spending limit (question 18), and preview privacy (question 19).
-  - Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as Actions repository secrets (needed from M2.2).
+  - Answer the repository questions: the license (§15, question 16), visibility, the Actions plan and a spending limit (question 18), and preview privacy (question 19). Answered on 2026-10-28.
+  - Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as Actions repository secrets (needed from M2.2). The token needs Cloudflare Pages Edit on the account, and DNS Edit on the `jiro-ikusu.win` zone.
   - Merge M0.1 once the agent has committed the license.
 - [ ] **A2, critical** (M0.2, M0.5 ready):
   - Review `.claude/settings.json` and `scripts/bootstrap.sh`, and, if the blinky failed, choose rp2040-hal or C++ on the Pico SDK (M0.2).
@@ -2478,10 +2480,10 @@ Each question has a default in this plan, and the item that settles it unless th
 | 13 | What happens if the USB link drops, or the page reloads, mid-level in a Challenge run? | The level's journal is closed with the events received and an X at the last known tick, so the level keeps its claim and its ticks used follow the wall time; the run continues at the next level | M5.2, M5.4 |
 | 14 | README §5 says the 16 levels are authored with the editor, but an agent cannot drive a GUI reliably. | ASCII sources compiled by the core codec, with the editor producing the same bytes; README §5 is amended | M2.4 |
 | 15 | `GUIDELINES.md` references Cometh's `AGENTS_COMETH.md`. Copy it from ethblockdigger, or drop the reference? | Copy it | M0.1 |
-| 16 | Neither repository has a license file. Which license applies? | Ask the owner; no default. M0.1 commits the answer. | M0.1 |
+| 16 | Neither repository has a license file. Which license applies? | Settled by the owner on 2026-10-28: MIT | Owner, 2026-10-28; committed in M0.1 |
 | 17 | The hat also fits the Pico 2 (RP2350). Is it in scope? | RP2040 only | Not scheduled |
-| 18 | The repository is private, in an organization whose private repositories share 2,000 Actions minutes a month on the free plan, on 2-vCPU runners, with no branch protection or GitHub Pages. Can it be public, or which plan and spending limit apply? | Public if the license allows; otherwise the private CI profile, with a spending limit or a paid plan, and the budget recorded | Round A1, recorded in M0.2 (P14) |
-| 19 | Cloudflare Pages previews are reachable by anyone who has the URL. Is that acceptable while the repository is private? | Yes for a testnet game; add Cloudflare Access to the Pages project if not | Round A1, applied in M2.2 |
+| 18 | The repository is private, in an organization whose private repositories share 2,000 Actions minutes a month on the free plan, on 2-vCPU runners, with no branch protection or GitHub Pages. Can it be public, or which plan and spending limit apply? | Settled by the owner on 2026-10-28: private, on the free plan's minutes with the private CI profile, until a working version exists; then public, with the public CI profile | Owner, 2026-10-28; recorded in M0.2 (P14) |
+| 19 | Cloudflare Pages previews are reachable by anyone who has the URL. Is that acceptable while the repository is private? | Settled by the owner on 2026-10-28: yes, previews stay public | Owner, 2026-10-28; applied in M2.2 |
 | 20 | `skills-import.md` lists the ethskills `feedback` skill, which has no `name` field and posts notes to ethskills.com. Import it? | No; it is marked "not imported" | M0.3 |
 | 21 | Settle a run in one transaction, or level by level? | One `settleRun` per run, which on zk means one proof per run as README §7.3 says; `settleLevel` stays as the fallback | M0.7 |
 
