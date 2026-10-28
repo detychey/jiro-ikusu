@@ -561,7 +561,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D9 | Boss size | **Decided:** bigger than one cell, closer to *Volfied*. **Proposed:** a square body of B × B cells, with B set per level ([§4.6](#46-boss)), B = 2 to 8, default 5; M0.5 settles the shape and M0.6 the range. |
 | D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players. **Proposed** qualification, settled in M0.7: the player's best run cleared at least one level. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
-| D12 | Chain, currency, season length | **Decided:** Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; 14-day seasons on testnet, likely on mainnet too. **Still open:** the currency, USDC or native ETH ([§8](#8-game-modes-and-economy)). |
+| D12 | Chain, currency, season length | **Decided:** Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. **Still open:** the currency, USDC or native ETH ([§8](#8-game-modes-and-economy)). |
 | D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
 
 ## Repository files

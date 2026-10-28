@@ -638,7 +638,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 - **Verify with:**
   - `grep -nE 'frozen (and versioned )?in M0' README.md` lists only the §7.2 line.
   - `grep -n '^### 6.6' README.md`
-  - `grep -E '^\| D9 \|' README.md | grep -c Proposed` prints 0, and `grep -c 'proposed: B = 2 to 8' README.md` prints 0.
+  - `grep -E '^\| (D9|Boss) \|' README.md | grep -ci proposed` prints 0.
   - `npm --prefix tools/xcheck ci && node tools/xcheck/worked-examples.mjs --check README.md` exits 0: every hex it prints appears in the README.
 - **Skills:** `journal-codec`, `deterministic-core`, `parity-testing`. **README:** §5, §6.3, §6.4, §6.6, §8.2, §13. **Needs user:** approve the rectangular spawn area, the D9 body-size range and default, the range rules, the 1,682-cell threshold, the journal rule split and the draw (round A3).
 
@@ -695,9 +695,9 @@ Each milestone's README §9 "done when" closes when these items merge:
     - Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing what is reusable from ethblockdigger's contracts;
     - 14-day seasons on testnet, apart from M4.14's 1-day `testnet-0` rehearsal; likely 14 days on mainnet too;
     - the currency, which this PR closes: USDC (a public-mint MockUSDC on Sepolia), or native ETH. The owner suggested 0.0005 ETH per map and 0.000005 ETH per play, the 100:1 ratio of the draft's $1 map mint and $0.01 play (README §10); with ETH, this PR asks which amount the Challenge run fee is, which README §8.2 sets at $0.10.
-    - With ETH, `startRun` is `payable` and checks `msg.value`, there is no approve step and no MockUSDC, payouts stay pull-based (ethblockdigger's claims already are), and this PR rewrites every USDC, MockUSDC and approve step of this plan: today in M4.3, M4.11, M4.14, M5.1, M5.2, M5.4, M5.5, M5.6, round G1 and the §14 risk register, and the currency line of the `onchain-referee` skill.
+    - With ETH, `startRun` is `payable` and checks `msg.value`, there is no approve step and no MockUSDC, payouts stay pull-based (ethblockdigger's claims already are), the rake is credited to the treasury at close and withdrawn by it, so `closeSeason` never sends ETH, and this PR rewrites every USDC, MockUSDC, SafeERC20 and approve step of this plan: today in M4.3, M4.5, M4.6, M4.11, M4.14, M5.1, M5.2, M5.4, M5.5, M5.6, round G1 and the §14 risk register, and the currency line of the `onchain-referee` skill.
 - **Deliverables:**
-  - README edits to §3, §6.4, §6.6 (the outcome keys of the `game` vector schema), §7.2, §7.3, §8.2, §8.4 and §13, and to §7.4 only if P5 = (c);
+  - README edits to §3, §6.4, §6.6 (the outcome keys of the `game` vector schema), §7.2, §7.3, §8 (its paragraph on amounts and the currency), §8.2, §8.4 and §13, and to §7.4 only if P5 = (c);
   - the interface line of the `onchain-referee` skill, its settlement line if P16 = (b), and its currency line if D12 chose ETH;
   - a skeleton of `docs/ECONOMY.md`:
     - the money flow of a run, the rake going to the treasury;
@@ -716,10 +716,10 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `! grep -nE 'Only the journal bytes are submitted|The journal bytes are submitted' README.md`
   - `grep -E '^\| D[0-9]+ \|' README.md | grep -vE '^\| D(2|7|11) \|' | grep -vc Decided` prints 0, and `grep -E '^\| D[0-9]+ \|' README.md | grep -vE '^\| D(2|7|11) \|' | grep -ciE 'proposed|still open'` prints 0.
   - `! grep -n 'currency is still open' README.md`
-  - if D12 chose ETH: `grep -n USDC IMPLEMENTATION_PLAN.md .claude/skills/onchain-referee/SKILL.md` lists only this item's own description of the choice.
+  - if D12 chose ETH: `grep -nE 'USDC|SafeERC20|allowance|approve[^.;]*startRun' IMPLEMENTATION_PLAN.md .claude/skills/onchain-referee/SKILL.md` lists only lines of this item, the §11 D12 row and round A4.
   - `grep -n 'jiro.run\|commitSlack\|rulesVersion()\|verifyRun\|drawSlot\|treasury' README.md`
   - `grep TBD docs/ECONOMY.md | grep -vcE 'M[0-9]+\.[0-9]+'` prints 0.
-- **Skills:** `onchain-referee`, `journal-codec`. **README:** §3, §6.4, §6.6, §7.2, §7.3, §7.4, §8.2, §8.4, §13. **Needs user:** choose the currency (D12, USDC or ETH), and with ETH the run fee; choose the settlement shape (P16), the journal publication (P5) and the draw check (P17); approve the D10 qualification, the interface, the season-bound referee and treasury, the sequencing and the 120 s slack proposal (round A4).
+- **Skills:** `onchain-referee`, `journal-codec`. **README:** §3, §6.4, §6.6, §7.2, §7.3, §7.4, §8, §8.2, §8.4, §13. **Needs user:** choose the currency (D12, USDC or ETH), and with ETH the run fee; choose the settlement shape (P16), the journal publication (P5) and the draw check (P17); approve the D10 qualification, the interface, the season-bound referee and treasury, the sequencing and the 120 s slack proposal (round A4).
 
 ## 6. M1 Core
 
@@ -2235,7 +2235,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 
 ## 11. Decision schedule
 
-Each decision is closed by the owner or by exactly one item, before its first use. Where the owner answered on 2026-10-28, the item named pins the details and proposes what the answer left open. A decision item is approved by merging it.
+Each decision, or each part of one, is closed by the owner or by exactly one item, before its first use. Where the owner answered on 2026-10-28, the items named pin the details and propose what the answer left open. A decision item is approved by merging it.
 
 | ID | Decision | Decided in | Needed by | Recommendation |
 |---|---|---|---|---|
@@ -2251,7 +2251,7 @@ Each decision is closed by the owner or by exactly one item, before its first us
 | D9 | Boss size | Owner, 2026-10-28 (bigger than one cell); shape in M0.5; range and default in M0.6 | M1.3, M1.5 | Decided: bigger than one cell. Proposed: a square B × B body, B per level, B = 2 to 8, default 5 |
 | D10 | Ranking and payout | Owner, 2026-10-28; qualification and contract details in M0.7 | M4.5 | Decided: best settled run per player per season; pro-rata payout among qualified players. Proposed: ties go to fewer ticks; qualified players are those whose best run cleared at least one level. |
 | D11 | Superchallenge design | Deferred | none | Stays in [`TODO.md`](TODO.md) |
-| D12 | Chain, currency, season length | Owner, 2026-10-28, except the currency; currency in M0.7 | M4.3, M4.5, M4.6 | Decided: Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing ethblockdigger's contracts; 14-day seasons on testnet, likely on mainnet too. Open: USDC or native ETH. |
+| D12 | Chain, currency, season length | Owner, 2026-10-28, except the currency; currency in M0.7 | M4.3, M4.5, M4.6 | Decided: Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing ethblockdigger's contracts; 14-day seasons on testnet (`testnet-0` aside), likely on mainnet too. Open: USDC or native ETH. |
 | D13 | Names | Owner, 2026-10-28; crate and contract names in M0.5 | M0.4 (crates), M4.1 (contracts) | Decided: Jiro-ikusu ([`name.md`](name.md)). Proposed: the crates and contracts named in M0.5 |
 | P1 | Rust pin | M0.2 | M0.4 | 1.98.0, as ethblockdigger; otherwise the newest version that installs |
 | P2 | Contract toolchain | M0.2 | M4.3 | Foundry at a pinned version, if `forge` installs and runs: zk verifiers ship Foundry tests, and fuzz and invariant tests are built in. Otherwise ethblockdigger's harness for everything. Never both. Decided only after the pinned installer and the direct asset URL were both tried. |
