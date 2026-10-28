@@ -328,7 +328,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 | ID | Title | Depends on | Size | Needs user |
 |---|---|---|---|---|
 | M0.1 | Agent workspace files and license | none | S | Answer the repository questions; confirm the Cometh rules |
-| M0.2 | Environment probe, toolchain pins, tiered bootstrap; confirm D1 | M0.1 | M | Review the hook and bootstrap |
+| M0.2 | Environment probe, toolchain pins, tiered bootstrap; confirm D1 | M0.1 | M | Review the hook and bootstrap; pick the fallback if the blinky fails |
 | M0.3 | Import the ethskills `ship` guide and topic skills | M0.1 | S | Read the imported text; approve dropping `feedback` |
 | M0.4 | Cargo workspace, CI gates, README §3 layout | M0.2, M0.5 | M | Required checks, if the plan allows |
 | M0.5 | Rules freeze A: rule decisions, pinned details, rule tags | M0.1 | M | Approve the pinned details and the crate and contract names |
@@ -406,7 +406,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `.claude/settings.json`: only a SessionStart hook that runs `scripts/bootstrap.sh core` in cloud sessions (see the `session-start-hook` skill), with no permission changes. The hook applies to sessions started after this PR merges.
   - README edits: a link from the §13 D1 row to the blinky's `TOOLING.md` row;
   - if P2 is the harness: this plan's M4 test file names and verify commands, rewritten for it (for example `contracts/test/season.test.ts` and `npx vitest run contracts/test/season.test.ts`);
-  - only if the blinky fails and the owner then picks C++ on the Pico SDK: this plan's M3.1-M3.5, rewritten for the Pico SDK: a `jiro-core` C-ABI staticlib for `thumbv6m-none-eabi` with a generated header, a CMake build, and `arm-none-eabi-gcc` in the `firmware` tier, all recorded in `TOOLING.md`.
+  - only if the blinky fails: the fallback the owner then picks (rp2040-hal, or C++ on the Pico SDK), written into README §3, the §13 D1 row and the `rp2040-firmware` skill, with this plan's §3.2 firmware pins and M3.1-M3.5 rewritten for it. For C++: a `jiro-core` C-ABI staticlib for `thumbv6m-none-eabi` with a generated header, a CMake build, and `arm-none-eabi-gcc` in the `firmware` tier, all recorded in `TOOLING.md`.
 - **Done when:**
   - every probe has a `TOOLING.md` row, and every FAIL row names a fallback;
   - `bootstrap.sh core` exits 0 twice in a row, and the second run prints `nothing to install`;
@@ -421,8 +421,8 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `for t in web contracts firmware; do bash scripts/bootstrap.sh "$t" || exit 1; done`
   - `rustc --version` and `rustup target list --installed`
   - `cargo stylus --version`; `forge --version` (recorded either way)
-  - `grep -E '^\| D1 \|' README.md | grep -c 'Still open'` prints 0, and `grep -E '^\| D1 \|' README.md | grep -c 'firmware shell: '` prints 1.
-- **Skills:** `rp2040-firmware`, `session-start-hook`. **README:** §3, §7.3, §13 D1. **Needs user:** review `.claude/settings.json` and `scripts/bootstrap.sh`, which run in every later session (round A2).
+  - `grep -E '^\| D1 \|' README.md | grep -c 'docs/TOOLING.md'` prints 1.
+- **Skills:** `rp2040-firmware`, `session-start-hook`. **README:** §3, §7.3, §13 D1. **Needs user:** review `.claude/settings.json` and `scripts/bootstrap.sh`, which run in every later session; if the blinky failed, choose rp2040-hal or C++ on the Pico SDK (round A2).
 
 #### M0.3 Import the ethskills `ship` guide and topic skills
 
@@ -672,7 +672,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     - the level bytes and the journals are submitted, plus a proof on zk. The weights come from the season. The seed and the score are never submitted. README §6.4's last bullet ("Only the journal bytes are submitted") and §7.2 step 4 ("The journal bytes are submitted") are rewritten to say this.
   - **Season parameters and sequencing:**
     - committed at season open, immutable afterwards: `rulesVersion`, `referee` (address), the 16 level ids, 16 weights in bp, the run fee in wei (50_000_000_000_000 for the 0.00005 ETH of D12), the rake (at most 2,000 bp), start, length, settlement grace, commitSlack;
-    - `Season` takes an immutable `treasury` address in its constructor. At close, the rake is credited to the treasury, which withdraws it. ethblockdigger pays it to `vault.creator()`; Jiro has no creator.
+    - `Season` takes an immutable `treasury` address in its constructor. At close, the rake is credited to the treasury, and a permissionless `withdrawRake()` sends it there, so a treasury that rejects ETH never blocks close or claims. ethblockdigger pays it to `vault.creator()`; Jiro has no creator.
     - `open` requires `referee.rulesVersion() == rulesVersion`. `ZkReferee` pins its image id or program key immutably, so the referee address also fixes the zk program.
     - `open(s + 1)` requires `block.timestamp ≥ end(s)`, so seasons overlap only during season s's grace period. `startRun` reverts when no season is open.
     - a run belongs to the season of its `startRun`, settles through that season's referee, and can settle until season end plus grace (proposed: 48 h). A new rules version or a new backend therefore means a new season; runs of the previous season keep settling under their own rules.
@@ -691,7 +691,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     - native ETH, on Arbitrum Sepolia for M4 and M5 and Arbitrum One later, reusing what is reusable from ethblockdigger's contracts;
     - a Challenge run fee of 0.00005 ETH, committed with each season, so a later season can reprice it;
     - 14-day seasons on testnet, apart from M4.14's 1-day `testnet-0` rehearsal; likely 14 days on mainnet too;
-    - `startRun` is `payable` and requires `msg.value` to equal the season's fee, with no approve step. Payouts stay pull-based, as ethblockdigger's claims already are, and the rake is credited to the treasury and withdrawn by it, so `closeSeason` never sends ETH. Every function that sends ETH follows checks-effects-interactions.
+    - `startRun` is `payable` and requires `msg.value` to equal the season's fee, with no approve step. Payouts stay pull-based, as ethblockdigger's claims already are, and the rake is credited to the treasury and sent by a permissionless `withdrawRake()`, so `closeSeason` never sends ETH. Every function that sends ETH follows checks-effects-interactions.
 - **Deliverables:**
   - README edits to §3, §6.4, §6.6 (the outcome keys of the `game` vector schema), §7.2, §7.3, §8.2, §8.4 and §13, and to §7.4 only if P5 = (c);
   - the interface line of the `onchain-referee` skill, and its settlement line if P16 = (b);
@@ -699,7 +699,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     - the money flow of a run, the rake going to the treasury;
     - cost cells marked TBD, each naming the item that fills it (M4.2, M4.6, M4.7, M4.8, M4.9);
     - a threat table whose rows name their mitigation and the item that measures it, including journal publication per P5, and "a consensus bug in a live season's referee", marked as an accepted residual on testnet;
-    - a "Pre-mainnet prerequisites (not scheduled)" list: the audit; a legal read of the paid pot, with geo-gating as its fallback; custody of the operator key behind `Season.open`, for example a multisig; a procedure for a consensus bug found mid-season, since a season's referee is immutable and has no pause.
+    - a "Pre-mainnet prerequisites (not scheduled)" list: the audit; a legal read of the paid pot, with geo-gating as its fallback; custody of the operator key behind `Season.open` and of the treasury address, for example a multisig; a procedure for a consensus bug found mid-season, since a season's referee is immutable and has no pause.
 - **Done when:**
   - the D10 row states the qualification and no longer reads proposed;
   - the interface, the settlement shape, the draw check, the run nonce, the deadline, the season parameters and the sequencing rules are written with Solidity types and rounding;
@@ -1410,7 +1410,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 
 ## 8. M3 Pico
 
-Bring-up (M3.1) starts during M1; README §9 allows it to run in parallel at any time. The items below use Rust embassy-rp (D1). Only if M0.2's blinky fails and the owner then picks C++ does M0.2 rewrite them for the Pico SDK.
+Bring-up (M3.1) starts during M1; README §9 allows it to run in parallel at any time. The items below use Rust embassy-rp (D1). Only if M0.2's blinky fails does M0.2 rewrite them, for the fallback the owner then picks.
 
 | ID | Title | Depends on | Size | Needs user |
 |---|---|---|---|---|
@@ -1748,7 +1748,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Goal:** ethblockdigger's `Season`, with points accrued onchain instead of posted by an oracle as a Merkle root, the referee bound to each season, and the sequencing of M0.7.
 - **Deliverables:**
   - `contracts/src/Season.sol`, adapted from ethblockdigger's [`Season.sol`](https://github.com/detychey/ethblockdigger/blob/main/contracts/src/Season.sol). It keeps the rake cap at 2,000 bps, the empty-season rollover, pro-rata claims, and dust kept in escrow.
-    - The constructor takes the immutable `treasury`. The rake is credited to it at close, and the treasury withdraws it.
+    - The constructor takes the immutable `treasury`. `closeSeason` credits the rake to it, and `withdrawRake()`, callable by anyone, zeroes the credit before sending it to the treasury.
     - `open(params)`, restricted to the operator, commits the M0.7 parameters, `referee` included, which are immutable afterwards. It reverts unless `referee.rulesVersion()` equals `params.rulesVersion`, and unless the previous season has ended.
     - `slotOf(levelId)` and `weightOf(levelId)` serve settlement's lookups.
     - `recordRun(player, runScore, clearedAny, ticksUsed)`, callable only by `Challenge`:
@@ -1769,7 +1769,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
     - `open(s + 1)` before `end(s)` reverting, and succeeding after it;
     - a rake above 2,000 bp reverting;
     - a close before end plus grace reverting, and any address able to close after it;
-    - the rake credited to the treasury at close, and withdrawn by it;
+    - the rake credited to the treasury at close and sent by `withdrawRake()`, a second withdrawal sending nothing, and a treasury that rejects ETH leaving close and claims working;
     - a claim re-entered from a receiving contract paying nothing more;
     - an empty season's rollover reaching the season open at its close, and, with none open, the next season opened.
   - Claims:
@@ -1827,7 +1827,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   - a happy path settles a run through `settleRun`, and another through six `settleLevel` calls, with MockReferee returning real vector outcomes;
   - a run of season s settles through season s's referee during s's grace period, after season s + 1 has opened with a different referee and rules version;
   - every deadline fixture gives its expected result;
-  - an invariant suite over `Challenge` and `Season` keeps `isSolvent()` true and Σ claims ≤ the players' pot. It runs random start, reveal, commit, settle, close and claim sequences: at least 256 runs × depth 50 on Foundry, or 20 seeded sequences of 50 steps each on the harness.
+  - an invariant suite over `Challenge` and `Season` keeps `isSolvent()` true and Σ claims ≤ the players' pot. It runs random start, reveal, commit, settle, close, claim and rake-withdrawal sequences: at least 256 runs × depth 50 on Foundry, or 20 seeded sequences of 50 steps each on the harness.
 - **Verify with:**
   - `cd contracts && forge test --match-contract 'Settlement|Invariant' -vv --gas-report`
   - `node tools/xcheck/derivations.mjs --write && bash scripts/check-drift.sh vectors/derivations.json`
@@ -1922,7 +1922,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
     - a late commit, rejected;
     - a journal copied from another run, rejected;
     - a wrong `rulesVersion`, rejected;
-    - season close and claim.
+    - season close, claim and rake withdrawal.
   - `.github/workflows/e2e.yml`, following §1.3: `pull_request` on `contracts/`, `scripts/contracts/`, `referee/` and itself (or the `ci:heavy` label), and `workflow_dispatch`. It installs Foundry with a pinned `foundry-rs/foundry-toolchain` step, starts nitro-devnode with the vendored script of M4.2, runs the cases with the real Stylus referee and the public development key, and prints the gas per transaction between log markers.
 - **Done when:**
   - this PR's `e2e.yml` run is green on nitro-devnode, with real `verifyRun` and `verify` calls;
@@ -2014,7 +2014,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   1. run the preflight;
   2. deploy `ArbBlockhashEntropy`, with ArbSys at `0x64`;
   3. deploy the referee M4.9 chose: Stylus, or ZkReferee wired to the framework's deployed verifier;
-  4. deploy `Season` with the treasury, and open the provisional season of `seasons/testnet-0.json`, committed in this PR: the ids and weights of `calibration-1.json`, the deployed referee, a length of 1 day and a grace of 24 h, so that M5.5 can close it;
+  4. deploy `Season` with the treasury set to the deployer key's address (testnet only), and open the provisional season of `seasons/testnet-0.json`, committed in this PR: the ids and weights of `calibration-1.json`, the deployed referee, a length of 1 day and a grace of 24 h, so that M5.5 can close it;
   5. deploy `Challenge`;
   6. verify the Solidity sources on Sourcify. For a Stylus referee, add a `deployment_tx` input to `stylus-gas.yml` that runs `cargo stylus verify --deployment-tx <tx>` (it needs Docker), and dispatch it;
   7. run the e2e happy path with a bot run, in zk mode with real proofs if D2 = zk. If the bot's run clears no level, play another, so that M5.5 can rehearse a claim;
@@ -2156,10 +2156,11 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 
 - **Goal:** everything needed to open, watch, settle and close a season on schedule, the testnet-1 parameters set from measurements, and a rehearsed close and claim on Sepolia.
 - **Deliverables:**
-  - `scripts/contracts/season.mjs`, with four commands:
+  - `scripts/contracts/season.mjs`, with five commands:
     - `open`: opens a season from a season file;
     - `status`: runs, commits, settlements, pot, `isSolvent`;
     - `close`: the permissionless close;
+    - `withdraw`: the permissionless rake withdrawal to the treasury;
     - `settle`: submits a player's best run from their run file, proving it first when D2 = zk.
   - `seasons/testnet-1.json` (P13), which references `calibration-1.json` for the ids and weights:
     - the referee from `deployments/arbitrum-sepolia.json`;
@@ -2167,7 +2168,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - the settlement grace. With Stylus, the 48 h proposal. With zk, sized from M4.8's proving time per run × the expected number of settled runs, with the derivation stated.
     - commitSlack, sized from the M5.4 rehearsal and the margin reported in round G1: at least 2 × the worst observed transition and transaction overhead. If M4.13 ran, its threshold recommendation is applied or declined here, with the reason.
   - `.github/workflows/season-ops.yml`, following §1.3, with `cancel-in-progress: false`:
-    - a daily `schedule`: `status`, failing when `isSolvent` is false; the bot runs from `TESTER_KEY` on the days the runbook lists; `close` once end plus grace has passed; with zk, `settle` for every handed-off run file under `seasons/testnet-1/runs/` not yet settled;
+    - a daily `schedule`: `status`, failing when `isSolvent` is false; the bot runs from `TESTER_KEY` on the days the runbook lists; `close` and `withdraw` once end plus grace has passed; with zk, `settle` for every handed-off run file under `seasons/testnet-1/runs/` not yet settled;
     - `pull_request` on itself and `season.mjs`: a read-only `status` of `testnet-0` on Sepolia, with no secret;
     - `workflow_dispatch`.
   - `docs/SEASON_RUNBOOK.md`:
@@ -2185,13 +2186,13 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - known gaps: test ETH only; unaudited contracts; the run nonce computable up to 256 blocks before the reveal; a lapsed reveal forfeits the run; a disconnect or reload closes the current level; desktop and keyboard only; Web Serial only in Chrome and Edge.
   - The handoff instructions and the feedback channel, added to `web/src/pages/settle.ts` (M5.3).
   - The season's UF2, published by `pages.yml` under `/firmware/` on the preview site, with its sha256 and `RULES_VERSION`.
-  - **testnet-0 rehearsal:** once its end plus grace has passed, `season.mjs close` on `testnet-0`, a claim for the M4.14 bot player, and the `isSolvent` result and the dust, recorded in `docs/DEPLOYMENT.md`.
+  - **testnet-0 rehearsal:** once its end plus grace has passed, `season.mjs close` on `testnet-0`, a claim for the M4.14 bot player, `season.mjs withdraw` for the rake, and the `isSolvent` result and the dust, recorded in `docs/DEPLOYMENT.md`.
 - **Done when:**
-  - on the local chain, the four commands run and `status` output equals the contract views;
+  - on the local chain, the five commands run and `status` output equals the contract views;
   - this PR's `season-ops.yml` run is green;
   - `testnet-1.json` is complete, and the runbook explains the slack and grace derivations;
   - this PR's preview serves the UF2 and its checksum;
-  - `testnet-0` is closed and the bot player has claimed on Sepolia, with Arbiscan links and `isSolvent` true.
+  - `testnet-0` is closed, the bot player has claimed and the rake has reached the treasury on Sepolia, with Arbiscan links and `isSolvent` true.
 - **Verify with:**
   - local chain: `node scripts/contracts/localnet.mjs --up && node scripts/contracts/season.mjs status --rpc http://127.0.0.1:8545`
   - `node scripts/contracts/season.mjs status --network arbitrum-sepolia --season seasons/testnet-0.json` shows the season closed and claimed.
@@ -2206,19 +2207,19 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - testnet season 1, opened on Arbitrum Sepolia with `seasons/testnet-1.json`;
   - testers playing in the browser and on the Pico, and bots playing from the tester key;
   - best runs settled: by players with Stylus, or by `season-ops.yml` from handed-off run files with zk;
-  - after the end plus the grace period, any address closes the season and qualified players claim;
+  - after the end plus the grace period, any address closes the season, qualified players claim, and `season.mjs withdraw` sends the rake to the treasury;
   - `docs/TESTNET-1-REPORT.md`:
     - runs, settled runs, and gas and verification cost per settled run;
     - deadline margins and misses, interrupted levels included;
     - rejected settlements;
-    - payouts, the rake credited to and withdrawn by the treasury, and `isSolvent` after every claim;
+    - payouts, the rake sent to the treasury, and `isSolvent` after every claim;
     - suspicious patterns found in the published journals;
     - a summary of the tester feedback.
   - `deployments/arbitrum-sepolia.json`, with a new generation appended if anything was redeployed.
 - **Done when:**
   - the season closed through a permissionless `closeSeason` transaction;
   - at least one player claimed a pro-rata payout, and `isSolvent` held after every claim;
-  - pot − rake − Σ claims is at most the number of claimants, in wei (rounding dust);
+  - each claim paid exactly bestScore × playersPot / totalQualifiedPoints, rounded down, and playersPot − Σ shares, claimed or not, is less than the number of qualified players, in wei (rounding dust);
   - (user) at least one settled run was played on the Pico, and at least one in the browser: the user names their run ids.
 
   This closes README §9's M5, so this PR updates the status lines.
@@ -2233,7 +2234,7 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 
 | ID | Decision | Decided in | Needed by | Recommendation |
 |---|---|---|---|---|
-| D1 | Firmware shell language | Owner, 2026-10-28; confirmed by M0.2's blinky | M3.1 | Decided: Rust embassy-rp, as its own Cargo workspace, with a UF2 from elf2uf2-rs. It needs no `arm-none-eabi-gcc`. If the blinky fails, the owner chooses between rp2040-hal and C++ on the Pico SDK; for C++, M0.2 rewrites M3.1-M3.5. |
+| D1 | Firmware shell language | Owner, 2026-10-28; confirmed by M0.2's blinky | M3.1 | Decided: Rust embassy-rp, as its own Cargo workspace, with a UF2 from elf2uf2-rs. It needs no `arm-none-eabi-gcc`. If the blinky fails, the owner chooses between rp2040-hal and C++ on the Pico SDK, and M0.2 rewrites M3.1-M3.5 for that choice. |
 | D2, part 1 | zkVM framework | M1.12, from M1.16 and M1.17 | M1.13, M4.8 | README §7.3's four tooling checks first, then measured cycles and price. Trial SP1 and RISC Zero. |
 | D2, part 2 | Verification backend, and testnet aggregation | M4.9 | M4.10 (unless it starts early), M4.12, M4.14, M5.3 | Stylus whenever activations are open on the target chain; ZkReferee while they stay paused. The gas gate is defined in §4. If it fails with activations open, M4.15 runs, and if it still fails the user chooses from both cost tables. Both backends sit behind `IReferee`. |
 | D3 | Movement on claimed cells | Owner, 2026-10-28; pinned in M0.5 | M1.6 | Decided: rail only |
@@ -2354,7 +2355,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as Actions repository secrets (needed from M2.2).
   - Merge M0.1 once the agent has committed the license.
 - [ ] **A2, critical** (M0.2, M0.5 ready):
-  - Review `.claude/settings.json` and `scripts/bootstrap.sh` (M0.2).
+  - Review `.claude/settings.json` and `scripts/bootstrap.sh`, and, if the blinky failed, choose rp2040-hal or C++ on the Pico SDK (M0.2).
   - Approve the 18 pinned details and the crate and contract names (M0.5).
   - Merge both.
 - [ ] **A3, critical** (M0.4, M0.6 ready):
@@ -2487,12 +2488,12 @@ Each question has a default in this plan, and the item that settles it unless th
 ## 16. Deferred work
 
 - **Superchallenge** (M6, D11). It stays in [`TODO.md`](TODO.md), which keeps its analysis and the bounty-rounds proposal. It needs its own design pass and a legal read before any work starts. Until then, v1 decoders reject journal mode 2 (M0.5). When it comes back, it reuses the level format and validity check (M1.3), the level tool and editor (M2.4, M2.5), and ethblockdigger's `MapNFT` and map renderer.
-- **Proving service** (a later version): a third-party service that proves runs through an API and settles them for the player, with gasless claims. Its design is in README §7.5.
+- **Proving service** (a later version): a third-party service that proves runs through an API and settles them for the player, with gasless claims, which need a new `Season` generation with signed claims and a relay-fee cap. Its design is in README §7.5.
 - **Stylus gas optimization while activations are paused.** If M4.9's gate fails while activations are paused, M4.15 is marked "deferred" and runs when activations reopen, before any Stylus season.
 - **Pre-mainnet prerequisites** (not scheduled; listed in `docs/ECONOMY.md` from M0.7):
   - a professional audit of the contracts;
   - a legal read of the paid prize pool, with geo-gating as the fallback if the read requires it;
-  - custody of the operator key behind `Season.open`, for example a multisig;
+  - custody of the operator key behind `Season.open` and of the treasury address, for example a multisig;
   - a procedure for a consensus bug found in a live season's referee, which is immutable and has no pause;
   - an Arbitrum One deployment in native ETH, with seasons of likely 14 days, whose first season takes its weights from bot data (M0.7);
   - weights for later seasons from the previous season's public journals plus bot data (README §8.4), through a `calibrate --from-season <season>` mode;
