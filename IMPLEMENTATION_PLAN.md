@@ -1,6 +1,6 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision except D1 and the D12 currency (README §13). No work item has started.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13). No work item has started.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
 [`README.md`](README.md) is the normative specification, and this plan turns it into 63 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
@@ -328,12 +328,12 @@ Each milestone's README §9 "done when" closes when these items merge:
 | ID | Title | Depends on | Size | Needs user |
 |---|---|---|---|---|
 | M0.1 | Agent workspace files and license | none | S | Answer the repository questions; confirm the Cometh rules |
-| M0.2 | Environment probe, toolchain pins, tiered bootstrap; close D1 | M0.1 | M | Review the hook and bootstrap; approve D1 |
+| M0.2 | Environment probe, toolchain pins, tiered bootstrap; confirm D1 | M0.1 | M | Review the hook and bootstrap |
 | M0.3 | Import the ethskills `ship` guide and topic skills | M0.1 | S | Read the imported text; approve dropping `feedback` |
 | M0.4 | Cargo workspace, CI gates, README §3 layout | M0.2, M0.5 | M | Required checks, if the plan allows |
-| M0.5 | Rules freeze A: rule decisions, pinned details, rule tags | M0.1 | M | Approve the pinned details, the D9 body shape, and the crate and contract names |
-| M0.6 | Rules freeze B: byte formats, procedures, worked examples | M0.5 | M | Approve the formats and the D9 body-size range |
-| M0.7 | Rules freeze C: run, settlement and season; close D10 and D12 | M0.2, M0.6 | M | Choose the currency (D12), settlement, publication and the draw check; approve the D10 qualification |
+| M0.5 | Rules freeze A: rule decisions, pinned details, rule tags | M0.1 | M | Approve the pinned details and the crate and contract names |
+| M0.6 | Rules freeze B: byte formats, procedures, worked examples | M0.5 | M | Approve the formats |
+| M0.7 | Rules freeze C: run, settlement and season; close D10 | M0.2, M0.6 | M | Choose settlement, publication and the draw check; approve the D10 qualification |
 
 #### M0.1 Agent workspace files and license
 
@@ -379,9 +379,9 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `test -f LICENSE && test -f .github/pull_request_template.md && test -f IMPLEMENTATION_PLAN.md`
 - **Skills:** none. **README:** §12, Repository files. **Needs user:** confirm that Cometh's code philosophy applies (merge = yes); name the license; answer the visibility, Actions-plan and preview questions (round A1).
 
-#### M0.2 Environment probe, toolchain pins, tiered bootstrap; close D1
+#### M0.2 Environment probe, toolchain pins, tiered bootstrap; confirm D1
 
-- **Goal:** know what the container can install and run before any item depends on it, commit the results, make every session start ready, and close D1 with build evidence.
+- **Goal:** know what the container can install and run before any item depends on it, commit the results, make every session start ready, and confirm D1 with build evidence.
 - **Probes.** Each one becomes a row of `docs/TOOLING.md`: tool, exact version, install command, the URLs it fetches (API or release asset), PASS or FAIL, error text, fallback, affected items. A tool is marked FAIL only after both the pinned-version installer and the direct asset URL were tried.
   - rustup:
     - Rust 1.98.0;
@@ -404,17 +404,16 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `rust-toolchain.toml`: channel, targets, components;
   - `scripts/bootstrap.sh <tier>`, idempotent, with the tiers `core` (default), `web`, `contracts` and `firmware`; M1.12 adds `zk`. Each tier installs the PASS tools it needs, through pinned versions and sha256-checked direct downloads, and prints `nothing to install` when it is already complete.
   - `.claude/settings.json`: only a SessionStart hook that runs `scripts/bootstrap.sh core` in cloud sessions (see the `session-start-hook` skill), with no permission changes. The hook applies to sessions started after this PR merges.
-  - README edits: the §13 D1 row, written as "**Decided:** one Rust core for every target; firmware shell: <choice>", and the §3 paragraph on the shell;
-  - the "Open decision D1" section of the `rp2040-firmware` skill;
+  - README edits: a link from the §13 D1 row to the blinky's `TOOLING.md` row;
   - if P2 is the harness: this plan's M4 test file names and verify commands, rewritten for it (for example `contracts/test/season.test.ts` and `npx vitest run contracts/test/season.test.ts`);
-  - if D1 = C++ (the user's choice, or a failed blinky): this plan's M3.1-M3.5, rewritten for the Pico SDK: a `jiro-core` C-ABI staticlib for `thumbv6m-none-eabi` with a generated header, a CMake build, and `arm-none-eabi-gcc` in the `firmware` tier, all recorded in `TOOLING.md`.
+  - only if the blinky fails and the owner then picks C++ on the Pico SDK: this plan's M3.1-M3.5, rewritten for the Pico SDK: a `jiro-core` C-ABI staticlib for `thumbv6m-none-eabi` with a generated header, a CMake build, and `arm-none-eabi-gcc` in the `firmware` tier, all recorded in `TOOLING.md`.
 - **Done when:**
   - every probe has a `TOOLING.md` row, and every FAIL row names a fallback;
   - `bootstrap.sh core` exits 0 twice in a row, and the second run prints `nothing to install`;
   - every other tier exits 0;
   - `rustc --version` inside the repository prints the pin;
   - the zkVM toolchains' rustc versions are recorded;
-  - D1 reads Decided and links its probe row. The recommendation is Rust embassy-rp, unless the blinky failed.
+  - the D1 row links the blinky's `TOOLING.md` row. If the blinky fails, the PR reports the error, and the owner chooses between `rp2040-hal` and C++ on the Pico SDK.
   - P1, P2 and P14 are recorded, with the CI profile;
   - no product code is committed.
 - **Verify with:**
@@ -423,7 +422,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `rustc --version` and `rustup target list --installed`
   - `cargo stylus --version`; `forge --version` (recorded either way)
   - `grep -E '^\| D1 \|' README.md | grep -c 'Still open'` prints 0, and `grep -E '^\| D1 \|' README.md | grep -c 'firmware shell: '` prints 1.
-- **Skills:** `rp2040-firmware`, `session-start-hook`. **README:** §3, §7.3, §13 D1. **Needs user:** review `.claude/settings.json` and `scripts/bootstrap.sh`, which run in every later session; approve D1 (round A2).
+- **Skills:** `rp2040-firmware`, `session-start-hook`. **README:** §3, §7.3, §13 D1. **Needs user:** review `.claude/settings.json` and `scripts/bootstrap.sh`, which run in every later session (round A2).
 
 #### M0.3 Import the ethskills `ship` guide and topic skills
 
@@ -507,7 +506,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - D5: 3 lives, 2,700 ticks and a 7,500 bp target, adjustable per level; running out of lives scores zero.
   - D6: one shield charge per level.
   - D8: Key0-3 = A, B, X, Y. Y and the joystick press are unused and not journaled. In the browser, the keys are configurable (M2.1).
-  - D9: bigger than one cell (owner). Proposed for approval here: a square B × B body, B set per level (README §4.6). M0.6 proposes the range and the default (B = 2 to 8, default 5).
+  - D9: a square B × B boss body, B set per level, B = 2 to 8, default 5 (README §4.6).
   - D13: the name is Jiro-ikusu (owner). Proposed for approval here, names with no Taito titles in them:
     - crates `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-firmware`, `jiro-referee-stylus`;
     - contracts `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`.
@@ -557,19 +556,18 @@ Each milestone's README §9 "done when" closes when these items merge:
   - the `parity-testing` skill: `[COV-nn]` tags on its coverage bullets, and its minion property line replaced by a link to README §4.7 (PIN-14), which keeps the whole-component target;
   - `scripts/check-rule-tags.sh`.
 - **Done when:**
-  - D3, D4, D5, D6, D8, D9 and D13 read Decided, and D7 reads provisional; the D9 row proposes only the range and the default, for M0.6;
+  - D3, D4, D5, D6, D8, D9 and D13 read Decided, and D7 reads provisional;
   - every tag is unique, and there are 18 pinned details;
   - `check-rule-tags.sh` prints nothing, and prints the offending line when a tag is removed (output in the PR);
   - the PR body maps each `[PIN-nn]` and `[COV-nn]` tag to the name of the vector or test that will check it. M1.9's `vectors/COVERAGE.md` uses those names.
 - **Verify with:**
   - `grep -E '^\| D(3|4|5|6|8|9|13) \|' README.md | grep -vc Decided` prints 0.
   - `grep -E '^\| D7 \|' README.md | grep -c provisional` prints 1.
-  - `grep -E '^\| D9 \|' README.md | grep -oE 'Proposed:[^|]*'` names only the range and the default.
   - `grep -oE '\[(R4\.[0-9]+-[0-9]+|PIN-[0-9]+)\]' README.md | sort | uniq -d` prints nothing.
   - `grep -oE '\[PIN-[0-9]+\]' README.md | sort -u | wc -l` prints 18.
   - `grep -oE '\[COV-[0-9]+\]' .claude/skills/parity-testing/SKILL.md | sort | uniq -d` prints nothing.
   - `bash scripts/check-rule-tags.sh | wc -l` prints 0.
-- **Skills:** `deterministic-core`, `parity-testing`. **README:** §4, §6.3, §13. **Needs user:** approve the pinned details, the D9 body shape, and the crate and contract names (merge = approval; round A2).
+- **Skills:** `deterministic-core`, `parity-testing`. **README:** §4, §6.3, §13. **Needs user:** approve the pinned details and the crate and contract names (merge = approval; round A2).
 
 #### M0.6 Rules freeze B: byte formats, procedures and worked examples
 
@@ -581,7 +579,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     |---|---|---|---|
     | 0 | version | u8 | 1 |
     | 1 | obstacle bitmap | 450 bytes | cell i is bit 7 − i % 8 of byte i / 8; border bits must be 0 |
-    | 451 | boss body size B | u8 | 2-8 (D9; proposed range, default 5 in the level tool) |
+    | 451 | boss body size B | u8 | 2-8 (D9; the level tool defaults to 5) |
     | 452 | boss spawn rectangle | u8 x0, y0, x1, y1 | top-left cells of the body, inclusive; x0 ≤ x1, y0 ≤ y1, x0 ≥ 1, y0 ≥ 1, x1 ≤ 59 − B, y1 ≤ 59 − B (B is checked first, so 59 − B cannot underflow), so every body position stays inside the border |
     | 456 | boss period | u8 | at least 1 |
     | 457 | minion count | u8 | 0-3 |
@@ -633,18 +631,16 @@ Each milestone's README §9 "done when" closes when these items merge:
   - the vector schema lists every key, except the outcome keys of M0.7;
   - README §6.3 and the `journal-codec` skill split the decoder's rejections from replay's;
   - the script reproduces every worked example printed in the README;
-  - only the §7.2 slack placeholder remains, for M0.7;
-  - the §13 D9 row and the §5 Boss row state the approved body-size range and default, and no longer read proposed.
+  - only the §7.2 slack placeholder remains, for M0.7.
 - **Verify with:**
   - `grep -nE 'frozen (and versioned )?in M0' README.md` lists only the §7.2 line.
   - `grep -n '^### 6.6' README.md`
-  - `grep -E '^\| (D9|Boss) \|' README.md | grep -ci proposed` prints 0.
   - `npm --prefix tools/xcheck ci && node tools/xcheck/worked-examples.mjs --check README.md` exits 0: every hex it prints appears in the README.
-- **Skills:** `journal-codec`, `deterministic-core`, `parity-testing`. **README:** §5, §6.3, §6.4, §6.6, §8.2, §13. **Needs user:** approve the rectangular spawn area, the D9 body-size range and default, the range rules, the 1,682-cell threshold, the journal rule split and the draw (round A3).
+- **Skills:** `journal-codec`, `deterministic-core`, `parity-testing`. **README:** §5, §6.3, §6.4, §6.6, §8.2. **Needs user:** approve the rectangular spawn area, the range rules, the 1,682-cell threshold, the journal rule split and the draw (round A3).
 
-#### M0.7 Rules freeze C: run, settlement and season; close D10 and D12
+#### M0.7 Rules freeze C: run, settlement and season; close D10
 
-- **Goal:** freeze what the contracts need, close D10 and D12, and finish M0.
+- **Goal:** freeze what the contracts need, close D10, and finish M0.
 - **Proposals:**
   - **Verifier interface (P4).** `IReferee` has three functions, behind which either backend sits:
     - `verifyRun(bytes[6] levels, bytes[6] journals, uint16[6] weightsBp, bytes proof) returns (Outcome[6])`, the main path;
@@ -675,8 +671,8 @@ Each milestone's README §9 "done when" closes when these items merge:
     - the credit goes to the run's player;
     - the level bytes and the journals are submitted, plus a proof on zk. The weights come from the season. The seed and the score are never submitted. README §6.4's last bullet ("Only the journal bytes are submitted") and §7.2 step 4 ("The journal bytes are submitted") are rewritten to say this.
   - **Season parameters and sequencing:**
-    - committed at season open, immutable afterwards: `rulesVersion`, `referee` (address), the 16 level ids, 16 weights in bp, the run fee (100_000 with USDC, in wei with ETH), the rake (at most 2,000 bp), start, length, settlement grace, commitSlack;
-    - `Season` takes an immutable `treasury` address in its constructor, which receives the rake at close. ethblockdigger pays it to `vault.creator()`; Jiro has no creator.
+    - committed at season open, immutable afterwards: `rulesVersion`, `referee` (address), the 16 level ids, 16 weights in bp, the run fee in wei (50_000_000_000_000 for the 0.00005 ETH of D12), the rake (at most 2,000 bp), start, length, settlement grace, commitSlack;
+    - `Season` takes an immutable `treasury` address in its constructor. At close, the rake is credited to the treasury, which withdraws it. ethblockdigger pays it to `vault.creator()`; Jiro has no creator.
     - `open` requires `referee.rulesVersion() == rulesVersion`. `ZkReferee` pins its image id or program key immutably, so the referee address also fixes the zk program.
     - `open(s + 1)` requires `block.timestamp ≥ end(s)`, so seasons overlap only during season s's grace period. `startRun` reverts when no season is open.
     - a run belongs to the season of its `startRun`, settles through that season's referee, and can settle until season end plus grace (proposed: 48 h). A new rules version or a new backend therefore means a new season; runs of the previous season keep settling under their own rules.
@@ -691,21 +687,21 @@ Each milestone's README §9 "done when" closes when these items merge:
   - **D10:**
     - players are ranked by their best settled run of the season, with ties going to fewer ticks;
     - the payout is pro-rata by best-run score, among players whose best run cleared at least one level.
-  - **D12,** decided by the owner on 2026-10-28 except for the currency:
-    - Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing what is reusable from ethblockdigger's contracts;
+  - **D12,** decided by the owner on 2026-10-28, which this item pins:
+    - native ETH, on Arbitrum Sepolia for M4 and M5 and Arbitrum One later, reusing what is reusable from ethblockdigger's contracts;
+    - a Challenge run fee of 0.00005 ETH, committed with each season, so a later season can reprice it;
     - 14-day seasons on testnet, apart from M4.14's 1-day `testnet-0` rehearsal; likely 14 days on mainnet too;
-    - the currency, which this PR closes: USDC (a public-mint MockUSDC on Sepolia), or native ETH. The owner suggested 0.0005 ETH per map and 0.000005 ETH per play, the 100:1 ratio of the draft's $1 map mint and $0.01 play (README §10); with ETH, this PR asks which amount the Challenge run fee is, which README §8.2 sets at $0.10.
-    - With ETH, `startRun` is `payable` and checks `msg.value`, there is no approve step and no MockUSDC, payouts stay pull-based (ethblockdigger's claims already are), the rake is credited to the treasury at close and withdrawn by it, so `closeSeason` never sends ETH, and this PR rewrites every USDC, MockUSDC, SafeERC20 and approve step of this plan: today in M4.3, M4.5, M4.6, M4.11, M4.14, M5.1, M5.2, M5.4, M5.5, M5.6, round G1 and the §14 risk register, and the currency line of the `onchain-referee` skill.
+    - `startRun` is `payable` and requires `msg.value` to equal the season's fee, with no approve step. Payouts stay pull-based, as ethblockdigger's claims already are, and the rake is credited to the treasury and withdrawn by it, so `closeSeason` never sends ETH. Every function that sends ETH follows checks-effects-interactions.
 - **Deliverables:**
-  - README edits to §3, §6.4, §6.6 (the outcome keys of the `game` vector schema), §7.2, §7.3, §8 (its paragraph on amounts and the currency), §8.2, §8.4 and §13, and to §7.4 only if P5 = (c);
-  - the interface line of the `onchain-referee` skill, its settlement line if P16 = (b), and its currency line if D12 chose ETH;
+  - README edits to §3, §6.4, §6.6 (the outcome keys of the `game` vector schema), §7.2, §7.3, §8.2, §8.4 and §13, and to §7.4 only if P5 = (c);
+  - the interface line of the `onchain-referee` skill, and its settlement line if P16 = (b);
   - a skeleton of `docs/ECONOMY.md`:
     - the money flow of a run, the rake going to the treasury;
     - cost cells marked TBD, each naming the item that fills it (M4.2, M4.6, M4.7, M4.8, M4.9);
     - a threat table whose rows name their mitigation and the item that measures it, including journal publication per P5, and "a consensus bug in a live season's referee", marked as an accepted residual on testnet;
     - a "Pre-mainnet prerequisites (not scheduled)" list: the audit; a legal read of the paid pot, with geo-gating as its fallback; custody of the operator key behind `Season.open`, for example a multisig; a procedure for a consensus bug found mid-season, since a season's referee is immutable and has no pause.
 - **Done when:**
-  - the D10 row states the qualification and no longer reads proposed; the D12 row names the currency and no longer reads still open;
+  - the D10 row states the qualification and no longer reads proposed;
   - the interface, the settlement shape, the draw check, the run nonce, the deadline, the season parameters and the sequencing rules are written with Solidity types and rounding;
   - the P5, P16 and P17 choices are recorded in the README;
   - no "frozen in M0" placeholder is left, and neither old submission sentence remains;
@@ -715,11 +711,9 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `! grep -nE 'frozen (and versioned )?in M0' README.md`
   - `! grep -nE 'Only the journal bytes are submitted|The journal bytes are submitted' README.md`
   - `grep -E '^\| D[0-9]+ \|' README.md | grep -vE '^\| D(2|7|11) \|' | grep -vc Decided` prints 0, and `grep -E '^\| D[0-9]+ \|' README.md | grep -vE '^\| D(2|7|11) \|' | grep -ciE 'proposed|still open'` prints 0.
-  - `! grep -n 'currency is still open' README.md`
-  - if D12 chose ETH: `grep -nE 'USDC|SafeERC20|allowance|approve[^.;]*startRun' IMPLEMENTATION_PLAN.md .claude/skills/onchain-referee/SKILL.md` lists only lines of this item, the §11 D12 row and round A4.
   - `grep -n 'jiro.run\|commitSlack\|rulesVersion()\|verifyRun\|drawSlot\|treasury' README.md`
   - `grep TBD docs/ECONOMY.md | grep -vcE 'M[0-9]+\.[0-9]+'` prints 0.
-- **Skills:** `onchain-referee`, `journal-codec`. **README:** §3, §6.4, §6.6, §7.2, §7.3, §7.4, §8, §8.2, §8.4, §13. **Needs user:** choose the currency (D12, USDC or ETH), and with ETH the run fee; choose the settlement shape (P16), the journal publication (P5) and the draw check (P17); approve the D10 qualification, the interface, the season-bound referee and treasury, the sequencing and the 120 s slack proposal (round A4).
+- **Skills:** `onchain-referee`, `journal-codec`. **README:** §3, §6.4, §6.6, §7.2, §7.3, §7.4, §8.2, §8.4, §13. **Needs user:** choose the settlement shape (P16), the journal publication (P5) and the draw check (P17); approve the D10 qualification, the interface, the season-bound referee and treasury, the sequencing and the 120 s slack proposal (round A4).
 
 ## 6. M1 Core
 
@@ -1416,7 +1410,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 
 ## 8. M3 Pico
 
-Bring-up (M3.1) starts during M1; README §9 allows it to run in parallel at any time. The items below assume D1 = Rust embassy-rp; if M0.2 decides C++, its PR rewrites them for the Pico SDK.
+Bring-up (M3.1) starts during M1; README §9 allows it to run in parallel at any time. The items below use Rust embassy-rp (D1). Only if M0.2's blinky fails and the owner then picks C++ does M0.2 rewrite them for the Pico SDK.
 
 | ID | Title | Depends on | Size | Needs user |
 |---|---|---|---|---|
@@ -1713,7 +1707,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   - Files ported verbatim, each with a provenance header naming the ethblockdigger commit sha:
     - [`ArbBlockhashEntropy.sol`](https://github.com/detychey/ethblockdigger/blob/main/contracts/src/ArbBlockhashEntropy.sol), which takes ArbSys as a constructor argument;
     - `interfaces/IEntropySource.sol`, `interfaces/IArbSys.sol`;
-    - the mocks `MockArbSys` (settable block number), `MockEntropy`, `MockUSDC`.
+    - the mocks `MockArbSys` (settable block number) and `MockEntropy`. ethblockdigger's `MockUSDC` is not needed: runs are paid in ETH (D12).
   - Entropy tests, ported from [`entropy.test.ts`](https://github.com/detychey/ethblockdigger/blob/main/contracts/test/entropy.test.ts).
   - `contracts/abi/`: the ABI of every contract, written by the contracts job and checked with `check-drift.sh`, so the web app never needs the contract toolchain.
   - `scripts/contracts/activation.mjs`: reads `ArbWasm.activationGas()` from the precompile at `0x0000000000000000000000000000000000000071`. Activations count as open at or below cargo-stylus's 30,000,000 threshold, as ethblockdigger's [`checks.ts`](https://github.com/detychey/ethblockdigger/blob/main/scripts/contracts/checks.ts) checks. M4.9, M4.10 and M4.16 reuse it.
@@ -1754,14 +1748,14 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Goal:** ethblockdigger's `Season`, with points accrued onchain instead of posted by an oracle as a Merkle root, the referee bound to each season, and the sequencing of M0.7.
 - **Deliverables:**
   - `contracts/src/Season.sol`, adapted from ethblockdigger's [`Season.sol`](https://github.com/detychey/ethblockdigger/blob/main/contracts/src/Season.sol). It keeps the rake cap at 2,000 bps, the empty-season rollover, pro-rata claims, and dust kept in escrow.
-    - The constructor takes the immutable `treasury`, which receives the rake at close.
+    - The constructor takes the immutable `treasury`. The rake is credited to it at close, and the treasury withdraws it.
     - `open(params)`, restricted to the operator, commits the M0.7 parameters, `referee` included, which are immutable afterwards. It reverts unless `referee.rulesVersion()` equals `params.rulesVersion`, and unless the previous season has ended.
     - `slotOf(levelId)` and `weightOf(levelId)` serve settlement's lookups.
     - `recordRun(player, runScore, clearedAny, ticksUsed)`, callable only by `Challenge`:
       - keeps each player's best run, with ties going to fewer ticks;
       - applies qualification per D10;
       - maintains `totalQualifiedPoints` incrementally.
-    - `closeSeason` is permissionless after the season end plus the grace period. It pays the rake to the treasury, and an empty season's rollover to the season open at that time, or to the next one opened.
+    - `closeSeason` is permissionless after the season end plus the grace period. It credits the rake to the treasury and moves an empty season's rollover to the season open at that time, or to the next one opened. It sends no ETH.
     - `claim` pays bestScore × playersPot / totalQualifiedPoints, rounded down.
   - `contracts/test/Season.t.sol`.
 - **Done when** tests cover:
@@ -1775,7 +1769,8 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
     - `open(s + 1)` before `end(s)` reverting, and succeeding after it;
     - a rake above 2,000 bp reverting;
     - a close before end plus grace reverting, and any address able to close after it;
-    - the rake reaching the treasury at close;
+    - the rake credited to the treasury at close, and withdrawn by it;
+    - a claim re-entered from a receiving contract paying nothing more;
     - an empty season's rollover reaching the season open at its close, and, with none open, the next season opened.
   - Claims:
     - a double claim reverting;
@@ -1788,7 +1783,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Goal:** the keyless pay, reveal and commit flow of ethblockdigger's `Vault`, for Challenge runs, with the journals published at commit (P5).
 - **Deliverables:**
   - `contracts/src/Challenge.sol`, modeled on [`Vault.sol`](https://github.com/detychey/ethblockdigger/blob/main/contracts/src/Vault.sol). Unlike `Vault`, it holds no referee of its own; the run's season names it.
-    - `startRun()` reverts when no season is open. Otherwise it pulls the season's run fee (100_000) with SafeERC20 into the current season's pot, records the season, and commits entropy, with the id namespaced as in `Vault`.
+    - `startRun()` is `payable`. It reverts when no season is open, or unless `msg.value` equals the season's run fee (D12). Otherwise it adds the fee to the current season's pot, records the season, and commits entropy, with the id namespaced as in `Vault`.
     - `revealRun(runId)`, player only, derives the `runNonce` per M0.7 and records `revealedAt`.
     - A lapsed reveal window forfeits the run, and the fee stays in the pot. There is no free re-anchor, which would re-roll the levels.
     - `commitRun(runId, commitment, bytes journals)`, player only, can be called once and records `committedAt`. It stores only the commitment and never reads `journals`, which is there to publish them as calldata.
@@ -1797,7 +1792,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   - `contracts/test/Challenge.t.sol`.
   - The gas of `commitRun` with a typical six-journal blob and with a full one (6 × 8,171 bytes), in the matching TBD cell of `docs/ECONOMY.md`.
 - **Done when:**
-  - each revert has its own test: no open season, insufficient allowance, reveal by another address, reveal before ready, double reveal, lapsed window, commit before reveal, double commit, zero commitment;
+  - each revert has its own test: no open season, a `msg.value` below or above the fee, reveal by another address, reveal before ready, double reveal, lapsed window, commit before reveal, double commit, zero commitment;
   - events carry the expected arguments;
   - `isSolvent()` holds after every operation in the tests;
   - the commit gas is recorded.
@@ -1896,10 +1891,10 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 
 - **Goal:** a scripted deployment and a local chain for the dApp work.
 - **Deliverables:**
-  - `scripts/contracts/deploy.mjs`, adapted from ethblockdigger's `scripts/contracts/deploy.ts`: MockUSDC, `ArbBlockhashEntropy`, the referee (Stylus through cargo-stylus, or MockReferee on the local chain; M4.10 adds ZkReferee), `Season` with the treasury, `Challenge`.
+  - `scripts/contracts/deploy.mjs`, adapted from ethblockdigger's `scripts/contracts/deploy.ts` without its MockUSDC: `ArbBlockhashEntropy`, the referee (Stylus through cargo-stylus, or MockReferee on the local chain; M4.10 adds ZkReferee), `Season` with the treasury, `Challenge`.
   - `scripts/contracts/localnet.mjs`, the local chain for M5:
     - starts anvil, or the Hardhat node from npm if Foundry did not install (ethblockdigger rehearsed on a local Hardhat chain);
-    - deploys MockUSDC, MockArbSys, `ArbBlockhashEntropy` with MockArbSys as its constructor argument, MockReferee configured with vector outcomes, `Season` with a season of the 16 level ids, and `Challenge`;
+    - deploys MockArbSys, `ArbBlockhashEntropy` with MockArbSys as its constructor argument, MockReferee configured with vector outcomes, `Season` with a season of the 16 level ids, and `Challenge`;
     - advances the reveal with `MockArbSys.setBlockNumber`;
     - writes `deployments/local.json`, naming the backend.
   - `deployments/README.md`: the schema of `deployments/<network>.json`, which keeps a list of contract generations, newest first, so earlier addresses are never overwritten.
@@ -2017,7 +2012,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Session.** The deployment steps run in a session started after round F2 has set the keys as cloud-environment variables.
 - **Deliverables:** `deployments/arbitrum-sepolia.json`, `seasons/testnet-0.json` and `docs/DEPLOYMENT.md`. The steps:
   1. run the preflight;
-  2. deploy MockUSDC and `ArbBlockhashEntropy`, with ArbSys at `0x64`;
+  2. deploy `ArbBlockhashEntropy`, with ArbSys at `0x64`;
   3. deploy the referee M4.9 chose: Stylus, or ZkReferee wired to the framework's deployed verifier;
   4. deploy `Season` with the treasury, and open the provisional season of `seasons/testnet-0.json`, committed in this PR: the ids and weights of `calibration-1.json`, the deployed referee, a length of 1 day and a grace of 24 h, so that M5.5 can close it;
   5. deploy `Challenge`;
@@ -2061,8 +2056,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - an EIP-1193 injected wallet, with a switch to Arbitrum Sepolia;
     - a loader for `deployments/<network>.json`, reading its newest generation;
     - typed bindings generated from `contracts/abi/` (M4.3), never hand-written;
-    - USDC balance and allowance;
-    - a MockUSDC mint button for testers.
+    - the ETH balance, with a link to an Arbitrum Sepolia faucet for testers.
   - A footer with the contract addresses and the build's git sha.
   - `web/test/chain.test.ts`, with a mock EIP-1193 provider.
   - `web/scripts/chain-smoke.mjs`.
@@ -2070,7 +2064,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Done when:**
   - the mock-provider tests cover connecting, the wrong network and balance reads;
   - the bindings regenerate from `contracts/abi/` with no drift;
-  - on the local chain, the smoke script runs approve and `startRun` through this module;
+  - on the local chain, the smoke script runs `startRun` with the season's fee through this module;
   - the Training import test passes.
 - **Verify with:**
   - `npm --prefix web test -- chain`
@@ -2084,7 +2078,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - Run start:
     - a season view: price, pot, parameters;
     - a season check: the page refuses to call `startRun` unless the wasm core's `RULES_VERSION` equals the season's `rulesVersion` and the 16 shipped level ids equal the season's ids;
-    - approve, then `startRun`;
+    - `startRun`, sending the season's fee;
     - a countdown of about 10 s, then `revealRun`.
   - Play:
     - the six drawn levels, from the wasm core's draw;
@@ -2156,7 +2150,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Verify with:**
   - `npm --prefix web test -- bridge`
   - `cd firmware && cargo build --release --locked -p jiro-firmware`
-- **Skills:** `rp2040-firmware`, `journal-codec`, `frontend-ux`; tiers `web`, `firmware`. **README:** §6.5, §7.1, §7.2. **Needs user:** fund your browser wallet from an Arbitrum Sepolia faucet and mint MockUSDC; flash this PR's UF2; play one six-level Challenge run on this PR's preview in desktop Chrome or Edge; post the run id and the margin shown at commit (round G1).
+- **Skills:** `rp2040-firmware`, `journal-codec`, `frontend-ux`; tiers `web`, `firmware`. **README:** §6.5, §7.1, §7.2. **Needs user:** fund your browser wallet from an Arbitrum Sepolia faucet; flash this PR's UF2; play one six-level Challenge run on this PR's preview in desktop Chrome or Edge; post the run id and the margin shown at commit (round G1).
 
 #### M5.5 Season operations, testnet-1 parameters and testnet-0 close
 
@@ -2169,7 +2163,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - `settle`: submits a player's best run from their run file, proving it first when D2 = zk.
   - `seasons/testnet-1.json` (P13), which references `calibration-1.json` for the ids and weights:
     - the referee from `deployments/arbitrum-sepolia.json`;
-    - the fee (100_000 with USDC, or the wei amount M0.7 set with ETH), the rake, and a length of 14 days (D12);
+    - the fee (0.00005 ETH, in wei), the rake, and a length of 14 days (D12);
     - the settlement grace. With Stylus, the 48 h proposal. With zk, sized from M4.8's proving time per run × the expected number of settled runs, with the derivation stated.
     - commitSlack, sized from the M5.4 rehearsal and the margin reported in round G1: at least 2 × the worst observed transition and transaction overhead. If M4.13 ran, its threshold recommendation is applied or declined here, with the reason.
   - `.github/workflows/season-ops.yml`, following §1.3, with `cancel-in-progress: false`:
@@ -2182,13 +2176,13 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - with zk, the run-file handoff: players send their run file to the operator through the channel named in `docs/TESTNET.md`, before the cutoff, and the operator commits it under `seasons/testnet-1/runs/` through a PR;
     - the slack and grace derivations.
   - `docs/TESTNET.md`, the tester guide:
-    - getting test ETH and MockUSDC;
+    - getting test ETH from an Arbitrum Sepolia faucet;
     - desktop Chrome or Edge for the Pico;
     - the controls and rules: keyboard mapping, Commit, the zero score when the lives run out;
     - flashing the season's UF2 with BOOTSEL;
     - with zk, the handoff channel and cutoff;
     - a feedback channel reachable without repository access, where testers attach their journal or run file: GitHub issues if the repository is public, otherwise the form or mailbox the user names in round G2;
-    - known gaps: MockUSDC only; unaudited contracts; the run nonce computable up to 256 blocks before the reveal; a lapsed reveal forfeits the run; a disconnect or reload closes the current level; desktop and keyboard only; Web Serial only in Chrome and Edge.
+    - known gaps: test ETH only; unaudited contracts; the run nonce computable up to 256 blocks before the reveal; a lapsed reveal forfeits the run; a disconnect or reload closes the current level; desktop and keyboard only; Web Serial only in Chrome and Edge.
   - The handoff instructions and the feedback channel, added to `web/src/pages/settle.ts` (M5.3).
   - The season's UF2, published by `pages.yml` under `/firmware/` on the preview site, with its sha256 and `RULES_VERSION`.
   - **testnet-0 rehearsal:** once its end plus grace has passed, `season.mjs close` on `testnet-0`, a claim for the M4.14 bot player, and the `isSolvent` result and the dust, recorded in `docs/DEPLOYMENT.md`.
@@ -2217,14 +2211,14 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - runs, settled runs, and gas and verification cost per settled run;
     - deadline margins and misses, interrupted levels included;
     - rejected settlements;
-    - payouts, the rake paid to the treasury, and `isSolvent` after every claim;
+    - payouts, the rake credited to and withdrawn by the treasury, and `isSolvent` after every claim;
     - suspicious patterns found in the published journals;
     - a summary of the tester feedback.
   - `deployments/arbitrum-sepolia.json`, with a new generation appended if anything was redeployed.
 - **Done when:**
   - the season closed through a permissionless `closeSeason` transaction;
   - at least one player claimed a pro-rata payout, and `isSolvent` held after every claim;
-  - pot − rake − Σ claims is at most the number of claimants, in USDC base units (rounding dust);
+  - pot − rake − Σ claims is at most the number of claimants, in wei (rounding dust);
   - (user) at least one settled run was played on the Pico, and at least one in the browser: the user names their run ids.
 
   This closes README §9's M5, so this PR updates the status lines.
@@ -2239,7 +2233,7 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 
 | ID | Decision | Decided in | Needed by | Recommendation |
 |---|---|---|---|---|
-| D1 | Firmware shell language | M0.2 | M3.1 | Rust embassy-rp, as its own Cargo workspace, with a UF2 from elf2uf2-rs. It needs no `arm-none-eabi-gcc`. Use C++ on the Pico SDK only if the embassy-rp blinky fails or the user prefers it; M0.2 then rewrites M3.1-M3.5. |
+| D1 | Firmware shell language | Owner, 2026-10-28; confirmed by M0.2's blinky | M3.1 | Decided: Rust embassy-rp, as its own Cargo workspace, with a UF2 from elf2uf2-rs. It needs no `arm-none-eabi-gcc`. If the blinky fails, the owner chooses between rp2040-hal and C++ on the Pico SDK; for C++, M0.2 rewrites M3.1-M3.5. |
 | D2, part 1 | zkVM framework | M1.12, from M1.16 and M1.17 | M1.13, M4.8 | README §7.3's four tooling checks first, then measured cycles and price. Trial SP1 and RISC Zero. |
 | D2, part 2 | Verification backend, and testnet aggregation | M4.9 | M4.10 (unless it starts early), M4.12, M4.14, M5.3 | Stylus whenever activations are open on the target chain; ZkReferee while they stay paused. The gas gate is defined in §4. If it fails with activations open, M4.15 runs, and if it still fails the user chooses from both cost tables. Both backends sit behind `IReferee`. |
 | D3 | Movement on claimed cells | Owner, 2026-10-28; pinned in M0.5 | M1.6 | Decided: rail only |
@@ -2248,10 +2242,10 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | D6 | Shield | Owner, 2026-10-28; pinned in M0.5 | M1.6 | Decided: one charge per level; an absorbed hit costs only the charge |
 | D7 | Minion patrol rule; stranded minions | Approach agreed by the owner, 2026-10-28; measured in M1.7; final in M1.7, or in M1.14 (and M1.15 if the rule changes) | M1.9, M1.10, M2.6 | The right-hand rule with the orientation step, if the coverage test finds 0 traps on 100,000 boards; otherwise a replacement specified in M1.14 and approved before it is built, or a bounded trap rate the user accepts, written into README §4.7. Stranded minions are destroyed and respawn after R ticks. |
 | D8 | Key mapping | Owner, 2026-10-28; pinned in M0.5 | M1.1, M2.1 | Decided: Key0-3 = A, B, X, Y; Y and the joystick press unused and not journaled; keys configurable in the browser (M2.1) |
-| D9 | Boss size | Owner, 2026-10-28 (bigger than one cell); shape in M0.5; range and default in M0.6 | M1.3, M1.5 | Decided: bigger than one cell. Proposed: a square B × B body, B per level, B = 2 to 8, default 5 |
+| D9 | Boss size | Owner, 2026-10-28; pinned in M0.5 and M0.6 | M1.3, M1.5 | Decided: a square B × B body, B per level, B = 2 to 8, default 5 |
 | D10 | Ranking and payout | Owner, 2026-10-28; qualification and contract details in M0.7 | M4.5 | Decided: best settled run per player per season; pro-rata payout among qualified players. Proposed: ties go to fewer ticks; qualified players are those whose best run cleared at least one level. |
 | D11 | Superchallenge design | Deferred | none | Stays in [`TODO.md`](TODO.md) |
-| D12 | Chain, currency, season length | Owner, 2026-10-28, except the currency; currency in M0.7 | M4.3, M4.5, M4.6 | Decided: Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing ethblockdigger's contracts; 14-day seasons on testnet (`testnet-0` aside), likely on mainnet too. Open: USDC or native ETH. |
+| D12 | Chain, currency, season length | Owner, 2026-10-28; pinned in M0.7 | M4.3, M4.5, M4.6 | Decided: native ETH; Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing ethblockdigger's contracts; a 0.00005 ETH Challenge run; 14-day seasons on testnet (`testnet-0` aside), likely on mainnet too. |
 | D13 | Names | Owner, 2026-10-28; crate and contract names in M0.5 | M0.4 (crates), M4.1 (contracts) | Decided: Jiro-ikusu ([`name.md`](name.md)). Proposed: the crates and contracts named in M0.5 |
 | P1 | Rust pin | M0.2 | M0.4 | 1.98.0, as ethblockdigger; otherwise the newest version that installs |
 | P2 | Contract toolchain | M0.2 | M4.3 | Foundry at a pinned version, if `forge` installs and runs: zk verifiers ship Foundry tests, and fuzz and invariant tests are built in. Otherwise ethblockdigger's harness for everything. Never both. Decided only after the pinned installer and the direct asset URL were both tried. |
@@ -2360,14 +2354,14 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as Actions repository secrets (needed from M2.2).
   - Merge M0.1 once the agent has committed the license.
 - [ ] **A2, critical** (M0.2, M0.5 ready):
-  - Review `.claude/settings.json` and `scripts/bootstrap.sh`, and approve D1 (M0.2).
-  - Approve the 18 pinned details, the D9 body shape (a square B × B body, B per level) and the crate and contract names (M0.5).
+  - Review `.claude/settings.json` and `scripts/bootstrap.sh` (M0.2).
+  - Approve the 18 pinned details and the crate and contract names (M0.5).
   - Merge both.
 - [ ] **A3, critical** (M0.4, M0.6 ready):
-  - Approve the formats and the D9 body-size range and default (M0.6).
+  - Approve the formats (M0.6).
   - Merge M0.4; then, if the plan allows, make the `ci.yml` jobs required checks on `main`.
   - Merge M0.6.
-- [ ] **A4** (M0.7 ready; slack 6): choose the currency (D12, USDC or ETH), and with ETH the run fee; choose the settlement shape (P16), the journal publication (P5) and the draw check (P17); approve the D10 qualification, the interface, the season-bound referee, the treasury, the sequencing and the slack proposal. Merge.
+- [ ] **A4** (M0.7 ready; slack 6): choose the settlement shape (P16), the journal publication (P5) and the draw check (P17); approve the D10 qualification, the interface, the season-bound referee, the treasury, the sequencing and the slack proposal. Merge.
 - [ ] **A5** (M0.3 ready; any time before M4.3): read the imported ethskills, and approve dropping `feedback`. Merge.
 
 ### Round B: M1 decisions
@@ -2411,7 +2405,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 
 ### Round G: testnet season
 
-- [ ] **G1, critical** (M5.4 ready): fund your browser wallet from an Arbitrum Sepolia faucet and mint MockUSDC. Flash the PR's UF2, play one six-level Challenge run on the PR's preview, and post its run id and the margin shown at commit.
+- [ ] **G1, critical** (M5.4 ready): fund your browser wallet from an Arbitrum Sepolia faucet. Flash the PR's UF2, play one six-level Challenge run on the PR's preview, and post its run id and the margin shown at commit.
 - [ ] **G2, critical** (M5.5 ready):
   - Approve the testnet-1 parameters.
   - Add `TESTER_KEY`, and the prover credential if D2 = zk, as Actions secrets.
@@ -2460,7 +2454,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 | Preview URLs are reachable by anyone who has them, while the repository is private | Asked in round A1 (§15, question 19); Cloudflare Access on the Pages project if the user wants previews private | M2.2 |
 | Web Serial works only in desktop Chrome and Edge | Documented in the dApp and in `docs/TESTNET.md`; browser play works everywhere and verifies the same way (README §7.1) | M5.4 |
 | A consensus bug is found in a live season's referee, which is immutable and has no pause | Accepted residual on testnet (M0.7, M4.12); a procedure listed as a pre-mainnet prerequisite (§16) | Out of scope (pre-mainnet) |
-| Unaudited contracts, and the regulatory exposure of a paid pot | Testnet with MockUSDC only; the residual risks in `ECONOMY.md` (M4.12); an audit, a legal read with geo-gating as its fallback, and key custody listed as pre-mainnet prerequisites | Out of scope (pre-mainnet) |
+| Unaudited contracts, and the regulatory exposure of a paid pot | Testnet with test ETH only; the residual risks in `ECONOMY.md` (M4.12); an audit, a legal read with geo-gating as its fallback, and key custody listed as pre-mainnet prerequisites | Out of scope (pre-mainnet) |
 
 ## 15. Open questions
 
@@ -2493,13 +2487,14 @@ Each question has a default in this plan, and the item that settles it unless th
 ## 16. Deferred work
 
 - **Superchallenge** (M6, D11). It stays in [`TODO.md`](TODO.md), which keeps its analysis and the bounty-rounds proposal. It needs its own design pass and a legal read before any work starts. Until then, v1 decoders reject journal mode 2 (M0.5). When it comes back, it reuses the level format and validity check (M1.3), the level tool and editor (M2.4, M2.5), and ethblockdigger's `MapNFT` and map renderer.
+- **Proving service** (a later version): a third-party service that proves runs through an API and settles them for the player, with gasless claims. Its design is in README §7.5.
 - **Stylus gas optimization while activations are paused.** If M4.9's gate fails while activations are paused, M4.15 is marked "deferred" and runs when activations reopen, before any Stylus season.
 - **Pre-mainnet prerequisites** (not scheduled; listed in `docs/ECONOMY.md` from M0.7):
   - a professional audit of the contracts;
   - a legal read of the paid prize pool, with geo-gating as the fallback if the read requires it;
   - custody of the operator key behind `Season.open`, for example a multisig;
   - a procedure for a consensus bug found in a live season's referee, which is immutable and has no pause;
-  - an Arbitrum One deployment, in the currency M0.7 chose, with seasons of likely 14 days, whose first season takes its weights from bot data (M0.7);
+  - an Arbitrum One deployment in native ETH, with seasons of likely 14 days, whose first season takes its weights from bot data (M0.7);
   - weights for later seasons from the previous season's public journals plus bot data (README §8.4), through a `calibrate --from-season <season>` mode;
   - fresh entropy per level (README §7.4);
   - journal signing with a device key on the RP2350 (README §7.1);

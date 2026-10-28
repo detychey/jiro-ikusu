@@ -13,6 +13,8 @@ Deferred on 2026-10-26, after the specification review in [detychey/jiro-ikusu#1
 - Once the map has been completed once, the minter claims half of its leftover value.
 - Any player can then pay $0.01 per run to beat the minter's score, and win half of the accumulated value.
 
+The project's currency is native ETH ([README §13](README.md#13-open-decisions), D12). On 2026-10-28 the owner suggested 0.0005 ETH per map and 0.000005 ETH per run for this mode, the draft's 100:1 ratio.
+
 ### Problems
 
 1. **The minter can always play their own map.** Wallets are free, so "beat the minter" cannot exclude the minter. The minter also knows the layout before minting, so they can practice or search it offline. They can then mint, set a strong score, let challengers fill the pot, and take the pot with a better run from a second wallet. The draft's design turns maps into honeypots.

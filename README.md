@@ -33,7 +33,7 @@ Every game must be replayable, bit for bit, by a smart contract:
 There are three modes ([§8](#8-game-modes-and-economy)):
 
 - **Training:** free, all 16 levels.
-- **Challenge:** $0.10 for 6 random levels, with a seasonal ranking and rewards.
+- **Challenge:** 0.00005 ETH for 6 random levels, with a seasonal ranking and rewards.
 - **Superchallenge:** player-minted maps with bounties, deferred ([`TODO.md`](TODO.md)).
 
 ## 2. Hardware target
@@ -115,7 +115,7 @@ A tick changes only a handful of cells. So the renderer redraws the changed 4×4
 - **On-chain targets are Rust-first.** Stylus contracts and zkVM guests (RISC Zero, SP1) are written in Rust, so the core can become the onchain referee or a proof guest without a port.
 - **No undefined behavior.** Overflow can be made explicit everywhere: `wrapping_*` and `checked_*` in the code, plus `overflow-checks = true` in every build profile so that debug and release builds behave the same.
 
-The Pico shell can be written in Rust (`embassy-rp`). Or it can be the draft's C++ on the Pico SDK, linking the core as a static library through a C ABI. Either way, the rules exist exactly once.
+**Firmware shell: Rust on `embassy-rp`** *(D1)*. The shell uses the core as an ordinary Rust dependency, and the firmware builds with cargo alone, without `arm-none-eabi-gcc`. The draft's C++ on the Pico SDK would have linked the core as a static library through a C ABI. Either way, the rules exist exactly once.
 
 ## 4. Game rules
 
@@ -274,7 +274,7 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 | Field | Meaning |
 |---|---|
 | Obstacles | Cells that start `CLAIMED` (a 3,600-bit bitmap, 450 bytes) |
-| Boss | Body size B, the side of the square body (proposed: B = 2 to 8, default 5); spawn area, the cells where the body's top-left cell may start; move period |
+| Boss | Body size B, the side of the square body (B = 2 to 8, default 5); spawn area, the cells where the body's top-left cell may start; move period |
 | Minions | Count (0–3); spawn cells; move period; respawn delay R |
 | Rules | Time limit (at most 2,700 ticks), lives, target claim. Defaults: 2,700 ticks, 3 lives, 7,500 bp. |
 
@@ -409,7 +409,7 @@ So the verifier runs the Rust core itself, in one of two ways:
 **Agreed approach *(D2)*:**
 
 1. **Measure first.** In M1, try two or three zkVMs hands-on, pick the one with the best tooling, and run the golden vectors in its executor. Executors run a guest without proving it, which yields cycle counts per level, and cycles set the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
-2. **Verify by exception.** Playing a run costs one small commit transaction, and its journals are published so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its $0.10 entry fee, even on Stylus. The payout curve *(D10)* sets how many runs need verifying.
+2. **Verify by exception.** Playing a run costs one small commit transaction, and its journals are published so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its 0.00005 ETH entry fee, even on Stylus. The payout curve *(D10)* sets how many runs need verifying.
 3. **One verifier interface.** Settlement calls `verify(journal) → outcome`, like ethblockdigger's `IReferee`, backed either by the Stylus referee or by a proof verifier. The money contracts don't change when the backend does.
 4. **Stylus first, zk as the fallback.** If activations reopen, the Stylus referee needs no prover infrastructure. If they don't, each verified run gets a zk proof, and a season's proofs are aggregated so verification gas stays nearly constant.
 
@@ -428,15 +428,31 @@ The levers are economic and social:
 
 **This is the main product risk of the paid modes.**
 
+### 7.5 Later version: proving service
+
+Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadmap)). In v1, whoever settles a run also produces its proof. In the later version, a third-party proving service does it for the player. The player sends the run's inputs (level bytes, run nonce, journals) to the service's API, the way a contract asks an oracle, and the service returns the proof and settles the run. Prover marketplaces such as Succinct's prover network and RISC Zero's Boundless already work this way. Neither the Pico nor the browser ever proves anything: proving needs gigabytes of memory, and ideally a GPU.
+
+**The service is an untrusted prover, not an oracle.** An oracle's answer is believed; a proof is checked by the contract. So:
+
+- **No new trust.** A proof only attests the outcome the journals actually produce, so a compromised service cannot mint prizes. The worst it can do is refuse or delay. The contracts never accept the service's signature or word in place of a proof: that is the oracle design ethblockdigger rejected, where one compromised key could pay out.
+- **The payout goes to the run's player, whoever submits.** The proof's public outputs include the run id, and settlement credits the run's player. The service can therefore submit the proof without being able to redirect the money, and claims can be gasless for players: the service takes a relay fee from the payout, capped by the season. A journal copied into another run fails, because journals are bound to their run's nonce ([§6.4](#64-seeds-and-commitments)).
+- **Someone pays for proving:** the payout (deducted at claim), the protocol (from the rake), or the player up front. Verify by exception still applies: only runs that money depends on need a proof ([§7.3](#73-verification-cost)).
+- **The commit never waits for the service.** The commit must land before its deadline even when the service is down ([§7.2](#72-run-flow)). The dApp commits the run commitment itself, or the player signs it and any relayer submits it. Proving can happen hours later, within the season's settlement grace.
+- **Proving stays permissionless.** If the service refuses, the player, a second provider or a backup prover can produce the same proof.
+- **Effect on the backend.** A proving service makes zk practical without running prover infrastructure, which matters while Stylus activations stay paused *(D2)*. The deciding number is the proving price per verified run against the payout it unlocks, which M1 and M4 measure.
+- **The device.** Nothing changes on the standard Pico. A Pico W or Pico 2 W could stream the journal to the service over Wi-Fi, leaving the browser only to buy the run. The commit would still need the player's authorization, through a signed commit or a session key.
+
+**Unchanged:** determinism, the journal format, the one core, and the bot risk ([§7.4](#74-bots)). A proof shows that a score is reachable, not that a human played.
+
 ## 8. Game modes and economy
 
-Amounts are in USDC, which has 6 decimals: $1 = `1_000_000`, $0.10 = `100_000`, $0.01 = `10_000`. The currency is still open *(D12)*: native ETH is the alternative, with 0.0005 ETH per map and 0.000005 ETH per play suggested on 2026-10-28, the same 100:1 ratio as the draft's $1 and $0.01.
+Amounts are in native ETH *(D12)*, and the contracts hold them in wei: 0.00005 ETH = `50_000_000_000_000` wei. Each season commits its fee when it opens ([§8.4](#84-season-scoring)), so the fee can follow the ETH price from one season to the next.
 
 ### 8.1 Training: free
 
 All 16 levels, offline, on the Pico or in the browser. Scores stay local and no wallet is needed. Training uses the current season's rules and scoring, so practice carries over.
 
-### 8.2 Challenge: $0.10 per run
+### 8.2 Challenge: 0.00005 ETH per run
 
 - **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a Fisher–Yates shuffle driven by `keccak256("jiro.draw" ‖ runNonce ‖ i)`, with `i` packed as one byte. The exact procedure is frozen in M0.
 - **Score.** The run score is the sum of the six level scores.
@@ -471,6 +487,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 | **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
 | **M5** dApp and season 1 | Wallet, Web Serial bridge to the Pico, Challenge UX, a testnet season | none | A full season closes and pays out on testnet |
 | **M6** Superchallenge | Deferred, see [`TODO.md`](TODO.md) | none | Not scheduled |
+| **Later** Proving service | A third-party service proves and settles runs through an API, with gasless claims ([§7.5](#75-later-version-proving-service)) | none | Not scheduled |
 
 ## 10. Reuse from ethblockdigger
 
@@ -479,7 +496,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 | ethblockdigger component | Source | Use in Jiro-ikusu |
 |---|---|---|
 | Pay-then-reveal entropy | `contracts/src/ArbBlockhashEntropy.sol`, `contracts/src/interfaces/IEntropySource.sol` | Run nonces and map seeds |
-| `Vault`: USDC ledger, solvency invariant, the start → reveal → commit → settle flow | `contracts/src/Vault.sol` | Challenge runs. ethblockdigger ties runs to the map owner and pays out the map's backing; Jiro runs are bought by any player and record a score. |
+| `Vault`: USDC ledger, solvency invariant, the start → reveal → commit → settle flow | `contracts/src/Vault.sol` | Challenge runs, paid in native ETH instead of USDC. ethblockdigger ties runs to the map owner and pays out the map's backing; Jiro runs are bought by any player and record a score. |
 | `Season`: rake capped at 20%, empty-season rollover, pro-rata claims | `contracts/src/Season.sol` | Challenge seasons. Its points still come from an oracle-posted Merkle root. ethblockdigger plans to accrue points onchain instead; Jiro needs that from the start (best settled score per player). |
 | `MapNFT` with an onchain-rendered `tokenURI` | `contracts/src/MapNFT.sol`, `referee/map-renderer` | Superchallenge maps, if that mode comes back ([`TODO.md`](TODO.md)) |
 | Referee crate: `no_std` Rust core, Stylus `verify(bytes)`, pinned wasm build | `referee/core`, `referee/stylus`, `referee/build-wasm.sh` | Template for the Jiro core and referee |
@@ -491,7 +508,7 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 
 Before reusing, note:
 
-- **Prices differ.** ethblockdigger charges 0.02 USDC per run, against the draft's $0.10 Challenge run and $0.01 Superchallenge run.
+- **Prices and currency differ.** ethblockdigger charges 0.02 USDC per run, against the draft's $0.10 Challenge run and $0.01 Superchallenge run. Jiro charges 0.00005 ETH per Challenge run in native ETH *(D12)*, so `Vault`'s SafeERC20 transfers become a `msg.value` check at run start and pull-based payouts.
 - **Not audited, not live.** ethblockdigger's testnet deployment is superseded and waiting for a full redeploy, which needs Stylus activations ([§7.3](#73-verification-cost)). Its own docs require a professional audit before mainnet.
 - **Known residuals come along.** For example, a player can compute their run nonce up to 256 Arbitrum blocks before the reveal starts the commit deadline: about a minute at 0.25 s per block (ethblockdigger `TOKENOMICS.md` §6.2).
 - **Chain coupling.** `ArbBlockhashEntropy` relies on Arbitrum's ArbSys precompile; `block.prevrandao` is a constant on Arbitrum. Moving off Arbitrum needs a new entropy source.
@@ -550,18 +567,18 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 
 | ID | Decision | Recommendation |
 |---|---|---|
-| D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target. Still open: the shell, either Rust (`embassy-rp`) for a single toolchain, or the draft's C++ on the Pico SDK linking the core. |
+| D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target; firmware shell: Rust on `embassy-rp`, built with cargo alone (owner, 2026-10-28). M0.2's blinky build confirms it. |
 | D2 | Verification backend | **Agreed on 2026-10-28:** Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
 | D3 | Player movement on claimed cells | **Decided:** rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. |
 | D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
 | D5 | Level defaults, and running out of lives | **Decided:** 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
 | D6 | Shield (B) | **Decided:** one charge per level; an absorbed hit costs the charge and nothing else. |
 | D7 | Minion patrol rule, and minions stranded by a capture | **Agreed on 2026-10-28, provisional:** the right-hand rule with the orientation step ([§4.7](#47-minions)), kept if M1's coverage property test finds no traps; otherwise replaced in M1, or kept with a bounded trap rate the owner accepts. Stranded minions are destroyed and respawn after R ticks. |
-| D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. In the browser, the keys are configurable ([§2](#2-hardware-target)). |
-| D9 | Boss size | **Decided:** bigger than one cell, closer to *Volfied*. **Proposed:** a square body of B × B cells, with B set per level ([§4.6](#46-boss)), B = 2 to 8, default 5; M0.5 settles the shape and M0.6 the range. |
+| D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. In the browser, players can rebind the keyboard keys ([§2](#2-hardware-target)). |
+| D9 | Boss size | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. |
 | D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players. **Proposed** qualification, settled in M0.7: the player's best run cleared at least one level. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
-| D12 | Chain, currency, season length | **Decided:** Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. **Still open:** the currency, USDC or native ETH ([§8](#8-game-modes-and-economy)). |
+| D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)); 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
 | D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes, for example, `Referee`. |
 
 ## Repository files
