@@ -337,10 +337,10 @@ The zero rules keep the bytes canonical, so a level has exactly one id.
 
 - the open area, the cells `EMPTY` at level start, is a single 4-connected region (35), of at least 1,682 cells, half of the 3,364-cell interior (36). An empty open area is not a region;
 - from every cell of the boss spawn rectangle, the B × B body covers only open cells (37);
-- every minion spawn is a rail cell (38);
+- the spawn of each of the first `count` minion slots is a rail cell (38);
 - the player start (30, 59) is a rail cell (39).
 
-**Worked example.** The **open-field level** is the reference level of the worked examples and of the `open-field-*` vectors: no obstacles, B = 5, spawn rectangle (20, 20) to (34, 34), boss move period 2, no minions, T = 2,700, 3 lives and a 7,500 bp target. Its bytes are `0x01`, then 450 zero bytes, then bytes 451 to 471 below. Obstacles at (29, 58), (30, 58) and (31, 58), cells 3,509 to 3,511, set the low three bits of bitmap byte 438 (level offset 439) and leave the player start with no open neighbor. [`tools/xcheck/worked-examples.mjs`](tools/xcheck/worked-examples.mjs) prints these lines; validity 0 means valid:
+**Worked example.** The **open-field level** is the reference level of the worked examples and of the `open-field-*` vectors: no obstacles, B = 5, spawn rectangle (20, 20) to (34, 34), boss move period 2, no minions, T = 2,700, 3 lives and a 7,500 bp target. Its bytes are `0x01`, then 450 zero bytes, then bytes 451 to 471 below. Obstacles at (29, 58), (30, 58) and (31, 58) set the low three bits of the bitmap byte printed below, whose level offset is one more, and leave the player start with no open neighbor. [`tools/xcheck/worked-examples.mjs`](tools/xcheck/worked-examples.mjs) prints these lines; validity 0 means valid:
 
 ```text
 open-field level bytes 451-471: 0x051414222202000000000000000000000a8c031d4c
@@ -397,9 +397,9 @@ eventCount × (u16 tick, u8 mask)
 5. `levelIndex` 6 or above (6);
 6. `eventCount` above 2,700 (7);
 7. fewer than 71 + 3 × `eventCount` bytes: truncated (1); more: trailing bytes (2);
-8. each event in order: a tick of 2,700 or more (8), a tick not above the previous event's (9), reserved bit 7 set (10), a mask equal to the previous one, which is 0 before the first event (11).
+8. the events, one at a time in journal order. For each event, the first of these rules it breaks: a tick of 2,700 or more (8), a tick not above the previous event's (9), reserved bit 7 set (10), a mask equal to the previous one, which is 0 before the first event (11).
 
-**Replay** knows the level. Before play, it rejects an invalid level, with the level's code ([§5](#5-levels)), a `levelId` other than keccak256 of the level bytes (12), and an event at or after the level's time limit (13). After play, it rejects an event after the tick on which the level ended (14).
+**Replay** knows the level. Before play, it checks in this order and returns the first broken rule's code: the journal, as above (1 to 11); the level bytes and the level's validity, in the order of [§5](#5-levels) (20 to 39); a `levelId` other than keccak256 of the level bytes (12); an event at or after the level's time limit (13). Then it plays the level. After play, it rejects an event after the tick on which the level ended (14).
 
 **Worked example.** The journal of `open-field-empty`, a training run of the open-field level at `levelIndex` 0 with no events, played under the worked-example `runNonce` of [§6.4](#64-seeds-and-commitments):
 
@@ -440,7 +440,7 @@ The draft also asks for a C++ PRNG that matches "the state-transition hashing lo
 | 1 | lives | u8 |
 | 1 | shield charges | u8 |
 | 1 | invulnerability ticks | u8 ([§4.3](#43-entities)) |
-| 1 | previous direction | u8: 0 none, 1 up, 2 down, 3 left, 4 right |
+| 1 | previous direction | u8: 0 none, 1 up, 2 down, 3 left, 4 right; the direction resolved at this tick's step 3, unchanged on a tick that ends at step 2 |
 | 2 | `press_tick` | u16 |
 | 2 | boss position | u8 x, u8 y, the body's top-left cell |
 | 1 | boss body size B | u8 |
@@ -459,12 +459,14 @@ The preimage is 948 bytes in all.
 runNonce: 0x277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd
 level seed (levelIndex 0): 0x3747fcd23494676303f1ee35d499ae727c0d8e373f013491d394bd9fcaacd7d7
 boss start: candidates 225, index 33, top-left (23, 22), vx -1, vy -1
+boss start (levelIndex 2): candidates 225, index 180, top-left (20, 32), vx +1, vy -1
+boss start (spawn rectangle (20, 20) to (34, 25)): candidates 90, index 78, top-left (23, 25), vx -1, vy -1
 open-field-empty tick 0 boss: top-left (22, 21), vx -1, vy -1
 open-field-empty tick 0 preimage length: 948
 open-field-empty tick 0 state hash: 0xc9775c491d677d941c3ac733e1b47b51a64024cb4da22f9c05ceea58d93c76d1
 ```
 
-On tick 0 the boss moves (0 % 2 = 0) one step diagonally, from (23, 22) to (22, 21), and the player stands still.
+The second and third lines check the bit order of seed byte 4 and the row-major order of a non-square rectangle. On tick 0 the boss moves (0 % 2 = 0) one step diagonally, from its start to the `tick 0 boss` position, and the player stands still.
 
 ### 6.5 Device-to-browser link
 
@@ -479,11 +481,11 @@ This has to happen live: the commit deadline counts the time the journals actual
 
 ### 6.6 Vector files
 
-Golden vectors live in `vectors/`, one JSON file per vector, and every target must reproduce them. Each file has a `kind` key. Byte strings are lowercase hex with a `0x` prefix, and error codes are those of [§5](#5-levels) and [§6.3](#63-journal-bytes-v1).
+Golden vectors live in `vectors/`, one JSON file per vector, and every target must reproduce them. Each vector file has a `kind` key. Byte strings are lowercase hex with a `0x` prefix, and error codes are those of [§5](#5-levels) and [§6.3](#63-journal-bytes-v1).
 
 - **`journal`** (`vectors/format/journal-*.json`): `name`, `input`, and either `reencoded`, the decoded journal encoded again, or `error`.
 - **`level`** (`vectors/format/level-*.json`): `name`, `input`, and either `levelId` and `reencoded`, or `error`.
-- **`game`** (`vectors/game/*.json`):
+- **`game`** (`vectors/game/*.json`, and the M4 gas-gate set in `vectors/levels/*.json`):
   - `name`, and `covers`, the README sections and rule tags it exercises;
   - the inputs: `rulesVersion`, `level`, `runNonce`, `levelIndex`, `mode`, `weightBp` and `journal`;
   - either the expected outcome or `error`, the code replay returns;
@@ -491,7 +493,7 @@ Golden vectors live in `vectors/`, one JSON file per vector, and every target mu
 
   M0.7 adds the outcome keys.
 
-A **trace** (`.trace`, binary) holds the 32-byte state hash of every processed tick, in tick order. Derivation fixtures (level seeds, boss starts, draws, run commitments, and later run nonces and deadline cases) live in `vectors/derivations.json`.
+A **trace** (`.trace`, binary) holds the 32-byte state hash of every processed tick, in tick order. A vector that replay rejects before play has an empty trace; one rejected after play (14) holds the hashes of the ticks it played. Derivation fixtures (level seeds, level ids, boss starts, draws, run commitments, and later run nonces and deadline cases) live in `vectors/derivations.json`, a single fixture file without a `kind` key.
 
 **Diagnosis.** A target that disagrees with a vector reports the first tick whose hash differs. A target that can expose its state (native, wasm, the emulator) also prints its state-hash preimage at that tick. `jiro-tools replay --dump-tick <t> --diff <hex>` decodes that preimage, compares it with the native one, and names the fields that differ.
 
@@ -589,7 +591,7 @@ All 16 levels, offline, on the Pico or in the browser. Scores stay local and no 
 
 - **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a forward partial Fisher–Yates shuffle. Only the core computes it:
   1. The deck is [0, 1, …, 15].
-  2. For i = 0 to 5: j = i + h mod (16 − i), where h is `keccak256("jiro.draw" ‖ runNonce ‖ i)` read as a 256-bit big-endian unsigned integer, with `i` packed as one byte. Swap deck[i] and deck[j].
+  2. For i = 0 to 5: j = i + (h mod (16 − i)), where h is `keccak256("jiro.draw" ‖ runNonce ‖ i)` read as a 256-bit big-endian unsigned integer, with `i` packed as one byte, so i ≤ j ≤ 15. Swap deck[i] and deck[j].
   3. The run's levels are deck[0] to deck[5]: the **draw slots**, indices into the season's 16 levels. The level at `levelIndex` k plays slot deck[k].
 
   With the worked-example `runNonce` of [§6.4](#64-seeds-and-commitments):

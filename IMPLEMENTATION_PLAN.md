@@ -600,7 +600,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     - The modulo bias, below 2^−20, is documented.
   - **Draw (§8.2),** a forward partial Fisher-Yates:
     - The deck is [0, 1, …, 15].
-    - For i = 0 to 5: j = i + uint256(keccak256("jiro.draw" ‖ runNonce ‖ u8 i)) mod (16 − i). Swap deck[i] and deck[j].
+    - For i = 0 to 5: j = i + (uint256(keccak256("jiro.draw" ‖ runNonce ‖ u8 i)) mod (16 − i)). Swap deck[i] and deck[j].
     - The run's levels are deck[0] to deck[5]: the draw slots, indices into the season's 16 levels.
 
     That is six keccak calls, computed only by the core (M0.7, P17).

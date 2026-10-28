@@ -1,19 +1,36 @@
 // Computes the worked examples of README §5, §6.3, §6.4 and §8.2 independently of the
-// Rust core. With --check <README>, exits 1 unless every printed line appears in it.
+// Rust core. With --check <README>, exits 1 unless each printed line's label starts
+// exactly one README line, and that line equals the printed one.
 import { readFileSync } from "node:fs";
 import { concat, keccak256, toUtf8Bytes, getBytes } from "ethers";
 
 const WIDTH = 60;
 const CELLS = WIDTH * WIDTH;
-const LEVEL_LENGTH = 472;
-const BITMAP_OFFSET = 1;
 const MIN_OPEN_AREA = 1682;
 const MAX_TICKS = 2700;
 const RULES_VERSION = 1;
+const LEVEL_VERSION = 1;
+const JOURNAL_VERSION = 1;
+const STATE_HASH_VERSION = 1;
 const PLAYER_START = { x: 30, y: 59 };
 const EMPTY = 0;
 const CLAIMED = 1;
 const TRAIL = 2;
+
+const LEVEL = {
+  length: 472,
+  bitmap: 1,
+  bossSize: 451,
+  spawnRect: 452,
+  bossPeriod: 456,
+  minionCount: 457,
+  minionSpawns: 458,
+  minionPeriod: 464,
+  respawnDelay: 465,
+  timeLimit: 467,
+  lives: 469,
+  target: 470,
+};
 
 const LEVEL_ERRORS = {
   length: 20,
@@ -44,25 +61,34 @@ const readU32 = (bytes, offset) => readU16(bytes, offset) * 0x10000 + readU16(by
 const u16 = (value) => [value >> 8, value & 0xff];
 const isBorder = (x, y) => x === 0 || y === 0 || x === WIDTH - 1 || y === WIDTH - 1;
 const index = (x, y) => y * WIDTH + x;
+const isObstacle = (levelBytes, cell) => (levelBytes[LEVEL.bitmap + (cell >> 3)] >> (7 - (cell & 7))) & 1;
+const spawnRect = (levelBytes) => levelBytes.subarray(LEVEL.spawnRect, LEVEL.spawnRect + 4);
+const minionSpawn = (levelBytes, slot) => ({
+  x: levelBytes[LEVEL.minionSpawns + 2 * slot],
+  y: levelBytes[LEVEL.minionSpawns + 2 * slot + 1],
+});
 
 function encodeLevel(level) {
-  const bytes = new Uint8Array(LEVEL_LENGTH);
-  bytes[0] = 1;
+  const bytes = new Uint8Array(LEVEL.length);
+  bytes[0] = LEVEL_VERSION;
   for (const { x, y } of level.obstacles) {
     const cell = index(x, y);
-    bytes[BITMAP_OFFSET + (cell >> 3)] |= 0x80 >> (cell & 7);
+    bytes[LEVEL.bitmap + (cell >> 3)] |= 0x80 >> (cell & 7);
   }
-  bytes.set([level.bossSize, ...level.spawnRect, level.bossPeriod, level.minions.length], 451);
-  level.minions.forEach(({ x, y }, slot) => bytes.set([x, y], 458 + 2 * slot));
-  bytes.set([level.minionPeriod, ...u16(level.respawnDelay), ...u16(level.timeLimit), level.lives, ...u16(level.target)], 464);
+  bytes.set([level.bossSize, ...level.spawnRect, level.bossPeriod, level.minions.length], LEVEL.bossSize);
+  level.minions.forEach(({ x, y }, slot) => bytes.set([x, y], LEVEL.minionSpawns + 2 * slot));
+  bytes.set(
+    [level.minionPeriod, ...u16(level.respawnDelay), ...u16(level.timeLimit), level.lives, ...u16(level.target)],
+    LEVEL.minionPeriod,
+  );
   return bytes;
 }
 
 function startGrid(levelBytes) {
   const grid = new Uint8Array(CELLS);
   for (let cell = 0; cell < CELLS; cell++) {
-    const obstacle = (levelBytes[BITMAP_OFFSET + (cell >> 3)] >> (7 - (cell & 7))) & 1;
-    grid[cell] = isBorder(cell % WIDTH, Math.floor(cell / WIDTH)) || obstacle ? CLAIMED : EMPTY;
+    const border = isBorder(cell % WIDTH, Math.floor(cell / WIDTH));
+    grid[cell] = border || isObstacle(levelBytes, cell) ? CLAIMED : EMPTY;
   }
   return grid;
 }
@@ -107,51 +133,51 @@ function openArea(grid) {
 }
 
 function validateLevel(bytes) {
-  const e = LEVEL_ERRORS;
-  if (bytes.length !== LEVEL_LENGTH) return e.length;
-  if (bytes[0] !== 1) return e.version;
-  const grid = startGrid(bytes);
+  if (bytes.length !== LEVEL.length) return LEVEL_ERRORS.length;
+  if (bytes[0] !== LEVEL_VERSION) return LEVEL_ERRORS.version;
   for (let cell = 0; cell < CELLS; cell++) {
-    const x = cell % WIDTH;
-    const y = Math.floor(cell / WIDTH);
-    if (isBorder(x, y) && (bytes[BITMAP_OFFSET + (cell >> 3)] >> (7 - (cell & 7))) & 1) return e.borderObstacle;
+    if (isBorder(cell % WIDTH, Math.floor(cell / WIDTH)) && isObstacle(bytes, cell)) return LEVEL_ERRORS.borderObstacle;
   }
-  const size = bytes[451];
-  if (size < 2 || size > 8) return e.bossSize;
-  const [x0, y0, x1, y1] = bytes.subarray(452, 456);
-  if (x0 > x1 || y0 > y1) return e.spawnOrder;
-  if (x0 < 1 || y0 < 1 || x1 > 59 - size || y1 > 59 - size) return e.spawnBounds;
-  if (bytes[456] === 0) return e.bossPeriod;
-  const minionCount = bytes[457];
-  if (minionCount > 3) return e.minionCount;
+  const size = bytes[LEVEL.bossSize];
+  if (size < 2 || size > 8) return LEVEL_ERRORS.bossSize;
+  const [x0, y0, x1, y1] = spawnRect(bytes);
+  if (x0 > x1 || y0 > y1) return LEVEL_ERRORS.spawnOrder;
+  if (x0 < 1 || y0 < 1 || x1 > 59 - size || y1 > 59 - size) return LEVEL_ERRORS.spawnBounds;
+  if (bytes[LEVEL.bossPeriod] === 0) return LEVEL_ERRORS.bossPeriod;
+  const minionCount = bytes[LEVEL.minionCount];
+  if (minionCount > 3) return LEVEL_ERRORS.minionCount;
   for (let slot = 0; slot < minionCount; slot++) {
-    if (bytes[458 + 2 * slot] >= WIDTH || bytes[459 + 2 * slot] >= WIDTH) return e.minionSpawn;
+    const { x, y } = minionSpawn(bytes, slot);
+    if (x >= WIDTH || y >= WIDTH) return LEVEL_ERRORS.minionSpawn;
   }
   for (let slot = minionCount; slot < 3; slot++) {
-    if (bytes[458 + 2 * slot] || bytes[459 + 2 * slot]) return e.minionSlot;
+    const { x, y } = minionSpawn(bytes, slot);
+    if (x || y) return LEVEL_ERRORS.minionSlot;
   }
-  if (bytes[464] > 0 !== minionCount > 0) return e.minionPeriod;
-  if (readU16(bytes, 465) > 0 !== minionCount > 0) return e.respawnDelay;
-  const timeLimit = readU16(bytes, 467);
-  if (timeLimit < 1 || timeLimit > MAX_TICKS) return e.timeLimit;
-  if (bytes[469] === 0) return e.lives;
-  const target = readU16(bytes, 470);
-  if (target < 1 || target > 10000) return e.target;
+  if (bytes[LEVEL.minionPeriod] > 0 !== minionCount > 0) return LEVEL_ERRORS.minionPeriod;
+  if (readU16(bytes, LEVEL.respawnDelay) > 0 !== minionCount > 0) return LEVEL_ERRORS.respawnDelay;
+  const timeLimit = readU16(bytes, LEVEL.timeLimit);
+  if (timeLimit < 1 || timeLimit > MAX_TICKS) return LEVEL_ERRORS.timeLimit;
+  if (bytes[LEVEL.lives] === 0) return LEVEL_ERRORS.lives;
+  const target = readU16(bytes, LEVEL.target);
+  if (target < 1 || target > 10000) return LEVEL_ERRORS.target;
 
+  const grid = startGrid(bytes);
   const area = openArea(grid);
-  if (!area.connected) return e.openAreaSplit;
-  if (area.size < MIN_OPEN_AREA) return e.openAreaSmall;
+  if (!area.connected) return LEVEL_ERRORS.openAreaSplit;
+  if (area.size < MIN_OPEN_AREA) return LEVEL_ERRORS.openAreaSmall;
   for (let y = y0; y <= y1; y++) {
     for (let x = x0; x <= x1; x++) {
       for (let dy = 0; dy < size; dy++) {
-        for (let dx = 0; dx < size; dx++) if (grid[index(x + dx, y + dy)] !== EMPTY) return e.bossSpawn;
+        for (let dx = 0; dx < size; dx++) if (grid[index(x + dx, y + dy)] !== EMPTY) return LEVEL_ERRORS.bossSpawn;
       }
     }
   }
   for (let slot = 0; slot < minionCount; slot++) {
-    if (!isRail(grid, bytes[458 + 2 * slot], bytes[459 + 2 * slot])) return e.minionSpawnRail;
+    const { x, y } = minionSpawn(bytes, slot);
+    if (!isRail(grid, x, y)) return LEVEL_ERRORS.minionSpawnRail;
   }
-  if (!isRail(grid, PLAYER_START.x, PLAYER_START.y)) return e.playerStartRail;
+  if (!isRail(grid, PLAYER_START.x, PLAYER_START.y)) return LEVEL_ERRORS.playerStartRail;
   return 0;
 }
 
@@ -159,7 +185,7 @@ const levelSeed = (runNonce, levelIndex) =>
   getBytes(keccak256(concat([toUtf8Bytes("jiro.level"), runNonce, new Uint8Array([levelIndex])])));
 
 function bossStart(levelBytes, seed) {
-  const [x0, y0, x1, y1] = levelBytes.subarray(452, 456);
+  const [x0, y0, x1, y1] = spawnRect(levelBytes);
   const width = x1 - x0 + 1;
   const candidates = width * (y1 - y0 + 1);
   const pick = readU32(seed, 0) % candidates;
@@ -205,20 +231,20 @@ function statePreimage({ tick, mask, grid, player, boss, captured, claimable, ne
     player.lives, player.shield, player.invulnerable, player.previousDirection, ...u16(player.pressTick),
   ];
   const bossBytes = [boss.x, boss.y, boss.size, boss.vx & 0xff, boss.vy & 0xff, boss.period];
-  const minionSlots = new Uint8Array(3 * 7);
+  const emptyMinionSlots = new Uint8Array(3 * 7);
   return getBytes(concat([
-    new Uint8Array([1, ...u16(tick), mask]),
+    new Uint8Array([STATE_HASH_VERSION, ...u16(tick), mask]),
     packedGrid,
     new Uint8Array(playerBytes),
     new Uint8Array(bossBytes),
-    minionSlots,
+    emptyMinionSlots,
     new Uint8Array([...u16(captured), ...u16(claimable), ...u16(nextEvent)]),
   ]));
 }
 
 function encodeJournal({ mode, runNonce, levelId, levelIndex, events }) {
   return getBytes(concat([
-    new Uint8Array([1, ...u16(RULES_VERSION), mode]),
+    new Uint8Array([JOURNAL_VERSION, ...u16(RULES_VERSION), mode]),
     runNonce,
     levelId,
     new Uint8Array([levelIndex, ...u16(events.length)]),
@@ -239,41 +265,58 @@ const openField = {
   target: 7500,
 };
 const blockedStart = { ...openField, obstacles: [{ x: 29, y: 58 }, { x: 30, y: 58 }, { x: 31, y: 58 }] };
+const wideSpawn = { ...openField, spawnRect: [20, 20, 34, 25] };
 
 const runNonce = getBytes(keccak256(toUtf8Bytes("jiro.example.9")));
 const levelBytes = encodeLevel(openField);
 const levelId = getBytes(keccak256(levelBytes));
 const blockedBytes = encodeLevel(blockedStart);
-const blockedByte = 3509 >> 3;
+const blockedByte = index(blockedStart.obstacles[0].x, blockedStart.obstacles[0].y) >> 3;
 const seed = levelSeed(runNonce, 0);
 const start = bossStart(levelBytes, seed);
+const startLevel2 = bossStart(levelBytes, levelSeed(runNonce, 2));
+const startWide = bossStart(encodeLevel(wideSpawn), seed);
 const drawn = draw(runNonce);
 
+const tick = 0;
 const grid = startGrid(levelBytes);
-const boss = { x: start.x, y: start.y, size: 5, vx: start.vx, vy: start.vy, period: 2 };
-if (0 % boss.period === 0) moveBoss(grid, boss);
+const boss = { x: start.x, y: start.y, size: openField.bossSize, vx: start.vx, vy: start.vy, period: openField.bossPeriod };
+if (tick % boss.period === 0) moveBoss(grid, boss);
 const preimage = statePreimage({
-  tick: 0,
+  tick,
   mask: 0,
   grid,
-  player: { ...PLAYER_START, cutting: 0, cutStart: PLAYER_START, lives: 3, shield: 1, invulnerable: 0, previousDirection: 0, pressTick: 0 },
+  player: {
+    ...PLAYER_START,
+    cutting: 0,
+    cutStart: PLAYER_START,
+    lives: openField.lives,
+    shield: 1,
+    invulnerable: 0,
+    previousDirection: 0,
+    pressTick: 0,
+  },
   boss,
   captured: 0,
   claimable: openArea(grid).size,
   nextEvent: 0,
 });
 const journal = encodeJournal({ mode: 0, runNonce, levelId, levelIndex: 0, events: [] });
-const sign = (v) => (v > 0 ? "+1" : "-1");
+const sign = (value) => (value > 0 ? "+1" : "-1");
+const describeStart = ({ candidates, pick, x, y, vx, vy }) =>
+  `candidates ${candidates}, index ${pick}, top-left (${x}, ${y}), vx ${sign(vx)}, vy ${sign(vy)}`;
 
 const lines = [
-  `open-field level bytes 451-471: ${hex(levelBytes.subarray(451))}`,
+  `open-field level bytes 451-471: ${hex(levelBytes.subarray(LEVEL.bossSize))}`,
   `open-field level_id: ${hex(levelId)}`,
   `open-field validity: ${validateLevel(levelBytes)}`,
-  `blocked-start bitmap byte ${blockedByte}: ${hex(blockedBytes.subarray(BITMAP_OFFSET + blockedByte, BITMAP_OFFSET + blockedByte + 1))}`,
+  `blocked-start bitmap byte ${blockedByte}: ${hex(blockedBytes.subarray(LEVEL.bitmap + blockedByte, LEVEL.bitmap + blockedByte + 1))}`,
   `blocked-start validity: ${validateLevel(blockedBytes)}`,
   `runNonce: ${hex(runNonce)}`,
   `level seed (levelIndex 0): ${hex(seed)}`,
-  `boss start: candidates ${start.candidates}, index ${start.pick}, top-left (${start.x}, ${start.y}), vx ${sign(start.vx)}, vy ${sign(start.vy)}`,
+  `boss start: ${describeStart(start)}`,
+  `boss start (levelIndex 2): ${describeStart(startLevel2)}`,
+  `boss start (spawn rectangle (20, 20) to (34, 25)): ${describeStart(startWide)}`,
   `draw j: ${drawn.swaps.join(", ")}`,
   `draw slots: ${drawn.slots.join(", ")}`,
   `open-field-empty journal: ${hex(journal)}`,
@@ -282,14 +325,17 @@ const lines = [
   `open-field-empty tick 0 state hash: ${keccak256(preimage)}`,
 ];
 
-const checkIndex = process.argv.indexOf("--check");
-if (checkIndex === -1) {
+const [flag, readmePath, ...extra] = process.argv.slice(2);
+if (flag === undefined) {
   console.log(lines.join("\n"));
 } else {
-  const readmePath = process.argv[checkIndex + 1];
-  if (!readmePath) throw new Error("usage: worked-examples.mjs --check <README.md>");
-  const readme = readFileSync(readmePath, "utf8");
-  const missing = lines.filter((line) => !readme.includes(line));
-  for (const line of missing) console.log(`missing from ${readmePath}: ${line}`);
-  process.exit(missing.length ? 1 : 0);
+  if (flag !== "--check" || !readmePath || extra.length) throw new Error("usage: worked-examples.mjs [--check <README.md>]");
+  const readmeLines = readFileSync(readmePath, "utf8").split("\n").map((line) => line.trim());
+  const mismatched = lines.filter((line) => {
+    const label = line.slice(0, line.indexOf(": ") + 2);
+    const found = readmeLines.filter((readmeLine) => readmeLine.startsWith(label));
+    return found.length !== 1 || found[0] !== line;
+  });
+  for (const line of mismatched) console.log(`not exactly once in ${readmePath}: ${line}`);
+  process.exit(mismatched.length ? 1 : 0);
 }
