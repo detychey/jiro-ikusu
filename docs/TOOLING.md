@@ -1,0 +1,285 @@
+# Tooling
+
+Probe record of work item M0.2, made on 2026-10-28 in the agents' cloud container: 4 CPUs, 15 GB RAM, about 30 GB of free disk, with outbound HTTPS through the session's proxy. [`scripts/bootstrap.sh`](../scripts/bootstrap.sh) installs the tools that passed, at the versions below. When a pin changes, re-probe the tool and update its row and its install route.
+
+## Network rules seen by the probes
+
+- **Reachable:** `static.rust-lang.org`, crates.io, npm, PyPI, apt (`archive.ubuntu.com`), `binaries.soliditylang.org`, `artifacts.risczero.net`, GitHub release assets (`github.com/<owner>/<repo>/releases/download/...`), `raw.githubusercontent.com`, and `git clone` of public repositories.
+- **Refused (403):** `api.github.com`, GitHub release pages, and attestation downloads (`github.com/<owner>/<repo>/attestations/...`). foundryup, sp1up and rzup depend on them, so the bootstrap downloads the release asset directly and checks its sha256 instead.
+- **Not tried:** `cdn.playwright.dev`, Playwright's browser download; the container uses its preinstalled browser.
+- **Docker Hub:** anonymous pulls are rate-limited on the shared egress IP (`toomanyrequests`). `mirror.gcr.io` works; `public.ecr.aws` and `ghcr.io` did not.
+
+## Decisions
+
+- **P1, Rust pin: 1.98.0.** The pin exists and installs, with its four targets and three components, in 35 to 49 s: 49 s in the probe, 35 s for `RUSTUP_HOME=<empty directory> bash scripts/bootstrap.sh core` (228 MB download, 1.1 GB on disk).
+- **P2, contract toolchain: Foundry v1.8.6.** `forge` installs from its release asset and runs: build, tests and fuzzing with solc 0.8.28 (fetched by forge from `binaries.soliditylang.org`), and `anvil` answers RPC calls. ethblockdigger's harness is not used, so the plan's M4 test file names stay as written. CI uses `foundry-rs/foundry-toolchain` with `version: v1.8.6`.
+- **P14, repository and CI profile: private, on the free plan's minutes, with the private CI profile** (plan §1.3). The owner keeps the repository private until a working version exists, then makes it public (owner, 2026-10-28; plan §15, question 18). M0.4 builds the private profile. When the repository becomes public, a follow-up PR switches CI to the public profile; no plan item schedules it yet.
+  - The `detychey` organization's private repositories share 2,000 Actions minutes a month on GitHub Free, ethblockdigger included. Jobs run on 2-vCPU runners and are billed rounded up to the minute.
+  - **Monthly budget for jiro-ikusu: 1,500 minutes** (a proposal; the owner can change it in review), leaving 500 for ethblockdigger.
+- **Core MSRV input (plan §3.2).** The oldest zkVM rustc is 1.96 (SP1), so M1.1 sets `rust-version = "1.96"` in `core/Cargo.toml`. Caveat for M1.17: risc0-build 3.0.6 builds guests in Docker with `r0.1.88.0` (rustc 1.88), not with the 1.97 toolchain recorded here. If M1.17 needs that Docker build, `rust-version = "1.96"` is too new for it; M1.17 reports it, and lowering the MSRV needs a plan change, since plan §3.2 takes it only from this record.
+
+## Probe results
+
+| Tool | Version | Status | Tier | Affected items |
+|---|---|---|---|---|
+| Rust toolchain | rustc 1.98.0 (88d9e12ae 2026-08-18), LLVM 22.1.8; cargo 1.98.0; clippy 0.1.98; rustfmt 1.9.0 | PASS | core | all |
+| Rust targets | `thumbv6m-none-eabi`, `wasm32-unknown-unknown`, `riscv32im-unknown-none-elf`, `riscv64imac-unknown-none-elf` | PASS | core | M0.4, M1, M3, M4.1 |
+| llvm-tools | LLVM 22.1.8-rust-1.98.0 | PASS | core | M0.4 (float probe, `llvm-nm`), M3.1 memory gate |
+| cargo-stylus | 0.10.10 | PASS | contracts | M4.1, M4.2, M4.11, M4.14, M4.16 |
+| elf2uf2-rs (chosen UF2 converter) | 2.2.0 | PASS | firmware | M3.1-M3.5 |
+| uf2conv.py (fallback converter) | microsoft/uf2 at commit 90e9741f | PASS, not used | none | M3, if elf2uf2-rs breaks |
+| [embassy-rp blinky](#d1-evidence-embassy-rp-blinky) | embassy-rp 0.10.0, embassy-executor 0.10.0, embassy-time 0.5.1, embassy-usb 0.6.0, cortex-m-rt 0.7.7 | PASS | firmware | M3.1 |
+| Node, npm | v22.22.0, 10.9.4 | PASS (preinstalled) | web | M0.6, M1.2, M1.11, M2, M3.3, M4 |
+| binaryen (`wasm-opt`) | 120 | PASS | contracts | M4.1 |
+| solc (solcjs) | 0.8.28+commit.7893614a | PASS, not used | none | none: only ethblockdigger's harness needs it, and P2 chose Foundry |
+| rp2040js | 1.4.1 | PASS | firmware (`firmware/emu` package, M3.3) | M3.3 |
+| Playwright | 1.63.0; Chrome for Testing 153.0.8010.12 (chromium revision 1243) | PASS (preinstalled browser) | web | M2.2 |
+| wrangler | 4.154.0 | PASS | web (`web/package.json`, M2.2) | M2.2 |
+| Foundry (forge, cast, anvil, chisel) | 1.8.6 (6bad0a66, 2026-10-21) | PASS, through the direct asset | contracts | M4 |
+| Docker | 29.9.2; containerd 2.4.2; runc 1.5.2 | PASS, through a registry mirror | none (started by hand) | M1.16, M1.17, M4.2, M4.8, M4.14, M4.16 |
+| slither | 0.11.6 (solc-select 1.2.0, crytic-compile 0.4.2) | PASS | contracts | M4.12 |
+| SP1 toolchain | cargo-prove v6.10.0 (d83ed91); `rustc +succinct` 1.96.0-dev, LLVM 22.1.2 | PASS, through direct assets | zk (M1.12) | M1.1 (MSRV), M1.12, M1.16, M4.8 |
+| RISC Zero toolchain | rzup 0.6.0 (unversioned download URL); `rustc +risc0` 1.97.0-dev (e638c6cfe 2026-07-15), LLVM 22.1.6 | PASS, through direct assets | zk (M1.12) | M1.1 (MSRV), M1.12, M1.17, M4.8 |
+
+## Install routes
+
+Each route lists the commands the bootstrap runs, the URLs they fetch, and what failed first.
+
+### Rust (core)
+
+- **Install:** `rustup toolchain install 1.98.0 --profile minimal --component clippy,rustfmt,llvm-tools --target thumbv6m-none-eabi,wasm32-unknown-unknown,riscv32im-unknown-none-elf,riscv64imac-unknown-none-elf --no-self-update`. rustup checks every tarball against the channel manifest.
+- **URLs:** `static.rust-lang.org/dist/channel-rust-1.98.0.toml` and the component tarballs under `static.rust-lang.org/dist/2026-08-20/`.
+- **Implicit installs.** rustup 1.28.2 installs the toolchain of `rust-toolchain.toml` as soon as any proxied command runs in the repository. The bootstrap sets `RUSTUP_AUTO_INSTALL=0`, so its checks never install anything and only its explicit install step does.
+- **llvm-tools path.** The tools are not on `PATH`: use `$(rustc --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-nm` (and `llvm-size`, `llvm-objcopy`, `llvm-readobj`). The system `llvm-nm` is LLVM 18.1.3, four major versions behind rustc.
+
+### cargo-stylus (contracts)
+
+- **Install:** `cargo install --locked cargo-stylus --version 0.10.10`. URLs: `index.crates.io` and `static.crates.io`, with no GitHub host. It builds from source in about 6.5 minutes, so CI caches `~/.cargo/bin/cargo-stylus`.
+
+### UF2 converter (firmware)
+
+- **Install:** `apt-get install -y libudev-dev pkg-config`, then `cargo install --locked elf2uf2-rs --version 2.2.0` (26 s). URLs: `libudev-dev` from `archive.ubuntu.com` (noble-updates), then `index.crates.io` and `static.crates.io`. The binary has no `--version` flag; `cargo install --list` shows it. Usage: `elf2uf2-rs <elf> <out.uf2>`.
+- **Fallback:** Microsoft's `uf2conv.py` at [commit 90e9741f](https://raw.githubusercontent.com/microsoft/uf2/90e9741f217f5a40c98ba74d663e408041037578/utils/uf2conv.py) (sha256 `ad36ba2d61fb2ea371832262392088281eee474c609df4142adbee4ea3c20f26`), with its `uf2families.json` (sha256 `9d8f561e050507c5909063005cd6f5b157e6fe6db1e8d25b5d9027d57064c194`). It reads a flat binary, not an ELF, so it runs after rustup's `llvm-objcopy` (path above): `llvm-objcopy -O binary -R .bss -R .uninit -R .data <elf> flash.bin && python3 -I uf2conv.py flash.bin --base 0x10000000 --family RP2040 --convert --output out.uf2`. It needs no crate or apt package, and on the blinky its output was byte-identical to elf2uf2-rs's.
+
+### npm tools (web, contracts, firmware)
+
+- **binaryen:** `npm install --global binaryen@120.0.0` puts `wasm-opt` on `PATH` (contracts tier).
+- **rp2040js:** `npm install --save-exact rp2040js@1.4.1` in `firmware/emu/` (M3.3). The package ships no bootrom; [RP2040 bootrom](#rp2040-bootrom-for-m33) below.
+- **Playwright:**
+  - In the container, pin `@playwright/test@1.63.0` in `web/`, the version of the preinstalled Playwright, with `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` and `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`. Never run `playwright install` there.
+  - A headless test on a `data:` URL passed this way, on `chromium_headless_shell-1243`.
+  - On GitHub runners, CI runs `npx playwright install --with-deps chromium`. That download (`https://cdn.playwright.dev/builds/cft/153.0.8010.12/linux64/chrome-linux64.zip` and `chrome-headless-shell-linux64.zip`) was only dry-run here, not fetched.
+- **wrangler:** an exact devDependency of `web/` (M2.2), `wrangler@4.154.0`. It pulls `workerd` from npm. No login or deploy was probed.
+- **solc:** `solc@0.8.28` installs, but nothing needs it. npm audit flags its `tmp` dependency (GHSA-52f5-9888-hmc6, GHSA-ph9p-34f9-6g65).
+
+### Foundry (contracts)
+
+- **Install:**
+  1. Download `https://github.com/foundry-rs/foundry/releases/download/v1.8.6/foundry_v1.8.6_linux_amd64.tar.gz`.
+  2. Check its sha256: `58850106984038f3a7200f38a4182c8cb423d3a4f4c7848eacbc2453e6bc35fc`.
+  3. Run `tar -xzf <archive> --no-same-owner -C /usr/local/bin forge cast anvil chisel`.
+- **First error:** both `foundryup-init.sh` and `foundryup --install v1.8.6` (foundryup 2.0.0) read an attestation link from a release asset, then fetch the Sigstore bundle from a GitHub page, which returns 403: `failed to download https://github.com/foundry-rs/foundry/attestations/58324376/download ... 403 Forbidden`. foundryup's `--force`, which skips verification, is not used.
+- **Notes:** `forge init` clones forge-std from github.com, which works. The first `forge build` downloads solc 0.8.28 from `binaries.soliditylang.org`.
+
+### slither (contracts)
+
+- **Install:** `pip install slither-analyzer==0.11.6`. The system Python 3.13 accepts global installs, which put `slither`, `solc-select` and a `solc` shim in `/usr/local/bin`.
+- **Note:** `slither .` exits with 255 when it reports findings, so CI must read its output rather than treat 255 as a crash.
+
+### Docker (started by hand)
+
+- **Start:**
+
+  ```bash
+  setsid nohup env HTTPS_PROXY="$HTTPS_PROXY" NO_PROXY="$NO_PROXY" SSL_CERT_FILE=/root/.ccr/ca-bundle.crt \
+    dockerd --registry-mirror https://mirror.gcr.io > /tmp/dockerd.log 2>&1 < /dev/null &
+  for i in $(seq 1 60); do docker info >/dev/null 2>&1 && break; sleep 1; done
+  docker run --rm hello-world
+  ```
+
+- **First error:** after one pull, Docker Hub answered `toomanyrequests: You have reached your unauthenticated pull rate limit` (`ratelimit-remaining: 0`). Through the mirror, `hello-world` and `offchainlabs/nitro-node:v3.12.2-5f02f3f` both resolve.
+- **Notes:**
+  - The daemon starts in about 1 s as root.
+  - Containers cannot reach the proxy at `127.0.0.1` and do not trust its CA. A container that needs outbound HTTPS runs with `--network host` and gets `/root/.ccr/ca-bundle.crt` installed.
+  - nitro-devnode's script still defaults to `v3.7.1-926f1ab`; M4.2 sets `NITRO_NODE_VERSION` explicitly.
+
+### zkVM toolchains (for M1.12's zk tier)
+
+Only each framework's Rust toolchain was installed; M1.16 and M1.17 install the full SDKs.
+
+- **SP1, 1.3 GB, 36 s.**
+  - **First error:** plain `sp1up` fails with `Unable to access the latest release at: https://api.github.com/repos/succinctlabs/sp1/releases/latest`. `sp1up --version 6.10.0` installs `cargo-prove` from its release asset, then `cargo prove install-toolchain` fails on `https://api.github.com/repos/succinctlabs/rust/releases`.
+  - **Direct route:**
+    1. Download `https://github.com/succinctlabs/sp1/releases/download/v6.10.0/cargo_prove_v6.10.0_linux_amd64.tar.gz` (sha256 `10394a834a0ab325b3736a74d0b7087274f2c6a66e2b38f96ecf3e9ecdf9e7b5`) and unpack it into `~/.sp1/bin`.
+    2. Download `https://github.com/succinctlabs/rust/releases/download/succinct-1.96.0-64bit-v3/rust-toolchain-x86_64-unknown-linux-gnu.tar.gz` (sha256 `23905647c8ba007bed72e9207ceada06d08023f4dca73c87a122acbe7468ce07`) and unpack it into `~/.sp1/toolchains/succinct-1.96.0-64bit-v3`.
+    3. Run `chmod 755 ~/.sp1/toolchains/succinct-1.96.0-64bit-v3/bin/* ~/.sp1/toolchains/succinct-1.96.0-64bit-v3/lib/rustlib/x86_64-unknown-linux-gnu/bin/*`, as `cargo prove install-toolchain` does.
+    4. Run `rustup toolchain link succinct ~/.sp1/toolchains/succinct-1.96.0-64bit-v3`.
+  - **Toolchain:** it provides `riscv64im-succinct-zkvm-elf` (SP1 v6 is 64-bit) and `riscv32im-succinct-zkvm-elf`.
+- **RISC Zero, 1.6 GB, 46 s.**
+  - **First error:** rzup 0.6.0 checks every download through `api.github.com`, and its built-in TLS roots reject the proxy's certificate: `InvalidCertificate(UnknownIssuer)` on `https://api.github.com/repos/risc0/rust/releases/tags/r0.1.97.0`.
+  - **Direct route:**
+    1. Download `https://artifacts.risczero.net/rzup/prod/Linux-X64/rzup` (sha256 `2cbb8081730ca42acac6818a279c7f218878b571a7f9ff76970f60688f54ddf5`) into `~/.risc0/bin`. The URL has no version and serves the newest rzup (0.6.0 on 2026-10-28), so this check fails loudly once RISC Zero publishes a new rzup. Then skip rzup, and write what step 3 writes by hand: `~/.risc0/settings.toml` with `[default_versions]` and `rust = "1.97.0"`, and the symlink `~/.rustup/toolchains/risc0 -> ~/.risc0/toolchains/v1.97.0-rust-x86_64-unknown-linux-gnu`. `rustup toolchain link risc0` alone is not enough: risc0-build 3.0.6 finds the toolchain through rzup's settings.
+    2. Download `https://github.com/risc0/rust/releases/download/r0.1.97.0/rust-toolchain-x86_64-unknown-linux-gnu.tar.gz` (sha256 `100b597d605b706bec94e1d32bfaaf5851df8d75173f986d4b56a3e90916be53`) and unpack it into `~/.risc0/toolchains/v1.97.0-rust-x86_64-unknown-linux-gnu`.
+    3. Run the offline `rzup default rust 1.97.0`, which registers the `risc0` rustup toolchain.
+  - **Toolchain:** its target is `riscv32im-risc0-zkvm-elf`.
+
+### RP2040 bootrom (for M3.3)
+
+- **Source:** rp2040js 1.4.1 needs a bootrom from the caller. The upstream demo's [`bootrom.ts`](https://raw.githubusercontent.com/wokwi/rp2040js/8693315df527adce8bf2bc315aeb4a1ca61c02a3/demo/bootrom.ts) (sha256 `99f8a1f813ce3aa9415884de3fb6c5b962d3c6fa0394b05413ad3c7b3c39ec62`) holds 4,096 words built from pico-bootrom revision B1.
+- **Probe:** loaded with `loadBootrom`, it reset to PC 0xee and ran 10,000 steps.
+- **Caveat:** current Pico boards use B2 silicon, and building a B2 image needs `arm-none-eabi-gcc`, so the B1 image is the practical pin.
+
+## D1 evidence: embassy-rp blinky
+
+Built on 2026-10-28 in the container, and not committed.
+
+- **No ARM GCC.** `command -v arm-none-eabi-gcc` exits 1. The ELF's `.comment` reads `Linker: LLD 22.1.8` and `rustc version 1.98.0`: rust-lld linked it.
+- **What it does.** It blinks GPIO 25 every 500 ms and runs an embassy-usb CDC-ACM echo, so the USB stack the firmware needs also builds and links.
+- **Build.** A clean `cargo build --release` takes 39 s, and clippy is clean. Sizes: text 18,408 B, data 0, bss 2,152 B.
+- **UF2.** elf2uf2-rs wrote 36,864 bytes in 72 blocks, every one with the UF2 magics and family 0xE48BFF56. The payload equals the `llvm-objcopy` flash image, and the boot2 CRC (0x7a4eb274) checks.
+- **For M3.1:**
+  - embassy-executor 0.10 renamed the feature `arch-cortex-m` to `platform-cortex-m`.
+  - embassy-rp 0.10 still needs `-Tlink-rp.x`.
+  - These are the newest versions on crates.io on 2026-10-28.
+
+<details>
+<summary>Blinky sources</summary>
+
+`Cargo.toml`:
+
+```toml
+[package]
+name = "blinky"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+cortex-m-rt = "0.7.5"
+embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
+embassy-futures = "0.1.2"
+embassy-rp = { version = "0.10.0", features = ["rp2040", "time-driver", "critical-section-impl"] }
+embassy-time = "0.5.1"
+embassy-usb = { version = "0.6.0", default-features = false }
+panic-halt = "1.0.0"
+
+[profile.dev]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+```
+
+`.cargo/config.toml`:
+
+```toml
+[build]
+target = "thumbv6m-none-eabi"
+
+[target.thumbv6m-none-eabi]
+rustflags = ["-C", "link-arg=--nmagic", "-C", "link-arg=-Tlink.x", "-C", "link-arg=-Tlink-rp.x"]
+```
+
+`memory.x`:
+
+```text
+MEMORY {
+    BOOT2 : ORIGIN = 0x10000000, LENGTH = 0x100
+    FLASH : ORIGIN = 0x10000100, LENGTH = 2048K - 0x100
+    RAM   : ORIGIN = 0x20000000, LENGTH = 256K
+}
+```
+
+`src/main.rs`:
+
+```rust
+#![no_std]
+#![no_main]
+
+use embassy_executor::Spawner;
+use embassy_futures::join::join;
+use embassy_rp::bind_interrupts;
+use embassy_rp::gpio::{Level, Output};
+use embassy_rp::peripherals::USB;
+use embassy_rp::usb::{Driver, InterruptHandler};
+use embassy_time::Timer;
+use embassy_usb::class::cdc_acm::{CdcAcmClass, State};
+use embassy_usb::{Builder, Config};
+use panic_halt as _;
+
+bind_interrupts!(struct Irqs {
+    USBCTRL_IRQ => InterruptHandler<USB>;
+});
+
+#[embassy_executor::task]
+async fn blink(mut led: Output<'static>) {
+    loop {
+        led.toggle();
+        Timer::after_millis(500).await;
+    }
+}
+
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
+    let p = embassy_rp::init(Default::default());
+    spawner.spawn(blink(Output::new(p.PIN_25, Level::Low)).unwrap());
+
+    let mut config = Config::new(0xc0de, 0xcafe);
+    config.product = Some("blinky");
+    let mut config_descriptor = [0; 256];
+    let mut bos_descriptor = [0; 256];
+    let mut control_buf = [0; 64];
+    let mut state = State::new();
+    let mut builder = Builder::new(
+        Driver::new(p.USB, Irqs),
+        config,
+        &mut config_descriptor,
+        &mut bos_descriptor,
+        &mut [],
+        &mut control_buf,
+    );
+    let mut serial = CdcAcmClass::new(&mut builder, &mut state, 64);
+    let mut usb = builder.build();
+
+    let echo = async {
+        let mut packet = [0; 64];
+        loop {
+            serial.wait_connection().await;
+            while let Ok(len) = serial.read_packet(&mut packet).await {
+                if serial.write_packet(&packet[..len]).await.is_err() {
+                    break;
+                }
+            }
+        }
+    };
+    join(usb.run(), echo).await;
+}
+```
+
+</details>
+
+## Bootstrap tiers
+
+`bash scripts/bootstrap.sh <tier>` installs only what is missing, checks each tool again after installing it, and prints `nothing to install` when the tier is complete.
+
+The SessionStart hook in `.claude/settings.json` runs the core tier at the start of every cloud session whose working directory is this repository. Claude Code reads project hooks only from `<working directory>/.claude/settings.json`, so a session started with several repositories (working directory `/home/user`) does not run it; there, run `bash scripts/bootstrap.sh core` first. If the bootstrap fails, the hook tells both the user and the agent that the session is not ready.
+
+| Tier | Installs | Fresh install time |
+|---|---|---|
+| core | the Rust toolchain of `rust-toolchain.toml` | 35 to 49 s |
+| web | core, then checks for Node 22 and the preinstalled Chromium, and runs `npm install` in `web/` once it has a lockfile | under 1 s until `web/` exists |
+| contracts | core, cargo-stylus 0.10.10, binaryen 120.0.0, Foundry v1.8.6, slither 0.11.6 | about 8 min, mostly cargo-stylus |
+| firmware | core, `libudev-dev` and `pkg-config`, elf2uf2-rs 2.2.0 | about 40 s (apt 11 s, cargo install 26 s) |
+| zk | added by M1.12, from the routes above | not yet |
+
+## Actions minutes
+
+Billed minutes per run of each workflow, read from `actions_list` job timings, rounded up per job. Items that add or change a workflow add its row.
+
+| Workflow | Billed minutes per run | Measured in |
+|---|---|---|
+| (none yet) | | |
