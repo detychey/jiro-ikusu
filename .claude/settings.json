@@ -1,4 +1,22 @@
 {
+  "ultracode": true,
+  "permissions": {
+    "allow": [
+      "Workflow",
+      "Agent",
+      "Bash",
+      "Edit",
+      "Write",
+      "NotebookEdit",
+      "WebFetch",
+      "WebSearch",
+      "Skill",
+      "mcp__github",
+      "mcp__claude-code-remote",
+      "mcp__Cloudflare_Developer_Platform",
+      "mcp__Claude_Docs"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
