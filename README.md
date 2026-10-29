@@ -102,6 +102,8 @@ A tick changes only a handful of cells. So the renderer redraws the changed 4×4
 | Directory (planned) | Built from the core as | Responsibilities outside the core |
 |---|---|---|
 | `core/` | the crate itself | All game rules, capture, scoring, journal codec, seed derivation, state hash |
+| `shell/` | `no_std` library, `jiro-shell` | Code shared by the firmware and the web app that is not consensus: the USB link codec and the dirty-cell diff. Never hashed. |
+| `tools/` | native binary, `jiro-tools` | The native target: vectors, replay, level tool, playtest bots, calibration, differential fuzzing, vector pack. `tools/xcheck/` (Node and ethers) computes the worked examples and fixtures independently of the core. |
 | `firmware/` | `thumbv6m-none-eabi` library | LCD, inputs, 15 Hz timer, USB link |
 | `web/` | `wasm32` module | Canvas rendering, keyboard, replay viewer, level editor, wallet, Web Serial bridge |
 | `referee/` | Stylus contract or zkVM guest *(D2)* | `IReferee`: `verifyRun`, `verify` and `rulesVersion` ([§7.3](#73-verification-cost)) |

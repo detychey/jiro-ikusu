@@ -1,0 +1,30 @@
+[workspace]
+resolver = "3"
+members = ["core", "shell", "tools"]
+exclude = ["firmware", "referee/zk", "scripts/float-probe"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[profile.dev]
+overflow-checks = true
+
+[profile.test]
+overflow-checks = true
+
+[profile.bench]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.stylus]
+inherits = "release"
+opt-level = "z"
