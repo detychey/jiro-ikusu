@@ -1,0 +1,8 @@
+{
+  "name": "jiro-ikusu-deploy",
+  "private": true,
+  "description": "The Cloudflare Pages deploy tool, locked for the deploy job of pages.yml (plan M2.2)",
+  "devDependencies": {
+    "wrangler": "4.150.0"
+  }
+}
