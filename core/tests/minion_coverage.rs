@@ -205,6 +205,7 @@ fn trapped_seeds(boards: u64) -> Vec<u64> {
     (0..boards).filter(|&seed| board_traps(seed)).collect()
 }
 
+/// [PIN-14] [R4.7-4] [R4.7-5] [R4.7-6] No minion is trapped on the 10,000 boards.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn traps_on_10000_boards_match_the_committed_count() {
@@ -213,6 +214,7 @@ fn traps_on_10000_boards_match_the_committed_count() {
     assert_eq!(seeds.len(), EXPECTED_TRAPS_10K, "trapped seeds: {seeds:?}");
 }
 
+/// [PIN-14] No minion is trapped on the 100,000 boards.
 #[test]
 #[ignore]
 fn traps_on_100000_boards_match_the_committed_count() {

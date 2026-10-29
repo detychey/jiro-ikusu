@@ -1,6 +1,10 @@
-//! jiro-tools, the native target (README §3): `vectors` writes vectors/format/.
+//! jiro-tools, the native target (README §3): `vectors` writes vectors/, and `replay` replays a
+//! journal and diagnoses another target's disagreement.
 
+mod coverage;
 mod json;
+mod preimage;
+mod replay;
 mod scenarios;
 mod vectors;
 
@@ -15,8 +19,9 @@ fn main() -> ExitCode {
         .collect::<Vec<_>>()
         .as_slice()
     {
-        ["vectors"] => vectors::write(&repo_root().join("vectors")),
-        _ => Err("usage: jiro-tools vectors".to_string()),
+        ["vectors"] => vectors::write(&repo_root()),
+        ["replay", rest @ ..] => replay::run(rest),
+        _ => Err("usage: jiro-tools vectors | jiro-tools replay ...".to_string()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

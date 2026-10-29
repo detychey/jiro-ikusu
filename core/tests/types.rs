@@ -45,6 +45,7 @@ fn input_mask_contains_only_its_subsets() {
     }
 }
 
+/// [R4.1-2] [R4.1-3] [R4.1-4] [R4.1-5] [R4.1-6]
 #[test]
 fn cell_values_are_the_readme_values() {
     let values = [
@@ -58,6 +59,7 @@ fn cell_values_are_the_readme_values() {
     }
 }
 
+/// [R4.1-1]
 #[test]
 fn cell_index_is_y_times_60_plus_x() {
     let cases = [

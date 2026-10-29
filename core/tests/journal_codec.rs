@@ -199,6 +199,7 @@ fn unknown_version_is_rejected() {
     }
 }
 
+/// [PIN-13]
 #[test]
 fn other_rules_version_is_rejected() {
     for rules_version in [
