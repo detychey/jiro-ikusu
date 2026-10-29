@@ -48,7 +48,7 @@ fn with_minions(level: Level, spawns: &[(u8, u8)]) -> Level {
         minion_count: spawns.len() as u8,
         minion_spawns,
         minion_period: 1,
-        respawn_delay: 30,
+        respawn_delay: 300,
         ..level
     }
 }
@@ -308,6 +308,13 @@ fn nonzero_unused_minion_slot_is_rejected() {
         ("no minions, slot 0 = (1, 0)", 0, 0, Pos { x: 1, y: 0 }),
         ("1 minion, slot 1 = (0, 1)", 1, 1, Pos { x: 0, y: 1 }),
         ("2 minions, slot 2 = (5, 5)", 2, 2, Pos { x: 5, y: 5 }),
+        ("no minions, slot 0 = (60, 0)", 0, 0, Pos { x: 60, y: 0 }),
+        (
+            "1 minion, slot 2 = (255, 255)",
+            1,
+            2,
+            Pos { x: 255, y: 255 },
+        ),
     ];
     for (name, minion_count, slot, spawn) in cases {
         let mut level = with_minions(open_field(), &[(0, 0), (59, 0)][..minion_count]);
@@ -349,6 +356,13 @@ fn respawn_delay_follows_the_minion_count() {
             "R 1, no minions",
             Level {
                 respawn_delay: 1,
+                ..open_field()
+            },
+        ),
+        (
+            "R 256, no minions",
+            Level {
+                respawn_delay: 256,
                 ..open_field()
             },
         ),
@@ -442,6 +456,18 @@ fn range_limits_are_valid() {
             },
         ),
         (
+            "one-cell spawn rectangle",
+            Level {
+                spawn: Rect {
+                    x0: 20,
+                    y0: 30,
+                    x1: 20,
+                    y1: 30,
+                },
+                ..open_field()
+            },
+        ),
+        (
             "3 minions",
             with_minions(open_field(), &[(0, 0), (59, 0), (30, 0)]),
         ),
@@ -449,6 +475,16 @@ fn range_limits_are_valid() {
     for (name, level) in cases {
         assert!(validity(&level).is_ok(), "{name}");
     }
+}
+
+/// A cup open at the bottom: the search from (1, 1) reaches its inside only by stepping up.
+#[test]
+fn open_area_entered_only_upward_is_one_region() {
+    let cup = (10..=20)
+        .map(|x| (x, 5))
+        .chain((6..=15).flat_map(|y| [(10, y), (20, y)]));
+    let level = with_obstacles(open_field(), cup);
+    assert_eq!(validity(&level).unwrap().claimable.get(), 3_364 - 31);
 }
 
 #[test]
@@ -483,20 +519,60 @@ fn open_area_of_1682_cells_is_valid() {
     assert_eq!(start.claimable.get(), 1_682);
 }
 
+/// A spawn rectangle that is not square: (10, 20) to (12, 40), so with B = 5 the bodies cover
+/// x 10 to 16 and y 20 to 44.
+fn tall_spawn() -> Level {
+    Level {
+        spawn: Rect {
+            x0: 10,
+            y0: 20,
+            x1: 12,
+            y1: 40,
+        },
+        ..open_field()
+    }
+}
+
 /// The union of the body positions runs from (x0, y0) to (x1 + B − 1, y1 + B − 1).
 #[test]
 fn boss_body_covering_an_obstacle_is_rejected() {
-    for cell in [(20, 20), (38, 38), (38, 20), (20, 38), (27, 27)] {
-        let level = with_obstacles(open_field(), [cell]);
-        assert_eq!(validity_error(&level), Error::BossSpawn, "{cell:?}");
+    let cases = [
+        (open_field(), (20, 20)),
+        (open_field(), (38, 38)),
+        (open_field(), (38, 20)),
+        (open_field(), (20, 38)),
+        (open_field(), (27, 27)),
+        (tall_spawn(), (10, 20)),
+        (tall_spawn(), (16, 44)),
+        (tall_spawn(), (16, 20)),
+        (tall_spawn(), (10, 44)),
+    ];
+    for (level, cell) in cases {
+        let level = with_obstacles(level, [cell]);
+        assert_eq!(
+            validity_error(&level),
+            Error::BossSpawn,
+            "{:?} {cell:?}",
+            level.spawn
+        );
     }
 }
 
 #[test]
 fn obstacle_just_outside_every_body_position_is_valid() {
-    for cell in [(19, 20), (20, 19), (39, 38), (38, 39)] {
-        let level = with_obstacles(open_field(), [cell]);
-        assert!(validity(&level).is_ok(), "{cell:?}");
+    let cases = [
+        (open_field(), (19, 20)),
+        (open_field(), (20, 19)),
+        (open_field(), (39, 38)),
+        (open_field(), (38, 39)),
+        (tall_spawn(), (9, 30)),
+        (tall_spawn(), (17, 30)),
+        (tall_spawn(), (12, 19)),
+        (tall_spawn(), (12, 45)),
+    ];
+    for (level, cell) in cases {
+        let level = with_obstacles(level, [cell]);
+        assert!(validity(&level).is_ok(), "{:?} {cell:?}", level.spawn);
     }
 }
 
@@ -628,6 +704,14 @@ fn first_broken_rule_wins() {
             Error::MinionCount,
         ),
         (
+            "minion count, minion spawn",
+            Level {
+                minion_count: 4,
+                ..with_minions(field(), &[(60, 0), (59, 0), (0, 59)])
+            },
+            Error::MinionCount,
+        ),
+        (
             "minion spawn, unused slot",
             {
                 let mut level = with_minions(field(), &[(60, 0)]);
@@ -712,9 +796,7 @@ fn first_broken_rule_wins() {
         ),
     ];
     for (name, level, error) in cases {
-        let result =
-            decode(&encode(&level)).and_then(|level| validate(&level, &mut [0; CAPTURE_STACK]));
-        assert_eq!(result.err(), Some(error), "{name}");
+        assert_eq!(validity(&level).err(), Some(error), "{name}");
     }
 }
 
@@ -821,6 +903,32 @@ fn only_claimed_cells_inside_the_grid_are_rail() {
     for (x, y) in [(1, 1), (2, 2), (60, 0), (0, 60)] {
         assert!(!grid.is_rail(Pos { x, y }), "({x}, {y})");
     }
+}
+
+/// [R4.2-1] counts the 4 orthogonal neighbors as well as the diagonal ones.
+#[test]
+fn rail_through_an_orthogonal_neighbor_alone() {
+    let mut grid = validity(&open_field()).unwrap().grid;
+    let cells = [
+        ((30, 0), [(29, 1), (31, 1)]),
+        ((0, 30), [(1, 29), (1, 31)]),
+        ((59, 30), [(58, 29), (58, 31)]),
+        ((30, 59), [(29, 58), (31, 58)]),
+    ];
+    for (_, diagonals) in cells {
+        for (x, y) in diagonals {
+            grid.set(CellIndex::new(Pos { x, y }).unwrap(), Cell::Claimed);
+        }
+    }
+    for ((x, y), _) in cells {
+        assert!(grid.is_rail(Pos { x, y }), "({x}, {y})");
+    }
+}
+
+#[test]
+fn player_start_with_one_open_neighbor_is_valid() {
+    let level = with_obstacles(open_field(), [(29, 58), (31, 58)]);
+    assert!(validity(&level).is_ok());
 }
 
 #[test]

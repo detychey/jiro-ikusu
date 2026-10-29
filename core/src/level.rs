@@ -278,10 +278,10 @@ fn spawn_covers(level: &Level, pos: Pos) -> bool {
 /// cell is marked when pushed, so it is pushed at most once.
 fn mark_region(grid: &mut Grid, start: CellIndex, stack: &mut [u16; CAPTURE_STACK]) -> Option<()> {
     grid.set(start, Cell::BossZone);
-    *stack.first_mut()? = start.0;
+    *stack.first_mut()? = start.raw();
     let mut len: usize = 1;
     while let Some(top) = len.checked_sub(1) {
-        let cell = CellIndex(*stack.get(top)?);
+        let cell = CellIndex::from_raw(*stack.get(top)?)?;
         len = top;
         for (dx, dy) in NEIGHBORS_4 {
             let Some(next) = cell.pos().offset(dx, dy).and_then(CellIndex::new) else {
@@ -289,7 +289,7 @@ fn mark_region(grid: &mut Grid, start: CellIndex, stack: &mut [u16; CAPTURE_STAC
             };
             if grid.get(next) == Cell::Empty {
                 grid.set(next, Cell::BossZone);
-                *stack.get_mut(len)? = next.0;
+                *stack.get_mut(len)? = next.raw();
                 len = len.checked_add(1)?;
             }
         }

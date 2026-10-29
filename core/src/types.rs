@@ -77,7 +77,7 @@ impl InputMask {
 
 /// The index `y × 60 + x` of a cell inside the grid, so always below `CELLS` [R4.1-1].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct CellIndex(pub(crate) u16);
+pub struct CellIndex(u16);
 
 impl CellIndex {
     /// Every cell, in row-major order.
@@ -94,6 +94,15 @@ impl CellIndex {
             .checked_mul(u16::from(W))
             .and_then(|row| row.checked_add(u16::from(pos.x)))
             .map(Self)
+    }
+
+    /// The index stored in a cell stack, if it is a cell's.
+    pub(crate) fn from_raw(raw: u16) -> Option<Self> {
+        (usize::from(raw) < CELLS).then_some(Self(raw))
+    }
+
+    pub(crate) fn raw(self) -> u16 {
+        self.0
     }
 
     pub fn get(self) -> usize {
