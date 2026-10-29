@@ -40,6 +40,8 @@ jobs:
               - '**/.cargo/**'
               - 'rust-toolchain.toml'
               - 'scripts/**'
+              - 'tools/xcheck/**'
+              - 'vectors/**'
               - '.github/workflows/ci.yml'
             rules:
               - 'README.md'
@@ -120,6 +122,20 @@ jobs:
             bash "scripts/$check.sh" 2>&1 | tee -a target/determinism/report.txt || status=1
           done
           exit "$status"
+
+      - uses: actions/setup-node@v7.1.0
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/xcheck/package-lock.json
+
+      - name: Derivation fixtures match ethers (vectors-drift)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
+          npm --prefix tools/xcheck ci
+          node tools/xcheck/derivations.mjs --write
+          bash scripts/check-drift.sh vectors/derivations.json
 
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}

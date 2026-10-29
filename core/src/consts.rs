@@ -16,6 +16,8 @@ pub const TICK_HZ: u8 = 15;
 pub const RULES_VERSION: u16 = 1;
 /// Levels in a run; `levelIndex` stays below it (README §6.3).
 pub const RUN_LEVELS: usize = 6;
+/// Levels in a season, the deck the draw picks from (README §8.2).
+pub const SEASON_LEVELS: usize = 16;
 /// Journal format version (README §6.3).
 pub const JOURNAL_VERSION: u8 = 1;
 /// Journal header bytes (README §6.3).
