@@ -104,6 +104,13 @@ jobs:
             cargo build -p jiro-core --release --locked --target "$target"
           done
 
+      - name: jiro-core on its MSRV (targets)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
+          msrv="$(python3 -c 'import tomllib; print(tomllib.load(open("core/Cargo.toml", "rb"))["package"]["rust-version"])')"
+          rustup toolchain install "$msrv" --profile minimal --no-self-update
+          cargo "+$msrv" build -p jiro-core --release --locked
+
       - name: No floats, no usize, overflow checks everywhere (determinism)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |

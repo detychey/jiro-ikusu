@@ -285,6 +285,7 @@ Monthly budget: 1,500 minutes for this repository (see Decisions, P14). The `get
 | Workflow | Billed minutes per run | Measured in |
 |---|---|---|
 | `ci.yml`, job `rust` | 1: the job took 43 and 47 s with every step running, and the minimum is one minute | M0.4, runs [40819133258](https://github.com/detychey/jiro-ikusu/actions/runs/40819133258) and [40819307102](https://github.com/detychey/jiro-ikusu/actions/runs/40819307102) |
+| `ci.yml`, job `rust`, from M1.1 | 2: the job took 72 s, of which debug tests 11 s, release tests 21 s (mostly the LTO build) and the target and MSRV builds 11 s | M1.1, run [40871486955](https://github.com/detychey/jiro-ikusu/actions/runs/40871486955) |
 
 ## CI runners and access (M0.4)
 
@@ -292,3 +293,4 @@ Monthly budget: 1,500 minutes for this repository (see Decisions, P14). The `get
 - **Logs:** `get_job_logs` with `return_content` returns a job's log in the container, so results printed between log markers can be read.
 - **Artifacts:** `actions_get` `download_workflow_run_artifact` returns a short-lived signed URL on `productionresultssa30.blob.core.windows.net`, and `curl` fetches the zip through the proxy. Artifacts can therefore be brought into the container, as long as the URL is used within its few minutes of validity.
 - **Labels:** adding an unknown label to a PR with `issue_write` creates it; `ci:heavy` was created this way on 2026-10-29.
+- **Dispatch on a branch (M1.1):** `actions_run_trigger` `run_workflow` with `workflow_id` `ci.yml` and `ref` set to a branch returns 204 and starts a `workflow_dispatch` run on that branch's head. [Run 40869943184](https://github.com/detychey/jiro-ikusu/actions/runs/40869943184), on `claude/cool-brahmagupta-ylv9cn` at d7ad8e6, ran every step and passed in 37 s, and `get_job_logs` read its log. A workflow file must already be on `main` to be dispatched this way (plan §1.3).
