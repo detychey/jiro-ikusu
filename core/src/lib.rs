@@ -20,6 +20,7 @@ pub mod grid;
 pub mod journal;
 pub mod keccak;
 pub mod level;
+pub mod minion;
 pub mod player;
 pub mod seed;
 pub mod types;
