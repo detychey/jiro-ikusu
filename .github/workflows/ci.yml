@@ -1,7 +1,8 @@
 # Private CI profile (plan §1.3, P14): the rust, rust-release, targets and determinism
 # rows of plan §3.4 run as step groups of one `rust` job. The job always starts and
 # reports a status; its Rust steps skip when no Rust-related path changed, except on
-# workflow_dispatch, where every step runs.
+# workflow_dispatch, where every step runs. Once the toolchain is installed, every check
+# runs even after another check failed, so one run reports every failure.
 name: ci
 
 on:
@@ -53,11 +54,12 @@ jobs:
         run: bash scripts/check-rule-tags.sh
 
       - name: Toolchain
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        id: toolchain
+        if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true') }}
         run: bash scripts/bootstrap.sh core
 
       - name: Toolchain equals rust-toolchain.toml
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
           expected="$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"])')"
           actual="$(rustc --version)"
@@ -68,39 +70,39 @@ jobs:
           esac
 
       - uses: Swatinem/rust-cache@v2.9.3
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         with:
           workspaces: |
             . -> target
             scripts/float-probe -> target
 
       - name: Format (rust)
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
           cargo fmt --all --check
           cargo fmt --manifest-path scripts/float-probe/Cargo.toml --check
 
       - name: Clippy (rust)
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
       - name: Tests, debug (rust)
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: cargo test --workspace --locked
 
       - name: Tests, release (rust-release)
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: cargo test --workspace --release --locked
 
       - name: jiro-core on four targets (targets)
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
           for target in thumbv6m-none-eabi wasm32-unknown-unknown riscv32im-unknown-none-elf riscv64imac-unknown-none-elf; do
             cargo build -p jiro-core --release --locked --target "$target"
           done
 
       - name: No floats, no usize, overflow checks everywhere (determinism)
-        if: github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true'
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
           mkdir -p target/determinism
           status=0
@@ -110,7 +112,7 @@ jobs:
           exit "$status"
 
       - uses: actions/upload-artifact@v7.0.2
-        if: always() && (github.event_name == 'workflow_dispatch' || steps.changes.outputs.rust == 'true')
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         with:
           name: determinism-report
           path: target/determinism/report.txt
