@@ -22,7 +22,7 @@ permissions:
 jobs:
   rust:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 15
     defaults:
       run:
         shell: bash
@@ -37,6 +37,7 @@ jobs:
               - '**/*.rs'
               - '**/Cargo.toml'
               - '**/Cargo.lock'
+              - '**/.cargo/**'
               - 'rust-toolchain.toml'
               - 'scripts/**'
               - '.github/workflows/ci.yml'
@@ -79,8 +80,10 @@ jobs:
       - name: Format (rust)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
-          cargo fmt --all --check
-          cargo fmt --manifest-path scripts/float-probe/Cargo.toml --check
+          status=0
+          cargo fmt --all --check || status=1
+          cargo fmt --manifest-path scripts/float-probe/Cargo.toml --check || status=1
+          exit "$status"
 
       - name: Clippy (rust)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
@@ -117,4 +120,8 @@ jobs:
           name: determinism-report
           path: target/determinism/report.txt
           retention-days: 7
-          if-no-files-found: ignore
+          if-no-files-found: error
+
+      - name: The checks left the tree clean
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: bash scripts/check-drift.sh .

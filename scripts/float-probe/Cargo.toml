@@ -22,8 +22,9 @@ overflow-checks = true
 [profile.bench]
 overflow-checks = true
 
-# lto = false keeps each crate in its own archive member, so the scan sees
-# every public function of jiro-core, even one nothing calls.
+# lto = false keeps each crate in its own archive member. check-no-float.sh adds
+# -C link-dead-code, so every non-generic function of jiro-core is compiled into its
+# member, even one nothing calls.
 [profile.release]
 overflow-checks = true
 lto = false
