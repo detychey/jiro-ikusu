@@ -1,13 +1,14 @@
-// Computes the worked examples of README §5, §6.3, §6.4 and §8.2 independently of the
-// Rust core. With --check <README>, exits 1 unless each printed line's label starts
+// Computes the worked examples of README §5, §6.3, §6.4, §7.2 and §8.2 independently of
+// the Rust core. With --check <README>, exits 1 unless each printed line's label starts
 // exactly one README line, and that line equals the printed one.
 import { readFileSync } from "node:fs";
-import { concat, keccak256, toUtf8Bytes, getBytes } from "ethers";
+import { concat, keccak256, toUtf8Bytes, getBytes, toBeHex, zeroPadValue } from "ethers";
 
 const WIDTH = 60;
 const CELLS = WIDTH * WIDTH;
 const MIN_OPEN_AREA = 1682;
 const MAX_TICKS = 2700;
+const TICKS_PER_SECOND = 15;
 const RULES_VERSION = 1;
 const LEVEL_VERSION = 1;
 const JOURNAL_VERSION = 1;
@@ -181,6 +182,13 @@ function validateLevel(bytes) {
   return 0;
 }
 
+const u256 = (value) => getBytes(zeroPadValue(toBeHex(value), 32));
+const runNonceOf = (entropy, runId) => getBytes(keccak256(concat([toUtf8Bytes("jiro.run"), entropy, u256(runId)])));
+const deadline = (revealedAt, ticksUsed, commitSlack) => {
+  const ticks = ticksUsed.reduce((sum, used) => sum + used, 0);
+  return revealedAt + Math.floor((ticks + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND) + commitSlack;
+};
+
 const levelSeed = (runNonce, levelIndex) =>
   getBytes(keccak256(concat([toUtf8Bytes("jiro.level"), runNonce, new Uint8Array([levelIndex])])));
 
@@ -302,6 +310,9 @@ const preimage = statePreimage({
   nextEvent: 0,
 });
 const journal = encodeJournal({ mode: 0, runNonce, levelId, levelIndex: 0, events: [] });
+const entropy = getBytes(keccak256(toUtf8Bytes("jiro.example.entropy")));
+const deadlineExample = { revealedAt: 1_000_000, ticksUsed: [1, 2700, 1800, 900, 15, 16], commitSlack: 120 };
+const number = (value) => value.toLocaleString("en-US");
 const sign = (value) => (value > 0 ? "+1" : "-1");
 const describeStart = ({ candidates, pick, x, y, vx, vy }) =>
   `candidates ${candidates}, index ${pick}, top-left (${x}, ${y}), vx ${sign(vx)}, vy ${sign(vy)}`;
@@ -323,6 +334,9 @@ const lines = [
   `open-field-empty tick 0 boss: top-left (${boss.x}, ${boss.y}), vx ${sign(boss.vx)}, vy ${sign(boss.vy)}`,
   `open-field-empty tick 0 preimage length: ${preimage.length}`,
   `open-field-empty tick 0 state hash: ${keccak256(preimage)}`,
+  `run nonce entropy: ${hex(entropy)}`,
+  `run nonce (runId 1): ${hex(runNonceOf(entropy, 1))}`,
+  `deadline (revealedAt ${number(deadlineExample.revealedAt)}, ticks used ${deadlineExample.ticksUsed.map(number).join(" + ")}, commitSlack ${deadlineExample.commitSlack}): ${number(deadline(deadlineExample.revealedAt, deadlineExample.ticksUsed, deadlineExample.commitSlack))}`,
 ];
 
 const [flag, readmePath, ...extra] = process.argv.slice(2);

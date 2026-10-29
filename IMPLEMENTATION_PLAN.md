@@ -1,18 +1,18 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13). No work item has started.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1, M0.2 and M0.5-M0.7 have merged, and M0.3 and M0.4 have not started.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
-[`README.md`](README.md) is the normative specification, and this plan turns it into 63 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
+[`README.md`](README.md) is the normative specification, and this plan turns it into 64 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
 The order:
 
 1. **Gates before code** (M0.1-M0.4): a pinned toolchain, a session bootstrap, and CI checks that catch nondeterminism.
-2. **Rules freeze** (M0.5-M0.7): every open decision except D2 and D7, and every "frozen in M0" placeholder, written into the README as exact, tagged text.
+2. **Rules freeze** (M0.5-M0.7): every open decision except D2 and D7, and every "frozen in M0" placeholder, written into the README as exact, tagged text. D14, raised in M0.7's review, gets its exact rule in M1.18.
 3. **The core** (M1): one rule area per PR, then golden vectors with per-tick traces that every later target must reproduce.
 4. **Parallel tracks.** Device bring-up starts during M1 (M3.1), the contracts after M0 (M4.3), and the level tool after the format vectors (M2.4). Bots and levels follow replay (M1.8). Stylus gas and the zk trials follow the gameplay vectors (M1.9), and the zk proving pipeline follows the zk choice (M1.12). The browser follows the wasm build (M1.11). Measurements feed back into the work; they never block rule work.
 5. **dApp and a testnet season** (M5).
 
-Item count: M0 7, M1 17, M2 10, M3 7, M4 16, M5 6. Review findings split out of M4.12 add items from M4.17 on.
+Item count: M0 7, M1 18, M2 10, M3 7, M4 16, M5 6. Review findings split out of M4.12 add items from M4.17 on.
 
 ## Contents
 
@@ -641,6 +641,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 #### M0.7 Rules freeze C: run, settlement and season; close D10
 
 - **Goal:** freeze what the contracts need, close D10, and finish M0.
+- **Result:** README §6.4, §7.2, §7.3, §8.2 and §8.4 hold the frozen text. Where it differs from the proposals below, the README wins, and the M0.7 PR lists each difference and its reason.
 - **Proposals:**
   - **Verifier interface (P4).** `IReferee` has three functions, behind which either backend sits:
     - `verifyRun(bytes[6] levels, bytes[6] journals, uint16[6] weightsBp, bytes proof) returns (Outcome[6])`, the main path;
@@ -723,7 +724,8 @@ Each milestone's README §9 "done when" closes when these items merge:
 | M1.2 | Derivations and ethers fixtures | M1.1 | S | none |
 | M1.3 | Level format v1, validity, rail and claim | M1.1 | M | none |
 | M1.4 | Vector generator, format vectors, drift gate | M1.2, M1.3 | M | none |
-| M1.5 | Capture and boss | M1.2, M1.3 | M | none |
+| M1.18 | D14 seeded boss randomness: specification | M0.7 | S | Approve the rule |
+| M1.5 | Capture and boss | M1.2, M1.3, M1.18 | M | none |
 | M1.6 | Player movement, cuts, fast cut and slow shield | M1.5 | M | none |
 | M1.7 | Minions and the D7 measurement | M1.5 | M | Review the trap measurement |
 | M1.14 | D7 replacement rule: specification (only if M1.7 finds traps) | M1.7 | S | Approve the replacement or a bounded trap rate |
@@ -852,6 +854,31 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `cargo test -p jiro-core --test vectors --locked`
 - **Skills:** `parity-testing`, `journal-codec`. **README:** §6, §9 M1. **Needs user:** none.
 
+#### M1.18 D14 seeded boss randomness: specification
+
+- **Goal:** the exact rule by which the level seed keeps driving the boss through the level (D14), so that no two runs share a game, written into the README and approved before M1.5 builds the boss.
+- **Deliverables:**
+  - README §4.6 and §6.4, with tags:
+    - an integer PRNG with explicit 32-bit wrapping (the `journal-codec` skill), seeded from the level seed;
+    - when it is drawn, for example at each bounce, and how its output changes the boss's move;
+    - its state.
+
+    The rule keeps §4.6's guarantees: the boss moves one axis at a time, and its body only ever covers `EMPTY` cells.
+  - if the rule adds boss state, such as the PRNG's state, which enters the state hash because README §6.4 hashes the whole state: its width, the §4.3 Boss row, the §6.4 state-hash layout and its total length, and the M0.6 worked examples recomputed with `tools/xcheck/worked-examples.mjs`.
+  - the PR body: the results of a throwaway prototype (not committed), showing that:
+    - over 5,000 random boards × 2,700 ticks, for each B from 2 to 8, the body never covers a cell that isn't `EMPTY`;
+    - two seeds with the same boss start and direction diverge within N ticks, with N stated in the rule text for M1.5's test.
+
+  The rule only adds to §4.6 and §6.4. R4.6-5 and the §6.4 boss start (the candidate index from seed bytes 0-3, the direction from byte 4) stay as M0.6 froze them, because M1.2 may already implement them. The added rule is first implemented by M1.5, so it bumps no `RULES_VERSION`.
+- **Done when:**
+  - the rule can be implemented from the text alone;
+  - the prototype results are in the PR, and the PR states whether the state-hash layout changed;
+  - the M0.6 boss-start worked examples are unchanged;
+  - `worked-examples.mjs --check README.md` exits 0;
+  - `check-rule-tags.sh` prints nothing.
+- **Verify with:** `npm --prefix tools/xcheck ci && node tools/xcheck/worked-examples.mjs --check README.md`; `bash scripts/check-rule-tags.sh | wc -l` prints 0.
+- **Skills:** `deterministic-core`, `journal-codec`. **README:** §4.3, §4.6, §6.4, §13 D14. **Needs user:** approve the rule (round B0).
+
 #### M1.5 Capture and boss
 
 - **Goal:** README §4.8 capture and §4.6 boss movement, with the capture shown not to depend on fill order.
@@ -863,7 +890,8 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `core/src/boss.rs`:
     - the §4.6 pseudocode for a B × B body, testing the whole leading edge on each axis, with a global move phase;
     - a bump into `TRAIL` anywhere on the leading edge sets the tick's hit flag;
-    - the start position (the body's top-left cell) and the direction come from M1.2.
+    - the start position (the body's top-left cell) and the direction come from M1.2;
+    - the seeded randomness of D14, as M1.18 wrote it.
   - `core/tests/{capture_order,boss}.rs`, with queue and scanline fills that exist in test code only.
 - **Done when:**
   - unit tests cover an edge rectangle, an L-shaped cut, a cut enclosing an obstacle, a pocket next to an obstacle, and a cut splitting the field with the boss on either side;
@@ -871,9 +899,10 @@ Each milestone's README §9 "done when" closes when these items merge:
   - the stack depth never exceeds 3,364;
   - boss tests cover the outside corner, a corridor exactly as wide as the body, `TRAIL` bumps on x and on y at either end and in the middle of the leading edge, and bodies with B = 2 and B = 8;
   - after a capture, every cell of the body is still `EMPTY`, and a pocket narrower than the body that connects to the boss's region stays open;
-  - over 5,000 random boards × 2,700 ticks, for each body size from 2 to 8, no cell of the body is ever on `CLAIMED` or `TRAIL`, and vx and vy stay ±1.
+  - over 5,000 random boards × 2,700 ticks, for each body size from 2 to 8, no cell of the body is ever on `CLAIMED` or `TRAIL`, and vx and vy stay ±1, with the D14 randomness enabled;
+  - D14: on the same random boards, with the same boss start and direction, two different level seeds give boss trajectories that diverge within the N ticks M1.18 states.
 - **Verify with:** `cargo test -p jiro-core --release --locked --test capture_order --test boss`
-- **Skills:** `deterministic-core`, `parity-testing`. **README:** §4.6, §4.8. **Needs user:** none.
+- **Skills:** `deterministic-core`, `parity-testing`. **README:** §4.6, §4.8, §6.4. **Needs user:** none.
 
 #### M1.6 Player movement, cuts, fast cut and slow shield
 
@@ -958,7 +987,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     - checks keccak256 of the level bytes against the header's `levelId`;
     - iterates the journal bytes in place;
     - rejects events at ticks ≥ T, and events after the level ended;
-    - returns the Outcome of M0.7, `drawSlot` included.
+    - returns the Outcome of README §7.3, `drawSlot` included.
   - **Recorder,** the single input path for every target: a raw mask is journaled as an event if it changed, then the game steps with the journaled mask. Its buffer of `MAX_JOURNAL_LEN` bytes is a field of the `Recorder`.
   - `vectors/game/open-field-empty.json` and its trace, produced by the M1.4 generator: the M0.6 state-hash worked example. On a mismatch, the agent fixes whichever side contradicts the README text, the core or `tools/xcheck/worked-examples.mjs`, and says why in the PR.
   - The float probe of M0.4, changed to call `replay`.
@@ -991,7 +1020,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 - **Verify with:**
   - `cargo test -p jiro-core --locked`
   - `cargo clippy -p jiro-core --all-targets --locked -- -D warnings && bash scripts/check-no-float.sh`
-- **Skills:** `deterministic-core`, `journal-codec`, `parity-testing`. **README:** §4.4, §4.9, §4.10, §6.2, §6.4, §8.4. **Needs user:** none.
+- **Skills:** `deterministic-core`, `journal-codec`, `parity-testing`. **README:** §4.4, §4.9, §4.10, §6.2, §6.4, §7.3, §8.4. **Needs user:** none.
 
 #### M1.15 D7 replacement rule: implementation (only if M1.14 changes the rule)
 
@@ -1609,7 +1638,7 @@ Bring-up (M3.1) starts during M1; README §9 allows it to run in parallel at any
 
 M4.1 and M4.2 start once the gameplay vectors and the case generator land (M1.9, M1.10). M4.3-M4.7 start after M0. The zk proving pipeline (M4.8) starts with the zk choice (M1.12). All of them run in parallel with M2 and M3.
 
-Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's PR rewrote these file names and commands. Settlement follows P16 (a) and journal publication P5 (a); if the user chose otherwise in M0.7, M0.7's PR rewrote the affected items.
+Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's PR rewrote these file names and commands. Settlement follows P16 (a) and journal publication P5 (a); as decided in M0.7.
 
 | ID | Title | Depends on | Size | Needs user |
 |---|---|---|---|---|
@@ -1635,7 +1664,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Goal:** the core as a reproducible Stylus contract that fits within Arbitrum's size limit. The TestVM runs the contract natively, so it checks the contract code, not the wasm build; M4.2 checks the wasm build.
 - **Deliverables:**
   - `referee/stylus` (`jiro-referee-stylus`), with stylus-sdk 0.10.8 pinned as in ethblockdigger:
-    - implements the `verifyRun`, `verify` and `rulesVersion` of M0.7; `verifyRun` replays its six levels in order;
+    - implements the `verifyRun`, `verify` and `rulesVersion` of README §7.3; `verifyRun` replays its six levels in order;
     - any rejection, and any non-empty proof, reverts with `Error(string)` and a reason code;
     - the verify path computes no per-tick state hash.
   - `referee/build-wasm.sh`, adapted from ethblockdigger's [`build-wasm.sh`](https://github.com/detychey/ethblockdigger/blob/main/referee/build-wasm.sh):
@@ -1731,11 +1760,10 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 
 - **Goal:** the contract side of the frozen interfaces, pinned by the shared fixtures.
 - **Deliverables:**
-  - `contracts/src/interfaces/IReferee.sol`: the M0.7 `verifyRun`, `verify`, `rulesVersion` and `Outcome`, `drawSlot` included.
+  - `contracts/src/interfaces/IReferee.sol`: the README §7.3 `verifyRun`, `verify`, `rulesVersion` and `Outcome`, `drawSlot` included.
   - `contracts/src/mocks/MockReferee.sol`: returns configurable outcomes and rules version. It is adapted from ethblockdigger's [`MockReferee.sol`](https://github.com/detychey/ethblockdigger/blob/main/contracts/src/mocks/MockReferee.sol).
   - Run-nonce entries ("jiro.run") in `vectors/derivations.json`, computed by ethers only, through `tools/xcheck/derivations.mjs`. The core never computes a run nonce.
   - Tests that read `vectors/derivations.json`: the Solidity run nonce and run commitment.
-  - `contracts/src/Draw.sol`, only if the user preferred a Solidity draw in M0.7 (P17), with tests against the draw fixtures.
 - **Done when:**
   - the Solidity run nonce and run commitment equal every fixture;
   - the fixture file regenerates with no drift;
@@ -1747,33 +1775,35 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 
 #### M4.5 Season contract with onchain best-run points
 
-- **Goal:** ethblockdigger's `Season`, with points accrued onchain instead of posted by an oracle as a Merkle root, the referee bound to each season, and the sequencing of M0.7.
+- **Goal:** ethblockdigger's `Season`, with points accrued onchain instead of posted by an oracle as a Merkle root, the referee bound to each season, and the sequencing of README §8.4.
 - **Deliverables:**
-  - `contracts/src/Season.sol`, adapted from ethblockdigger's [`Season.sol`](https://github.com/detychey/ethblockdigger/blob/main/contracts/src/Season.sol). It keeps the rake cap at 2,000 bps, the empty-season rollover, pro-rata claims, and dust kept in escrow.
-    - The constructor takes the immutable `treasury`. `closeSeason` credits the rake to it, and `withdrawRake()`, callable by anyone, zeroes the credit before sending it to the treasury.
-    - `open(params)`, restricted to the operator, commits the M0.7 parameters, `referee` included, which are immutable afterwards. It reverts unless `referee.rulesVersion()` equals `params.rulesVersion`, and unless the previous season has ended.
+  - `contracts/src/Season.sol`, adapted from ethblockdigger's [`Season.sol`](https://github.com/detychey/ethblockdigger/blob/main/contracts/src/Season.sol). It keeps the rake cap at 2,000 bps, the rollover of seasons with no qualified points, pro-rata claims, and dust kept in escrow.
+    - The constructor takes the immutable `treasury` and the operator. `bindChallenge(challenge)`, operator only, sets `Challenge` once. `closeSeason` credits the rake to the treasury, and `withdrawRake()`, callable by anyone, zeroes the credit before sending it there.
+    - `open(params)`, restricted to the operator, commits the parameters of README §8.4, `referee` included, which are immutable afterwards. It starts the season at `block.timestamp` and records the referee's codehash. It reverts unless `referee.rulesVersion()` equals `params.rulesVersion`, unless the previous season has ended, and on any parameter outside its README §8.4 range, duplicate level ids included.
     - `slotOf(levelId)` and `weightOf(levelId)` serve settlement's lookups.
-    - `recordRun(player, runScore, clearedAny, ticksUsed)`, callable only by `Challenge`:
-      - keeps each player's best run, with ties going to fewer ticks;
-      - applies qualification per D10;
+    - `Season` holds all the ETH (README §8.4). `payFee(season)`, payable and callable only by `Challenge`, reverts unless `season` is the season accepting runs and `msg.value` equals its `runFee` exactly (D12), then adds the fee to that season's pot. `currentSeason()` returns the number of the last season opened. `isSolvent()` checks the README §8.4 invariant.
+    - `recordRun(season, player, runId, uint32 score, uint32 ticks, uint8 clears)`, callable only by `Challenge`, reverting once the season is closed:
+      - keeps each player's best run by qualification (`clears ≥ minClears`), then score, then fewer ticks (D10);
       - maintains `totalQualifiedPoints` incrementally.
-    - `closeSeason` is permissionless after the season end plus the grace period. It credits the rake to the treasury and moves an empty season's rollover to the season open at that time, or to the next one opened. It sends no ETH.
+    - `closeSeason` is permissionless after the season end plus the grace period, and closes seasons in order. It credits the rake to the treasury. The players' pot of a season with no qualified points becomes the pending rollover, which the next season to close absorbs without raking it. It sends no ETH.
     - `claim` pays bestScore × playersPot / totalQualifiedPoints, rounded down.
   - `contracts/test/Season.t.sol`.
 - **Done when** tests cover:
   - Points:
     - a better run replacing a worse one;
     - a tie going to fewer ticks;
-    - an unqualified best run earning no share.
+    - a higher-scoring run that clears too few levels never replacing a qualifying one;
+    - a player with no qualifying run earning no share, with `minClears` at 1 and at 2.
   - Season lifecycle:
     - parameters immutable after open;
     - `open` with a referee of another rules version reverting;
     - `open(s + 1)` before `end(s)` reverting, and succeeding after it;
-    - a rake above 2,000 bp reverting;
+    - each parameter outside its range reverting, a rake above 2,000 bp and a duplicate level id included;
+    - `payFee` and `recordRun` from any address other than `Challenge` reverting; `payFee` with no open season, with a `season` other than the one accepting runs, and with a `msg.value` below or above the fee reverting; and `recordRun` after the close reverting;
     - a close before end plus grace reverting, and any address able to close after it;
     - the rake credited to the treasury at close and sent by `withdrawRake()`, a second withdrawal sending nothing, and a treasury that rejects ETH leaving close and claims working;
     - a claim re-entered from a receiving contract paying nothing more;
-    - an empty season's rollover reaching the season open at its close, and, with none open, the next season opened.
+    - the pot of a season with no qualified points, including one whose only qualified players scored 0, reaching the next season to close, unraked, and seasons closing only in order.
   - Claims:
     - a double claim reverting;
     - claims rounding down, with the dust kept.
@@ -1785,21 +1815,21 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Goal:** the keyless pay, reveal and commit flow of ethblockdigger's `Vault`, for Challenge runs, with the journals published at commit (P5).
 - **Deliverables:**
   - `contracts/src/Challenge.sol`, modeled on [`Vault.sol`](https://github.com/detychey/ethblockdigger/blob/main/contracts/src/Vault.sol). Unlike `Vault`, it holds no referee of its own; the run's season names it.
-    - `startRun()` is `payable`. It reverts when no season is open, or unless `msg.value` equals the season's run fee (D12). Otherwise it adds the fee to the current season's pot, records the season, and commits entropy, with the id namespaced as in `Vault`.
-    - `revealRun(runId)`, player only, derives the `runNonce` per M0.7 and records `revealedAt`.
+    - `startRun(season)` is `payable`. It forwards `season` and `msg.value` to `Season.payFee(season)` (M4.5), which reverts unless `season` is the season accepting runs and `msg.value` equals its run fee (D12). It then records the run's player and season, and commits entropy, with the id namespaced as in `Vault`. `Challenge` holds no ETH.
+    - `revealRun(runId)`, player only, derives the `runNonce` per README §6.4 and records `revealedAt`.
     - A lapsed reveal window forfeits the run, and the fee stays in the pot. There is no free re-anchor, which would re-roll the levels.
-    - `commitRun(runId, commitment, bytes journals)`, player only, can be called once and records `committedAt`. It stores only the commitment and never reads `journals`, which is there to publish them as calldata.
-    - Every step emits an event.
-    - `isSolvent()`.
+    - `commitRun(runId, bytes[6] journals)`, player only, can be called once. It computes the run commitment from the journals (README §6.4), stores it, and records `committedAt`. It reverts after `revealedAt + 1,080 + commitSlack` (README §7.2). It never parses the journals, which are there to publish them as calldata.
+    - Every step emits an event, and `RunRevealed` carries the run nonce.
   - `contracts/test/Challenge.t.sol`.
-  - The gas of `commitRun` with a typical six-journal blob and with a full one (6 × 8,171 bytes), in the matching TBD cell of `docs/ECONOMY.md`.
+  - The gas of `startRun`, `revealRun`, and `commitRun` with a typical six-journal blob and with a full one (6 × 8,171 bytes), in the matching TBD cells of `docs/ECONOMY.md`.
 - **Done when:**
-  - each revert has its own test: no open season, a `msg.value` below or above the fee, reveal by another address, reveal before ready, double reveal, lapsed window, commit before reveal, double commit, zero commitment;
+  - each revert has its own test: no open season, a `season` other than the one accepting runs, a `msg.value` below or above the fee, reveal by another address, commit by another address, reveal before ready, double reveal, lapsed window, commit before reveal, double commit, commit after `revealedAt + 1,080 + commitSlack`;
+  - the stored commitment equals the run commitment of the journals passed;
   - events carry the expected arguments;
-  - `isSolvent()` holds after every operation in the tests;
+  - `Season.isSolvent()` holds after every operation in the tests;
   - the commit gas is recorded.
 - **Verify with:** `cd contracts && forge test --match-contract Challenge -vv --gas-report`
-- **Skills:** `onchain-referee`, `security`, `standards`; tier `contracts`. **README:** §7.2, §8.2, §10. **Needs user:** none.
+- **Skills:** `onchain-referee`, `security`, `standards`; tier `contracts`. **README:** §6.4, §7.2, §8.2, §8.4, §10. **Needs user:** none.
 
 #### M4.7 Settlement, run file, deadline fixtures and invariant suite
 
@@ -1807,12 +1837,13 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Deliverables:**
   - In `Challenge.sol`, one internal check path used by two entry points:
     - `settleRun(runId, levels[6], journals[6], proof)`, the main path (P16):
-      1. check that keccak256(concat(keccak256(journal_i))) == the commitment;
-      2. for each level, take the weight from the run's season by `levelId_i = keccak256(levels[i])`, reverting if the level is not in the season;
-      3. call `verifyRun(levels, journals, weights, proof)` on the referee of the run's season;
-      4. check each returned Outcome: `journalHash`, `runNonce`, `levelIndex` == i, `mode` == 1, `rulesVersion` == the season's, `levelId` == `levelId_i`, and `seasonLevelIds[drawSlot] == levelId_i` (P17);
-      5. store the level scores and ticks used.
-    - `settleLevel(runId, i, journalHashes[6], level, journal, proof)`, the fallback: the same checks for one level through `verify`, with the commitment checked against `journalHashes` on the first call.
+      1. check that the run is committed and not settled, and that `block.timestamp ≤ end + grace` for its season;
+      2. check that keccak256(concat(keccak256(journal_i))) == the commitment;
+      3. for each level, take the slot and weight from the run's season by `levelId_i = keccak256(levels[i])`, reverting if the level is not in the season;
+      4. call `verifyRun(levels, journals, weights, proof)` on the referee of the run's season;
+      5. check each returned Outcome: `journalHash`, `runNonce`, `levelIndex` == i, `mode` == 1, `rulesVersion` == the season's, `levelId` == `levelId_i`, and `drawSlot` == the season's slot of `levelId_i` (P17);
+      6. store each level's score, ticks used and whether its `endReason` is Cleared, which give the run's score, ticks and clears (README §7.2).
+    - `settleLevel(runId, i, journalHashes[6], level, journal, proof)`, the fallback: the same checks for one level through `verify`, with the commitment checked against `journalHashes` on every call. `settleRun` stays available after a partial `settleLevel` (README §7.2).
   - Once all six levels are settled, `Challenge`:
     - checks committedAt ≤ revealedAt + ceil(Σ ticks / 15) + commitSlack;
     - then calls `Season.recordRun`. A late run is marked late and earns nothing.
@@ -1825,8 +1856,10 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   - `contracts/test/{Settlement,Invariant}.t.sol`.
   - Settlement gas excluding `verifyRun`, recorded in `docs/VERIFICATION.md`.
 - **Done when:**
-  - each `settleRun` rejection has its own test: wrong commitment, a journal not matching it, foreign nonce, wrong `levelIndex`, a level not in the season, a `drawSlot` naming another level, wrong `rulesVersion`, training-mode journal, late commit, double settle, settle before commit, settle after the grace period;
-  - a happy path settles a run through `settleRun`, and another through six `settleLevel` calls, with MockReferee returning real vector outcomes;
+  - each `settleRun` rejection has its own test: wrong commitment, a journal not matching it, foreign nonce, wrong `levelIndex`, a level not in the season, a `drawSlot` naming another level, wrong `rulesVersion`, training-mode journal, double settle, settle before commit, settle after the grace period;
+  - a late commit is marked late, earns nothing and cannot be settled again, without a revert;
+  - the run's score, ticks and clears reach `Season.recordRun`, on both paths;
+  - a happy path settles a run through `settleRun`, another through six `settleLevel` calls, and a third through `settleRun` after two `settleLevel` calls, with MockReferee returning real vector outcomes;
   - a run of season s settles through season s's referee during s's grace period, after season s + 1 has opened with a different referee and rules version;
   - every deadline fixture gives its expected result;
   - an invariant suite over `Challenge` and `Season` keeps `isSolvent()` true and Σ claims ≤ the players' pot. It runs random start, reveal, commit, settle, close, claim and rake-withdrawal sequences: at least 256 runs × depth 50 on Foundry, or 20 seeded sequences of 50 steps each on the harness.
@@ -1839,7 +1872,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 
 - **Goal:** real proofs and their costs, so that README §9's M4 gate can be met with the zk backend, without waiting for the frozen levels: the pipeline only needs valid levels.
 - **Deliverables:**
-  - a run mode in the guest (P16 a): six levels, journals and weights in, six Outcomes committed, alongside the level mode of M1.12;
+  - a run mode in the guest (P16 a): six levels, journals and weights in, alongside the level mode of M1.12. Both modes commit keccak256 of each level and journal, each weight and each Outcome (README §7.3), in a byte encoding this item fixes in `referee/zk/README.md`;
   - a `prove` subcommand in the zk host, for both modes;
   - `.github/workflows/zk-prove.yml`: `pull_request` on itself and on the host's prove module (or the `ci:heavy` label), so this PR runs it, and `workflow_dispatch` afterwards, with a 6 h job limit. It:
     - proves the `worst-case` vector in level mode, and a run of six game vectors in run mode;
@@ -1921,10 +1954,10 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   - `scripts/contracts/e2e.mjs`, adapted from ethblockdigger's [`e2e.ts`](https://github.com/detychey/ethblockdigger/blob/main/scripts/contracts/e2e.ts), with these cases:
     - the happy path: pay, reveal, play the drawn levels with bots through `jiro-tools playtest --nonce --level-index`, commit with the journals, then `settleRun`;
     - the `settleLevel` fallback, six calls;
-    - a late commit, rejected;
+    - a late commit, marked late at settlement;
     - a journal copied from another run, rejected;
     - a wrong `rulesVersion`, rejected;
-    - season close, claim and rake withdrawal.
+    - season close, claim and rake withdrawal, on a season whose length and grace are short enough for the run (seconds to minutes, README §8.4 allows from 1 s), stated in the script.
   - `.github/workflows/e2e.yml`, following §1.3: `pull_request` on `contracts/`, `scripts/contracts/`, `referee/` and itself (or the `ci:heavy` label), and `workflow_dispatch`. It installs Foundry with a pinned `foundry-rs/foundry-toolchain` step, starts nitro-devnode with the vendored script of M4.2, runs the cases with the real Stylus referee and the public development key, and prints the gas per transaction between log markers.
 - **Done when:**
   - this PR's `e2e.yml` run is green on nitro-devnode, with real `verifyRun` and `verify` calls;
@@ -1944,7 +1977,8 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
     - `verifyRun` verifies one run proof, whose public values are keccak256 of each level and journal, the six weights and the six Outcomes;
     - `verify` verifies one level proof, with the same public values for one level;
     - `rulesVersion()` returns its program's version.
-  - The ZkReferee branch of `deploy.mjs`, wired to the framework's deployed verifier.
+  - `ZkReferee` decodes the public values in M4.8's encoding, and calls the framework's verifier of a fixed version, held immutably, never an upgradeable router or gateway (`docs/ECONOMY.md`).
+  - The ZkReferee branch of `deploy.mjs`, wired to that verifier.
   - The host's `prove --run <run file>`, producing the settlement proof of a run file (M4.7).
   - A zk mode of `scripts/contracts/e2e.mjs`: it proves the run with the host's `prove`, then settles. In `e2e.yml` it runs against the framework's mock verifier with mock proofs; M4.14 runs it with real proofs.
   - `referee/zk/README.md`: how to prove a run for settlement.
@@ -1977,7 +2011,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
       - a consensus bug in a live season's referee, accepted residual on testnet;
       - journal publication (P5);
       - unaudited code.
-    - if D2 = zk, the prover trust assumptions: image-id pinning in `ZkReferee`, and who holds a hosted prover's credential and its spend cap.
+    - if D2 = zk, the prover trust assumptions: the image id and verifier address pinned in `ZkReferee`; who holds a hosted prover's credential and its spend cap; and the operator as the only prover in practice.
   - A review of `contracts/`, including `ZkReferee.sol` when D2 = zk, with the ethskills `security`, `audit` and `qa` skills, plus slither if M0.2 installed it. Each finding gets a severity and one of three outcomes:
     - **fixed:** small fixes, under 20 changed lines each, land in this PR with a test;
     - **split:** every other fix becomes its own numbered item from M4.17 on, with a regression test. M4.14 depends on each of them.
@@ -2015,8 +2049,8 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Deliverables:** `deployments/arbitrum-sepolia.json`, `seasons/testnet-0.json` and `docs/DEPLOYMENT.md`. The steps:
   1. run the preflight;
   2. deploy `ArbBlockhashEntropy`, with ArbSys at `0x64`;
-  3. deploy the referee M4.9 chose: Stylus, or ZkReferee wired to the framework's deployed verifier;
-  4. deploy `Season` with the treasury set to the deployer key's address (testnet only), and open the provisional season of `seasons/testnet-0.json`, committed in this PR: the ids and weights of `calibration-1.json`, the deployed referee, a length of 1 day and a grace of 24 h, so that M5.5 can close it;
+  3. deploy the referee M4.9 chose: Stylus, or ZkReferee wired to the framework's verifier of a fixed version;
+  4. deploy `Season` with the treasury set to the deployer key's address (testnet only), and open the provisional season of `seasons/testnet-0.json`, committed in this PR: the ids and weights of `calibration-1.json`, the deployed referee, a length of 1 day and a grace of 24 h, so that M5.5 can close it, the D12 fee, the 120 s slack proposed in README §8.4, `minClears` 1, and a rake the PR states. Before opening, it checks the 16 levels with the level tool and, for a Stylus referee, its remaining activation time, and it records the season number `open` assigned in `deployments/arbitrum-sepolia.json`;
   5. deploy `Challenge`;
   6. verify the Solidity sources on Sourcify. For a Stylus referee, add a `deployment_tx` input to `stylus-gas.yml` that runs `cargo stylus verify --deployment-tx <tx>` (it needs Docker), and dispatch it;
   7. run the e2e happy path with a bot run, in zk mode with real proofs if D2 = zk. If the bot's run clears no level, play another, so that M5.5 can rehearse a claim;
@@ -2033,7 +2067,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   This closes README §9's M4, so this PR updates the status lines.
 - **Verify with:**
   - `node scripts/contracts/e2e.mjs --network arbitrum-sepolia --cases happy-path`
-  - `cast call "$(jq -r '.generations[0].Challenge' deployments/arbitrum-sepolia.json)" 'isSolvent()(bool)' --rpc-url https://sepolia-rollup.arbitrum.io/rpc` prints `true`; without Foundry, `node scripts/contracts/preflight.mjs --network arbitrum-sepolia --check-solvent`.
+  - `cast call "$(jq -r '.generations[0].Season' deployments/arbitrum-sepolia.json)" 'isSolvent()(bool)' --rpc-url https://sepolia-rollup.arbitrum.io/rpc` prints `true`; without Foundry, `node scripts/contracts/preflight.mjs --network arbitrum-sepolia --check-solvent`.
 - **Skills:** `onchain-referee`, `ship`, `addresses`, `l2s`; tier `contracts`. **README:** §7.2, §9 M4. **Needs user:** create a testnet-only deployer key and a separate tester key as cloud-environment variables, fund both with Arbitrum Sepolia ETH, and approve the deployment (round F2).
 
 ## 10. M5 dApp and testnet season
@@ -2066,7 +2100,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Done when:**
   - the mock-provider tests cover connecting, the wrong network and balance reads;
   - the bindings regenerate from `contracts/abi/` with no drift;
-  - on the local chain, the smoke script runs `startRun` with the season's fee through this module;
+  - on the local chain, the smoke script runs `startRun` for the season accepting runs, passing its number and fee, through this module;
   - the Training import test passes.
 - **Verify with:**
   - `npm --prefix web test -- chain`
@@ -2080,15 +2114,15 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - Run start:
     - a season view: price, pot, parameters;
     - a season check: the page refuses to call `startRun` unless the wasm core's `RULES_VERSION` equals the season's `rulesVersion` and the 16 shipped level ids equal the season's ids;
-    - `startRun`, sending the season's fee;
-    - a countdown of about 10 s, then `revealRun`.
+    - `startRun(s)`, where s is the season number whose `rulesVersion` and level ids the season check passed, sending that season's fee;
+    - a wait that polls the entropy source's `isRevealable` until the entropy block exists (usually 10 to 20 s, README §7.2), then `revealRun` at once.
   - Play:
     - the six drawn levels, from the wasm core's draw;
     - back-to-back play with mode-1 journals, and no pause;
     - a live deadline countdown using the contract's formula, tested against the deadline fixtures of `vectors/derivations.json` (M4.7).
   - Interruption:
     - the run state (nonce, drawn levels, current level) and the live events and current tick are written to IndexedDB every second;
-    - after a reload, the page closes the interrupted level's journal with the stored events plus an X event at the last stored tick (or one tick after the last event, if that is later), as M0.7 specifies, and resumes the run at the next level. If the last stored tick is the level's last tick, the journal needs no X.
+    - after a reload, the page closes the interrupted level's journal as README §7.2 specifies. It replays the stored journal through tick c − 1, where c = max(n, e + 1), n is the stored tick count and e the last event's tick. If the level ended by then, it keeps the journal as it is; otherwise it appends an X at tick c. It then resumes the run at the next level.
   - Commit:
     - one `commitRun` transaction as soon as the run ends, carrying the six journals (P5), showing the margin left before the deadline;
     - X-at-tick-0 journals for unplayed levels;
@@ -2099,8 +2133,9 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - a headless e2e on the local chain goes from buy to commit, with bot inputs fed through `input.ts`;
   - the committed commitment equals the core's `run_commitment` of the stored journals, and the commit calldata carries them;
   - the deadline computation matches every deadline fixture;
-  - a season with another `rulesVersion` or another level id is refused before `startRun`, with a test each;
+  - a season with another `rulesVersion` or another level id is refused before `startRun`, with a test each, and a `startRun` sent after the accepting season changed reverts;
   - a reload in the middle of the third level, simulated in the headless e2e, still commits a run within the deadline whose six journals replay;
+  - a reload right after a level ends, one by lives out and one by a clear, before the next level is persisted, still commits a run whose six journals replay;
   - a run file reloads and reproduces the six outcomes.
 - **Verify with:**
   - `npm --prefix web test -- run deadline season-check reload`
@@ -2113,19 +2148,20 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Deliverables:**
   - `web/src/pages/settle.ts`, for the backend in `deployments/<network>.json`:
     - Stylus: settles the player's best run with one `settleRun` transaction, falling back to six `settleLevel` transactions if it fails for gas, with progress, retries and decoded revert reasons;
-    - zk: settlement is operator-only (M5.5), because proving needs credentials that cannot live in a browser. The page exports the run file and shows the settlement cutoff: the season's end plus grace, read from the `Season` contract (M4.5). M5.5 adds the handoff instructions.
+    - zk: the operator settles (M5.5), because proving needs credentials that cannot live in a browser; the contract itself stays open to any submitter (README §7.2). The page exports the run file and shows the settlement cutoff: the season's end plus grace, read from the `Season` contract (M4.5). M5.5 adds the handoff instructions.
   - `web/src/pages/season.ts`: parameters, pot, end time and a countdown, a permissionless close button, and claiming.
   - A leaderboard, built from `Challenge` and `Season` events through chunked `eth_getLogs`.
-  - `web/src/chain/calldata.ts`: the M2.3 viewer loads any committed run's journals from its `commitRun` calldata (P5), and checks them against the stored commitment.
+  - `web/src/chain/calldata.ts`: the M2.3 viewer loads any committed run's journals from its commit transaction (P5). It decodes a direct call's input as `commitRun`; for a smart-account wallet, it finds the embedded `commitRun` call by its selector and run id, and otherwise falls back to `debug_traceTransaction` where the RPC serves it, or says the run needs a trace RPC. It keeps the journals only if they match the stored commitment.
   - Tests.
 - **Done when:**
   - on the local chain, with two bot players, the leaderboard equals `Season`'s best scores, and the claim amounts shown equal the contract's;
   - a run replayed from its commit calldata shows the outcomes the referee returned when it was settled;
+  - a run committed through a forwarder contract on the local chain, standing in for a smart account, loads and replays to the same outcomes as a direct commit;
   - with `deployments/local.json` naming the zk backend, `settle.ts` exports a run file that reloads to the six outcomes, and shows the contract's cutoff.
 - **Verify with:**
   - `npm --prefix web test -- leaderboard season settle`
   - local chain: `node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --players 2 --settle`, and the same with `--backend zk`
-- **Skills:** `frontend-ux`, `indexing`, `onchain-referee`; tiers `web`, `contracts`. **README:** §7.3, §8.2, §8.4. **Needs user:** none.
+- **Skills:** `frontend-ux`, `indexing`, `onchain-referee`; tiers `web`, `contracts`. **README:** §7.2, §7.3, §8.2, §8.4. **Needs user:** none.
 
 #### M5.4 Web Serial bridge for Challenge runs
 
@@ -2138,7 +2174,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - LevelEnd checked against the wasm replay. A mismatch aborts the run with a message.
     - the same commit path as browser play;
     - an unsupported-browser message outside desktop Chrome and Edge;
-    - a disconnect mid-level closes that level's journal with the events received plus an X event at the last known tick (or one tick after the last event, if that is later), as M0.7 specifies. The level is committed with its claim, and its ticks used follow the time actually spent. The run continues at the next level once the device reconnects; levels still unplayed at the end get X-at-tick-0 journals. See §15, question 13.
+    - a disconnect mid-level closes that level's journal with the events received plus an X event, or none if the level already ended, as README §7.2 specifies, with n the last tick count known from TickStats. The level is committed with its claim, and its ticks used follow the time actually spent. The run continues at the next level once the device reconnects; levels still unplayed at the end get X-at-tick-0 journals. See §15, question 13.
   - `firmware/app/src/challenge.rs`: waits for LoadLevel, plays the level, returns LevelEnd. There is no pause.
   - `web/test/bridge.test.ts`: replays a six-level transcript, recorded from rp2040js, through a mock SerialPort.
   - Level-transition overhead, measured in the emulator rehearsal and recorded in `docs/LINK.md`.
@@ -2159,18 +2195,18 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Goal:** everything needed to open, watch, settle and close a season on schedule, the testnet-1 parameters set from measurements, and a rehearsed close and claim on Sepolia.
 - **Deliverables:**
   - `scripts/contracts/season.mjs`, with five commands:
-    - `open`: opens a season from a season file;
+    - `open`: opens a season from a season file, and writes the season number `open` assigned, from its event, into `deployments/<network>.json` under the file's label, after checking the 16 levels with the level tool and, for a Stylus referee, that its remaining activation time (`ArbWasm.programTimeLeft`) covers the season's length plus grace;
     - `status`: runs, commits, settlements, pot, `isSolvent`;
     - `close`: the permissionless close;
     - `withdraw`: the permissionless rake withdrawal to the treasury;
-    - `settle`: submits a player's best run from their run file, proving it first when D2 = zk.
+    - `settle`: replays a player's run files offline with the core, picks their best run in D10 order (qualification, then score, then fewer ticks), and submits that run only, proving it first when D2 = zk.
   - `seasons/testnet-1.json` (P13), which references `calibration-1.json` for the ids and weights:
     - the referee from `deployments/arbitrum-sepolia.json`;
-    - the fee (0.00005 ETH, in wei), the rake, and a length of 14 days (D12);
+    - the fee (0.00005 ETH, in wei), the rake, `minClears`, and a length of 14 days (D12);
     - the settlement grace. With Stylus, the 48 h proposal. With zk, sized from M4.8's proving time per run × the expected number of settled runs, with the derivation stated.
-    - commitSlack, sized from the M5.4 rehearsal and the margin reported in round G1: at least 2 × the worst observed transition and transaction overhead. If M4.13 ran, its threshold recommendation is applied or declined here, with the reason.
+    - commitSlack, sized from the M5.4 rehearsal and the margin reported in round G1: at least 2 × the worst observed transition and transaction overhead. If M4.13 ran, its threshold recommendation is applied through `minClears` or declined here, with the reason.
   - `.github/workflows/season-ops.yml`, following §1.3, with `cancel-in-progress: false`:
-    - a daily `schedule`: `status`, failing when `isSolvent` is false; the bot runs from `TESTER_KEY` on the days the runbook lists; `close` and `withdraw` once end plus grace has passed; with zk, `settle` for every handed-off run file under `seasons/testnet-1/runs/` not yet settled;
+    - a daily `schedule`: `status`, failing when `isSolvent` is false; the bot runs from `TESTER_KEY` on the days the runbook lists; `close` and `withdraw` once end plus grace has passed; with zk, `settle` for each player with a handed-off run file under `seasons/testnet-1/runs/` whose best run is not yet settled;
     - `pull_request` on itself and `season.mjs`: a read-only `status` of `testnet-0` on Sepolia, with no secret;
     - `workflow_dispatch`.
   - `docs/SEASON_RUNBOOK.md`:
@@ -2246,16 +2282,17 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | D7 | Minion patrol rule; stranded minions | Approach agreed by the owner, 2026-10-28; measured in M1.7; final in M1.7, or in M1.14 (and M1.15 if the rule changes) | M1.9, M1.10, M2.6 | The right-hand rule with the orientation step, if the coverage test finds 0 traps on 100,000 boards; otherwise a replacement specified in M1.14 and approved before it is built, or a bounded trap rate the user accepts, written into README §4.7. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([README §4.7](README.md#47-minions), PIN-17). |
 | D8 | Key mapping | Owner, 2026-10-28; pinned in M0.5 | M1.1, M2.1 | Decided: Key0-3 = A, B, X, Y; Y and the joystick press unused and not journaled; keys configurable in the browser (M2.1) |
 | D9 | Boss size | Owner, 2026-10-28; pinned in M0.5 and M0.6 | M1.3, M1.5 | Decided: a square B × B body, B per level, B = 2 to 8, default 5 |
-| D10 | Ranking and payout | Owner, 2026-10-28; qualification and contract details in M0.7 | M4.5 | Decided: best settled run per player per season; pro-rata payout among qualified players. Proposed: ties go to fewer ticks; qualified players are those whose best run cleared at least one level. |
+| D10 | Ranking and payout | Owner, 2026-10-28; qualification and contract details in M0.7 | M4.5 | Decided: best settled run per player per season; pro-rata payout among qualified players. M0.7: ties go to fewer ticks, and a qualifying run clears at least `minClears` levels, a season parameter defaulting to 1, and ranks above any run that doesn't (README §8.4). |
 | D11 | Superchallenge design | Deferred | none | Stays in [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | Owner, 2026-10-28; pinned in M0.7 | M4.3, M4.5, M4.6 | Decided: native ETH; Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing ethblockdigger's contracts; a 0.00005 ETH Challenge run; 14-day seasons on testnet (`testnet-0` aside), likely on mainnet too. |
 | D13 | Names | Owner, 2026-10-28; crate and contract names in M0.5 | M0.4 (crates), M4.1 (contracts) | Decided: Jiro-ikusu ([`name.md`](name.md)); the crates and contracts listed in README §13 D13, approved by merging M0.5 |
+| D14 | Seed space: seeded boss randomness | Owner, 2026-10-29, from M0.7's review; rule in M1.18 | M1.5 | Decided: the level seed keeps driving the boss through the level, so no two runs share a game and inputs can be neither copied nor precomputed (README §7.4). M1.18 writes the exact rule. |
 | P1 | Rust pin | M0.2 | M0.4 | 1.98.0, as ethblockdigger; otherwise the newest version that installs |
 | P2 | Contract toolchain | M0.2 | M4.3 | Foundry at a pinned version, if `forge` installs and runs: zk verifiers ship Foundry tests, and fuzz and invariant tests are built in. Otherwise ethblockdigger's harness for everything. Never both. Decided only after the pinned installer and the direct asset URL were both tried. |
 | P3 | Repository layout additions | M0.4 | M1.4, M2.1 | Add `tools/` (the native target of README §3) and `shell/` (shared code that is not consensus) to README §3 |
-| P4 | Verifier interface | M0.7 | M1.8 (Outcome), M4.1, M4.4 | `verifyRun(bytes[6], bytes[6], uint16[6], bytes)` returning six Outcomes, the per-level `verify(bytes, bytes, uint16, bytes)`, and `rulesVersion()`. The Outcome carries the decoded header fields and the draw slot. |
-| P5 | Journal publication | M0.7 | M4.6, M5.2, M5.3 | (a) the six journals as `commitRun` calldata, which keeps README §7.3, §7.4 and §8.4. Alternatives: (b) an offchain public store, (c) settled runs only, with the README amended. |
-| P6 | Commit slack | M0.7 (mechanism), M5.5 (testnet value) | M4.7 | A season parameter; 120 s proposed |
+| P4 | Verifier interface | M0.7 | M1.8 (Outcome), M4.1, M4.4 | Decided in M0.7 (README §7.3): `verifyRun(bytes[6], bytes[6], uint16[6], bytes)` returning six Outcomes, the per-level `verify(bytes, bytes, uint16, bytes)`, and `rulesVersion()`, all `view`. The Outcome carries the decoded header fields and the draw slot. |
+| P5 | Journal publication | M0.7 | M4.6, M5.2, M5.3 | Decided in M0.7 (README §7.2): (a), the six journals as `commitRun(runId, bytes[6] journals)` calldata, from which the contract computes the commitment. Alternatives were (b) an offchain public store and (c) settled runs only. |
+| P6 | Commit slack | M0.7 (mechanism), M5.5 (testnet value) | M4.7 | A season parameter, `commitSlack` (README §8.4); 120 s proposed |
 | P7 | wasm interface | M1.11 | M2.1 | Raw `extern "C"` exports over static state; no wasm-bindgen or wasm-pack |
 | P8 | Web stack | M2.1 | M2.1 | Vite + TypeScript with a plain canvas, vitest, ESLint and one Playwright smoke test; ethers v6 in M5; no UI framework |
 | P9 | Preview hosting | M2.2 | M2.2 | Cloudflare Pages through wrangler, with one preview per PR, as ethblockdigger deploys. GitHub Pages cannot serve per-PR previews and needs a paid plan for a private repository. |
@@ -2265,8 +2302,8 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | P13 | Testnet-1 parameters | M5.5 | M5.6 | Ids and weights from `calibration-1.json`; slack and grace from measurements; length per D12 |
 | P14 | Repository visibility, Actions budget, CI profile | M0.2, from the owner's answer in round A1 | M0.4 | Public, if the license allows: larger runners, unmetered minutes, required checks available, and the public CI profile. Otherwise the private CI profile, a spending limit or paid plan, and the budget recorded in `docs/TOOLING.md`. |
 | P15 | License | M0.1 | M2.2 | The owner's choice; no default |
-| P16 | Settlement shape | M0.7 | M4.4, M4.7, M4.8 | (a) per run, `settleRun` with one `verifyRun`, and `settleLevel` as the fallback; season aggregation decided in M4.9. Alternative: (b) per level only, with README §7.3 point 4 amended. |
-| P17 | Draw check | M0.7 | M1.8, M4.4, M4.7 | The core returns `drawSlot`; the contract looks up the weight by level id and checks the slot. A Solidity draw only if the user prefers it. |
+| P16 | Settlement shape | M0.7 | M4.4, M4.7, M4.8 | Decided in M0.7 (README §7.3): (a) per run, `settleRun` with one `verifyRun`, and `settleLevel` as the fallback; season aggregation decided in M4.9. The alternative was (b), per level only. |
+| P17 | Draw check | M0.7 | M1.8, M4.4, M4.7 | Decided in M0.7 (README §8.2): the core returns `drawSlot`; the contract looks up the slot and weight by level id and checks the slot. No Solidity draw. |
 
 ## 12. Dependency graph and critical path
 
@@ -2280,7 +2317,7 @@ Gates and freeze
 
 Core
   M0.4 + M0.6 -> M1.1 -> M1.2, M1.3
-  M1.2 + M1.3 -> M1.4, M1.5
+  M0.7 -> M1.18 ; M1.2 + M1.3 -> M1.4 ; M1.2 + M1.3 + M1.18 -> M1.5
   M1.5 -> M1.6, M1.7 ; M1.7 -> M1.14 (if M1.7 finds traps)
   M0.7 + M1.4 + M1.6 + M1.7 -> M1.8
   M1.8 + M1.14 -> M1.15 (if M1.14 changes the rule)
@@ -2338,11 +2375,11 @@ Several chains tie with it, so each of these is also critical (slack 0):
   - Stylus chosen (activations open): M4.10 drops out and M4.14 finishes at 32, but the browser chain through M5.3 still ends at 39.
   - M1.7 finds no traps, or the user accepts the current rule's rate: M1.14 and M1.15 drop out, and the end moves to 37.
 - **Near-critical items** (slack in units):
-  - 1: M1.2; the zk trials M1.16, M1.17 > M1.12; M4.8; the Stylus measurement M4.1 > M4.2; M4.9; the viewer and editor M2.3, M2.5.
+  - 1: M1.2; M0.7 > M1.18; the zk trials M1.16, M1.17 > M1.12; M4.8; the Stylus measurement M4.1 > M4.2; M4.9; the viewer and editor M2.3, M2.5.
   - 2: M1.4; M1.10; M1.14; the device chain M3.2 > M3.3 > M3.6 > M3.4.
-  - 5 or more: M2.4 (5); M0.7 and M3.5 (6); the contracts chain M4.3 > M4.4 > M4.5 > M4.6 (7); M3.7 and M4.13 (9); M0.3 (12); M1.13 (13); M3.1 (16).
+  - 5 or more: M2.4 (5); M3.5 (6); the contracts chain M4.3 > M4.4 > M4.5 > M4.6 (7); M3.7 and M4.13 (9); M0.3 (12); M1.13 (13); M3.1 (16).
 - **Owner latency.** The 39 units count agent work only. The main chain alone holds 19 sequential merges. These owner rounds (§13) sit on critical chains: A1, A2, A3 (M0.1, M0.2 and M0.5, M0.4 and M0.6), B1 (M1.7), D3, D4, D5 (the target curve and the layouts of M2.6-M2.8), D6 (the play test of M2.9), F0 when it occurs (before M4.10), F1 and F2 (M4.9 and M4.12, M4.14), and G1-G3 (M5.4-M5.6). Stacking (§1.2) lets agents work ahead of merges, but each review and each hardware or play turnaround on this list delays the end by its own length. The season then runs for its configured length plus the settlement grace.
-- **Owner steps with little slack:** B3, the zk framework and any prover route (1); B2, the D7 replacement (2); E1, the device timing check (2); and the reviews of M2.3 and M2.5 (1).
+- **Owner steps with little slack:** A4 and B0, the M0.7 review and the D14 rule (1); B3, the zk framework and any prover route (1); B2, the D7 replacement (2); E1, the device timing check (2); and the reviews of M2.3 and M2.5 (1).
 
 ## 13. Human-in-the-loop checklist
 
@@ -2364,11 +2401,12 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Approve the formats (M0.6).
   - Merge M0.4; then, if the plan allows, make the `ci.yml` jobs required checks on `main`.
   - Merge M0.6.
-- [ ] **A4** (M0.7 ready; slack 6): choose the settlement shape (P16), the journal publication (P5) and the draw check (P17); approve the D10 qualification, the interface, the season-bound referee, the treasury, the sequencing and the slack proposal. Merge.
+- [ ] **A4** (M0.7 ready; slack 1): choose the settlement shape (P16), the journal publication (P5) and the draw check (P17); approve the D10 qualification, the interface, the season-bound referee, the treasury, the sequencing and the slack proposal. Merge.
 - [ ] **A5** (M0.3 ready; any time before M4.3): read the imported ethskills, and approve dropping `feedback`. Merge.
 
 ### Round B: M1 decisions
 
+- [ ] **B0** (M1.18 ready; slack 1): approve the D14 rule, and merge.
 - [ ] **B1, critical** (M1.7 ready): review the measured trap rate, and merge.
 - [ ] **B2, only if M1.7 found traps** (M1.14 ready; slack 2): approve the replacement rule, or accept a bounded trap rate, which M1.14 then writes into README §4.7 and the D7 row.
 - [ ] **B3** (M1.16, M1.17, M1.12 ready; slack 1):
@@ -2442,13 +2480,14 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 | The RP2040 misses the 66 ms tick on a capture plus redraw | Dirty-cell redraw; capture redraws spread across ticks; step and render timing with an overrun counter | M3.4 |
 | Levels or rules change after costs were measured or a season opened | The level freeze at M2.9; the `CLAUDE.md` calibration rule; the runbook's freeze while a season is open (M5.5) | M2.9, M5.5 |
 | A client or device on other rules than the season's takes a paid run that cannot settle | The season check before `startRun` (M5.2) and the device's Hello check (M5.4); a season-bound referee (M0.7, M4.5) | M5.4 |
-| A USB disconnect or a page reload mid-level makes the whole run late | The level's journal is closed at the last known tick, so its ticks used follow the wall time (M0.7); a TickStats heartbeat (M3.2); IndexedDB persistence every second (M5.2); tested with a cut transcript and a simulated reload (M5.2, M5.4) | M5.4 |
+| A USB disconnect or a page reload mid-level makes the whole run late | The level's journal is closed as README §7.2 specifies, so its ticks used follow the wall time (M0.7); a TickStats heartbeat (M3.2); IndexedDB persistence every second (M5.2); tested with a cut transcript and a simulated reload (M5.2, M5.4) | M5.4 |
 | Browser timer lateness or background-tab throttling eats the commit slack | The absolute-deadline loop (M2.1); a hidden-tab warning (M5.2); the slack as a season parameter, sized from measurements (M5.5) | M5.5 |
 | The commit slack is too tight for Pico players | Transition overhead measured in the emulator rehearsal and on a real Pico run (M5.4, round G1); the slack set before the season opens (M5.5) | M5.5 |
 | Season deadlines pass while no agent session is running | `season-ops.yml` on a daily schedule, never cancelled mid-run, failing on insolvency; `send_later` reminders for the season checkpoints (M5.5, M5.6) | M5.6 |
 | The settlement grace is too short for zk proving | Grace sized from M4.8's proving time per run and the expected settled runs (M5.5) | M5.5 |
 | Close and claim fail on Sepolia when they first matter | `testnet-0` closed and claimed in a rehearsal before `testnet-1` opens (M5.5) | M5.5 |
-| The run nonce or run commitment computed in Solidity diverges from the core's | The ethers fixtures of `vectors/derivations.json`, read by both (M1.2, M4.4); the draw stays in the core only (P17) | M4.4 |
+| The run commitment computed in Solidity diverges from the core's, or the Solidity run nonce from its fixtures | The ethers fixtures of `vectors/derivations.json`, read by both (M1.2, M4.4); the run nonce in Solidity only, and the draw in the core only (P17) | M4.4 |
+| Inputs copied from public journals or precomputed for every boss start (README §7.4) | D14: seeded boss randomness, so no two runs share a game (M1.18, M1.5) | M1.5 |
 | Real-time bots dominate paid play (README §7.4) | The entry fee, D10 qualification, journals published at commit and replayable (P5, M5.3), the optional bot-advantage study (M4.13), observation in the season report (M5.6) | Not retired; observed in M5.6 |
 | Ephemeral sessions lose tools, measurements, work in progress or the user's replies | The tiered bootstrap and hook (M0.2); draft-PR claims and checkpoints; `subscribe_pr_activity`, or a `resume M<x>` session, for (user) lines (§1.2); every measurement committed | M0.2 |
 | Imported ethskills steer agents against the spec, fetch unreviewed text, or send project details to a third party | A separate PR with sha256 pins, conflicts listed, and the user's review (M0.3); `feedback` not imported; the `CLAUDE.md` rule against fetching from or sending to ethskills.com (M0.1); the README stays authoritative | M0.3 |
@@ -2477,7 +2516,7 @@ Each question has a default in this plan, and the item that settles it unless th
 | 10 | When does `RULES_VERSION` bump during development? | On every behavior change: one that moves a committed vector's outcome, error code or trace, or implements a rule edit made after the rule was first implemented. First implementations of frozen rules don't bump it. M1.9's gate enforces this. | M0.5 |
 | 11 | The 60 × 60 grid fills the whole 240 × 240 screen, which leaves no room for a HUD during play. | Between-level screens, plus a brief overlay at level start | M3.5 |
 | 12 | The Pico has no chain access, but Training uses the season's scoring. How does it get the weights? | Baked into each firmware build from the calibration file; sending them over USB can come later | M3.5 |
-| 13 | What happens if the USB link drops, or the page reloads, mid-level in a Challenge run? | The level's journal is closed with the events received and an X at the last known tick, so the level keeps its claim and its ticks used follow the wall time; the run continues at the next level | M5.2, M5.4 |
+| 13 | What happens if the USB link drops, or the page reloads, mid-level in a Challenge run? | The level's journal is closed with the events received and an X at tick max(n, e + 1), where n is the ticks known to be processed and e the last event's tick, or with no X if the level has already ended (README §7.2), so the level keeps its claim and its ticks used follow the wall time; the run continues at the next level | M5.2, M5.4 |
 | 14 | README §5 says the 16 levels are authored with the editor, but an agent cannot drive a GUI reliably. | ASCII sources compiled by the core codec, with the editor producing the same bytes; README §5 is amended | M2.4 |
 | 15 | `GUIDELINES.md` references Cometh's `AGENTS_COMETH.md`. Copy it from ethblockdigger, or drop the reference? | Copy it | M0.1 |
 | 16 | Neither repository has a license file. Which license applies? | Settled by the owner on 2026-10-28: MIT | Owner, 2026-10-28; committed in M0.1 |
