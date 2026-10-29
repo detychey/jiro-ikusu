@@ -280,6 +280,15 @@ The SessionStart hook in `.claude/settings.json` runs the core tier at the start
 
 Billed minutes per run of each workflow, read from `actions_list` job timings, rounded up per job. Items that add or change a workflow add its row.
 
+Monthly budget: 1,500 minutes for this repository (see Decisions, P14). The `get_workflow_run_usage` method reports 0 ms for this organization's runs, so the minutes come from each job's start and end times.
+
 | Workflow | Billed minutes per run | Measured in |
 |---|---|---|
-| (none yet) | | |
+| `ci.yml`, job `rust` | 1: the job took 43 and 47 s with every step running, and the minimum is one minute | M0.4, runs [40819133258](https://github.com/detychey/jiro-ikusu/actions/runs/40819133258) and [40819307102](https://github.com/detychey/jiro-ikusu/actions/runs/40819307102) |
+
+## CI runners and access (M0.4)
+
+- **Runner:** `ubuntu-24.04` (image 20261025.353), 2 vCPUs (`nproc` = 2), 7 GB RAM and 2 GB swap (`free -g`), as GitHub gives private repositories. The image also ships Rust 1.99.1; `scripts/bootstrap.sh core` installs the 1.98.0 pin in about 17 s, and a step checks `rustc --version` against `rust-toolchain.toml`.
+- **Logs:** `get_job_logs` with `return_content` returns a job's log in the container, so results printed between log markers can be read.
+- **Artifacts:** `actions_get` `download_workflow_run_artifact` returns a short-lived signed URL on `productionresultssa30.blob.core.windows.net`, and `curl` fetches the zip through the proxy. Artifacts can therefore be brought into the container, as long as the URL is used within its few minutes of validity.
+- **Labels:** adding an unknown label to a PR with `issue_write` creates it; `ci:heavy` was created this way on 2026-10-29.
