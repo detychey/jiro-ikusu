@@ -220,7 +220,39 @@ Testing one axis at a time, with the second test made after the first move, neve
 
 The draft starts the boss at (30, 30). Here the level defines a spawn area, the set of cells where the body's top-left cell may start. The level seed picks the start position inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)). [R4.6-5]
 
-Under D14 the seed will also drive the boss after the start, by a rule that [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 adds to this section ([§7.4](#74-bots)). <!-- rationale -->
+**Seeded deflections** *(D14)*. The level seed keeps steering the boss through the level, so that no two runs share a game ([§7.4](#74-bots)). On each tick the boss moves, a draw computed from the level seed and the tick may invert vx or vy, before the first edge test of R4.6-3. [R4.6-6]
+
+```text
+# [R4.6-7]
+at level start:
+    key = the big-endian u32 of level seed bytes 5 to 8     # byte 5 is the most significant
+if the boss moves this tick, before the first edge test of R4.6-3:
+    r = fmix32(key XOR tick) >> 26         # tick (R4.4-1) as a u32; r is 0 to 63
+    if r = 0:  vx = -vx
+    if r = 1:  vy = -vy
+```
+
+`fmix32` is the 32-bit finalizer of MurmurHash3. Every value in it is a u32, `>>` shifts right and fills with zeros, and a multiplication keeps the low 32 bits of the product: [R4.6-8]
+
+```text
+# [R4.6-9]
+fmix32(h):
+    h = h XOR (h >> 16)
+    h = (h × 0x85ebca6b) mod 2^32
+    h = h XOR (h >> 13)
+    h = (h × 0xc2b2ae35) mod 2^32
+    h = h XOR (h >> 16)
+    return h
+```
+
+- **The edge tests are unchanged.** A deflection only inverts vx or vy, which stay ±1. It never sets a position and never skips a move. R4.6-3 then runs as written with the new velocity, so the body still only ever covers `EMPTY` cells. A deflection toward a blocked edge is undone by that edge's own test on the same move, and if that edge holds `TRAIL`, the player is hit, as with any bounce. [R4.6-10]
+- **No state.** The draw is a pure function of the key and the tick, used only by R4.6-7, and a tick on which the boss doesn't move draws nothing. The key is a constant of the level, derived from the level seed like the boss start. It is not boss state, and it is not in the state hash ([§6.4](#64-seeds-and-commitments)). [R4.6-11]
+- **Divergence** *(D14)*. Two level seeds with the same bytes 0 to 4, so the same boss start and direction, but different keys give boss trajectories, the (x, y, vx, vy) after each move, that part at the first move on which their draws differ in effect, on any board and journal they share. For two different random keys, that move comes by the boss's 400th move (N = 400) except with probability about 1.1 × 10^−11, that is by tick 399 × the move period in a level that lasts that long. M1.5's property test checks N = 400 on seed pairs whose bytes 5 to 8 are drawn at random and differ. [R4.6-12]
+- **Why it diverges on any board.** Two bosses that share a board and a journal move alike until the first move on which their draws differ in effect: one draw is 0 or 1 and the other is not, or one is 0 and the other 1. On that move, one boss tests the opposite edge of one axis from the other. Whatever the two edges hold, the bosses leave that axis with a different coordinate or a different velocity component, and the other axis's test changes neither. <!-- rationale -->
+- **Why 400.** For two different random keys, the draws of a move differ in effect with probability q = 1 − (62/64)^2 − 2 × (1/64)^2 ≈ 0.061, independently from move to move, so a pair agrees on its first 400 moves with probability (1 − q)^400 ≈ 1.1 × 10^−11. A throwaway prototype for M1.18 measured a median of 12 moves and a maximum of 248 over 6,000,000 key pairs at move periods 1 to 6, and no unsafe body on 5,000 random boards × 2,700 ticks for each B from 2 to 8. <!-- rationale -->
+- **Limits of N.** Two equal keys never part; two keccak256-derived seeds share a key with probability 2^−32. Keys that differ only in their low 12 bits diverge about half as fast (up to 433 moves measured); two such seeds give such keys with probability 2^−20. A level with move period 7 or more has fewer than 400 boss moves, and two of its runs still end on the same trajectory with probability 6 × 10^−10 at period 8 and 2 × 10^−5 at period 16. M1.5's test therefore draws two different random values for bytes 5 to 8 and uses move periods 1 to 6. <!-- rationale -->
+- **Why fmix32.** It is a bijection on u32 in which each input bit flips each output bit with probability close to 1/2, for two multiplications per move. With no generator state, the draw for any tick stands alone, and every key, 0 included, is valid. <!-- rationale -->
+- **Play.** A deflection is a quarter turn, as if the boss bounced off an invisible wall, and comes on 1 move in 32: about 42 times in a 2,700-tick level at move period 2. Without deflections, the boss repeats one closed loop for a given start and direction, and on the open-field level three quarters of the interior is never under its body: a safe zone that a player or a bot could learn. With them, the body passes over 95% of the interior. <!-- rationale -->
 
 ### 4.7 Minions
 
@@ -418,9 +450,10 @@ open-field-empty journal: 0x01000100277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a7
 ### 6.4 Seeds and commitments
 
 - **Level seed:** `keccak256("jiro.level" ‖ runNonce ‖ levelIndex)`.
-  - **What it decides.** The boss's start position (its body's top-left cell) inside the level's spawn rectangle, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)). Under D14 the seed will also drive the boss through the whole level, so that no two runs share a game. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 writes that rule into §4.6 and this section.
+  - **What it decides.** The boss's start position (its body's top-left cell) inside the level's spawn rectangle, the boss's diagonal direction, and the key of the boss's deflections, which keep steering the boss through the whole level, so that no two runs share a game *(D14)* ([§4.6](#46-boss)). Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
   - **Boss start.** The candidates are the cells of the spawn rectangle in row-major order: y from y0 to y1, and within each row x from x0 to x1. Validity ensures the body covers only `EMPTY` cells at any of them. With index = the big-endian u32 of seed bytes 0 to 3, modulo the number of candidates, the start is candidate number index, counting from 0. vx = +1 if bit 0 of seed byte 4 is set, otherwise −1; vy is the same, from bit 1. There are at most 57 × 57 = 3,249 candidates, under 2^12, so the modulo bias stays below 2^12 / 2^32 = 2^−20.
-  - **Once per level.** keccak256 runs once per level, never per tick. Any randomness during play comes from an integer PRNG seeded from the level seed *(D14)*.
+  - **Deflection key** *(D14)*. The big-endian u32 of seed bytes 5 to 8, byte 5 the most significant ([§4.6](#46-boss), R4.6-7). Bits 2 to 7 of byte 4 and bytes 9 to 31 are unused.
+  - **Once per level.** keccak256 runs once per level, never per tick. Any randomness during play comes from an integer PRNG seeded from the level seed *(D14)*: the boss's deflection draw, fmix32(key XOR tick) with 32-bit wrapping multiplications ([§4.6](#46-boss), R4.6-7 to R4.6-9). It keeps no state.
   - **Packing.** Every derivation in this section packs its inputs as Solidity's `abi.encodePacked` would: tags as ASCII bytes, `bytes32` values such as `runNonce` as 32 bytes, `levelIndex` as one byte, and `runId` as a 32-byte `uint256`.
   - **Domain tags.** Every tagged derivation (level seed, run nonce, draw) has its own tag, so two of them never share an input.
 - **Run nonce** (Challenge): `keccak256("jiro.run" ‖ entropy ‖ runId)`, where `entropy` is the `bytes32` that the entropy source returns for the run ([§7.2](#72-run-flow)) and `runId` is the run's `uint256` id. Only the `Challenge` contract computes it, when the player reveals the run. The core takes `runNonce` as an input and never derives it.
@@ -456,7 +489,7 @@ The draft also asks for a C++ PRNG that matches "the state-transition hashing lo
 | 2 | claimable cells | u16 ([§4.1](#41-grid)) |
 | 2 | next event index | u16, the index of the first journal event not yet applied |
 
-The preimage is 948 bytes in all.
+The preimage is 948 bytes in all. The deflection key ([§4.6](#46-boss)) is not in it: like the boss start, it is a function of the level seed, and a deflection leaves nothing behind but the boss's velocity.
 
 **Worked examples.** The examples use `runNonce` = keccak256(`"jiro.example.9"`), chosen so that the draw of [§8.2](#82-challenge-000005-eth-per-run) both keeps a card in place and revisits a swapped position. For the open-field level ([§5](#5-levels)) at `levelIndex` 0, the seed, the boss start, and the state after tick 0 of `open-field-empty` are:
 
@@ -466,12 +499,18 @@ level seed (levelIndex 0): 0x3747fcd23494676303f1ee35d499ae727c0d8e373f013491d39
 boss start: candidates 225, index 33, top-left (23, 22), vx -1, vy -1
 boss start (levelIndex 2): candidates 225, index 180, top-left (20, 32), vx +1, vy -1
 boss start (spawn rectangle (20, 20) to (34, 25)): candidates 90, index 78, top-left (23, 25), vx -1, vy -1
+deflection key (levelIndex 0): 0x94676303
+fmix32 test values: fmix32(0x00000000) 0x00000000, fmix32(0x00000001) 0x514e28b7, fmix32(0xffffffff) 0x81f16f39
 open-field-empty tick 0 boss: top-left (22, 21), vx -1, vy -1
 open-field-empty tick 0 preimage length: 948
 open-field-empty tick 0 state hash: 0xc9775c491d677d941c3ac733e1b47b51a64024cb4da22f9c05ceea58d93c76d1
+open-field-empty tick 0 deflection draw: fmix32(0x94676303) 0x5cb2ceac, r 23, no deflection
+open-field-empty first deflection: tick 82, r 1 inverts vy; boss after the move: top-left (20, 19), vx +1, vy -1
+open-field-empty second deflection: tick 140, r 0 inverts vx; boss after the move: top-left (47, 11), vx -1, vy +1
+open-field-empty boss after tick 2699: top-left (3, 18), vx +1, vy -1, after 43 deflections
 ```
 
-The second and third lines check the bit order of seed byte 4 and the row-major order of a non-square rectangle. On tick 0 the boss moves (0 % 2 = 0) one step diagonally, from its start to the `tick 0 boss` position, and the player stands still.
+The second and third lines check the bit order of seed byte 4 and the row-major order of a non-square rectangle. On tick 0 the boss moves (0 % 2 = 0) one step diagonally, from its start to the `tick 0 boss` position, and the player stands still. The tick-0 deflection draw is 23, neither 0 nor 1, so the boss doesn't deflect on tick 0. With the player standing still for the whole level, the boss first deflects on tick 82, then on tick 140, and 43 times in all by the last tick, 2,699.
 
 The run nonce of run 1, with the entropy keccak256(`"jiro.example.entropy"`):
 
@@ -645,7 +684,7 @@ interface IReferee {
 
 The game is deterministic and the simulation is tiny. Once the run nonce is revealed, a bot can search for strong inputs *within* the commit deadline, which only stops slow search. ethblockdigger reached the same conclusion: nothing cryptographic stops a competent real-time bot.
 
-**Copied and precomputed inputs** *(D14)*. If the seed chose only the boss's start cell and direction, a level would be one of at most 4 × 3,249 games: 900 on the open-field level. Committed journals are public, and so are the 16 levels. A bot could then reuse another run's events on a matching game, under its own header, or precompute strong inputs for every game before the season, and commit as soon as it reveals. Binding journals to their run stops the reuse of journal bytes, not of their events. So under D14, the level seed keeps driving the boss through the level, and no two runs share a game. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 writes the rule before the core builds the boss.
+**Copied and precomputed inputs** *(D14)*. If the seed chose only the boss's start cell and direction, a level would be one of at most 4 × 3,249 games: 900 on the open-field level. Committed journals are public, and so are the 16 levels. A bot could then reuse another run's events on a matching game, under its own header, or precompute strong inputs for every game before the season, and commit as soon as it reveals. Binding journals to their run stops the reuse of journal bytes, not of their events. So under D14, the level seed keeps driving the boss through the level, and no two runs share a game: it keys the boss's deflections ([§4.6](#46-boss), R4.6-6 to R4.6-12). Two runs with the same boss start and direction part after a median of 12 boss moves.
 
 The levers are economic and social:
 
@@ -853,7 +892,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)); 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
 | D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-firmware`, `jiro-firmware-drivers`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
-| D14 | Seed space | **Decided** (owner, 2026-10-29): the level seed keeps driving the boss through the level, so that no two runs share a game and inputs can be neither copied from another run nor precomputed ([§7.4](#74-bots)). [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 writes the exact rule into §4.6 and §6.4, for the owner's approval, before the core builds the boss. |
+| D14 | Seed space | **Decided** (owner, 2026-10-29): the level seed keeps driving the boss through the level, so that no two runs share a game and inputs can be neither copied from another run nor precomputed ([§7.4](#74-bots)). [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 wrote the rule, seeded deflections ([§4.6](#46-boss), R4.6-6 to R4.6-12; [§6.4](#64-seeds-and-commitments)): a stateless draw from level seed bytes 5 to 8 and the tick turns the boss a quarter turn on 1 move in 32. |
 
 M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §11):
 

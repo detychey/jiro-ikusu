@@ -900,7 +900,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - boss tests cover the outside corner, a corridor exactly as wide as the body, `TRAIL` bumps on x and on y at either end and in the middle of the leading edge, and bodies with B = 2 and B = 8;
   - after a capture, every cell of the body is still `EMPTY`, and a pocket narrower than the body that connects to the boss's region stays open;
   - over 5,000 random boards × 2,700 ticks, for each body size from 2 to 8, no cell of the body is ever on `CLAIMED` or `TRAIL`, and vx and vy stay ±1, with the D14 randomness enabled;
-  - D14: on the same random boards, with the same boss start and direction, two different level seeds give boss trajectories that diverge within the N ticks M1.18 states.
+  - D14: on the same random boards, with the same boss start and direction, two level seeds whose bytes 5 to 8 are drawn at random and differ give boss trajectories that diverge within N = 400 boss moves (README R4.6-12), at boss move periods 1 to 6.
 - **Verify with:** `cargo test -p jiro-core --release --locked --test capture_order --test boss`
 - **Skills:** `deterministic-core`, `parity-testing`. **README:** §4.6, §4.8, §6.4. **Needs user:** none.
 
