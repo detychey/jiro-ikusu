@@ -1,0 +1,12 @@
+[package]
+name = "jiro-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+jiro-core = { path = "../../core" }
