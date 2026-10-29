@@ -97,12 +97,16 @@ jobs:
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: cargo test --workspace --release --locked
 
-      - name: jiro-core on four targets and its MSRV (targets)
+      - name: jiro-core on four targets (targets)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
           for target in thumbv6m-none-eabi wasm32-unknown-unknown riscv32im-unknown-none-elf riscv64imac-unknown-none-elf; do
             cargo build -p jiro-core --release --locked --target "$target"
           done
+
+      - name: jiro-core on its MSRV (targets)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
           msrv="$(python3 -c 'import tomllib; print(tomllib.load(open("core/Cargo.toml", "rb"))["package"]["rust-version"])')"
           rustup toolchain install "$msrv" --profile minimal --no-self-update
           cargo "+$msrv" build -p jiro-core --release --locked

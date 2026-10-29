@@ -197,7 +197,7 @@ fn unknown_version_is_rejected() {
 
 #[test]
 fn other_rules_version_is_rejected() {
-    for rules_version in [0, 2, u16::MAX] {
+    for rules_version in [0, 2, 0x0100, 0x0101, u16::MAX] {
         let mut journal = RawJournal::new(&[]);
         journal.rules_version = rules_version;
         assert_eq!(
@@ -253,36 +253,51 @@ fn event_count_above_2700_is_rejected() {
 
 #[test]
 fn tick_2700_or_more_is_rejected() {
-    for tick in [MAX_TICKS, u16::MAX] {
-        let journal = RawJournal::new(&[(0, 1), (tick, 2)]);
+    for events in [
+        vec![(MAX_TICKS, 1)],
+        vec![(u16::MAX, 1)],
+        vec![(0, 1), (MAX_TICKS, 2)],
+        vec![(0, 1), (u16::MAX, 2)],
+    ] {
+        let journal = RawJournal::new(&events);
         assert_eq!(
             decode_error(&journal.bytes()),
             Error::TickLimit,
-            "tick {tick}"
+            "{events:?}"
         );
     }
 }
 
 #[test]
 fn tick_not_above_the_previous_one_is_rejected() {
-    for tick in [5, 4, 0] {
-        let journal = RawJournal::new(&[(5, 1), (tick, 2)]);
+    for events in [
+        vec![(5, 1), (5, 2)],
+        vec![(5, 1), (4, 2)],
+        vec![(5, 1), (0, 2)],
+        vec![(5, 1), (10, 2), (7, 3)],
+    ] {
+        let journal = RawJournal::new(&events);
         assert_eq!(
             decode_error(&journal.bytes()),
             Error::TickOrder,
-            "tick {tick}"
+            "{events:?}"
         );
     }
 }
 
 #[test]
 fn reserved_bit_7_is_rejected() {
-    for mask in [0x80, 0x81, 0xff] {
-        let journal = RawJournal::new(&[(0, 1), (1, mask)]);
+    for events in [
+        vec![(0, 0x80)],
+        vec![(0, 1), (1, 0x80)],
+        vec![(0, 1), (1, 0x81)],
+        vec![(0, 1), (1, 0xff)],
+    ] {
+        let journal = RawJournal::new(&events);
         assert_eq!(
             decode_error(&journal.bytes()),
             Error::ReservedBit,
-            "mask {mask:#04x}"
+            "{events:?}"
         );
     }
 }
@@ -313,11 +328,11 @@ fn first_broken_rule_wins() {
         bytes.truncate(HEADER_LEN - 1);
         bytes
     };
-    let mut events_short_bad_tick = with(|j| j.events[1].0 = MAX_TICKS).bytes();
+    let mut events_short_bad_tick = with(|j| j.events[0].0 = MAX_TICKS).bytes();
     events_short_bad_tick.pop();
-    let mut trailing_bad_tick = with(|j| j.events[1].0 = MAX_TICKS).bytes();
+    let mut trailing_bad_tick = with(|j| j.events[0].0 = MAX_TICKS).bytes();
     trailing_bad_tick.push(0);
-    let cases: [(&str, Vec<u8>, Error); 11] = [
+    let cases: [(&str, Vec<u8>, Error); 12] = [
         (
             "truncated header, version",
             short_bad_version,
@@ -362,6 +377,11 @@ fn first_broken_rule_wins() {
             "tick limit, reserved bit",
             with(|j| j.events[1] = (MAX_TICKS, 0x82)).bytes(),
             Error::TickLimit,
+        ),
+        (
+            "tick order, reserved bit",
+            with(|j| j.events[1] = (0, 0x80)).bytes(),
+            Error::TickOrder,
         ),
         (
             "tick order, unchanged mask",
@@ -473,7 +493,7 @@ fn encode_rejects_invalid_journals() {
     let too_many: Vec<Event> = (0..=MAX_EVENTS)
         .map(|i| event(i, 1 + (i % 2) as u8))
         .collect();
-    let cases: [(&str, Header, Vec<Event>, Error); 5] = [
+    let cases: [(&str, Header, Vec<Event>, Error); 6] = [
         (
             "levelIndex 6",
             Header {
@@ -497,6 +517,12 @@ fn encode_rejects_invalid_journals() {
             Error::TickOrder,
         ),
         (
+            "first event's mask 0",
+            header(),
+            vec![event(0, 0)],
+            Error::UnchangedMask,
+        ),
+        (
             "unchanged mask",
             header(),
             vec![event(0, 1), event(1, 1)],
@@ -507,17 +533,6 @@ fn encode_rejects_invalid_journals() {
     for (name, header, events, error) in cases {
         assert_eq!(encode(&header, &events, &mut out), Err(error), "{name}");
     }
-}
-
-#[test]
-fn input_mask_rejects_reserved_bit_7() {
-    assert_eq!(
-        (
-            InputMask::new(0x7f).map(InputMask::bits),
-            InputMask::new(0x80)
-        ),
-        (Some(0x7f), None)
-    );
 }
 
 #[test]
@@ -555,7 +570,7 @@ const ERRORS: [Error; 11] = [
 ];
 
 /// The codes of README §6.3. The match is exhaustive, so a new error fails to compile here
-/// until it gets its code and joins `ERRORS`.
+/// until it gets its code; add it to `ERRORS` as well.
 fn readme_code(error: Error) -> u8 {
     match error {
         Error::Truncated => 1,
@@ -579,6 +594,8 @@ fn error_codes_are_the_readme_codes() {
     }
 }
 
+/// The compiler already rejects duplicate discriminants; this guards `Error::code` if it
+/// ever stops returning the discriminant.
 #[test]
 fn error_codes_are_unique() {
     let mut codes: Vec<u8> = ERRORS.iter().map(|error| error.code()).collect();

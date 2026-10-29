@@ -285,6 +285,7 @@ Monthly budget: 1,500 minutes for this repository (see Decisions, P14). The `get
 | Workflow | Billed minutes per run | Measured in |
 |---|---|---|
 | `ci.yml`, job `rust` | 1: the job took 43 and 47 s with every step running, and the minimum is one minute | M0.4, runs [40819133258](https://github.com/detychey/jiro-ikusu/actions/runs/40819133258) and [40819307102](https://github.com/detychey/jiro-ikusu/actions/runs/40819307102) |
+| `ci.yml`, job `rust`, from M1.1 | 2: the job took 72 s, of which debug tests 11 s, release tests 21 s (mostly the LTO build) and the target and MSRV builds 11 s | M1.1, run [40871486955](https://github.com/detychey/jiro-ikusu/actions/runs/40871486955) |
 
 ## CI runners and access (M0.4)
 
