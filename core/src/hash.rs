@@ -108,8 +108,8 @@ fn direction_code(direction: Dir) -> u8 {
     }
 }
 
-/// 0 N, 1 E, 2 S, 3 W.
-fn heading_code(heading: Dir) -> u8 {
+/// 0 N, 1 E, 2 S, 3 W, as the state hash and the targets encode a minion's heading.
+pub fn heading_code(heading: Dir) -> u8 {
     match heading {
         Dir::Up => 0,
         Dir::Right => 1,

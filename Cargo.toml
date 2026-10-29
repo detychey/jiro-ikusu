@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["core", "shell", "tools"]
+members = ["core", "shell", "tools", "web/wasm"]
 exclude = ["firmware", "referee/zk", "scripts/float-probe"]
 
 [workspace.package]
