@@ -50,3 +50,15 @@ pub fn hex(bytes: &[u8]) -> String {
     let digits: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
     format!("0x{digits}")
 }
+
+/// The bytes of a lowercase or uppercase hex string with a `0x` prefix.
+pub fn parse_hex(text: &str) -> Result<Vec<u8>, String> {
+    let digits = text
+        .strip_prefix("0x")
+        .filter(|digits| digits.len() % 2 == 0)
+        .ok_or(format!("not 0x-prefixed hex bytes: {text}"))?;
+    (0..digits.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&digits[i..i + 2], 16).map_err(|_| format!("not hex: {text}")))
+        .collect()
+}

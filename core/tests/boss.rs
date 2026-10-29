@@ -145,6 +145,7 @@ fn claimed_edge_bounces_without_a_hit() {
     assert_eq!((boss.step(&grid, 0), boss.vx), (false, -1));
 }
 
+/// [R4.4-2] The boss moves on the ticks where tick % period == 0.
 #[test]
 fn boss_moves_only_on_ticks_that_are_multiples_of_its_period() {
     let grid = Grid::level_start(&open_field());
@@ -162,7 +163,7 @@ fn boss_moves_only_on_ticks_that_are_multiples_of_its_period() {
     assert_eq!(moved, [true, false, false, true, false, false, true]);
 }
 
-/// README §6.4: fmix32's test values and the tick-0 draw of the worked example.
+/// [R4.6-8] [R4.6-9] README §6.4: fmix32's test values and the tick-0 draw of the worked example.
 #[test]
 fn fmix32_test_values() {
     assert_eq!(
@@ -186,7 +187,7 @@ fn boss_starts_at_the_seeds_cell_and_direction() {
     assert_eq!((boss.pos, boss.vx, boss.vy), (Pos { x: 20, y: 32 }, 1, -1));
 }
 
-/// README §6.4, the worked example `open-field-empty`, played to the end with the player
+/// [R4.6-11] README §6.4, the worked example `open-field-empty`, played to the end with the player
 /// standing still.
 #[test]
 fn open_field_worked_example() {
@@ -288,10 +289,10 @@ fn mutate(grid: &mut Grid, bosses: [&Boss; 2], rng: &mut XorShift) {
     }
 }
 
-/// [R4.6-1] and [R4.6-12]: over 5,000 random boards × 2,700 ticks for each B from 2 to 8, with
-/// cells changing around the boss and the deflections on, the body never covers a cell that
-/// isn't `EMPTY`, vx and vy stay ±1, and two keys with the same start and direction part within
-/// 400 boss moves at move periods 1 to 6.
+/// [R4.6-10] [R4.6-1] and [R4.6-12]: over 5,000 random boards × 2,700 ticks for each B from 2 to 8,
+/// with cells changing around the boss and the deflections on, the body never covers a cell that
+/// isn't `EMPTY`, vx and vy stay ±1, and two keys with the same start and direction part within 400
+/// boss moves at move periods 1 to 6.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn body_stays_on_empty_cells_and_seeds_diverge_on_random_boards() {

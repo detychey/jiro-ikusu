@@ -37,7 +37,7 @@ pub fn open_field_id() -> [u8; 32] {
     level_id(&encode(&open_field()))
 }
 
-fn with_obstacles(mut level: Level, cells: impl IntoIterator<Item = (u8, u8)>) -> Level {
+pub fn with_obstacles(mut level: Level, cells: impl IntoIterator<Item = (u8, u8)>) -> Level {
     for (x, y) in cells {
         let cell = usize::from(y) * 60 + usize::from(x);
         level.obstacles[cell / 8] |= 0x80 >> (cell % 8);
@@ -45,7 +45,7 @@ fn with_obstacles(mut level: Level, cells: impl IntoIterator<Item = (u8, u8)>) -
     level
 }
 
-fn with_minions(level: Level, spawns: &[(u8, u8)]) -> Level {
+pub fn with_minions(level: Level, spawns: &[(u8, u8)]) -> Level {
     let mut minion_spawns = [Pos { x: 0, y: 0 }; 3];
     for (slot, &(x, y)) in minion_spawns.iter_mut().zip(spawns) {
         *slot = Pos { x, y };

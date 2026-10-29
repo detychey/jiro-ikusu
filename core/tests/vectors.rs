@@ -182,6 +182,27 @@ fn check_game(file: &str, vector: &Value) {
         weight_bp,
         |game| trace.extend(state_hash(game)),
     );
+    let recorded =
+        std::fs::read(vectors_dir("game").join(vector["trace"].as_str().unwrap())).unwrap();
+    // The trace first: a rule change shows as the first tick whose state differs, the clue that
+    // `jiro-tools replay --dump-tick --diff` then turns into field names.
+    let first_differing_tick = trace
+        .chunks(32)
+        .zip(recorded.chunks(32))
+        .position(|(computed, recorded)| computed != recorded)
+        .or((trace.len() != recorded.len()).then(|| trace.len().min(recorded.len()) / 32));
+    assert_eq!(
+        first_differing_tick,
+        None,
+        "{file}: trace: first differing tick ({} ticks here, {} recorded)",
+        trace.len() / 32,
+        recorded.len() / 32
+    );
+    assert_eq!(
+        keccak256(&[&recorded]).to_vec(),
+        bytes(&vector["traceKeccak"]),
+        "{file}: field traceKeccak"
+    );
     match (result, recorded_error(vector)) {
         (Err(error), Some(code)) => assert_eq!(error.code(), code, "{file}: field error"),
         (Ok(outcome), None) => {
@@ -196,22 +217,6 @@ fn check_game(file: &str, vector: &Value) {
             actual.map(|outcome| outcome.end_reason)
         ),
     }
-    let recorded =
-        std::fs::read(vectors_dir("game").join(vector["trace"].as_str().unwrap())).unwrap();
-    let first_differing_tick = trace
-        .chunks(32)
-        .zip(recorded.chunks(32))
-        .position(|(computed, recorded)| computed != recorded);
-    assert_eq!(
-        first_differing_tick, None,
-        "{file}: trace: first differing tick"
-    );
-    assert_eq!(trace.len(), recorded.len(), "{file}: trace: tick count");
-    assert_eq!(
-        keccak256(&[&recorded]).to_vec(),
-        bytes(&vector["traceKeccak"]),
-        "{file}: field traceKeccak"
-    );
 }
 
 #[test]
@@ -221,6 +226,37 @@ fn every_game_vector_matches_the_core() {
     for (file, vector) in &vectors {
         assert_eq!(vector["kind"].as_str(), Some("game"), "{file}: field kind");
         check_game(file, vector);
+    }
+}
+
+/// The journal and the level of every game vector survive the round trip
+/// (encode(decode(x)) == x); a level that decode rejects is the one its vector rejects.
+#[test]
+fn every_game_vector_round_trips() {
+    for (file, vector) in &vectors_in("game") {
+        let journal_bytes = bytes(&vector["journal"]);
+        let decoded = journal::decode(&journal_bytes).unwrap();
+        let events: Vec<Event> = decoded.events().collect();
+        let mut out = [0; MAX_JOURNAL_LEN];
+        let reencoded = journal::encode(&decoded.header, &events, &mut out).unwrap();
+        assert_eq!(
+            reencoded,
+            journal_bytes.as_slice(),
+            "{file}: journal round trip"
+        );
+        let level_bytes = bytes(&vector["level"]);
+        match level::decode(&level_bytes) {
+            Ok(level) => assert_eq!(
+                level::encode(&level).to_vec(),
+                level_bytes,
+                "{file}: level round trip"
+            ),
+            Err(error) => assert_eq!(
+                Some(error.code()),
+                recorded_error(vector),
+                "{file}: the level does not decode"
+            ),
+        }
     }
 }
 

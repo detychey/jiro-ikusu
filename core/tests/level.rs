@@ -833,6 +833,7 @@ fn blocked_start_worked_example() {
     );
 }
 
+/// [R4.1-7]
 #[test]
 fn level_start_grid_claims_the_border_and_the_obstacles() {
     let level = with_obstacles(open_field(), [(10, 10), (48, 52)]);

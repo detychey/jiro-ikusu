@@ -197,8 +197,8 @@ fn open_field_empty_tick_0_hashes_to_the_worked_example() {
     );
 }
 
-/// README §6.4: every field of the preimage, in the order and encoding of the table, for a
-/// state with a distinct value in each field.
+/// [R4.3-1] [R4.3-2] [R4.3-3] [R4.3-4] README §6.4: every field of the preimage, in the order and
+/// encoding of the table, for a state with a distinct value in each field.
 #[test]
 fn preimage_follows_the_readme_layout() {
     let level = open_field();

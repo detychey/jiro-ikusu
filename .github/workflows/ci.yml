@@ -1,5 +1,6 @@
 # Private CI profile (plan §1.3, P14): the rust, rust-release, targets, determinism and
-# vectors-drift rows of plan §3.4 run as step groups of one `rust` job. The job always
+# vectors-drift rows of plan §3.4 run as step groups of one `rust` job; vectors-drift also
+# runs the version gate, scripts/check-rules-version.sh. The job always
 # starts and reports a status; its steps skip when no path of the `rust` filter changed
 # (Rust sources, scripts, tools/xcheck, vectors, this workflow), except on
 # workflow_dispatch, where every step runs. Once the toolchain is installed, every check
@@ -29,6 +30,9 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          # check-rules-version.sh compares with the merge base of origin/main.
+          fetch-depth: 0
 
       - uses: dorny/paths-filter@v4.0.3
         id: changes
@@ -138,6 +142,7 @@ jobs:
           node tools/xcheck/derivations.mjs --write
           cargo run -p jiro-tools --locked -- vectors
           bash scripts/check-drift.sh vectors/
+          bash scripts/check-rules-version.sh
 
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}

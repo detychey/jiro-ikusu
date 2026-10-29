@@ -7,3 +7,4 @@ publish.workspace = true
 
 [dependencies]
 jiro-core = { path = "../core" }
+serde_json = "1"

@@ -13,11 +13,14 @@ use jiro_core::keccak::keccak256;
 use jiro_core::level::{self, level_id};
 use jiro_core::replay::{Outcome, replay_observed};
 
+use crate::coverage;
 use crate::json::{Value, hex, object};
 use crate::scenarios::game::GameCase;
 use crate::scenarios::{self, Case};
 
-pub fn write(vectors: &Path) -> Result<(), String> {
+/// Writes vectors/format/, vectors/game/ and vectors/COVERAGE.md under the repository `root`.
+pub fn write(root: &Path) -> Result<(), String> {
+    let vectors = root.join("vectors");
     let mut files = BTreeMap::new();
     for case in scenarios::journal::cases()? {
         add(
@@ -35,8 +38,9 @@ pub fn write(vectors: &Path) -> Result<(), String> {
     }
     rewrite(&vectors.join("format"), &files)?;
     let mut games = BTreeMap::new();
-    for case in scenarios::game::cases() {
-        let (vector, trace) = game_vector(&case)?;
+    let cases = scenarios::game::cases()?;
+    for case in &cases {
+        let (vector, trace) = game_vector(case)?;
         add(
             &mut games,
             format!("{}.json", case.name),
@@ -44,7 +48,12 @@ pub fn write(vectors: &Path) -> Result<(), String> {
         )?;
         add(&mut games, format!("{}.trace", case.name), trace)?;
     }
-    rewrite(&vectors.join("game"), &games)
+    rewrite(&vectors.join("game"), &games)?;
+    let covers: Vec<(String, Vec<String>)> = cases
+        .into_iter()
+        .map(|case| (case.name, case.covers))
+        .collect();
+    coverage::write(root, &covers)
 }
 
 /// Replaces the `.json` and `.trace` files of `dir` with `files`.
