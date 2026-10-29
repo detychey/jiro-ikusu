@@ -1,3 +1,5 @@
+use crate::types::Pos;
+
 /// Grid width and height in cells (README §4.1).
 pub const W: u8 = 60;
 /// Cells in the grid: 60 × 60 (README §2).
@@ -22,3 +24,20 @@ pub const HEADER_LEN: usize = 71;
 pub const EVENT_LEN: usize = 3;
 /// A journal with `MAX_EVENTS` events: the header and the 8,100-byte event area (README §2).
 pub const MAX_JOURNAL_LEN: usize = HEADER_LEN + 8_100;
+/// Level bytes v1 (README §5).
+pub const LEVEL_LEN: usize = 472;
+/// Level format version (README §5).
+pub const LEVEL_VERSION: u8 = 1;
+/// The obstacle bitmap: one bit per cell (README §5).
+pub const OBSTACLE_BYTES: usize = 450;
+/// Smallest and largest boss body size B (README §5, D9).
+pub const MIN_BOSS_SIZE: u8 = 2;
+pub const MAX_BOSS_SIZE: u8 = 8;
+/// Minion slots in a level (README §5).
+pub const MINION_SLOTS: usize = 3;
+/// Smallest open area: half of the 3,364-cell interior (README §5).
+pub const MIN_OPEN_AREA: u16 = 1_682;
+/// Basis points in a whole (README §4.1).
+pub const BP: u16 = 10_000;
+/// The player's cell at level start (README §4.5, PIN-01).
+pub const PLAYER_START: Pos = Pos { x: 30, y: 59 };

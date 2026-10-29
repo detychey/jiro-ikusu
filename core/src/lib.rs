@@ -14,8 +14,10 @@
 
 pub mod consts;
 pub mod error;
+pub mod grid;
 pub mod journal;
 pub mod keccak;
+pub mod level;
 pub mod types;
 
 pub use error::Error;
