@@ -219,7 +219,21 @@ function draw(runNonce) {
   return { swaps, slots: deck.slice(0, 6) };
 }
 
-function moveBoss(grid, boss) {
+function fmix32(h) {
+  h = (h ^ (h >>> 16)) >>> 0;
+  h = Math.imul(h, 0x85ebca6b) >>> 0;
+  h = (h ^ (h >>> 13)) >>> 0;
+  h = Math.imul(h, 0xc2b2ae35) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+const deflectionKey = (seed) => readU32(seed, 5);
+const deflectionDraw = (key, tick) => fmix32((key ^ tick) >>> 0) >>> 26;
+
+function moveBoss(grid, boss, key, tick) {
+  const draw = deflectionDraw(key, tick);
+  if (draw === 0) boss.vx = -boss.vx;
+  if (draw === 1) boss.vy = -boss.vy;
   const blocked = (cells) => cells.some((cell) => grid[cell] === CLAIMED || grid[cell] === TRAIL);
   const column = boss.vx > 0 ? boss.x + boss.size : boss.x - 1;
   const xEdge = Array.from({ length: boss.size }, (_, k) => index(column, boss.y + k));
@@ -229,6 +243,17 @@ function moveBoss(grid, boss) {
   const yEdge = Array.from({ length: boss.size }, (_, k) => index(boss.x + k, row));
   if (blocked(yEdge)) boss.vy = -boss.vy;
   else boss.y += boss.vy;
+  return draw;
+}
+
+function playBoss(grid, boss, key, timeLimit) {
+  const deflections = [];
+  for (let tick = 0; tick < timeLimit; tick++) {
+    if (tick % boss.period !== 0) continue;
+    const draw = moveBoss(grid, boss, key, tick);
+    if (draw < 2) deflections.push({ tick, draw, x: boss.x, y: boss.y, vx: boss.vx, vy: boss.vy });
+  }
+  return deflections;
 }
 
 function statePreimage({ tick, mask, grid, player, boss, captured, claimable, nextEvent }) {
@@ -288,8 +313,12 @@ const drawn = draw(runNonce);
 
 const tick = 0;
 const grid = startGrid(levelBytes);
-const boss = { x: start.x, y: start.y, size: openField.bossSize, vx: start.vx, vy: start.vy, period: openField.bossPeriod };
-if (tick % boss.period === 0) moveBoss(grid, boss);
+const key = deflectionKey(seed);
+const bossAtStart = { x: start.x, y: start.y, size: openField.bossSize, vx: start.vx, vy: start.vy, period: openField.bossPeriod };
+const boss = { ...bossAtStart };
+if (tick % boss.period === 0) moveBoss(grid, boss, key, tick);
+const bossAtEnd = { ...bossAtStart };
+const deflections = playBoss(grid, bossAtEnd, key, openField.timeLimit);
 const preimage = statePreimage({
   tick,
   mask: 0,
@@ -316,6 +345,11 @@ const number = (value) => value.toLocaleString("en-US");
 const sign = (value) => (value > 0 ? "+1" : "-1");
 const describeStart = ({ candidates, pick, x, y, vx, vy }) =>
   `candidates ${candidates}, index ${pick}, top-left (${x}, ${y}), vx ${sign(vx)}, vy ${sign(vy)}`;
+const hex32 = (value) => "0x" + value.toString(16).padStart(8, "0");
+const describeBoss = ({ x, y, vx, vy }) => `top-left (${x}, ${y}), vx ${sign(vx)}, vy ${sign(vy)}`;
+const describeDeflection = ({ tick, draw, ...after }) =>
+  `tick ${tick}, r ${draw} inverts ${draw === 0 ? "vx" : "vy"}; boss after the move: ${describeBoss(after)}`;
+const tick0Draw = deflectionDraw(key, 0);
 
 const lines = [
   `open-field level bytes 451-471: ${hex(levelBytes.subarray(LEVEL.bossSize))}`,
@@ -328,12 +362,18 @@ const lines = [
   `boss start: ${describeStart(start)}`,
   `boss start (levelIndex 2): ${describeStart(startLevel2)}`,
   `boss start (spawn rectangle (20, 20) to (34, 25)): ${describeStart(startWide)}`,
+  `deflection key (levelIndex 0): ${hex32(key)}`,
+  `fmix32 test values: fmix32(0x00000000) ${hex32(fmix32(0))}, fmix32(0x00000001) ${hex32(fmix32(1))}, fmix32(0xffffffff) ${hex32(fmix32(0xffffffff))}`,
   `draw j: ${drawn.swaps.join(", ")}`,
   `draw slots: ${drawn.slots.join(", ")}`,
   `open-field-empty journal: ${hex(journal)}`,
   `open-field-empty tick 0 boss: top-left (${boss.x}, ${boss.y}), vx ${sign(boss.vx)}, vy ${sign(boss.vy)}`,
   `open-field-empty tick 0 preimage length: ${preimage.length}`,
   `open-field-empty tick 0 state hash: ${keccak256(preimage)}`,
+  `open-field-empty tick 0 deflection draw: fmix32(${hex32(key)}) ${hex32(fmix32(key))}, r ${tick0Draw}, ${tick0Draw < 2 ? "deflection" : "no deflection"}`,
+  `open-field-empty first deflection: ${describeDeflection(deflections[0])}`,
+  `open-field-empty second deflection: ${describeDeflection(deflections[1])}`,
+  `open-field-empty boss after tick ${openField.timeLimit - 1}: ${describeBoss(bossAtEnd)}, after ${deflections.length} deflections`,
   `run nonce entropy: ${hex(entropy)}`,
   `run nonce (runId 1): ${hex(runNonceOf(entropy, 1))}`,
   `deadline (revealedAt ${number(deadlineExample.revealedAt)}, ticks used ${deadlineExample.ticksUsed.map(number).join(" + ")}, commitSlack ${deadlineExample.commitSlack}): ${number(deadline(deadlineExample.revealedAt, deadlineExample.ticksUsed, deadlineExample.commitSlack))}`,
