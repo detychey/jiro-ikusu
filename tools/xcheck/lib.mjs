@@ -282,3 +282,20 @@ export function encodeJournal({ mode, runNonce, levelId, levelIndex, events }) {
     ...events.map(({ tick, mask }) => new Uint8Array([...u16(tick), mask])),
   ]));
 }
+
+// The worked-example inputs of README §5, §6.3 and §6.4, shared by both scripts.
+export const openField = {
+  obstacles: [],
+  bossSize: 5,
+  spawnRect: [20, 20, 34, 34],
+  bossPeriod: 2,
+  minions: [],
+  minionPeriod: 0,
+  respawnDelay: 0,
+  timeLimit: 2700,
+  lives: 3,
+  target: 7500,
+};
+export const blockedStart = { ...openField, obstacles: [{ x: 29, y: 58 }, { x: 30, y: 58 }, { x: 31, y: 58 }] };
+export const wideSpawn = { ...openField, spawnRect: [20, 20, 34, 25] };
+export const exampleRunNonce = getBytes(keccak256(toUtf8Bytes("jiro.example.9")));

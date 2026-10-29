@@ -2,27 +2,27 @@
 // boss starts, draws and run commitments, computed with ethers independently of the core.
 // Usage: node derivations.mjs [--write]; without --write, prints the fixture.
 import { writeFileSync } from "node:fs";
-import { getBytes, keccak256, solidityPackedKeccak256, toUtf8Bytes } from "ethers";
-import { bossStart, deflectionKey, draw, encodeJournal, encodeLevel, hex, levelSeed } from "./lib.mjs";
+import { getBytes, keccak256, solidityPackedKeccak256 } from "ethers";
+import {
+  blockedStart,
+  bossStart,
+  deflectionKey,
+  draw,
+  encodeJournal,
+  encodeLevel,
+  exampleRunNonce,
+  hex,
+  levelSeed,
+  openField,
+  wideSpawn,
+} from "./lib.mjs";
 
 const FIXTURE = new URL("../../vectors/derivations.json", import.meta.url);
 
-const openField = {
-  obstacles: [],
-  bossSize: 5,
-  spawnRect: [20, 20, 34, 34],
-  bossPeriod: 2,
-  minions: [],
-  minionPeriod: 0,
-  respawnDelay: 0,
-  timeLimit: 2700,
-  lives: 3,
-  target: 7500,
-};
 const levels = {
   "open-field": openField,
-  "blocked-start": { ...openField, obstacles: [{ x: 29, y: 58 }, { x: 30, y: 58 }, { x: 31, y: 58 }] },
-  "wide-spawn": { ...openField, spawnRect: [20, 20, 34, 25] },
+  "blocked-start": blockedStart,
+  "wide-spawn": wideSpawn,
   "walls-and-minions": {
     ...openField,
     obstacles: [...Array(20).keys()].map((k) => ({ x: 10 + k, y: 15 })).concat([{ x: 45, y: 40 }, { x: 46, y: 40 }]),
@@ -38,9 +38,8 @@ const levels = {
   },
 };
 
-const exampleNonce = getBytes(keccak256(toUtf8Bytes("jiro.example.9")));
 const fixtureNonce = (k) => getBytes(solidityPackedKeccak256(["string", "uint16"], ["jiro.fixture.nonce", k]));
-const nonces = [exampleNonce, ...[...Array(99).keys()].map(fixtureNonce)];
+const nonces = [exampleRunNonce, ...[...Array(99).keys()].map(fixtureNonce)];
 
 const levelSeeds = nonces.slice(0, 10).flatMap((runNonce) =>
   [0, 1, 2, 3, 4, 5].map((levelIndex) => {
@@ -55,13 +54,14 @@ const levelIds = Object.entries(levels).map(([name, level]) => {
 });
 
 const rectangles = [
-  [20, 20, 34, 34],
-  [20, 20, 34, 25],
+  openField.spawnRect,
+  wideSpawn.spawnRect,
   [30, 30, 30, 30],
   [10, 20, 12, 40],
   [1, 1, 57, 57],
   [1, 1, 51, 51],
   [21, 20, 20, 34],
+  [20, 21, 34, 20],
 ];
 // Each rectangle gets the worked example's seeds for levelIndex 0 and 2, then 8 more.
 const seedsFor = (r) => [0, 2, ...[...Array(8).keys()].map((k) => (10 + 8 * r + k) % levelSeeds.length)];
@@ -82,7 +82,7 @@ const draws = nonces.map((runNonce) => {
 
 const openFieldId = getBytes(levelIds[0].levelId);
 const runs = [
-  { runNonce: exampleNonce, mode: 1, events: () => [] },
+  { runNonce: exampleRunNonce, mode: 1, events: () => [] },
   { runNonce: nonces[1], mode: 1, events: (k) => [{ tick: k, mask: 0x01 }, { tick: 100 + k, mask: 0x11 }] },
   { runNonce: nonces[2], mode: 0, events: (k) => (k % 2 ? [{ tick: 0, mask: 0x40 }] : []) },
 ];

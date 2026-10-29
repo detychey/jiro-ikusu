@@ -25,24 +25,13 @@ import {
   playBoss,
   statePreimage,
   encodeJournal,
+  openField,
+  blockedStart,
+  wideSpawn,
+  exampleRunNonce,
 } from "./lib.mjs";
 
-const openField = {
-  obstacles: [],
-  bossSize: 5,
-  spawnRect: [20, 20, 34, 34],
-  bossPeriod: 2,
-  minions: [],
-  minionPeriod: 0,
-  respawnDelay: 0,
-  timeLimit: 2700,
-  lives: 3,
-  target: 7500,
-};
-const blockedStart = { ...openField, obstacles: [{ x: 29, y: 58 }, { x: 30, y: 58 }, { x: 31, y: 58 }] };
-const wideSpawn = { ...openField, spawnRect: [20, 20, 34, 25] };
-
-const runNonce = getBytes(keccak256(toUtf8Bytes("jiro.example.9")));
+const runNonce = exampleRunNonce;
 const levelBytes = encodeLevel(openField);
 const levelId = getBytes(keccak256(levelBytes));
 const blockedBytes = encodeLevel(blockedStart);

@@ -14,7 +14,9 @@ fn fixture() -> Value {
 }
 
 fn entries<'a>(fixture: &'a Value, key: &str) -> &'a Vec<Value> {
-    fixture[key].as_array().unwrap()
+    let entries = fixture[key].as_array().unwrap();
+    assert!(!entries.is_empty(), "{key} is empty");
+    entries
 }
 
 fn bytes(value: &Value) -> Vec<u8> {
@@ -128,10 +130,14 @@ fn run_commitments_match_the_fixture() {
     }
 }
 
-/// README §6.4 and §8.2, the worked examples.
+fn example_run_nonce() -> [u8; 32] {
+    keccak256(&[b"jiro.example.9"])
+}
+
+/// README §6.4, the worked examples: the level seed, the boss starts and the deflection key.
 #[test]
-fn worked_examples_match() {
-    let run_nonce = keccak256(&[b"jiro.example.9"]);
+fn seed_and_boss_start_worked_examples_match() {
+    let run_nonce = example_run_nonce();
     let seed = level_seed(&run_nonce, 0);
     let open_field = Rect {
         x0: 20,
@@ -159,7 +165,6 @@ fn worked_examples_match() {
             boss_start(&open_field, &level_seed(&run_nonce, 2)),
             boss_start(&wide, &seed),
             deflection_key(&seed),
-            draw(&run_nonce),
         ),
         (
             vec![0x37, 0x47, 0xfc, 0xd2],
@@ -167,9 +172,14 @@ fn worked_examples_match() {
             start(20, 32, 1, -1),
             start(23, 25, -1, -1),
             0x9467_6303,
-            [1, 0, 10, 14, 12, 2],
         )
     );
+}
+
+/// README §8.2, the worked example of the draw.
+#[test]
+fn draw_worked_example_matches() {
+    assert_eq!(draw(&example_run_nonce()), [1, 0, 10, 14, 12, 2]);
 }
 
 /// README §8.2: six different levels out of the 16, for any nonce.
