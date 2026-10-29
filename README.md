@@ -218,6 +218,8 @@ Testing one axis at a time, with the second test made after the first move, neve
 
 The draft starts the boss at (30, 30). Here the level defines a spawn area, the set of cells where the body's top-left cell may start. The level seed picks the start position inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)). [R4.6-5]
 
+Under D14 the seed will also drive the boss after the start, by a rule that [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 adds to this section ([§7.4](#74-bots)). <!-- rationale -->
+
 ### 4.7 Minions
 
 - **Movement.** Minions walk on rail cells only, one cell per move. [R4.7-1]
@@ -418,12 +420,12 @@ open-field-empty journal: 0x01000100277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a7
   - **Boss start.** The candidates are the cells of the spawn rectangle in row-major order: y from y0 to y1, and within each row x from x0 to x1. Validity ensures the body covers only `EMPTY` cells at any of them. With index = the big-endian u32 of seed bytes 0 to 3, modulo the number of candidates, the start is candidate number index, counting from 0. vx = +1 if bit 0 of seed byte 4 is set, otherwise −1; vy is the same, from bit 1. There are at most 57 × 57 = 3,249 candidates, under 2^12, so the modulo bias stays below 2^12 / 2^32 = 2^−20.
   - **Once per level.** keccak256 runs once per level, never per tick. Any randomness during play comes from an integer PRNG seeded from the level seed *(D14)*.
   - **Packing.** Every derivation in this section packs its inputs as Solidity's `abi.encodePacked` would: tags as ASCII bytes, `bytes32` values such as `runNonce` as 32 bytes, `levelIndex` as one byte, and `runId` as a 32-byte `uint256`.
-  - **Domain tags.** Every derivation has its own tag, so two derivations never share an input.
+  - **Domain tags.** Every tagged derivation (level seed, run nonce, draw) has its own tag, so two of them never share an input.
 - **Run nonce** (Challenge): `keccak256("jiro.run" ‖ entropy ‖ runId)`, where `entropy` is the `bytes32` that the entropy source returns for the run ([§7.2](#72-run-flow)) and `runId` is the run's `uint256` id. Only the `Challenge` contract computes it, when the player reveals the run. The core takes `runNonce` as an input and never derives it.
 - **The chain chooses the seed** in paid modes ([§7.2](#72-run-flow)), never the client. Otherwise a player could try seeds offline until the spawns were easy.
 - **Run commitment** (Challenge): `keccak256(keccak256(journal₀) ‖ … ‖ keccak256(journal₅))`. `Challenge` computes it from the six journals at commit ([§7.2](#72-run-flow)). Settlement checks the journals against it, for the whole run at once or one level at a time.
 - **State hash** (tests and debugging): keccak256 over a fixed-order, fixed-width serialization of the whole state: tick, grid at 2 bits per cell, player, boss, minions, counters. Version 1 is the 948-byte preimage below.
-- **Settlement submits the level bytes and the journals,** plus a proof on zk ([§7.2](#72-run-flow)). The weights come from the season. The seed is never submitted, because the chain already has the run nonce, and neither is the score, because the referee computes it. The draft's Phase 6 submits seed, score, claim and events; a score or claim may still travel along for display, but nothing trusts it.
+- **Settlement submits the level bytes and the journals,** plus a proof on zk ([§7.2](#72-run-flow)). The weights come from the season. The seed is never submitted, because the chain already has the run nonce, and neither is the score, because the referee computes it. The draft's Phase 6 submits seed, score, claim and events; a score or claim may still travel along for display, offchain and never in a contract call, but nothing trusts it.
 
 The draft also asks for a C++ PRNG that matches "the state-transition hashing logic of keccak256" in Solidity. With one core, and keccak used only to derive seeds, there is no second implementation to match.
 
@@ -695,7 +697,7 @@ All 16 levels, offline, on the Pico or in the browser. Scores stay local and no 
 - **Score.** The run score is the sum of the six level scores ([§8.4](#84-season-scoring)).
 - **Ranking** *(D10)*. Players are ranked by their best settled run of the season. Qualifying runs, those that cleared at least the season's `minClears` levels (1 by default), rank first. Among them, the higher score ranks first, and ties go to fewer ticks. Ranking by cumulative score would let spending buy rank, although best runs only limit a wallet's rank, not a player's (Sybils, below).
 - **Rewards** *(D10)*. The players' pot is the season's run fees, minus a rake capped at 20 %, plus any rollover from earlier seasons that had no qualified points. It is shared pro-rata by best-run score among the qualified players, those with a qualifying settled run ([§8.4](#84-season-scoring)). ethblockdigger's `Season` has the same rake cap, rollover and pro-rata claims; it chose pro-rata because top-heavy payouts invite collusion when there are few players.
-- **Sybils.** Fees are paid at run start, so every point costs money. But best runs are kept per wallet, and wallets are free. A player who plays each run from a new wallet has every run counted, as cumulative scoring would, and out-earns a one-wallet player of the same skill and spend. A new wallet's run pays off once its score exceeds the season's qualified points per paid run divided by (1 − rake): 1.25 times at a 20 % rake. This is an accepted residual, which `docs/ECONOMY.md` tracks; paying on every qualifying run instead would need every rewarded run verified.
+- **Sybils.** Fees are paid at run start, so every point costs money. But best runs are kept per wallet, and wallets are free. A player who plays each run from a new wallet has every run counted, as cumulative scoring would, and out-earns a one-wallet player of the same skill and spend. In a large season without rollover, a new wallet's run pays off once its score exceeds about the season's qualified points per paid run divided by (1 − rake): 1.25 times at a 20 % rake. This is an accepted residual, which `docs/ECONOMY.md` tracks; paying on every qualifying run instead would need every rewarded run verified.
 - **Several runs at once.** A player may buy several runs, reveal them all, and play only the one with the best draw. Each attempt is paid, and only the best run counts, so this is a paid re-roll, accepted like any other extra run.
 
 ### 8.3 Superchallenge: deferred
@@ -719,7 +721,7 @@ The draft adjusts the per-level scoring formula, which is based on completion, e
 | `rulesVersion` | `uint16` | the `RULES_VERSION` the season accepts ([§6.3](#63-journal-bytes-v1)) |
 | `levelIds` | `bytes32[16]` | the 16 level ids, in draw-slot order ([§8.2](#82-challenge-000005-eth-per-run)): non-zero and all different. Each must be a valid level ([§5](#5-levels)). `open` cannot check that, so the operator checks it with the level tool before opening: a run that draws an invalid level could never settle. |
 | `weightsBp` | `uint16[16]` | each slot's weight, at least 1 |
-| `runFee` | `uint256` | the run fee in wei, above 0. 0.00005 ETH is `50_000_000_000_000` *(D12)*. |
+| `runFee` | `uint256` | the run fee in wei, above 0. 0.00005 ETH is `50_000_000_000_000` *(D12)*. No upper bound: the exact-fee rule shows a wrong fee to every player before they pay. |
 | `rakeBp` | `uint16` | at most 2,000 (20 %) |
 | `length` | `uint64` | seconds, from 1 s to 90 days (7,776,000 s). 14 days on testnet, apart from the 1-day `testnet-0` rehearsal *(D12)*. |
 | `grace` | `uint64` | the settlement period after the end, in seconds, from 1 s to 30 days (2,592,000 s). Proposed: 48 h. A grace shorter than the reveal window plus 1,080 s plus `commitSlack` strands runs bought just before the end; only test seasons on a local node use one. |
@@ -729,7 +731,7 @@ The draft adjusts the per-level scoring formula, which is based on completion, e
 The upper bounds catch a typo in a season that nothing can pause or edit.
 
 **Sequencing.**
-- **Open.** A season starts when `open` runs, at `start = block.timestamp`, and ends at `end = start + length`. `open(s + 1)` requires `block.timestamp ≥ end(s)`, so a season overlaps only the grace periods of earlier seasons.
+- **Open.** `open(params)` takes the parameters above and returns the new season's number. A season starts when `open` runs, at `start = block.timestamp`, and ends at `end = start + length`. `open(s + 1)` requires `block.timestamp ≥ end(s)`, so a season overlaps only the grace periods of earlier seasons.
 - **Runs.** Season s accepts runs while `start ≤ block.timestamp < end`. A run belongs to the season of its `startRun`: its fee joins that season's pot, and it settles through that season's referee, until `end + grace` inclusive ([§7.2](#72-run-flow)). A new rules version or a new backend therefore means a new season, and the runs of the previous season keep settling under their own rules.
 - **Best runs** *(D10)*. For each player address, `Season` keeps the best settled, on-time run. It compares qualification first (a qualifying run beats one that doesn't), then the higher score, then fewer ticks; on a full tie, the run settled first stays. Anyone may settle any committed run, and the journals are public, so this order matters: settling another of a player's runs can never lower that player's payout. `Season` keeps `totalQualifiedPoints`, a `uint256`, the sum of the qualified players' best scores.
 - **Close.** `closeSeason()` is callable by anyone once `block.timestamp > end + grace`, so it never overlaps settlement. Seasons close in order. Closing computes:
@@ -737,7 +739,7 @@ The upper bounds catch a typo in a season that nothing can pause or edit.
   - `playersPot = fees − rake + rollover`, where `rollover` is the players' pot of earlier seasons that had no qualified points.
 
   If `totalQualifiedPoints` is 0, the whole `playersPot` rolls over to the next season to close, and is never raked again. Qualified players need the close before they can claim, which gives them a reason to call it, and the operator's scheduled season workflow calls it too.
-- **Claims.** `claim(s)` pays a qualified caller `bestScore × playersPot / totalQualifiedPoints`, rounded down, once. The rounding dust stays in the contract. Shares don't expire in v1.
+- **Claims.** `claim(s)` pays a qualified caller `bestScore × playersPot / totalQualifiedPoints`, rounded down, once. It reverts for a season that rolled over, whose `totalQualifiedPoints` is 0. The rounding dust stays in the contract. Shares don't expire in v1.
 - **Treasury.** `Season`'s constructor takes an immutable treasury address. `withdrawRake()`, which anyone may call, zeroes the rake credited so far, then sends it to the treasury. A treasury that rejects ETH therefore never blocks a close or a claim.
 - **Custody.** `Season` holds all the ETH: `startRun` forwards each fee to it. Only `claim` and `withdrawRake` send ETH out of `Season`, both after their state changes (checks-effects-interactions). The solvency invariant: the balance covers the fees of the seasons not yet closed, the rollover, the rake not yet withdrawn, and the unclaimed players' pots of closed seasons.
 

@@ -6,7 +6,7 @@ The money flow, costs and threats of Challenge runs. This file owns no numbers. 
 
 All amounts are native ETH, held by `Season` in wei (README §8.4).
 
-1. **Pay.** `startRun` takes the season's run fee, exactly, and forwards it to `Season`. The fee joins the pot of the season accepting runs, whatever happens to the run afterwards.
+1. **Pay.** `startRun(season)` takes the run fee of the season it names, which must be the one accepting runs, exactly, and forwards it to `Season`. The fee joins the pot of the season accepting runs, whatever happens to the run afterwards.
 2. **Close.** After the season's end plus grace, anyone may call `closeSeason`. Seasons close in order.
    - The rake is the season's own fees × `rakeBp` / 10,000, rounded down. It is credited to the treasury.
    - The players' pot is the fees, minus the rake, plus the rollover from earlier seasons that had no qualified points.
@@ -14,7 +14,7 @@ All amounts are native ETH, held by `Season` in wei (README §8.4).
 3. **Claim.** Each qualified player claims best-run score × players' pot / total qualified points, rounded down, once. The rounding dust stays in `Season`.
 4. **Rake.** Anyone may call `withdrawRake`, which sends the credited rake to the immutable treasury.
 
-Only `claim` and `withdrawRake` send ETH, and neither `closeSeason` nor any settlement does.
+Only `claim` and `withdrawRake` send ETH out of `Season`, and neither `closeSeason` nor any settlement does.
 
 **Solvency invariant.** `Season`'s balance must always cover the sum of:
 
