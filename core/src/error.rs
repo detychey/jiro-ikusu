@@ -1,4 +1,4 @@
-/// A rejection, with the stable code of README §6.3.
+/// A rejection, with the stable code of README §6.3 (journal) or §5 (level).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Error {
@@ -13,6 +13,26 @@ pub enum Error {
     TickOrder = 9,
     ReservedBit = 10,
     UnchangedMask = 11,
+    LevelLength = 20,
+    LevelVersion = 21,
+    BorderObstacle = 22,
+    BossSize = 23,
+    SpawnOrder = 24,
+    SpawnBounds = 25,
+    BossPeriod = 26,
+    MinionCount = 27,
+    MinionSpawn = 28,
+    MinionSlot = 29,
+    MinionPeriod = 30,
+    RespawnDelay = 31,
+    TimeLimit = 32,
+    Lives = 33,
+    Target = 34,
+    OpenAreaSplit = 35,
+    OpenAreaSmall = 36,
+    BossSpawn = 37,
+    MinionSpawnRail = 38,
+    PlayerStartRail = 39,
 }
 
 impl Error {

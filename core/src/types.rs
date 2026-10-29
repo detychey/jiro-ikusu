@@ -1,4 +1,4 @@
-use crate::consts::W;
+use crate::consts::{CELLS, W};
 
 /// A cell state [R4.1-2].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -15,6 +15,22 @@ pub enum Cell {
 pub struct Pos {
     pub x: u8,
     pub y: u8,
+}
+
+impl Pos {
+    /// The position (x + dx, y + dy), or `None` if it is outside the grid.
+    pub fn offset(self, dx: i8, dy: i8) -> Option<Self> {
+        let pos = Self {
+            x: self.x.checked_add_signed(dx)?,
+            y: self.y.checked_add_signed(dy)?,
+        };
+        (pos.x < W && pos.y < W).then_some(pos)
+    }
+
+    /// On the border: x or y is 0 or 59 [R4.1-7].
+    pub fn is_border(self) -> bool {
+        self.x == 0 || self.y == 0 || self.x == W - 1 || self.y == W - 1
+    }
 }
 
 /// A direction, in the order of the input mask bits and of direction priority [R4.5-1].
@@ -64,6 +80,11 @@ impl InputMask {
 pub struct CellIndex(u16);
 
 impl CellIndex {
+    /// Every cell, in row-major order.
+    pub fn all() -> impl Iterator<Item = Self> {
+        (0..CELLS as u16).map(Self)
+    }
+
     /// The index of `pos`, or `None` if `pos` is outside the grid.
     pub fn new(pos: Pos) -> Option<Self> {
         if pos.x >= W || pos.y >= W {
@@ -75,7 +96,24 @@ impl CellIndex {
             .map(Self)
     }
 
+    /// The index stored in a cell stack, if it is a cell's.
+    pub(crate) fn from_raw(raw: u16) -> Option<Self> {
+        (usize::from(raw) < CELLS).then_some(Self(raw))
+    }
+
+    pub(crate) fn raw(self) -> u16 {
+        self.0
+    }
+
     pub fn get(self) -> usize {
         usize::from(self.0)
+    }
+
+    pub fn pos(self) -> Pos {
+        const WIDTH: u16 = W as u16;
+        Pos {
+            x: (self.0 % WIDTH) as u8,
+            y: (self.0 / WIDTH) as u8,
+        }
     }
 }
