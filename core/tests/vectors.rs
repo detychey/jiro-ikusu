@@ -33,8 +33,8 @@ fn bytes(value: &Value) -> Vec<u8> {
         .collect()
 }
 
-/// The recorded outcome: `Err(code)` or `Ok` with the recorded fields.
-fn expected_code(vector: &Value) -> Option<u8> {
+/// The `error` code a vector records, or None for a valid vector.
+fn recorded_error(vector: &Value) -> Option<u8> {
     vector
         .get("error")
         .map(|code| u8::try_from(code.as_u64().unwrap()).unwrap())
@@ -42,7 +42,7 @@ fn expected_code(vector: &Value) -> Option<u8> {
 
 fn check_journal(file: &str, vector: &Value) {
     let input = bytes(&vector["input"]);
-    match (journal::decode(&input), expected_code(vector)) {
+    match (journal::decode(&input), recorded_error(vector)) {
         (Err(error), Some(code)) => assert_eq!(error.code(), code, "{file}: field error"),
         (Ok(decoded), None) => {
             let events: Vec<Event> = decoded.events().collect();
@@ -71,7 +71,7 @@ fn check_level(file: &str, vector: &Value) {
     let mut stack = [0; CAPTURE_STACK];
     let result = level::decode(&input)
         .and_then(|decoded| level::validate(&decoded, &mut stack).map(|_| decoded));
-    match (result, expected_code(vector)) {
+    match (result, recorded_error(vector)) {
         (Err(error), Some(code)) => assert_eq!(error.code(), code, "{file}: field error"),
         (Ok(decoded), None) => {
             assert_eq!(
@@ -116,7 +116,7 @@ fn every_format_vector_matches_the_core() {
 fn every_decoder_and_validity_code_has_a_vector() {
     let mut codes: Vec<u8> = format_vectors()
         .iter()
-        .filter_map(|(_, vector)| expected_code(vector))
+        .filter_map(|(_, vector)| recorded_error(vector))
         .collect();
     codes.sort_unstable();
     codes.dedup();

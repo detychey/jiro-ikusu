@@ -249,10 +249,26 @@ pub fn cases() -> Result<Vec<Case>, String> {
             Err(Error::MinionPeriod),
         ),
         case(
+            "minion-period-1-without-minions",
+            bytes(&Level {
+                minion_period: 1,
+                ..field()
+            }),
+            Err(Error::MinionPeriod),
+        ),
+        case(
             "respawn-delay-0-with-minions",
             bytes(&Level {
                 respawn_delay: 0,
                 ..with_minions(field(), &[(0, 0)])
+            }),
+            Err(Error::RespawnDelay),
+        ),
+        case(
+            "respawn-delay-1-without-minions",
+            bytes(&Level {
+                respawn_delay: 1,
+                ..field()
             }),
             Err(Error::RespawnDelay),
         ),

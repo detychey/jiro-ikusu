@@ -145,6 +145,11 @@ pub fn cases() -> Result<Vec<Case>, String> {
             Err(Error::UnchangedMask),
         ),
         case("first-mask-0", raw(&[(0, 0x00)]), Err(Error::UnchangedMask)),
+        case(
+            "first-broken-event-wins",
+            raw(&[(0, 0x00), (MAX_TICKS, 0x01)]),
+            Err(Error::UnchangedMask),
+        ),
     ])
 }
 
