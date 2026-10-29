@@ -42,6 +42,30 @@ pub enum Dir {
     Right,
 }
 
+impl Dir {
+    /// The order in which a newly held direction is chosen [R4.5-1].
+    pub const PRIORITY: [Self; 4] = [Self::Up, Self::Down, Self::Left, Self::Right];
+
+    /// The step on the grid: up is y − 1, as README §4.1 orients it [R4.1-1].
+    pub fn offset(self) -> (i8, i8) {
+        match self {
+            Self::Up => (0, -1),
+            Self::Down => (0, 1),
+            Self::Left => (-1, 0),
+            Self::Right => (1, 0),
+        }
+    }
+
+    pub fn mask(self) -> InputMask {
+        match self {
+            Self::Up => InputMask::UP,
+            Self::Down => InputMask::DOWN,
+            Self::Left => InputMask::LEFT,
+            Self::Right => InputMask::RIGHT,
+        }
+    }
+}
+
 /// The input mask of README §6.1. Bit 7 is reserved, so a mask never has it set.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InputMask(pub(crate) u8);
