@@ -1,6 +1,7 @@
-# Private CI profile (plan §1.3, P14): the rust, rust-release, targets and determinism
-# rows of plan §3.4 run as step groups of one `rust` job. The job always starts and
-# reports a status; its Rust steps skip when no Rust-related path changed, except on
+# Private CI profile (plan §1.3, P14): the rust, rust-release, targets, determinism and
+# vectors-drift rows of plan §3.4 run as step groups of one `rust` job. The job always
+# starts and reports a status; its steps skip when no path of the `rust` filter changed
+# (Rust sources, scripts, tools/xcheck, vectors, this workflow), except on
 # workflow_dispatch, where every step runs. Once the toolchain is installed, every check
 # runs even after another check failed, so one run reports every failure.
 name: ci
@@ -40,6 +41,8 @@ jobs:
               - '**/.cargo/**'
               - 'rust-toolchain.toml'
               - 'scripts/**'
+              - 'tools/xcheck/**'
+              - 'vectors/**'
               - '.github/workflows/ci.yml'
             rules:
               - 'README.md'
@@ -120,6 +123,20 @@ jobs:
             bash "scripts/$check.sh" 2>&1 | tee -a target/determinism/report.txt || status=1
           done
           exit "$status"
+
+      - uses: actions/setup-node@v7.1.0
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/xcheck/package-lock.json
+
+      - name: Derivation fixtures match ethers (vectors-drift)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
+          npm --prefix tools/xcheck ci
+          node tools/xcheck/derivations.mjs --write
+          bash scripts/check-drift.sh vectors/derivations.json
 
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}

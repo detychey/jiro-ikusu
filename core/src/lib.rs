@@ -18,6 +18,7 @@ pub mod grid;
 pub mod journal;
 pub mod keccak;
 pub mod level;
+pub mod seed;
 pub mod types;
 
 pub use error::Error;
