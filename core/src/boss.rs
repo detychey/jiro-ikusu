@@ -63,8 +63,8 @@ impl Boss {
             return false;
         }
         match deflection_draw(self.deflection_key, tick) {
-            0 => self.vy = self.vy.wrapping_neg(),
-            1 => self.vx = self.vx.wrapping_neg(),
+            0 => self.vx = self.vx.wrapping_neg(),
+            1 => self.vy = self.vy.wrapping_neg(),
             _ => {}
         }
         let hit_x = self.move_axis(grid, Axis::X);
