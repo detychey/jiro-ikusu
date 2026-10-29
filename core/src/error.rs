@@ -1,4 +1,4 @@
-/// A rejection, with the stable code of README §6.3 (journal) or §5 (level).
+/// A rejection, with the stable code of README §6.3 (journal and replay) or §5 (level).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Error {
@@ -13,6 +13,12 @@ pub enum Error {
     TickOrder = 9,
     ReservedBit = 10,
     UnchangedMask = 11,
+    LevelId = 12,
+    EventPastTimeLimit = 13,
+    EventAfterEnd = 14,
+    /// A broken internal invariant, such as a capture-stack overflow, which the rules exclude:
+    /// no input reaches it.
+    Invariant = 15,
     LevelLength = 20,
     LevelVersion = 21,
     BorderObstacle = 22,

@@ -432,7 +432,7 @@ eventCount × (u16 tick, u8 mask)
 7. fewer than 71 + 3 × `eventCount` bytes: truncated (1); more: trailing bytes (2);
 8. the events, one at a time in journal order. For each event, the first of these rules it breaks: a tick of 2,700 or more (8), a tick not above the previous event's (9), reserved bit 7 set (10), a mask equal to the previous one, which is 0 before the first event (11).
 
-**Replay** knows the level. Before play, it checks in this order and returns the first broken rule's code: the journal, as above (1 to 11); the level bytes and the level's validity, in the order of [§5](#5-levels) (20 to 39); a `levelId` other than keccak256 of the level bytes (12); an event at or after the level's time limit (13). Then it plays the level. After play, it rejects an event after the tick on which the level ended (14).
+**Replay** knows the level. Before play, it checks in this order and returns the first broken rule's code: the journal, as above (1 to 11); the level bytes and the level's validity, in the order of [§5](#5-levels) (20 to 39); a `levelId` other than keccak256 of the level bytes (12); an event at or after the level's time limit (13). Then it plays the level. After play, it rejects an event after the tick on which the level ended (14). Code 15 marks a broken internal invariant, such as a capture-stack overflow, which the rules exclude: no input reaches it, and a target that returns it has a bug.
 
 **Worked example.** The journal of `open-field-empty`, a training run of the open-field level at `levelIndex` 0 with no events, played under the worked-example `runNonce` of [§6.4](#64-seeds-and-commitments):
 

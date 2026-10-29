@@ -43,3 +43,5 @@ pub const MIN_OPEN_AREA: u16 = 1_682;
 pub const BP: u16 = 10_000;
 /// The player's cell at level start (README §4.5, PIN-01).
 pub const PLAYER_START: Pos = Pos { x: 30, y: 59 };
+/// The protected ticks after a life is lost (R4.9-17, PIN-02).
+pub const INVULNERABLE_TICKS: u8 = 30;

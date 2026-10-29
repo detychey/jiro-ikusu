@@ -1,7 +1,8 @@
-//! Scenarios for the format vectors (README §6.6). Each case states what the core must return
-//! for its bytes, and generation fails if the core disagrees, so a case that stops exercising
-//! its rule stops the build of `vectors/`.
+//! Scenarios for the vectors (README §6.6). Each case states what the core must return for its
+//! bytes, and generation fails if the core disagrees, so a case that stops exercising its rule
+//! stops the build of `vectors/`.
 
+pub mod game;
 pub mod journal;
 pub mod level;
 
