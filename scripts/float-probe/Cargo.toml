@@ -1,0 +1,36 @@
+[package]
+name = "float-probe"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+jiro-core = { path = "../../core" }
+
+[workspace]
+
+[profile.dev]
+overflow-checks = true
+
+[profile.test]
+overflow-checks = true
+
+[profile.bench]
+overflow-checks = true
+
+# lto = false keeps each crate in its own archive member, so the scan sees
+# every public function of jiro-core, even one nothing calls.
+[profile.release]
+overflow-checks = true
+lto = false
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.stylus]
+inherits = "release"
+opt-level = "z"
