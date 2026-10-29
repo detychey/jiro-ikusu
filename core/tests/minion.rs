@@ -90,18 +90,37 @@ fn minion_tries_right_then_straight_then_left_then_back() {
     }
 }
 
-/// [R4.7-2] Back is the last choice: a dead end of the rail turns the minion around.
+/// A band of `CLAIMED` cells on row 30 from the left border to x = 20, with a column on x = 5
+/// from y = 20 to the band when `with_column`.
+fn band_grid(with_column: bool) -> Grid {
+    let mut grid = Grid::level_start(&level(&[], &[]));
+    paint(&mut grid, (1..=20).map(|x| (x, 30)), Cell::Claimed);
+    if with_column {
+        paint(&mut grid, (20..30).map(|y| (5, y)), Cell::Claimed);
+    }
+    grid
+}
+
+/// [R4.7-2] Back is the last choice: at the tip (20, 30) of the band, right, straight and left
+/// are open field, and the minion turns back.
 #[test]
 fn minion_turns_back_only_at_a_dead_end() {
-    let mut grid = Grid::level_start(&level(&[], &[]));
-    paint(
-        &mut grid,
-        (1..59).flat_map(|x| (1..59).map(move |y| (x, y))),
-        Cell::Claimed,
+    let grid = band_grid(false);
+    assert_eq!(
+        right_hand_step(&grid, at(20, 30), Dir::Right),
+        (at(19, 30), Dir::Left)
     );
-    paint(&mut grid, [(30, 30)], Cell::Empty);
-    let (pos, heading) = right_hand_step(&grid, at(30, 29), Dir::Up);
-    assert_eq!((pos, heading), (at(31, 29), Dir::Right));
+}
+
+/// [R4.7-2] Straight before left: at the junction (5, 30), heading E, right is open field, and
+/// straight (6, 30) and left (5, 29) are both rail cells.
+#[test]
+fn minion_goes_straight_before_turning_left() {
+    let grid = band_grid(true);
+    assert_eq!(
+        right_hand_step(&grid, at(5, 30), Dir::Right),
+        (at(6, 30), Dir::Right)
+    );
 }
 
 /// [PIN-18] With no rail cell around, the minion stays and keeps its heading.
@@ -238,13 +257,62 @@ fn minion_respawns_at_the_first_rail_cell_when_its_spawn_is_off_the_rail() {
     let level = level(&[(30, 59)], &[]);
     let mut grid = Grid::level_start(&level);
     paint(&mut grid, (29..=31).map(|x| (x, 58)), Cell::Claimed);
+    // The top-left block takes the corner off the rail: in row-major order the first rail cell
+    // is (10, 0), in column-major order it would be (0, 10).
+    paint(
+        &mut grid,
+        (1..=10).flat_map(|x| (1..=10).map(move |y| (x, y))),
+        Cell::Claimed,
+    );
     let mut minions = Minions::start(&level, &grid);
     minions.slots[0] = Some(Minion {
         spawn: at(30, 59),
         state: State::Destroyed { countdown: 1 },
     });
     minions.step(&grid, 0);
-    assert_eq!(live(&minions, 0).0, at(0, 0));
+    assert_eq!(live(&minions, 0).0, at(10, 0));
+}
+
+/// [R4.7-11] With every cell claimed but the boss's 5 x 5 square, the rail is the ring around
+/// it, and a minion whose spawn is off the rail respawns there.
+#[test]
+fn minion_respawns_on_the_rail_around_the_boss_when_nothing_else_is_open() {
+    let level = level(&[(30, 59)], &[]);
+    let mut grid = Grid::level_start(&level);
+    paint(
+        &mut grid,
+        (1..59).flat_map(|x| (1..59).map(move |y| (x, y))),
+        Cell::Claimed,
+    );
+    paint(
+        &mut grid,
+        (20..25).flat_map(|x| (20..25).map(move |y| (x, y))),
+        Cell::Empty,
+    );
+    let mut minions = Minions::start(&level, &grid);
+    minions.slots[0] = Some(Minion {
+        spawn: at(30, 59),
+        state: State::Destroyed { countdown: 1 },
+    });
+    minions.step(&grid, 0);
+    assert_eq!(live(&minions, 0).0, at(19, 19));
+}
+
+/// [R4.7-8] A capture destroys live minions only: a destroyed minion's countdown goes on.
+#[test]
+fn capture_leaves_a_destroyed_minions_countdown_alone() {
+    let level = level(&[(30, 59)], &[]);
+    let grid = Grid::level_start(&level);
+    let mut minions = Minions::start(&level, &grid);
+    minions.slots[0] = Some(Minion {
+        spawn: at(30, 59),
+        state: State::Destroyed { countdown: 2 },
+    });
+    minions.after_capture(&grid);
+    assert_eq!(
+        minions.slots[0].unwrap().state,
+        State::Destroyed { countdown: 2 }
+    );
 }
 
 /// [R4.7-1] Over random boards, a minion is on a rail cell after every move.
