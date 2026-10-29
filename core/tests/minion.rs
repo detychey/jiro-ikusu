@@ -133,23 +133,61 @@ fn minion_with_no_rail_direction_stays_and_keeps_its_heading() {
     );
 }
 
-/// [R4.7-3] [PIN-06] On the bottom border, the open field is on the right of W (its right is N),
-/// and the rail is ahead.
+/// [R4.7-3] [PIN-06] On the bottom border, the open field is on the right of W (its right is N). S,
+/// tested earlier, has it only behind its right (NW), which counts only when no heading has it on
+/// its right.
 #[test]
 fn minion_orients_with_the_field_on_its_right() {
     let grid = Grid::level_start(&level(&[], &[]));
     assert_eq!(orient(&grid, at(30, 59), Dir::Up), Dir::Left);
 }
 
-/// [R4.7-3] N is tested first: on the left border, N has the field on its right (E) and rail ahead.
-#[test]
-fn minion_takes_the_first_qualifying_heading_in_n_e_s_w_order() {
-    let grid = Grid::level_start(&level(&[], &[]));
-    assert_eq!(orient(&grid, at(0, 30), Dir::Down), Dir::Up);
+/// Every interior cell claimed but `open`.
+fn claimed_but(open: &[(u8, u8)]) -> Grid {
+    let mut grid = Grid::level_start(&level(&[], &[]));
+    paint(
+        &mut grid,
+        (1..59).flat_map(|x| (1..59).map(move |y| (x, y))),
+        Cell::Claimed,
+    );
+    paint(&mut grid, open.iter().copied(), Cell::Empty);
+    grid
 }
 
-/// [R4.7-3] [PIN-16] With no qualifying heading, a minion keeps its heading, which at level start
-/// is N.
+/// [R4.7-3] The order N, E, S, W: around (30, 30) only (30, 31) and (29, 30) are open, so E
+/// (right: S) and S (right: W) both have the field on their right, and E comes first.
+#[test]
+fn minion_takes_the_first_qualifying_heading_in_n_e_s_w_order() {
+    let grid = claimed_but(&[(30, 31), (29, 30)]);
+    assert_eq!(orient(&grid, at(30, 30), Dir::Up), Dir::Right);
+}
+
+/// [R4.7-3] [PIN-06] The same order for the field behind the right: only the diagonals (31, 29)
+/// and (29, 31) are open, behind the right of W (NE) and of E (SW), and E comes first.
+#[test]
+fn minion_takes_the_first_heading_with_the_field_behind_its_right_in_n_e_s_w_order() {
+    let grid = claimed_but(&[(31, 29), (29, 31)]);
+    assert_eq!(orient(&grid, at(30, 30), Dir::Up), Dir::Right);
+}
+
+/// [R4.7-3] A heading needs no rail cell ahead: on a one-cell bump of the bottom border, N has the
+/// field on its right (E) and ahead.
+#[test]
+fn minion_orients_without_a_rail_cell_ahead() {
+    let grid = Grid::level_start(&level(&[], &[(30, 58)]));
+    assert_eq!(orient(&grid, at(30, 58), Dir::Down), Dir::Up);
+}
+
+/// [R4.7-3] [PIN-06] A border corner touches the field only diagonally: no heading has the field
+/// on its right, and S is the first with the field behind its right (NW).
+#[test]
+fn minion_on_a_cell_touching_the_field_diagonally_faces_the_field_behind_its_right() {
+    let grid = Grid::level_start(&level(&[], &[]));
+    assert_eq!(orient(&grid, at(59, 59), Dir::Up), Dir::Down);
+}
+
+/// [R4.7-3] [PIN-16] With no qualifying heading, which no rail cell has, a minion keeps its heading,
+/// which at level start is N.
 #[test]
 fn minion_with_no_qualifying_heading_faces_n_at_level_start() {
     let block: Vec<(u8, u8)> = (9..=11)

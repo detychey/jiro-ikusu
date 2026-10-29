@@ -2,7 +2,9 @@
 //! rules, valid journals and the round trip.
 
 use jiro_core::Error;
-use jiro_core::consts::{EVENT_LEN, HEADER_LEN, MAX_EVENTS, MAX_JOURNAL_LEN, MAX_TICKS};
+use jiro_core::consts::{
+    EVENT_LEN, HEADER_LEN, MAX_EVENTS, MAX_JOURNAL_LEN, MAX_TICKS, RULES_VERSION,
+};
 use jiro_core::journal::{Event, Header, Mode, decode, encode, journal_hash, run_commitment};
 use jiro_core::keccak::keccak256;
 use jiro_core::types::InputMask;
@@ -25,7 +27,7 @@ impl RawJournal {
     fn new(events: &[(u16, u8)]) -> Self {
         Self {
             version: 1,
-            rules_version: 1,
+            rules_version: RULES_VERSION,
             mode: 0,
             run_nonce: [0x11; 32],
             level_id: [0x22; 32],
@@ -197,7 +199,13 @@ fn unknown_version_is_rejected() {
 
 #[test]
 fn other_rules_version_is_rejected() {
-    for rules_version in [0, 2, 0x0100, 0x0101, u16::MAX] {
+    for rules_version in [
+        0,
+        RULES_VERSION - 1,
+        RULES_VERSION + 1,
+        RULES_VERSION.swap_bytes(),
+        u16::MAX,
+    ] {
         let mut journal = RawJournal::new(&[]);
         journal.rules_version = rules_version;
         assert_eq!(
@@ -340,12 +348,12 @@ fn first_broken_rule_wins() {
         ),
         (
             "version, rulesVersion",
-            with(|j| (j.version, j.rules_version) = (2, 2)).bytes(),
+            with(|j| (j.version, j.rules_version) = (2, RULES_VERSION + 1)).bytes(),
             Error::Version,
         ),
         (
             "rulesVersion, mode",
-            with(|j| (j.rules_version, j.mode) = (2, 2)).bytes(),
+            with(|j| (j.rules_version, j.mode) = (RULES_VERSION + 1, 2)).bytes(),
             Error::RulesVersion,
         ),
         (
@@ -458,7 +466,7 @@ fn event_area_is_8100_bytes() {
 #[test]
 fn worked_example_decodes_and_reencodes() {
     let bytes = hex_bytes(
-        "0x01000100277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000",
+        "0x01000200277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000",
     );
     let journal = decode(&bytes).unwrap();
     let expected = Header {

@@ -729,8 +729,8 @@ Each milestone's README §9 "done when" closes when these items merge:
 | M1.6 | Player movement, cuts, fast cut and slow shield | M1.5 | M | none |
 | M1.7 | Minions and the D7 measurement | M1.5 | M | Review the trap measurement |
 | M1.14 | D7 replacement rule: specification (only if M1.7 finds traps) | M1.7 | S | Approve the replacement or a bounded trap rate |
-| M1.8 | Tick loop, hits, end of level, state hash, replay, Recorder | M0.7, M1.4, M1.6, M1.7 | L | none |
-| M1.15 | D7 replacement rule: implementation (only if M1.14 changes the rule) | M1.8, M1.14 | M | none |
+| M1.8 | Tick loop, hits, end of level, state hash, replay, Recorder | M0.7, M1.4, M1.6, M1.7, M1.15 if built | L | none |
+| M1.15 | D7 replacement rule: implementation (only if M1.14 changes the rule) | M1.14 | M | none |
 | M1.9 | Gameplay golden vectors, coverage index, version gate | M1.4, M1.8, M1.15 if built | L | none |
 | M1.10 | Property suite, case generator, no-panic fuzzing, nightly workflow | M1.8, M1.15 if built | M | none |
 | M1.11 | wasm engine and Node parity runner | M1.9 | M | none |
@@ -992,7 +992,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `vectors/game/open-field-empty.json` and its trace, produced by the M1.4 generator: the M0.6 state-hash worked example. On a mismatch, the agent fixes whichever side contradicts the README text, the core or `tools/xcheck/worked-examples.mjs`, and says why in the PR.
   - The float probe of M0.4, changed to call `replay`.
 
-  M1.8 uses the minion rule of M1.7. If M1.15 later replaces it, M1.15 updates the minion tests below.
+  M1.8 uses the minion rule of M1.15 when M1.15 is built, and otherwise that of M1.7. As built, M1.14 and M1.15 came right after M1.7, so M1.8 was written against M1.14's rule.
 - **Done when** these tests pass:
   - Hits and lives:
     - one test per hit source;
@@ -1035,7 +1035,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 - **Done when:**
   - the trap counts equal the committed constants on the 10,000 boards in CI and on the 100,000 boards in a local release run (output in the PR);
   - the M1.7 unit tests still pass, or are updated per M1.14's text;
-  - M1.8's minion hit tests (PIN-11, PIN-15) still pass, or are updated per M1.14's text;
+  - M1.8's minion hit tests (PIN-11, PIN-15) still pass, or are updated per M1.14's text, when M1.8 is built first; built after M1.15, as it was, M1.8 writes them against M1.14's rule;
   - the drift gate is green after regeneration.
 - **Verify with:** the two commands of M1.7, `cargo test -p jiro-core --locked`, and `cargo run -p jiro-tools --locked -- vectors && bash scripts/check-drift.sh vectors/`.
 - **Skills:** `deterministic-core`, `parity-testing`. **README:** §4.7, §13 D7. **Needs user:** none.
@@ -2319,8 +2319,7 @@ Core
   M0.4 + M0.6 -> M1.1 -> M1.2, M1.3
   M0.7 -> M1.18 ; M1.2 + M1.3 -> M1.4 ; M1.2 + M1.3 + M1.18 -> M1.5
   M1.5 -> M1.6, M1.7 ; M1.7 -> M1.14 (if M1.7 finds traps)
-  M0.7 + M1.4 + M1.6 + M1.7 -> M1.8
-  M1.8 + M1.14 -> M1.15 (if M1.14 changes the rule)
+  M1.14 -> M1.15 (if M1.14 changes the rule) ; M0.7 + M1.4 + M1.6 + M1.7 (+ M1.15 if built) -> M1.8
   M1.4 + M1.8 (+ M1.15 if built) -> M1.9 ; M1.8 (+ M1.15 if built) -> M1.10
   M1.9 -> M1.11 ; M0.2 + M1.9 -> M1.16, M1.17
   M1.10 + M1.16 + M1.17 -> M1.12 ; M1.10 + M1.11 + M1.12 -> M1.13
@@ -2356,7 +2355,7 @@ dApp and season
   M5.2 + M3.4 + M4.14 -> M5.4 ; M4.14 + M5.3 + M5.4 -> M5.5 ; M5.3 + M5.5 -> M5.6
 ```
 
-**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39.
+**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40.
 
 ```text
 M0.1 1 > M0.5 3 > M0.6 5 > M1.1 7 > M1.3 9 > M1.5 11 > M1.7 13 > M1.8 16 > M1.15 18
