@@ -1,8 +1,10 @@
 use core::num::{NonZeroU16, NonZeroU32};
 
-use crate::consts::{BP, CELLS};
+use crate::consts::{BP, CAPTURE_STACK, CELLS};
 use crate::level::Level;
 use crate::types::{Cell, CellIndex, Pos};
+
+const NEIGHBORS_4: [(i8, i8); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
 
 const NEIGHBORS_8: [(i8, i8); 8] = [
     (-1, -1),
@@ -58,6 +60,39 @@ impl Grid {
                 let neighbor = pos.offset(dx, dy).and_then(|next| self.at(next));
                 matches!(neighbor, Some(Cell::Empty | Cell::Trail))
             })
+    }
+
+    /// Marks `BOSS_ZONE` the seeds and every `EMPTY` cell 4-connected to them, with `TRAIL` and
+    /// `CLAIMED` as walls, by the stack fill of README §4.8 [R4.8-2, R4.8-3]. The seeds must be
+    /// `EMPTY`. A cell is marked when it is pushed, so it is pushed at most once, and only
+    /// `EMPTY` cells, which are interior cells, are pushed: `stack` never overflows. `None` would
+    /// mean it did.
+    pub fn mark_boss_zone(
+        &mut self,
+        seeds: impl IntoIterator<Item = CellIndex>,
+        stack: &mut [u16; CAPTURE_STACK],
+    ) -> Option<()> {
+        let mut len: usize = 0;
+        for seed in seeds {
+            self.set(seed, Cell::BossZone);
+            *stack.get_mut(len)? = seed.raw();
+            len = len.checked_add(1)?;
+        }
+        while let Some(top) = len.checked_sub(1) {
+            let cell = CellIndex::from_raw(*stack.get(top)?)?;
+            len = top;
+            for (dx, dy) in NEIGHBORS_4 {
+                let Some(next) = cell.pos().offset(dx, dy).and_then(CellIndex::new) else {
+                    continue;
+                };
+                if self.get(next) == Cell::Empty {
+                    self.set(next, Cell::BossZone);
+                    *stack.get_mut(len)? = next.raw();
+                    len = len.checked_add(1)?;
+                }
+            }
+        }
+        Some(())
     }
 
     pub fn count(&self, cell: Cell) -> u16 {
