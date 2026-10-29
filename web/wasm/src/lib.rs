@@ -35,6 +35,7 @@ use jiro_core::minion::State;
 use jiro_core::recorder::Recorder;
 use jiro_core::replay::{Outcome, replay_observed};
 use jiro_core::types::{CellIndex, InputMask};
+use jiro_shell::dirty::DirtyCells;
 
 /// The code of a call the interface does not allow: a level or a journal longer than the input
 /// buffer, a weight above 65,535, `start` before `load_level`, or `tick` before `start`. The
@@ -55,6 +56,8 @@ struct Engine {
     level: Option<(Level, [u8; LEVEL_LEN])>,
     play: Play,
     grid: [u8; CELLS],
+    /// The cells changed since the last `dirty_cells` call, for redrawing (not consensus).
+    dirty: DirtyCells,
     hash: [u8; HASH_LEN],
     preimage: [u8; PREIMAGE_LEN],
     trace: [u8; TRACE_CAPACITY],
@@ -97,6 +100,7 @@ static ENGINE: Static = Static(UnsafeCell::new(Engine {
     level: None,
     play: Play::Idle,
     grid: [0; CELLS],
+    dirty: DirtyCells::new(),
     hash: [0; HASH_LEN],
     preimage: [0; PREIMAGE_LEN],
     trace: [0; TRACE_CAPACITY],
@@ -204,7 +208,11 @@ pub extern "C" fn load_level(len: u32) -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn start(mode: u32, level_index: u32) -> u32 {
     let Engine {
-        input, level, play, ..
+        input,
+        level,
+        play,
+        dirty,
+        ..
     } = engine();
     let Some((level, level_bytes)) = level else {
         return MISUSE;
@@ -229,6 +237,7 @@ pub extern "C" fn start(mode: u32, level_index: u32) -> u32 {
     match Recorder::new(level, &header) {
         Ok(started) => {
             *play = Play::Running(started);
+            *dirty = DirtyCells::new();
             0
         }
         Err(error) => code(Err(error)),
@@ -269,6 +278,21 @@ pub extern "C" fn grid_ptr() -> *const u8 {
         }
     }
     grid.as_ptr()
+}
+
+/// Compares the grid in play with the cells last reported, and returns how many changed: every
+/// cell on the first call after `start`. Their indices, row-major, are at `dirty_ptr`, as u16.
+#[unsafe(no_mangle)]
+pub extern "C" fn dirty_cells() -> u32 {
+    let Engine { play, dirty, .. } = engine();
+    game(play).map_or(0, |game| {
+        u32::try_from(dirty.update(&game.grid).len()).unwrap_or(0)
+    })
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn dirty_ptr() -> *const u16 {
+    engine().dirty.changed().as_ptr()
 }
 
 fn with_game(read: impl FnOnce(&Game) -> u32) -> u32 {

@@ -10,3 +10,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 jiro-core = { path = "../../core" }
+jiro-shell = { path = "../../shell" }
