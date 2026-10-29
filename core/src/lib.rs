@@ -12,6 +12,8 @@
     )
 )]
 
+pub mod boss;
+pub mod capture;
 pub mod consts;
 pub mod error;
 pub mod grid;

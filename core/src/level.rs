@@ -12,8 +12,6 @@ use crate::grid::Grid;
 use crate::keccak::keccak256;
 use crate::types::{Cell, CellIndex, Pos};
 
-const NEIGHBORS_4: [(i8, i8); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
-
 /// The cells the top-left cell of the boss's body may start on, inclusive.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rect {
@@ -180,7 +178,8 @@ pub fn validate(level: &Level, stack: &mut [u16; CAPTURE_STACK]) -> Result<Level
     let start = CellIndex::all()
         .find(|&cell| grid.get(cell) == Cell::Empty)
         .ok_or(Error::OpenAreaSplit)?;
-    mark_region(&mut grid, start, stack).ok_or(Error::OpenAreaSplit)?;
+    grid.mark_boss_zone([start], stack)
+        .ok_or(Error::OpenAreaSplit)?;
     let reached = grid.count(Cell::BossZone);
     grid.replace(Cell::BossZone, Cell::Empty);
     if reached != open {
@@ -271,28 +270,4 @@ fn spawn_covers(level: &Level, pos: Pos) -> bool {
                 .is_none_or(|limit| at < limit)
     };
     covers(x0, x1, pos.x) && covers(y0, y1, pos.y)
-}
-
-/// Marks `BOSS_ZONE` every `EMPTY` cell 4-connected to `start`, `start` included. Returns
-/// `None` if `stack` overflows, which cannot happen: open cells are interior cells, and a
-/// cell is marked when pushed, so it is pushed at most once.
-fn mark_region(grid: &mut Grid, start: CellIndex, stack: &mut [u16; CAPTURE_STACK]) -> Option<()> {
-    grid.set(start, Cell::BossZone);
-    *stack.first_mut()? = start.raw();
-    let mut len: usize = 1;
-    while let Some(top) = len.checked_sub(1) {
-        let cell = CellIndex::from_raw(*stack.get(top)?)?;
-        len = top;
-        for (dx, dy) in NEIGHBORS_4 {
-            let Some(next) = cell.pos().offset(dx, dy).and_then(CellIndex::new) else {
-                continue;
-            };
-            if grid.get(next) == Cell::Empty {
-                grid.set(next, Cell::BossZone);
-                *stack.get_mut(len)? = next.raw();
-                len = len.checked_add(1)?;
-            }
-        }
-    }
-    Some(())
 }
