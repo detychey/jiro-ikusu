@@ -5,7 +5,9 @@ use jiro_core::Error;
 use jiro_core::consts::{
     EVENT_LEN, HEADER_LEN, MAX_EVENTS, MAX_JOURNAL_LEN, MAX_TICKS, RULES_VERSION,
 };
-use jiro_core::journal::{Event, Header, Mode, decode, encode, journal_hash, run_commitment};
+use jiro_core::journal::{
+    Event, Header, Mode, decode, encode, journal_hash, push_event, run_commitment,
+};
 use jiro_core::keccak::keccak256;
 use jiro_core::types::InputMask;
 
@@ -561,4 +563,26 @@ fn journal_hash_is_keccak256_of_the_bytes() {
 fn run_commitment_hashes_the_six_journal_hashes_in_order() {
     let hashes: [[u8; 32]; 6] = std::array::from_fn(|i| [i as u8; 32]);
     assert_eq!(run_commitment(&hashes), keccak256(&[&hashes.concat()]));
+}
+
+/// push_event appends to the journal that encode wrote, and gives the bytes encode would.
+#[test]
+fn push_event_appends_what_encode_writes() {
+    let events = [event(0, 0x01), event(7, 0x11)];
+    let mut pushed = [0; MAX_JOURNAL_LEN];
+    encode(&header(), &[], &mut pushed).unwrap();
+    push_event(&mut pushed, events[0]).unwrap();
+    let pushed = push_event(&mut pushed, events[1]).unwrap().to_vec();
+    let mut encoded = [0; MAX_JOURNAL_LEN];
+    assert_eq!(pushed, encode(&header(), &events, &mut encoded).unwrap());
+}
+
+/// push_event rejects what decode rejects, and leaves the journal unchanged.
+#[test]
+fn push_event_rejects_an_unchanged_mask() {
+    let mut out = [0; MAX_JOURNAL_LEN];
+    encode(&header(), &[event(0, 0x01)], &mut out).unwrap();
+    let before = out;
+    let result = push_event(&mut out, event(1, 0x01)).map(<[u8]>::to_vec);
+    assert_eq!((result, out == before), (Err(Error::UnchangedMask), true));
 }

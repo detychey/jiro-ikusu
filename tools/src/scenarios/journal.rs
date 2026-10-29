@@ -14,7 +14,7 @@ const OPEN_FIELD_EMPTY: &str = "0x01000200277b9e3cebd776c6d46a8b4eb9b83ac165961f
 const EVENT_COUNT_AT: usize = HEADER_LEN - 2;
 const LEVEL_INDEX_AT: usize = HEADER_LEN - 3;
 
-fn header() -> Header {
+pub fn header() -> Header {
     Header {
         mode: Mode::Training,
         run_nonce: keccak256(&[b"jiro.example.9"]),
@@ -30,7 +30,7 @@ fn event(tick: u16, mask: u8) -> Event {
     }
 }
 
-fn encoded(header: &Header, events: &[Event]) -> Vec<u8> {
+pub fn encoded(header: &Header, events: &[Event]) -> Vec<u8> {
     let mut out = [0; MAX_JOURNAL_LEN];
     encode(header, events, &mut out)
         .expect("valid scenarios encode")

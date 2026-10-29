@@ -1,8 +1,8 @@
-//! Error codes: the journal codes of README §6.3 and the level codes of README §5.
+//! Error codes: the journal and replay codes of README §6.3 and the level codes of README §5.
 
 use jiro_core::Error;
 
-const ERRORS: [Error; 31] = [
+const ERRORS: [Error; 35] = [
     Error::Truncated,
     Error::TrailingBytes,
     Error::Version,
@@ -14,6 +14,10 @@ const ERRORS: [Error; 31] = [
     Error::TickOrder,
     Error::ReservedBit,
     Error::UnchangedMask,
+    Error::LevelId,
+    Error::EventPastTimeLimit,
+    Error::EventAfterEnd,
+    Error::Invariant,
     Error::LevelLength,
     Error::LevelVersion,
     Error::BorderObstacle,
@@ -51,6 +55,10 @@ fn readme_code(error: Error) -> u8 {
         Error::TickOrder => 9,
         Error::ReservedBit => 10,
         Error::UnchangedMask => 11,
+        Error::LevelId => 12,
+        Error::EventPastTimeLimit => 13,
+        Error::EventAfterEnd => 14,
+        Error::Invariant => 15,
         Error::LevelLength => 20,
         Error::LevelVersion => 21,
         Error::BorderObstacle => 22,

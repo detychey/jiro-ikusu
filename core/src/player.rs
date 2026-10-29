@@ -118,6 +118,16 @@ impl Player {
         Some(moves)
     }
 
+    /// Erases the trail, and a player still cutting returns to the cut start and stops cutting:
+    /// a commit (R4.4-7) and a lost life (R4.9-17) both discard the unfinished cut this way.
+    pub fn abandon_cut(&mut self, grid: &mut Grid) {
+        grid.replace(Cell::Trail, Cell::Empty);
+        if self.cutting {
+            self.pos = self.cut_start;
+            self.cutting = false;
+        }
+    }
+
     /// Keeps the previous direction while it is held, otherwise takes the first held one in the
     /// order up, down, left, right [R4.5-1].
     fn resolve_direction(&self, mask: InputMask) -> Option<Dir> {

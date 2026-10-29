@@ -46,12 +46,7 @@ impl<'a> Journal<'a> {
     }
 
     pub fn events(&self) -> impl ExactSizeIterator<Item = Event> + 'a {
-        self.events
-            .iter()
-            .map(|&[tick_high, tick_low, mask]| Event {
-                tick: u16::from_be_bytes([tick_high, tick_low]),
-                mask: InputMask(mask),
-            })
+        self.events.iter().map(read_event)
     }
 }
 
@@ -83,9 +78,8 @@ pub fn decode(bytes: &[u8]) -> Result<Journal<'_>, Error> {
         core::cmp::Ordering::Equal => {}
     }
     let mut previous = None;
-    for &[tick_high, tick_low, mask] in events {
-        let tick = u16::from_be_bytes([tick_high, tick_low]);
-        previous = Some(check_event(previous, tick, mask)?);
+    for event in events.iter().map(read_event) {
+        previous = Some(check_event(previous, event.tick, event.mask.bits())?);
     }
     Ok(Journal {
         header: Header {
@@ -125,14 +119,53 @@ pub fn encode<'o>(
         &event_count.to_be_bytes(),
     ];
     let header_bytes = header_fields.into_iter().flatten().copied();
-    let event_bytes = events.iter().flat_map(|event| {
-        let [tick_high, tick_low] = event.tick.to_be_bytes();
-        [tick_high, tick_low, event.mask.bits()]
-    });
-    for (slot, byte) in out.iter_mut().zip(header_bytes.chain(event_bytes)) {
+    let events_bytes = events.iter().flat_map(|&event| event_bytes(event));
+    for (slot, byte) in out.iter_mut().zip(header_bytes.chain(events_bytes)) {
         *slot = byte;
     }
-    usize::from(event_count)
+    journal_of(out, event_count)
+}
+
+/// Appends `event` to the journal that `encode` wrote into `out`, and returns the journal's
+/// bytes. Rejects what `decode` would reject, with the same errors, and leaves `out` unchanged
+/// then.
+pub fn push_event(out: &mut [u8; MAX_JOURNAL_LEN], event: Event) -> Result<&[u8], Error> {
+    let (header, event_area) = out.split_at_mut(HEADER_LEN);
+    let count_bytes = header.last_chunk_mut::<2>().ok_or(Error::Truncated)?;
+    let count = u16::from_be_bytes(*count_bytes);
+    if count >= MAX_EVENTS {
+        return Err(Error::EventCount);
+    }
+    let (events, _) = event_area.as_chunks_mut::<EVENT_LEN>();
+    let previous = count
+        .checked_sub(1)
+        .and_then(|last| events.get(usize::from(last)))
+        .map(read_event);
+    let event = check_event(previous, event.tick, event.mask.bits())?;
+    *events
+        .get_mut(usize::from(count))
+        .ok_or(Error::EventCount)? = event_bytes(event);
+    let count = count.saturating_add(1);
+    *count_bytes = count.to_be_bytes();
+    journal_of(out, count)
+}
+
+/// An event's bytes, unchecked: the tick big-endian, then the mask (README §6.3).
+fn read_event(&[tick_high, tick_low, mask]: &[u8; EVENT_LEN]) -> Event {
+    Event {
+        tick: u16::from_be_bytes([tick_high, tick_low]),
+        mask: InputMask(mask),
+    }
+}
+
+fn event_bytes(event: Event) -> [u8; EVENT_LEN] {
+    let [tick_high, tick_low] = event.tick.to_be_bytes();
+    [tick_high, tick_low, event.mask.bits()]
+}
+
+/// The journal of `count` events at the start of `out`: its first 71 + 3 × count bytes.
+fn journal_of(out: &[u8; MAX_JOURNAL_LEN], count: u16) -> Result<&[u8], Error> {
+    usize::from(count)
         .checked_mul(EVENT_LEN)
         .and_then(|events_len| events_len.checked_add(HEADER_LEN))
         .and_then(|len| out.get(..len))

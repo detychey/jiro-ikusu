@@ -976,7 +976,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 
 - **Goal:** a complete level simulation, and the replay API that every target calls.
 - **Deliverables:** `core/src/{game,hits,hash,replay,recorder}.rs` and their tests:
-  - **Game.** `Game::new(level, runNonce, levelIndex, mode)` and `step(mask) -> Option<EndReason>`. Each step runs §4.4 steps 1-7 and stops at the first end condition.
+  - **Game.** `Game::new(level, runNonce, levelIndex)` and `step(mask) -> Result<Option<EndReason>, Error>`. Each step runs §4.4 steps 1-7 and stops at the first end condition. The mode has no effect on play, so replay takes it from the journal header for the Outcome; `step` returns an error only for a broken internal invariant (code 15, README §6.3).
   - **Hits.** Three sources (README R4.9-2 to R4.9-4: the boss's bump into `TRAIL`, a step onto the boss's body, and a minion meeting the player by PIN-15's share, swap or pass case), one flag per tick. Resolution at step 6, in this order:
     1. if the player is invulnerable, nothing happens;
     2. otherwise, if B is held and a shield charge is left, the charge is spent;
