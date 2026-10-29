@@ -24,7 +24,7 @@ The core is the single implementation of the game rules. It is compiled for the 
 A behavior change ([README §6.3](../../../README.md#63-journal-bytes-v1), PIN-13) alters the outcome, error code or trace of a committed vector, or implements an edit to README §4-§6 rule text made after the rule was first implemented. Implementing a frozen rule for the first time is not one. In the same change:
 
 1. Bump `RULES_VERSION`.
-2. Update README §4-§6.
+2. Update README §4-§6, and §7.3, §8.2 or §8.4 where the Outcome, the draw or level scores change.
 3. Regenerate `vectors/`, and explain in the PR why outcomes moved.
 
 ## Done when

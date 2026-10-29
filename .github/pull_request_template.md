@@ -26,7 +26,7 @@ M<milestone>.<n>, from `IMPLEMENTATION_PLAN.md`.
 
 - Rules touched: <!-- yes / no -->
 - `RULES_VERSION` or a format version bumped: <!-- yes; no, with the reason; or "N/A, first implementation" -->
-- README §4-§6 updated: <!-- yes / no / N/A -->
+- README §4-§6 updated (and §7.3, §8.2 or §8.4 if the Outcome, the draw or level scores changed): <!-- yes / no / N/A -->
 - `vectors/` regenerated: <!-- yes / no / N/A -->
 - `levels/README.md` regenerated: <!-- yes / no / N/A -->
 - Calibration rerun: <!-- yes / no / N/A -->

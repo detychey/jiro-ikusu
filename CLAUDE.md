@@ -21,12 +21,12 @@ Jiro-ikusu: a territory-capture arcade game, played on a Raspberry Pi Pico or in
 
 | A change to | Also, in the same PR |
 |---|---|
-| `core/src/**` that changes behavior | Bump `RULES_VERSION`. Update README §4-§6. Regenerate `vectors/` and explain the moved outcomes. Once M2.6 has merged, rerun the playtest and regenerate its report. Once M2.9 has merged, rerun `calibrate --check`: regenerate the calibration file in place until a season that references it has opened, and write a new calibration file for a new season after that. |
+| `core/src/**` that changes behavior | Bump `RULES_VERSION`. Update README §4-§6, and §7.3, §8.2 or §8.4 where the Outcome, the draw or level scores change. Regenerate `vectors/` and explain the moved outcomes. Once M2.6 has merged, rerun the playtest and regenerate its report. Once M2.9 has merged, rerun `calibrate --check`: regenerate the calibration file in place until a season that references it has opened, and write a new calibration file for a new season after that. |
 | a byte format | Bump the format's version; regenerate `vectors/format/` |
 | `core/src/consts.rs` | README §2, §4 and §5 |
 | `levels/src/**` | Rebuild `levels/*.bin` and `levels/README.md`. Once M2.6 has merged, the playtest report. Once M2.9 has merged, the calibration rule above. |
 | `seasons/*.json` | README §8.4 and `docs/ECONOMY.md` |
-| `contracts/src/**` | Regenerate `contracts/abi/` (from M4.3); the threat table of `docs/ECONOMY.md`, if a mitigation moved |
+| `contracts/src/**` | README §7 and §8, if a frozen rule or range changes; regenerate `contracts/abi/` (from M4.3); the threat table of `docs/ECONOMY.md`, if a mitigation moved |
 | `vectors/**` | Regenerate `vectors/pack.bin` and `firmware/emu/transcripts/` (from M3.3) |
 
-Owners of numbers: README §4 and §5 own the rule numbers and defaults; `levels/README.md`, generated from `levels/src/`, owns the per-level knobs; `seasons/*.json` own the season parameters; `docs/ECONOMY.md` derives from them and owns none.
+Owners of numbers: README §4 and §5 own the game's rule numbers and defaults; README §7 and §8 own those of runs, settlement and seasons, parameter ranges included; `levels/README.md`, generated from `levels/src/`, owns the per-level knobs; `seasons/*.json` own the season parameters; `docs/ECONOMY.md` derives from them and owns none.

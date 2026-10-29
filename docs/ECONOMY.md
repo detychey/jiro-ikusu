@@ -46,17 +46,18 @@ Each row names its mitigation and the item that builds or measures it. M4.12 add
 | Threat | Mitigation | Item |
 |---|---|---|
 | Forged score | The referee replays the level bytes and the journals, and computes the score from the season's weights. No client score is read. | M4.7 |
-| Copied journals, from another run or another player | Each Outcome's run nonce, journal hash and level index must match the run being settled (README §7.2). | M4.7 |
+| Copied journal bytes, from another run or another player | Each Outcome's run nonce, journal hash and level index must match the run being settled (README §7.2). This stops the reuse of the bytes, not of the events: see the next row. | M4.7 |
+| Copied or precomputed inputs: if the seed only chose the boss's start and direction, a level would be one of at most 4 × 3,249 games, so public journals and offline search would cover them | D14: the level seed keeps driving the boss through the level, so no two runs share a game (README §7.4). | M1.18, M1.5 |
 | An easier level substituted, or the levels reordered | Each level id must be one of the season's levels, and each Outcome's draw slot must be that level's slot (P17). | M4.7 |
 | A Training-mode journal, or one played under other rules | Outcome mode = 1, and its rules version equals the season's. | M4.7 |
 | Previewing the draw before paying | Pay-then-reveal: the entropy block does not exist when the fee is paid. | M4.3, M4.6 |
 | Re-rolling by letting the reveal lapse | No re-anchor: the run is forfeited and its fee stays in the pot. | M4.6 |
-| Nonce preview: the run nonce can be computed from the entropy block, up to 256 blocks (one to two minutes) before `revealRun` starts the clock | Accepted residual, inherited from ethblockdigger. Two options remain for M4.12: refuse reveals made more than a few blocks after the entropy block, or start the deadline at `startRun`. | M4.12 |
+| Nonce preview: the run nonce can be computed from the entropy block, up to 256 blocks (about a minute) before `revealRun` starts the clock | Accepted residual, inherited from ethblockdigger. Closing it would change README §7.2: refusing reveals made more than a few blocks after the entropy block shrinks the reveal window, and starting the deadline at `startRun` changes the deadline formula. M4.12 may propose either, as a split item that amends §7.2. | M4.12 |
 | Real-time bots | The fee per run, the qualification threshold, and public journals. Fresh entropy per level is the designed upgrade (README §7.4). | M4.13 (optional), M5.6 |
 | Parallel attempts: a team or a bot farm plays each revealed level several times at once and commits the best attempt | Accepted residual: the deadline bounds the wall time, not the number of attempts. Fresh entropy per level is the upgrade. | M4.12 |
 | Buying several runs and playing only the best draw | Accepted: each attempt is paid, and only the best run counts (README §8.2). | M4.12 |
-| Sybil wallets | A fee per run; payout pro-rata by best-run score, not by run count. | M4.5 |
-| Deadline gaming | The deadline follows the journals' ticks used; `commitRun` refuses commits that can no longer be on time. | M4.6, M4.7 |
+| Sybil wallets | A fee per run only. Best runs are kept per wallet, so a player who uses one wallet per run counts every run, as cumulative scoring would (README §8.2). Accepted residual, decided by the owner on 2026-10-29. | M4.12 |
+| Deadline gaming | The deadline follows the journals' ticks used; `commitRun` refuses commits that can no longer be on time. Accepted residual: idle ticks count as play, so a player can pad a level, idling instead of ending it or writing the X late, and spend the time on practice or retries. The deadline therefore bounds a run's wall time by the drawn levels' time limits plus `commitSlack`, and padding costs only the fewer-ticks tiebreak (README §7.2). Fresh entropy per level removes practice on later levels. | M4.6, M4.7, M4.12 |
 | Censorship or latency near the deadline. The commit carries up to 6 × 8,171 bytes of journals. | `commitSlack`, sized from measured transitions and commit latency. | M4.6, M5.4, M5.5 |
 | The sequencer grinds or censors entropy, or skews `block.timestamp` | Accepted residual at testnet stakes, as in ethblockdigger. | M4.12 |
 | Settlement griefing: failing calls, partial `settleLevel` progress, front-running | Referee rejections revert with no state change; the credit always goes to the run's player; `settleRun` stays available after a partial `settleLevel`. | M4.7 |
@@ -68,13 +69,15 @@ Each row names its mitigation and the item that builds or measures it. M4.12 add
 | A season that never closes | `closeSeason` is permissionless, and the season job calls it. | M4.5, M5.5 |
 | Unclaimed shares and rounding dust | Accepted residual: shares never expire in v1, so unclaimed ETH stays in `Season`. | M4.12 |
 | A claimant that rejects ETH | Accepted residual: its share stays unclaimed. | M4.12 |
-| The operator opens a season whose referee lies | `open` checks the referee's rules version and records its codehash, which players and the dApp compare with the reproducible build (M4.1, `cargo stylus verify`, the zk image id). Custody of the operator key is a pre-mainnet prerequisite. | M4.5, M5.2 |
+| The operator opens a season whose referee lies | `open` checks the referee's rules version and records its codehash, which players can compare with the reproducible build (M4.1; `cargo stylus verify` in M4.14; the zk image id). Custody of the operator key is a pre-mainnet prerequisite. | M4.5, M4.14 |
+| A season lists an invalid level, so runs that draw it can never settle | The operator checks the 16 levels with the level tool before opening (README §8.4). | M5.5 |
 | The operator never opens another season | Accepted residual: a pending rollover stays in `Season` until a season opens. Claims, close and rake withdrawal stay permissionless. | M4.12 |
 | A season's referee and its rules version | The referee is bound to the season, and `open` requires `referee.rulesVersion()` to equal the season's rules version. | M4.5 |
 | A consensus bug in a live season's referee | Accepted residual on testnet: the referee is immutable and has no pause. The vectors and differential fuzzing reduce the risk. A procedure is a pre-mainnet prerequisite. | M1.13, M4.1, M4.12 |
-| The Stylus referee expires or needs reactivation mid-season | Keep it alive, and check its remaining activation time against the season's length plus grace before opening. Reactivation goes through Arbitrum's activation process. | M5.5 |
+| The Stylus referee expires or needs reactivation mid-season | `season.mjs open` refuses a Stylus referee whose remaining activation time is below the season's length plus grace; keepalive extends it. Reactivation goes through Arbitrum's activation process. | M5.5 |
 | Journal publication (P5) | The journals are in the `commitRun` calldata, and the contract computes the commitment from them, so every committed run's journals are public and authentic. | M4.6, M5.3 |
-| zk prover trust, if D2 = zk | `ZkReferee` pins its image id or program key immutably. The prover-network credential lives in its own capped account. | M4.10 |
+| zk prover trust, if D2 = zk | `ZkReferee` pins its image id or program key, and the address of the framework's version-specific verifier, immutably. It never calls an upgradeable router or gateway, whose owner could add a route that accepts forged proofs. The prover-network credential lives in its own capped account. | M4.10 |
+| On zk, the operator is in practice the only prover: it omits or delays handed-off runs, or a flood of run files from many wallets uses up its capped prover account or the grace before honest runs are proven | Accepted residual on testnet. Settlement stays open to any submitter, so a player can prove and settle their own run. The operator replays each run file offline, for free, and proves only each player's best run, and the grace is sized from the expected settled runs. The later proving service removes the handoff (README §7.5). | M5.5, M4.12 |
 | Unaudited contracts | Testnet with test ETH only; an audit is a pre-mainnet prerequisite. | M4.12 |
 
 ## 4. Pre-mainnet prerequisites (not scheduled)

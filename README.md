@@ -350,7 +350,7 @@ blocked-start bitmap byte 438: 0x07
 blocked-start validity: 39
 ```
 
-**The 16 levels** ramp up difficulty with the knobs in the table above: boss body size, boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the season 1 scoring weights ([§8.4](#84-season-scoring)).
+**The 16 levels** ramp up difficulty with the knobs in the table above: boss body size, boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the scoring weights of the testnet seasons and of the first mainnet season ([§8.4](#84-season-scoring)).
 
 **The level editor** in the browser produces level bytes, and the 16 levels are authored with it. The Superchallenge map generator is deferred with its mode.
 
@@ -414,10 +414,10 @@ open-field-empty journal: 0x01000100277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a7
 ### 6.4 Seeds and commitments
 
 - **Level seed:** `keccak256("jiro.level" ‖ runNonce ‖ levelIndex)`.
-  - **What it decides.** The boss's start position (its body's top-left cell) inside the level's spawn rectangle, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
+  - **What it decides.** The boss's start position (its body's top-left cell) inside the level's spawn rectangle, and the boss's diagonal direction. Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)). Under D14 the seed will also drive the boss through the whole level, so that no two runs share a game. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 writes that rule into §4.6 and this section.
   - **Boss start.** The candidates are the cells of the spawn rectangle in row-major order: y from y0 to y1, and within each row x from x0 to x1. Validity ensures the body covers only `EMPTY` cells at any of them. With index = the big-endian u32 of seed bytes 0 to 3, modulo the number of candidates, the start is candidate number index, counting from 0. vx = +1 if bit 0 of seed byte 4 is set, otherwise −1; vy is the same, from bit 1. There are at most 57 × 57 = 3,249 candidates, under 2^12, so the modulo bias stays below 2^12 / 2^32 = 2^−20.
-  - **Once per level.** keccak256 runs once per level, never per tick: v1 has no per-tick randomness.
-  - **Packing.** Inputs are packed as Solidity's `abi.encodePacked` would pack them: tags as ASCII bytes, `bytes32` values such as `runNonce` as 32 bytes, `levelIndex` as one byte, and `runId` as a 32-byte `uint256`.
+  - **Once per level.** keccak256 runs once per level, never per tick. Any randomness during play comes from an integer PRNG seeded from the level seed *(D14)*.
+  - **Packing.** Every derivation in this section packs its inputs as Solidity's `abi.encodePacked` would: tags as ASCII bytes, `bytes32` values such as `runNonce` as 32 bytes, `levelIndex` as one byte, and `runId` as a 32-byte `uint256`.
   - **Domain tags.** Every derivation has its own tag, so two derivations never share an input.
 - **Run nonce** (Challenge): `keccak256("jiro.run" ‖ entropy ‖ runId)`, where `entropy` is the `bytes32` that the entropy source returns for the run ([§7.2](#72-run-flow)) and `runId` is the run's `uint256` id. Only the `Challenge` contract computes it, when the player reveals the run. The core takes `runNonce` as an input and never derives it.
 - **The chain chooses the seed** in paid modes ([§7.2](#72-run-flow)), never the client. Otherwise a player could try seeds offline until the spawns were easy.
@@ -517,11 +517,11 @@ In paid modes, the Pico is therefore a controller and a screen, not a security d
 
 The flow is the same keyless one as ethblockdigger's `Vault`. It is split between two contracts: `Challenge` runs it, and `Season` holds the money and each season's parameters ([§8.4](#84-season-scoring)). Every step emits an event. Runs are numbered from 1 with a `uint256` `runId`, across all seasons, and a player may hold several runs at once.
 
-1. **Pay.** `startRun()` is `payable`. It requires `msg.value` to equal, exactly, the run fee of the season that is accepting runs *(D12)*, and reverts if no season is. The run belongs to that season, and its fee joins that season's pot for good. The payment also commits to entropy from an Arbitrum block 40 blocks ahead (`ArbBlockhashEntropy`).
+1. **Pay.** `startRun(uint256 season)` is `payable`. It reverts unless `season` is the season accepting runs, so a run never lands in a season the player didn't choose. It also reverts unless `msg.value` equals that season's run fee exactly *(D12)*. The run belongs to that season, and its fee joins that season's pot for good. The payment also commits to entropy from an Arbitrum block 40 blocks ahead (`ArbBlockhashEntropy`).
 2. **Reveal.** Once that block exists, usually 10 to 20 seconds later, the player calls `revealRun(runId)`. It derives the run nonce from the block's hash ([§6.4](#64-seeds-and-commitments)) and records `revealedAt = block.timestamp`. The hash did not exist when the player paid, so nobody can preview the levels and pay only for easy ones.
-   - **Only the player reveals,** because the reveal starts the deadline clock.
-   - **A lapsed reveal forfeits the run.** The hash stays readable for 256 blocks, one to two minutes. After that, the run can never be revealed, and its fee stays in the pot. There is no re-anchor, which would be a free re-roll.
-3. **Play and commit.** The player plays the six drawn levels ([§8.2](#82-challenge-000005-eth-per-run)), then calls `commitRun(runId, bytes[6] journals)` once, with the journals in `levelIndex` order. The contract computes the run commitment from them ([§6.4](#64-seeds-and-commitments)), and records it with `committedAt = block.timestamp`. It never parses the journals. They are in the call to publish them *(P5)*: anyone can replay a committed run from its calldata, and the commitment proves the calldata is what was committed.
+   - **Only the player reveals and commits:** the reveal starts the deadline clock, and the single commit fixes the run's journals.
+   - **A lapsed reveal forfeits the run.** The hash stays readable for 256 blocks, about a minute at 0.25 s per block. After that, the run can never be revealed, and its fee stays in the pot. There is no re-anchor, which would move the run to a fresh entropy block and so give a free re-roll.
+3. **Play and commit.** The player plays the six drawn levels ([§8.2](#82-challenge-000005-eth-per-run)), then calls `commitRun(runId, bytes[6] journals)` once, after the reveal, with the journals in `levelIndex` order. The contract computes the run commitment from them ([§6.4](#64-seeds-and-commitments)), and records it with `committedAt = block.timestamp`. It never parses the journals: they are in the call to publish them *(P5)*. Anyone can replay a committed run from the call's data, read from the transaction, or from its trace if a smart-account wallet made the call. The commitment proves that this data is what was committed.
    - **Deadline.** A run is on time if
 
      ```text
@@ -533,23 +533,27 @@ The flow is the same keyless one as ethblockdigger's `Vault`. It is split betwee
      ```text
      deadline (revealedAt 1,000,000, ticks used 1 + 2,700 + 1,800 + 900 + 15 + 16, commitSlack 120): 1,000,483
      ```
-   - **Checked at settlement.** The ticks used are known only once the journals are replayed. `commitRun` only reverts after `revealedAt + 1,080 + commitSlack`, when no run can be on time any more.
-   - **Why the actual duration.** A fixed window, like ethblockdigger's 450 s, would leave every early-ending level's unused minutes free. The player could replay a level whose seed they already know and commit the best attempt, or practice the next level before playing it for real. With a deadline that follows the journals' own length, any time spent that way makes the commit late.
-   - **Real-time play.** Inputs must therefore be produced at roughly real-time speed, which is what stops slow-motion play and offline search.
-   - **Closing a level early.** The client closes a level that has not ended but will not be played on: an unplayed or abandoned level, or one interrupted by a USB disconnect or a page reload. It appends one event, with mask `0x40` (X alone), at tick c = max(n, e + 1). Here n is the number of the level's ticks the client knows were processed, and e is the tick of the journal's last event, or −1 if there is none. An unplayed level therefore gets an X at tick 0 ([§4.10](#410-end-of-level)). If c is at or past the level's time limit T, nothing is appended, since the level ran to its time limit.
+   - **Checked at settlement.** The ticks used are known only once the journals are replayed, so the deadline is checked at settlement. At commit, the only time check is a bound: `commitRun` reverts if `block.timestamp > revealedAt + 1,080 + commitSlack`, when no run can be on time any more.
+   - **Why the actual duration.** A fixed window, like ethblockdigger's 450 s, would give even an unmodified client every early-ending level's unused minutes for free. The player could replay a level whose seed they already know and commit the best attempt, or practice the next level before playing it for real.
+     - With a deadline that follows the journals' own length, that time has to appear in the journals as ticks used. A player can still put it there, by idling instead of ending a level early, or with a client that writes the X later than it was pressed. The contract cannot tell idle ticks from play.
+     - So the deadline bounds a run's wall time by the drawn levels' time limits plus `commitSlack`, at most 1,080 s plus `commitSlack`, and padding costs only the fewer-ticks tiebreak.
+     - Fresh entropy per level ([§7.4](#74-bots)) would remove practice on later levels.
+   - **Real-time play.** Inputs must therefore be produced within that time, which stops slow-motion play and long offline search after the reveal. Inputs prepared before the run are covered by D14 ([§7.4](#74-bots)).
+   - **Closing a level early.** The client closes a level that has not ended but will not be played on: an unplayed or abandoned level, or one interrupted by a USB disconnect or a page reload. It appends one event, with mask `0x40` (X alone), at tick c = max(n, e + 1). Here n is the number of the level's ticks the client knows were processed, and e is the tick of the journal's last event, or −1 if there is none. An unplayed level therefore gets an X at tick 0 ([§4.10](#410-end-of-level)).
+     - The client first replays the journal it holds through tick c − 1. If the level ends by then, the journal is complete as it is, and nothing is appended. This covers every c at or past the level's time limit T.
      - A closed level keeps its claim, and its ticks used, c + 1, follow the time actually spent. The time until the run resumes isn't counted, so it uses up `commitSlack`.
      - The contract cannot tell a closed level from a played one. Closing is how an honest client keeps its deadline.
 4. **Settle,** only when money depends on the run ([§7.3](#73-verification-cost)). Anyone may submit a settlement, and the credit always goes to the run's player. Settlement submits the level bytes and the journals, plus a proof on zk; the weights come from the season. `settleRun(runId, bytes[6] levels, bytes[6] journals, bytes proof)` checks, in this order, and reverts on the first failure:
    1. the run is committed and not yet settled, and `block.timestamp ≤ end + grace` for the run's season;
    2. `keccak256(keccak256(journals[0]) ‖ … ‖ keccak256(journals[5]))` equals the commitment;
-   3. each `levelIds[i] = keccak256(levels[i])` is one of the season's 16 level ids, which gives the level's slot and weight;
-   4. `verifyRun(levels, journals, weightsBp, proof)`, on the referee of the run's season ([§7.3](#73-verification-cost)), returns six Outcomes;
-   5. each Outcome i has `journalHash = keccak256(journals[i])`, `levelId = levelIds[i]`, the run's `runNonce`, `levelIndex = i`, `mode = 1`, the season's `rulesVersion`, and a `drawSlot` equal to the level's slot. This last check is the draw check *(P17)*: the contracts never compute the draw.
+   3. each `keccak256(levels[i])` is one of the season's 16 `levelIds`. Its index there is the level's slot, `slot[i]`, and the season's `weightsBp[slot[i]]` is its weight, `weight[i]`;
+   4. `verifyRun(levels, journals, weight, proof)`, on the referee of the run's season ([§7.3](#73-verification-cost)), returns six Outcomes;
+   5. each Outcome i has `journalHash = keccak256(journals[i])`, `levelId = keccak256(levels[i])`, the run's `runNonce`, `levelIndex = i`, `mode = 1`, the season's `rulesVersion`, and `drawSlot = slot[i]`. This last check is the draw check *(P17)*: the contracts never compute the draw.
 
    Settlement then records the run:
-   - its score, the sum of the six `levelScore` values, a `uint32`;
-   - its ticks, the sum of the six `ticksUsed` values;
-   - its clears, the number of levels whose `endReason` is Cleared.
+   - its score, the sum of the six `levelScore` values, a `uint32`, at most 393,210;
+   - its ticks, the sum of the six `ticksUsed` values, a `uint32`, at most 16,200;
+   - its clears, the number of levels whose `endReason` is Cleared, a `uint8`.
 
    If the deadline is missed, the run is marked late for good, and earns nothing; this is a result, not a revert. Otherwise `Season` ranks the run ([§8.4](#84-season-scoring)). A settled or late run cannot be settled again.
 
@@ -557,7 +561,7 @@ The flow is the same keyless one as ethblockdigger's `Vault`. It is split betwee
    - On every call, `keccak256(journalHashes[0] ‖ … ‖ journalHashes[5])` must equal the commitment, and `keccak256(journal)` must equal `journalHashes[i]`. The checks above then run for level i alone, through `verify`.
    - Each level settles once.
    - `settleRun` stays available after a partial `settleLevel`, so a third party cannot force the run onto the six-transaction path.
-   - A run counts only once all six levels are settled, before `end + grace`.
+   - A run counts only once all six levels are settled, by `end + grace` inclusive.
 
 ### 7.3 Verification cost
 
@@ -619,20 +623,25 @@ interface IReferee {
 }
 ```
 
-- **Rejections revert.** Every function is `view`. A journal or a level that replay rejects ([§6.3](#63-journal-bytes-v1)) reverts the call with its error code. No Outcome is ever returned for it, and the run stays committed and settleable.
+- **Rejections revert.** Every function is `view`, and no Outcome is ever returned for a journal or a level that replay rejects ([§6.3](#63-journal-bytes-v1)).
+  - On Stylus, the call reverts with replay's error code. On zk, no valid proof can exist, so the call reverts on the proof.
+  - A revert records nothing. A settlement that failed on what the settler submitted, such as wrong level bytes or a bad proof, can therefore be submitted again.
+  - Replay is deterministic, so a run whose committed journal replay rejects can never settle, and its fee stays in the pot.
 - **Independent replays.** `verifyRun` replays its six levels in order, each as `verify` would, with no check across them. Binding the six to one run is the contract's job ([§7.2](#72-run-flow)).
-- **`proof`** is empty on Stylus, where a non-empty proof reverts. On zk it carries the proof, whose public values bind keccak256 of each level and journal, each weight and each Outcome; M4.10 of the [plan](IMPLEMENTATION_PLAN.md) defines their encoding.
+- **`proof`** is empty on Stylus, where a non-empty proof reverts. On zk it carries the proof, whose public values bind keccak256 of each level and journal, each weight and each Outcome. M4.8 of the [plan](IMPLEMENTATION_PLAN.md) fixes their byte encoding.
 - **`rulesVersion()`** is the core's `RULES_VERSION`. A season accepts only a referee that reports the season's rules version ([§8.4](#84-season-scoring)).
 
 **Settlement shape** *(P16)*. A run settles in one transaction, `settleRun`, which calls `verifyRun` once.
 - **On Stylus,** the referee replays the six levels in that one transaction. Six replays at the 1M-gas gate fit well within Arbitrum's cap of 32M L2 gas per transaction. A full `settleRun`, with about 53 KB of calldata, also fits within the sequencer's 95,000-byte transaction size limit.
-- **On zk,** one guest execution replays the six levels and commits six Outcomes, so each verified run gets one proof, as point 4 above says. The proof must be a wrapped, onchain-verifiable one to fit within that size limit.
+- **On zk,** one guest execution replays the six levels and commits six Outcomes, so each verified run gets one proof, as point 4 above says. To fit within that size limit, the proof must be wrapped: compressed into the small SNARK that the frameworks' onchain verifiers check.
 - **Fallback.** `settleLevel` settles one level per transaction, for a run that does not fit in one.
 - **Later.** Season aggregation is measured in M4.8 and decided with D2 in M4.9.
 
 ### 7.4 Bots
 
 The game is deterministic and the simulation is tiny. Once the run nonce is revealed, a bot can search for strong inputs *within* the commit deadline, which only stops slow search. ethblockdigger reached the same conclusion: nothing cryptographic stops a competent real-time bot.
+
+**Copied and precomputed inputs** *(D14)*. If the seed chose only the boss's start cell and direction, a level would be one of at most 4 × 3,249 games: 900 on the open-field level. Committed journals are public, and so are the 16 levels. A bot could then reuse another run's events on a matching game, under its own header, or precompute strong inputs for every game before the season, and commit as soon as it reveals. Binding journals to their run stops the reuse of journal bytes, not of their events. So under D14, the level seed keeps driving the boss through the level, and no two runs share a game. [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 writes the rule before the core builds the boss.
 
 The levers are economic and social:
 
@@ -650,7 +659,7 @@ Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadma
 **The service is an untrusted prover, not an oracle.** An oracle's answer is believed; a proof is checked by the contract. So:
 
 - **No new trust.** A proof only attests the outcome the journals actually produce, so a compromised service cannot mint prizes. The worst it can do is refuse or delay. The contracts never accept the service's signature or word in place of a proof: that is the oracle design ethblockdigger rejected, where one compromised key could pay out.
-- **The payout goes to the run's player, whoever submits.** As in v1's settlement ([§7.2](#72-run-flow)), anyone may submit and the credit goes to the run's player: each outcome carries the run nonce and its journal hash, which settlement checks against the run's stored nonce and commitment. The service can therefore settle a run without being able to redirect the money. A journal copied into another run fails, because journals are bound to their run's nonce ([§6.4](#64-seeds-and-commitments)).
+- **The payout goes to the run's player, whoever submits.** As in v1's settlement ([§7.2](#72-run-flow)), anyone may submit and the credit goes to the run's player: each outcome carries the run nonce and its journal hash, which settlement checks against the run's stored nonce and commitment. The service can therefore settle a run without being able to redirect the money. The same journal bytes fail in another run, because journals are bound to their run's nonce ([§6.4](#64-seeds-and-commitments)).
 - **Gasless claims need a new `Season`.** v1's claim pays only its caller and takes no fee. For the service to claim on a player's behalf and keep a relay fee, a new `Season` generation adds a claim that pays the player's share minus a fee the player signed (EIP-712), and a relay-fee cap among the parameters each season commits at open. Without the player's signature, anyone could claim for any player and take the fee.
 - **Someone pays for proving:** the player up front, the payout (through that signed claim), or the protocol (from the rake). Verify by exception still applies: only runs that money depends on need a proof ([§7.3](#73-verification-cost)).
 - **The commit never waits for the service.** The dApp commits the run itself, as in v1 ([§7.2](#72-run-flow)), and the service only receives the run after the commit. Proving can happen any time before the season's end plus its settlement grace: days after the commit, for a run played early in the season.
@@ -684,9 +693,9 @@ All 16 levels, offline, on the Pico or in the browser. Scores stay local and no 
 
 - **Draw check** *(P17)*. The contracts never compute the draw. The core returns each level's draw slot in its Outcome ([§7.3](#73-verification-cost)), and settlement checks that the season's level in that slot is the level that was played ([§7.2](#72-run-flow)). A Solidity copy of the draw would be a second implementation of a core procedure.
 - **Score.** The run score is the sum of the six level scores ([§8.4](#84-season-scoring)).
-- **Ranking** *(D10)*. Players are ranked by their best settled run of the season. Qualifying runs, those that cleared at least the season's `minClears` levels (1 by default), rank first. Among them, the higher score ranks first, and ties go to fewer ticks. Ranking by cumulative score would let spending buy rank.
-- **Rewards** *(D10)*. The players' pot is the season's run fees, minus a rake capped at 20 %, plus any rollover from earlier seasons that had no qualified player. It is shared pro-rata by best-run score among the qualified players, those with a qualifying settled run ([§8.4](#84-season-scoring)). ethblockdigger's `Season` has the same rake cap, rollover and pro-rata claims; it chose pro-rata because top-heavy payouts invite collusion when there are few players.
-- **Sybils.** Fees are paid at run start, so every point costs money, and extra wallets only pay off if they also play well.
+- **Ranking** *(D10)*. Players are ranked by their best settled run of the season. Qualifying runs, those that cleared at least the season's `minClears` levels (1 by default), rank first. Among them, the higher score ranks first, and ties go to fewer ticks. Ranking by cumulative score would let spending buy rank, although best runs only limit a wallet's rank, not a player's (Sybils, below).
+- **Rewards** *(D10)*. The players' pot is the season's run fees, minus a rake capped at 20 %, plus any rollover from earlier seasons that had no qualified points. It is shared pro-rata by best-run score among the qualified players, those with a qualifying settled run ([§8.4](#84-season-scoring)). ethblockdigger's `Season` has the same rake cap, rollover and pro-rata claims; it chose pro-rata because top-heavy payouts invite collusion when there are few players.
+- **Sybils.** Fees are paid at run start, so every point costs money. But best runs are kept per wallet, and wallets are free. A player who plays each run from a new wallet has every run counted, as cumulative scoring would, and out-earns a one-wallet player of the same skill and spend. A new wallet's run pays off once its score exceeds the season's qualified points per paid run divided by (1 − rake): 1.25 times at a 20 % rake. This is an accepted residual, which `docs/ECONOMY.md` tracks; paying on every qualifying run instead would need every rewarded run verified.
 - **Several runs at once.** A player may buy several runs, reveal them all, and play only the one with the best draw. Each attempt is paid, and only the best run counts, so this is a paid re-roll, accepted like any other extra run.
 
 ### 8.3 Superchallenge: deferred
@@ -702,35 +711,35 @@ The draft adjusts the per-level scoring formula, which is based on completion, e
 - **Purpose: normalize difficulty,** so that the random six-level draw doesn't decide the ranking. For example, set the weights so that the median claim observed on each level is worth the same number of points. The input is the previous season's public journals; the first mainnet season uses playtest-bot data.
 - **Testnet seasons** are named `testnet-N`. They take their weights from playtest-bot data, and their journals never feed mainnet weights.
 
-**Season parameters.** `Season.open`, which only the operator may call, commits them, and nothing changes them afterwards. Seasons are numbered from 1. The season files under `seasons/` own the values; the proposals below are defaults.
+**Season parameters.** `Season.open`, which only the operator may call, commits them, and nothing changes them afterwards. The operator is an address set in `Season`'s constructor. Each `Season` contract numbers its seasons from 1 (`uint256`), in the order `open` runs; season-file names such as `testnet-N` are labels, not these numbers. The season files under `seasons/` own the values; the proposals below are defaults.
 
 | Parameter | Solidity type | Rule |
 |---|---|---|
 | `referee` | `IReferee` | the referee every run of the season settles through ([§7.3](#73-verification-cost)). `open` reverts unless `referee.rulesVersion()` equals `rulesVersion`, and records the referee's codehash, so players can check it against the reproducible build. |
 | `rulesVersion` | `uint16` | the `RULES_VERSION` the season accepts ([§6.3](#63-journal-bytes-v1)) |
-| `levelIds` | `bytes32[16]` | the 16 level ids, in draw-slot order ([§8.2](#82-challenge-000005-eth-per-run)): non-zero and all different |
+| `levelIds` | `bytes32[16]` | the 16 level ids, in draw-slot order ([§8.2](#82-challenge-000005-eth-per-run)): non-zero and all different. Each must be a valid level ([§5](#5-levels)). `open` cannot check that, so the operator checks it with the level tool before opening: a run that draws an invalid level could never settle. |
 | `weightsBp` | `uint16[16]` | each slot's weight, at least 1 |
 | `runFee` | `uint256` | the run fee in wei, above 0. 0.00005 ETH is `50_000_000_000_000` *(D12)*. |
 | `rakeBp` | `uint16` | at most 2,000 (20 %) |
-| `length` | `uint64` | seconds, from 1 to 90 days. 14 days on testnet *(D12)*. |
-| `grace` | `uint64` | the settlement period after the end, in seconds, from 1 to 30 days. Proposed: 48 h. |
+| `length` | `uint64` | seconds, from 1 s to 90 days (7,776,000 s). 14 days on testnet, apart from the 1-day `testnet-0` rehearsal *(D12)*. |
+| `grace` | `uint64` | the settlement period after the end, in seconds, from 1 s to 30 days (2,592,000 s). Proposed: 48 h. A grace shorter than the reveal window plus 1,080 s plus `commitSlack` strands runs bought just before the end; only test seasons on a local node use one. |
 | `commitSlack` | `uint64` | seconds, from 1 to 3,600. Proposed: 120 s, which is 60 s of transaction latency plus 6 × 10 s of level transitions. |
 | `minClears` | `uint8` | the levels a run must clear to qualify, from 1 to 6. 1 by default *(D10)*. |
 
 The upper bounds catch a typo in a season that nothing can pause or edit.
 
 **Sequencing.**
-- **Open.** A season starts when `open` runs, at `start = block.timestamp`, and ends at `end = start + length`. `open(s + 1)` requires `block.timestamp ≥ end(s)`, so seasons overlap only during season s's grace period.
+- **Open.** A season starts when `open` runs, at `start = block.timestamp`, and ends at `end = start + length`. `open(s + 1)` requires `block.timestamp ≥ end(s)`, so a season overlaps only the grace periods of earlier seasons.
 - **Runs.** Season s accepts runs while `start ≤ block.timestamp < end`. A run belongs to the season of its `startRun`: its fee joins that season's pot, and it settles through that season's referee, until `end + grace` inclusive ([§7.2](#72-run-flow)). A new rules version or a new backend therefore means a new season, and the runs of the previous season keep settling under their own rules.
-- **Best runs** *(D10)*. For each player, `Season` keeps the best settled, on-time run. It compares qualification first (a qualifying run beats one that doesn't), then the higher score, then fewer ticks; on a full tie, the run settled first stays. Anyone may settle any committed run, and the journals are public, so this order matters: settling another of a player's runs can never lower that player's payout. `Season` keeps `totalQualifiedPoints`, a `uint256`, the sum of the qualified players' best scores.
+- **Best runs** *(D10)*. For each player address, `Season` keeps the best settled, on-time run. It compares qualification first (a qualifying run beats one that doesn't), then the higher score, then fewer ticks; on a full tie, the run settled first stays. Anyone may settle any committed run, and the journals are public, so this order matters: settling another of a player's runs can never lower that player's payout. `Season` keeps `totalQualifiedPoints`, a `uint256`, the sum of the qualified players' best scores.
 - **Close.** `closeSeason()` is callable by anyone once `block.timestamp > end + grace`, so it never overlaps settlement. Seasons close in order. Closing computes:
   - `rake = fees × rakeBp / 10_000`, rounded down, over the season's own run fees only, credited to the treasury;
   - `playersPot = fees − rake + rollover`, where `rollover` is the players' pot of earlier seasons that had no qualified points.
 
-  If `totalQualifiedPoints` is 0, the whole `playersPot` rolls over to the next season to close, and is never raked again. Qualified players need the close before they can claim, which gives them a reason to call it, and the operator's season job calls it too.
-- **Claims.** `claim(s)` pays its caller `bestScore × playersPot / totalQualifiedPoints`, rounded down, once. The rounding dust stays in the contract. Shares don't expire in v1.
+  If `totalQualifiedPoints` is 0, the whole `playersPot` rolls over to the next season to close, and is never raked again. Qualified players need the close before they can claim, which gives them a reason to call it, and the operator's scheduled season workflow calls it too.
+- **Claims.** `claim(s)` pays a qualified caller `bestScore × playersPot / totalQualifiedPoints`, rounded down, once. The rounding dust stays in the contract. Shares don't expire in v1.
 - **Treasury.** `Season`'s constructor takes an immutable treasury address. `withdrawRake()`, which anyone may call, zeroes the rake credited so far, then sends it to the treasury. A treasury that rejects ETH therefore never blocks a close or a claim.
-- **Custody.** `Season` holds all the ETH: `startRun` forwards each fee to it. Only `claim` and `withdrawRake` send ETH, both after their state changes (checks-effects-interactions). The solvency invariant: the balance covers the fees of the seasons not yet closed, the rollover, the rake not yet withdrawn, and the unclaimed players' pots of closed seasons.
+- **Custody.** `Season` holds all the ETH: `startRun` forwards each fee to it. Only `claim` and `withdrawRake` send ETH out of `Season`, both after their state changes (checks-effects-interactions). The solvency invariant: the balance covers the fees of the seasons not yet closed, the rollover, the rake not yet withdrawn, and the unclaimed players' pots of closed seasons.
 
 ## 9. Roadmap
 
@@ -807,7 +816,7 @@ The draft's five system prompts, revised, live in [`.claude/skills/`](.claude/sk
 |---|---|---|
 | [`rp2040-firmware`](.claude/skills/rp2040-firmware/SKILL.md) | Embedded C++ Optimizer | Adds the real pin map and memory budget, and drops the full framebuffer. Inputs are sampled once per tick and reach the core through the journal. The firmware never re-implements a rule, and runs the test vectors on the device. |
 | [`deterministic-core`](.claude/skills/deterministic-core/SKILL.md) | Deterministic Engine Architect | Adds what breaks determinism besides floats: tick order, iteration order, hidden inputs, panics, and rule changes without a version bump. |
-| [`onchain-referee`](.claude/skills/onchain-referee/SKILL.md) | EVM / Solidity Gas Optimizer | Drops the Solidity replay: verification runs the one core, on Stylus or behind a zk proof, with the draft's 1M gas as a per-level gate on Stylus. Never trusts a client seed or score, and binds journals to their run so they can't be copied. |
+| [`onchain-referee`](.claude/skills/onchain-referee/SKILL.md) | EVM / Solidity Gas Optimizer | Drops the Solidity replay: verification runs the one core, on Stylus or behind a zk proof, with the draft's 1M gas as a per-level gate on Stylus. Never trusts a client seed or score, and binds journals to their run so their bytes can't be reused. |
 | [`journal-codec`](.claude/skills/journal-codec/SKILL.md) | Cryptographic State Mapper | One codec for all targets, with strict decoding. keccak256 serves for seed derivation and commitments only, not as a per-tick PRNG. |
 | [`parity-testing`](.claude/skills/parity-testing/SKILL.md) | State-Machine Debugger | Per-tick state-hash traces instead of a final hash only. Adds shared golden vectors, property tests, differential fuzzing and bot playtests. |
 
@@ -836,15 +845,17 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D7 | Minion patrol rule, and minions stranded by a capture | **Agreed on 2026-10-28, provisional:** the right-hand rule with the orientation step ([§4.7](#47-minions)), kept if M1's coverage property test finds no traps; otherwise replaced in M1, or kept with a bounded trap rate the owner accepts. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([§4.7](#47-minions), PIN-17). |
 | D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. In the browser, players can rebind the keyboard keys ([§2](#2-hardware-target)). |
 | D9 | Boss size | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. |
-| D10 | Challenge ranking and payout | **Decided:** best settled run per season, ties going to fewer ticks; pro-rata payout among qualified players (owner, 2026-10-28). Qualification, decided in M0.7: a settled run that cleared at least `minClears` levels, a season parameter that defaults to 1. Qualifying runs rank first, so settling another of a player's runs never lowers that player's payout ([§8.4](#84-season-scoring)). |
+| D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players (owner, 2026-10-28). Decided in M0.7: ties go to fewer ticks, and a qualifying run is a settled run that cleared at least `minClears` levels, a season parameter that defaults to 1. Qualifying runs rank first, so settling another of a player's runs never lowers that player's payout ([§8.4](#84-season-scoring)). |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)); 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
 | D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-firmware`, `jiro-firmware-drivers`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
+| D14 | Seed space | **Decided** (owner, 2026-10-29): the level seed keeps driving the boss through the level, so that no two runs share a game and inputs can be neither copied from another run nor precomputed ([§7.4](#74-bots)). [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 writes the exact rule into §4.6 and §6.4, for the owner's approval, before the core builds the boss. |
 
-M0.7 also closed four contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §11):
+M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §11):
 
 - **P4,** the verifier interface ([§7.3](#73-verification-cost));
 - **P5,** the journals published in the commit's calldata ([§7.2](#72-run-flow));
+- **P6,** the commit slack as a season parameter, `commitSlack` ([§8.4](#84-season-scoring)), whose testnet value comes later;
 - **P16,** one settlement transaction per run, with a per-level fallback ([§7.3](#73-verification-cost));
 - **P17,** the draw check by slot, with the draw computed only by the core ([§8.2](#82-challenge-000005-eth-per-run)).
 
