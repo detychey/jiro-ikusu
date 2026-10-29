@@ -513,7 +513,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - D7 stays provisional until M1.7 measures it.
 - **Tags.**
   - **Rule units.** In README §4.1-§4.10, every unit that states a rule gets a tag `[R4.<n>-<k>]`, for example `[R4.5-3]`. A unit is a bullet or sub-bullet, a numbered step, a table row other than a header row, a paragraph, or a fenced code block; a code block carries its tag in a comment line inside the block. So the rail definition of §4.2, the entity table of §4.3, tick steps 1-7 of §4.4, the boss pseudocode of §4.6, capture steps 1-3 of §4.8, the resolution steps of §4.9, and the rows of the §4.10 table and its ticks-used paragraph are all tagged.
-  - **Exemptions.** A unit that only gives a rationale, history or an example (for example "Why this procedure" and its bullets, or the "Known gap" note of §4.7) ends with the marker `<!-- rationale -->`.
+  - **Exemptions.** A unit that only gives a rationale, history or an example (for example "Why this procedure" and its bullets, or the "Why the patrol covers the rail" note of §4.7) ends with the marker `<!-- rationale -->`.
   - **Other tags.** Every pinned detail below gets `[PIN-nn]`. Every coverage bullet of the `parity-testing` skill gets `[COV-nn]`.
   - Each tag appears exactly once, where its rule is written; M1.9's coverage index finds them by regex.
   - **`scripts/check-rule-tags.sh`** prints every unit from README §4.1 to the end of §4 that carries neither a tag nor the marker: each non-blank line outside code blocks that is not a heading, a table header row or a separator row, and each code block without a tag. It also prints every repeated, malformed or misplaced tag, and fails loudly if it finds no §4.1. Empty output and exit 0 mean every rule is tagged. M0.4 runs it in CI.
@@ -523,7 +523,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   3. `[PIN-03]` `press_tick` is 0 when an event at tick 0 holds B.
   4. `[PIN-04]` Fast cut: if sub-step 1 is blocked by the own trail, hits the boss's body, or closes the cut, there is no sub-step 2.
   5. `[PIN-05]` A blocked move keeps the resolved direction.
-  6. `[PIN-06]` Minion orientation: for a tested heading h, "ahead" is the 4-neighbor in direction h, and "on its right" is the 4-neighbor a quarter turn clockwise from h (E for N, S for E, W for S, N for W).
+  6. `[PIN-06]` Minion orientation: for a tested heading h, "on its right" is the 4-neighbor a quarter turn clockwise from h (E for N, S for E, W for S, N for W), and "behind its right" is the diagonal neighbor one step to that side and one step back (SE for N, SW for E, NW for S, NE for W). M1.14 replaced the first proposal, which tested a rail cell "ahead".
   7. `[PIN-07]` X held at tick 0: the level is committed with claim 0, and ticks used is 1.
   8. `[PIN-08]` Ticks used is t + 1 when the level ends during tick t, whatever the step.
   9. `[PIN-09]` A clear at step 3 ends the level before that tick's hits are resolved.
@@ -958,7 +958,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 
 - **Goal:** an exact replacement patrol rule in README §4.7, or an accepted bounded trap rate, approved by the user before any code depends on it.
 - **Deliverables:**
-  - README §4.7: the replacement written exactly, with its tags. The default candidate is contour tracing of the field boundary, which README §4.7 names.
+  - README §4.7: the replacement written exactly, with its tags. The default candidate is contour tracing of the field boundary.
   - the pinned details it changes, if any;
   - if the rule adds minion state: the §4.3 entity table, the §6.4 state-hash layout and its version, its total length, and the M0.6 worked example recomputed with `tools/xcheck/worked-examples.mjs`;
   - the PR body: the trap count of a throwaway prototype (not committed) on M1.7's 10,000 seeds, and on the seeds that failed in M1.7.
@@ -2356,7 +2356,7 @@ dApp and season
   M5.2 + M3.4 + M4.14 -> M5.4 ; M4.14 + M5.3 + M5.4 -> M5.5 ; M5.3 + M5.5 -> M5.6
 ```
 
-**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as README §4.7's uncommitted simulation suggests (about 0.15 %). The number after each item is its earliest finish. The end is at 39.
+**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39.
 
 ```text
 M0.1 1 > M0.5 3 > M0.6 5 > M1.1 7 > M1.3 9 > M1.5 11 > M1.7 13 > M1.8 16 > M1.15 18
