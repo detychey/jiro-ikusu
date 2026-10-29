@@ -177,6 +177,15 @@ fn fmix32_test_values() {
     );
 }
 
+/// [R4.6-5] README §6.4's levelIndex 2 example, whose vx and vy differ: the boss starts at its
+/// top-left cell (20, 32), moving toward +x and −y.
+#[test]
+fn boss_starts_at_the_seeds_cell_and_direction() {
+    let seed = level_seed(&keccak256(&[b"jiro.example.9"]), 2);
+    let boss = Boss::start(&open_field(), &seed).unwrap();
+    assert_eq!((boss.pos, boss.vx, boss.vy), (Pos { x: 20, y: 32 }, 1, -1));
+}
+
 /// README §6.4, the worked example `open-field-empty`, played to the end with the player
 /// standing still.
 #[test]

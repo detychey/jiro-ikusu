@@ -148,6 +148,23 @@ fn body_cells_stay_empty_after_a_capture() {
     assert!(boss.iter().all(|&cell| grid.get(cell) == Cell::Empty));
 }
 
+/// [R4.8-2] [R4.8-3] A cell is marked `BOSS_ZONE` when it is pushed, so it is pushed once: the
+/// entries the fill wrote to the caller's stack are all different.
+#[test]
+fn fill_pushes_each_cell_once() {
+    let mut grid = Grid::level_start(&open_field());
+    let mut stack = [u16::MAX; CAPTURE_STACK];
+    capture(&mut grid, body(1, 1, 8), &mut stack).unwrap();
+    let mut pushed: Vec<u16> = stack
+        .into_iter()
+        .take_while(|&entry| entry != u16::MAX)
+        .collect();
+    let count = pushed.len();
+    pushed.sort_unstable();
+    pushed.dedup();
+    assert_eq!(pushed.len(), count);
+}
+
 /// Step 3 of README §4.8, shared by the reference fills.
 fn settle(grid: &mut Grid) -> u16 {
     let mut captured = 0;
