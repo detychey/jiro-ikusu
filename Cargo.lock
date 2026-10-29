@@ -29,6 +29,9 @@ version = "0.1.0"
 [[package]]
 name = "jiro-tools"
 version = "0.1.0"
+dependencies = [
+ "jiro-core",
+]
 
 [[package]]
 name = "memchr"

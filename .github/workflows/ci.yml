@@ -131,12 +131,13 @@ jobs:
           cache: npm
           cache-dependency-path: tools/xcheck/package-lock.json
 
-      - name: Derivation fixtures match ethers (vectors-drift)
+      - name: Vectors match their generators (vectors-drift)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: |
           npm --prefix tools/xcheck ci
           node tools/xcheck/derivations.mjs --write
-          bash scripts/check-drift.sh vectors/derivations.json
+          cargo run -p jiro-tools --locked -- vectors
+          bash scripts/check-drift.sh vectors/
 
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
