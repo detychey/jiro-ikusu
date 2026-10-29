@@ -25,6 +25,9 @@ dependencies = [
 [[package]]
 name = "jiro-shell"
 version = "0.1.0"
+dependencies = [
+ "jiro-core",
+]
 
 [[package]]
 name = "jiro-tools"
@@ -39,6 +42,7 @@ name = "jiro-wasm"
 version = "0.1.0"
 dependencies = [
  "jiro-core",
+ "jiro-shell",
 ]
 
 [[package]]

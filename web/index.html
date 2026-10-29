@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jiro-ikusu</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Jiro-ikusu</h1>
+      <p>Cut the field away from the boss. Claim the level's target to clear it.</p>
+    </header>
+    <main>
+      <section class="field">
+        <canvas id="field" tabindex="0" aria-label="Playing field"></canvas>
+        <div id="end" class="end" hidden>
+          <h2 id="end-title"></h2>
+          <p id="end-detail"></p>
+          <p class="hash">State hash <code id="end-hash"></code></p>
+          <div class="actions">
+            <button id="download" type="button">Download journal (.jrn)</button>
+            <button id="again" type="button">Play again</button>
+          </div>
+        </div>
+      </section>
+      <aside class="side">
+        <dl id="hud" class="hud">
+          <dt>Claim</dt><dd id="hud-claim">–</dd>
+          <dt>Lives</dt><dd id="hud-lives">–</dd>
+          <dt>Shield</dt><dd id="hud-shield">–</dd>
+          <dt>Time</dt><dd id="hud-time">–</dd>
+        </dl>
+        <form id="setup" class="setup">
+          <label>Level <select id="level"></select></label>
+          <label>Level file <input id="level-file" type="file" accept=".bin,application/octet-stream" /></label>
+          <button id="play" type="submit">Play</button>
+          <p id="setup-error" class="error" role="alert"></p>
+        </form>
+        <details class="controls">
+          <summary>Controls</summary>
+          <p>Move with the joystick keys. Hold A to cut fast, B to slow down behind the shield, X to bank the level.</p>
+          <table id="bindings"></table>
+          <p id="bindings-message" role="status"></p>
+        </details>
+      </aside>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

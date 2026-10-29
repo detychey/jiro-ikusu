@@ -164,3 +164,68 @@ jobs:
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: bash scripts/check-drift.sh .
+
+  # The web row of plan §3.4: the browser shell, on the wasm build of the core. Its steps skip
+  # when no path of the `web` filter changed, except on workflow_dispatch.
+  web:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: dorny/paths-filter@v4.0.3
+        id: changes
+        with:
+          filters: |
+            web:
+              - 'web/**'
+              - 'core/**'
+              - 'shell/**'
+              - 'tools/**'
+              - 'vectors/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+              - '.github/workflows/ci.yml'
+
+      - name: Toolchain
+        id: toolchain
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.changes.outputs.web == 'true' }}
+        run: bash scripts/bootstrap.sh core
+
+      - uses: Swatinem/rust-cache@v2.9.3
+        if: ${{ steps.toolchain.outcome == 'success' }}
+
+      - name: jiro-wasm
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: bash web/wasm/build-wasm.sh
+
+      - uses: actions/setup-node@v7.1.0
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Browser shell builds and passes its tests (web)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: |
+          npm --prefix web ci
+          npm --prefix web run typecheck
+          npm --prefix web run lint
+          npm --prefix web test
+          npm --prefix web run build
+
+      - name: Native replay of the browser's scripted journal gives its end-screen hash (web)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: |
+          cargo run -p jiro-tools --locked -- replay --vector vectors/game/open-field-empty.json \
+            --journal web/test/out/scripted.jrn | tee target/scripted-replay.txt
+          grep -qF "$(cat web/test/out/scripted.hash)" target/scripted-replay.txt
+
+      - name: The checks left the tree clean
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: bash scripts/check-drift.sh .
