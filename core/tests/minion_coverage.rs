@@ -10,8 +10,8 @@ use jiro_core::minion::{orient, right_hand_step};
 use jiro_core::types::{Cell, CellIndex, Dir, Pos};
 
 /// Boards with at least one trap among their 10,000 and 100,000 fixed-seed boards.
-const EXPECTED_TRAPS_10K: usize = 131;
-const EXPECTED_TRAPS_100K: usize = 1_213;
+const EXPECTED_TRAPS_10K: usize = 0;
+const EXPECTED_TRAPS_100K: usize = 0;
 
 /// Blobs claimed after the spawn, each after a random number of moves and followed by a capture.
 const CAPTURES_PER_BOARD: u32 = 3;

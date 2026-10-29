@@ -115,16 +115,27 @@ impl Minions {
     }
 }
 
-/// The first heading, in the order N, E, S, W, with open field on its right and a rail cell
-/// ahead; `current` if none qualifies [R4.7-3, PIN-06].
+/// The first heading, in the order N, E, S, W, with open field on its right; failing that, the
+/// first with open field behind its right; `current` if none qualifies, which no rail cell does
+/// [R4.7-3, PIN-06].
 pub fn orient(grid: &Grid, pos: Pos, current: Dir) -> Dir {
-    ORIENTATION_ORDER
-        .into_iter()
-        .find(|&heading| {
-            let right = neighbor(pos, heading.clockwise()).and_then(|cell| grid.at(cell));
-            let ahead = neighbor(pos, heading).is_some_and(|cell| grid.is_rail(cell));
-            matches!(right, Some(Cell::Empty | Cell::Trail)) && ahead
-        })
+    let is_open = |cell: Option<Pos>| {
+        matches!(
+            cell.and_then(|cell| grid.at(cell)),
+            Some(Cell::Empty | Cell::Trail)
+        )
+    };
+    let on_right = |heading: Dir| neighbor(pos, heading.clockwise());
+    let behind_right = |heading: Dir| {
+        on_right(heading).and_then(|cell| neighbor(cell, heading.clockwise().clockwise()))
+    };
+    let first = |qualifies: &dyn Fn(Dir) -> bool| {
+        ORIENTATION_ORDER
+            .into_iter()
+            .find(|&heading| qualifies(heading))
+    };
+    first(&|heading| is_open(on_right(heading)))
+        .or_else(|| first(&|heading| is_open(behind_right(heading))))
         .unwrap_or(current)
 }
 

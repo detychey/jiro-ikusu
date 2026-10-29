@@ -1,7 +1,7 @@
 //! Journal vectors: valid journals, and one malformed journal per decoder rule of README §6.3.
 
 use jiro_core::Error;
-use jiro_core::consts::{HEADER_LEN, MAX_EVENTS, MAX_JOURNAL_LEN, MAX_TICKS};
+use jiro_core::consts::{HEADER_LEN, MAX_EVENTS, MAX_JOURNAL_LEN, MAX_TICKS, RULES_VERSION};
 use jiro_core::journal::{Event, Header, Mode, encode};
 use jiro_core::keccak::keccak256;
 use jiro_core::types::InputMask;
@@ -9,7 +9,7 @@ use jiro_core::types::InputMask;
 use super::{Case, case, level};
 
 /// README §6.3, the worked example `open-field-empty`.
-const OPEN_FIELD_EMPTY: &str = "0x01000100277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000";
+const OPEN_FIELD_EMPTY: &str = "0x01000200277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000";
 
 const EVENT_COUNT_AT: usize = HEADER_LEN - 2;
 const LEVEL_INDEX_AT: usize = HEADER_LEN - 3;
@@ -73,7 +73,7 @@ pub fn cases() -> Result<Vec<Case>, String> {
     let mut trailing = two_events.clone();
     trailing.push(0);
     let mut other_rules = two_events.clone();
-    other_rules[1..3].copy_from_slice(&2u16.to_be_bytes());
+    other_rules[1..3].copy_from_slice(&(RULES_VERSION + 1).to_be_bytes());
     let mut too_many = raw(&[]);
     too_many[EVENT_COUNT_AT..HEADER_LEN].copy_from_slice(&(MAX_EVENTS + 1).to_be_bytes());
     Ok(vec![

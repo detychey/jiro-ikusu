@@ -13,7 +13,7 @@ pub const MAX_EVENTS: u16 = 2_700;
 /// Ticks per second (README §2, §6.1).
 pub const TICK_HZ: u8 = 15;
 /// The rules version journals are played under (README §6.3, PIN-13).
-pub const RULES_VERSION: u16 = 1;
+pub const RULES_VERSION: u16 = 2;
 /// Levels in a run; `levelIndex` stays below it (README §6.3).
 pub const RUN_LEVELS: usize = 6;
 /// Levels in a season, the deck the draw picks from (README §8.2).
