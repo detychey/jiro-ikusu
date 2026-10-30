@@ -2,7 +2,7 @@
 
 **Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1, M0.2 and M0.5-M0.7 have merged, and M0.3 and M0.4 have not started.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
-[`README.md`](README.md) is the normative specification, and this plan turns it into 64 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
+[`README.md`](README.md) is the normative specification, and this plan turns it into 65 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
 The order:
 
@@ -12,7 +12,7 @@ The order:
 4. **Parallel tracks.** Device bring-up starts during M1 (M3.1), the contracts after M0 (M4.3), and the level tool after the format vectors (M2.4). Bots and levels follow replay (M1.8). Stylus gas and the zk trials follow the gameplay vectors (M1.9), and the zk proving pipeline follows the zk choice (M1.12). The browser follows the wasm build (M1.11). Measurements feed back into the work; they never block rule work.
 5. **dApp and a testnet season** (M5).
 
-Item count: M0 7, M1 18, M2 10, M3 7, M4 16, M5 6. Review findings split out of M4.12 add items from M4.17 on.
+Item count: M0 7, M1 18, M2 11, M3 7, M4 16, M5 6. Review findings split out of M4.12 add items from M4.17 on.
 
 ## Contents
 
@@ -1209,10 +1209,11 @@ Each milestone's README §9 "done when" closes when these items merge:
 | M2.4 | Level sources, level tool, levels table and L01 | M1.4 | M | Approve the README §5 amendment |
 | M2.5 | Level editor | M2.1, M2.4 | M | none |
 | M2.6 | Playtest bots, target curve and floor | M1.8, M2.4, M1.15 if built | M | Approve the target curve and the floor |
-| M2.7 | Levels 1-8 | M2.6 | M | Approve the layouts |
+| M2.7 | Levels 1-8 | M2.6, M2.11 | M | Approve the layouts |
 | M2.8 | Levels 9-16 | M2.7 | M | Approve the layouts |
 | M2.9 | Play test, calibration gate, weights, gate-set journals; level freeze | M1.10, M2.2, M2.8 | M | Play the 16 levels on the PR preview |
 | M2.10 | Browser Training mode | M2.1, M2.3, M2.5, M2.9 | S | Optional check on the PR preview |
+| M2.11 | Bold playtest bot in the reference mix | M2.6 | S | Approve the bold bot, the mix and the retuned L01 |
 
 #### M2.1 Browser game shell
 
@@ -1347,6 +1348,8 @@ Each milestone's README §9 "done when" closes when these items merge:
     - Greedy: the largest rectangle away from the boss and the minions;
     - Committer: Greedy's cuts, and banks the claim with X once a lost life leaves it at its last one. A claim threshold below the level's target would bank before most clears: at 6,000 bp, Committer banked 95.0 % of 1,000 L01 runs at seed 1, so no mix of the four policies holding it could reach 90 % at level 1 (M2.6's measurement);
     - RandomWalk: the baseline.
+
+    M2.11 added a fifth policy, Bold (Greedy with a thinner boss margin), moved Committer onto Bold's cuts, and made Bold and Committer the reference mix.
   - `jiro-tools playtest`:
     - bots emit one raw mask per tick through the core Recorder, and `replay()` scores them;
     - runs are deterministic per integer seed, parallel across seeds with `std::thread`;
@@ -1374,7 +1377,8 @@ Each milestone's README §9 "done when" closes when these items merge:
 - **Deliverables:** `levels/src/01..08-*.txt` (01 is L01) and their `.bin` files; the regenerated `levels/README.md`; the playtest report. The ramp uses the §5 knobs:
   - the boss period goes from 3 down to 1, and the boss body size varies (a larger body reaches more of the trail);
   - minions go from 0 to 2, with slow periods first, then faster ones;
-  - corridor-making obstacles start around level 5;
+  - corridor-making obstacles start around level 5. Under the reference mix of M2.11, corridors raise the clear rate (`reports/bold-sweep.md`), so a corridor level needs a faster or larger boss, or more minions, to stay in its band;
+  - lives, 5 on L01, ease the steps between the other knobs;
   - the time limit and the target vary late in the ramp.
 - **Done when:**
   - all 8 levels are valid, with distinct ids;
@@ -1438,6 +1442,23 @@ Each milestone's README §9 "done when" closes when these items merge:
   With M2.9, this closes README §9's M2, whose deliverables include the replay viewer (M2.3) and the editor (M2.5), so this PR updates the status lines.
 - **Verify with:** `npm --prefix web test -- training && npm --prefix web run build`
 - **Skills:** none; tier `web`. **README:** §8.1, §8.4, §9 M2. **Needs user:** none. Optional, not gating: play a few levels in Training on this PR's preview, and check the scores and local bests (round D7).
+
+#### M2.11 Bold playtest bot in the reference mix
+
+- **Goal:** a reference mix whose clear rate falls with the knobs of the ramp, so that M2.7 and M2.8 can meet the P11 curve with the default 3-minute time limit. Boss speed and size, and lives, set the rate; minions lower it by a few points.
+- **Why:** M2.6's Greedy keeps the boss out of its reach for the whole cut. On an open field it clears 100 % whatever the boss's speed or size, and still 95 % with an 8-cell boss moving every tick and three period-1 minions; corridors barely move it. Only short time limits bring it lower: at boss period 1, a 700-tick limit (47 s) gives 49 % and a 900-tick limit 76 %. The owner chose a bolder bot over short limits (2026-10-30).
+- **Deliverables:**
+  - Greedy's boss margin becomes a `Caution`: `reach_pct` percent of the cells the boss can move while the cut is open, plus `cells`. Greedy keeps 100 % and 2 cells; the new **Bold** policy keeps 75 % and 1 cell.
+  - Committer plays Bold's cuts.
+  - `levels/targets.json`: the reference mix becomes Bold and Committer.
+  - L01 retuned to its band under the new mix: boss period 3 and 5 lives. `levels/README.md` and the playtest report are regenerated.
+  - `reports/bold-sweep.md`: the mix's clear rate on single test levels, with each level's knobs.
+- **Done when:**
+  - `--check` passes on L01 with the new mix;
+  - over 300 runs, the mix's clear rate falls from at least 90 % on an open field with a period-3 boss and 5 lives to at most 25 % on the same field with 3 lives, an 8-cell boss at period 1 and three period-1 minions, with the steps between in `reports/bold-sweep.md`;
+  - the drift gates are green.
+- **Verify with:** `cargo run -p jiro-tools --release --locked -- playtest --levels levels/ --only 1 --runs 1000 --seed 1 --check levels/targets.json`, and the commands of `reports/bold-sweep.md` for its rows.
+- **Skills:** `parity-testing`. **README:** §5. **Needs user:** approve the bold bot, the reference mix and the retuned L01 (merge; round D3b).
 
 ## 8. M3 Pico
 
@@ -2327,7 +2348,7 @@ Core
 Browser, levels and bots
   M1.11 -> M2.1 -> M2.2, M2.3
   M1.4 -> M2.4 ; M2.1 + M2.4 -> M2.5
-  M1.8 + M2.4 (+ M1.15 if built) -> M2.6 -> M2.7 -> M2.8
+  M1.8 + M2.4 (+ M1.15 if built) -> M2.6 -> M2.11 -> M2.7 -> M2.8
   M1.10 + M2.2 + M2.8 -> M2.9 ; M2.1 + M2.3 + M2.5 + M2.9 -> M2.10
 
 Device (bring-up starts during M1)
@@ -2355,7 +2376,7 @@ dApp and season
   M5.2 + M3.4 + M4.14 -> M5.4 ; M4.14 + M5.3 + M5.4 -> M5.5 ; M5.3 + M5.5 -> M5.6
 ```
 
-**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40.
+**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40. M2.11, a follow-up of M2.6 on the levels chain, adds one more and breaks the ties below: M2.6 > M2.11 > M2.7 > M2.8 > M4.11 becomes the only longest chain, ending at 41, and M1.9 > M4.7 and the browser chain move to slack 1.
 
 ```text
 M0.1 1 > M0.5 3 > M0.6 5 > M1.1 7 > M1.3 9 > M1.5 11 > M1.7 13 > M1.8 16 > M1.15 18
@@ -2377,7 +2398,7 @@ Several chains tie with it, so each of these is also critical (slack 0):
   - 1: M1.2; M0.7 > M1.18; the zk trials M1.16, M1.17 > M1.12; M4.8; the Stylus measurement M4.1 > M4.2; M4.9; the viewer and editor M2.3, M2.5.
   - 2: M1.4; M1.10; M1.14; the device chain M3.2 > M3.3 > M3.6 > M3.4.
   - 5 or more: M2.4 (5); M3.5 (6); the contracts chain M4.3 > M4.4 > M4.5 > M4.6 (7); M3.7 and M4.13 (9); M0.3 (12); M1.13 (13); M3.1 (16).
-- **Owner latency.** The 39 units count agent work only. The main chain alone holds 19 sequential merges. These owner rounds (§13) sit on critical chains: A1, A2, A3 (M0.1, M0.2 and M0.5, M0.4 and M0.6), B1 (M1.7), D3, D4, D5 (the target curve and the layouts of M2.6-M2.8), D6 (the play test of M2.9), F0 when it occurs (before M4.10), F1 and F2 (M4.9 and M4.12, M4.14), and G1-G3 (M5.4-M5.6). Stacking (§1.2) lets agents work ahead of merges, but each review and each hardware or play turnaround on this list delays the end by its own length. The season then runs for its configured length plus the settlement grace.
+- **Owner latency.** The 39 units count agent work only. The main chain alone holds 19 sequential merges. These owner rounds (§13) sit on critical chains: A1, A2, A3 (M0.1, M0.2 and M0.5, M0.4 and M0.6), B1 (M1.7), D3, D3b, D4, D5 (the target curve, the bold bot and mix, and the layouts of M2.6, M2.11, M2.7 and M2.8), F0 when it occurs (before M4.10), F1 and F2 (M4.9 and M4.12, M4.14), and G1-G3 (M5.4-M5.6). Stacking (§1.2) lets agents work ahead of merges, but each review and each hardware or play turnaround on this list delays the end by its own length. The season then runs for its configured length plus the settlement grace.
 - **Owner steps with little slack:** A4 and B0, the M0.7 review and the D14 rule (1); B3, the zk framework and any prover route (1); B2, the D7 replacement (2); E1, the device timing check (2); and the reviews of M2.3 and M2.5 (1).
 
 ## 13. Human-in-the-loop checklist
@@ -2422,9 +2443,10 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 - [ ] **D1, does not gate** (M2.2 ready): play the open-field level on the PR's preview, and comment on feel, controls and rendering.
 - [ ] **D2** (M2.4 ready; slack 5): approve the README §5 amendment.
 - [ ] **D3, critical** (M2.6 ready): approve the target curve and the floor.
+- [ ] **D3b, critical** (M2.11 ready): approve the bold bot, the reference mix of Bold and Committer, and the retuned L01.
 - [ ] **D4, critical** (M2.7 ready): approve layouts 1-8 from the ASCII previews and the bot numbers; the levels are also playable on the PR's preview.
 - [ ] **D5, critical** (M2.8 ready): approve layouts 9-16.
-- [ ] **D6, critical** (M2.9 ready): play all 16 levels on the PR's preview, and comment one line per level. Merging freezes the levels.
+- [ ] **D6** (M2.9 ready; slack 1): play all 16 levels on the PR's preview, and comment one line per level. Merging freezes the levels.
 - [ ] **D7, does not gate** (M2.10 ready): play a few levels in Training on the PR's preview, and check the scores and local bests.
 
 ### Round E: hardware play

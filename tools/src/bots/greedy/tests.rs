@@ -64,10 +64,22 @@ fn a_cut_never_returns_to_an_earlier_leg() {
 fn greedy_cuts_the_largest_safe_rectangle() {
     let mut game = open_field();
     game.boss.pos = at(1, 1);
-    let plan = best_cut(&game).expect("a cut");
+    let plan = best_cut(&game, Caution::CAREFUL).expect("a cut");
     assert_eq!(
         (plan.out, plan.side, plan.depth, plan.width),
-        (Dir::Up, Dir::Right, 30, 23)
+        (Dir::Up, Dir::Right, 57, 23)
+    );
+}
+
+/// On L01's start, with its boss at (20, 22) moving every third tick, Bold cuts the same
+/// rectangle six rows deeper than Greedy.
+#[test]
+fn bold_cuts_deeper_than_greedy_beside_the_same_boss() {
+    let game = open_field();
+    let depth = |caution| best_cut(&game, caution).map(|plan| plan.depth);
+    assert_eq!(
+        (depth(Caution::CAREFUL), depth(Caution::BOLD)),
+        (Some(17), Some(23))
     );
 }
 
@@ -75,12 +87,30 @@ fn greedy_cuts_the_largest_safe_rectangle() {
 fn greedy_keeps_the_boss_beyond_the_cells_it_can_move() {
     let mut game = open_field();
     game.boss.pos = at(1, 1);
-    let plan = best_cut(&game).expect("a cut");
+    let plan = best_cut(&game, Caution::CAREFUL).expect("a cut");
     let rectangle = Area::spanned(plan.start, plan.out, plan.side, plan.depth, plan.width)
         .expect("inside the grid");
     let ticks = (2 * i16::from(plan.depth) + i16::from(plan.width)) / 2 + 1;
-    let margin = ticks / i16::from(game.boss.period) + BOSS_MARGIN;
+    let margin = ticks / i16::from(game.boss.period) + 2;
     assert!(Area::of_boss(&game.boss).gap(rectangle) >= margin);
+}
+
+/// (caution, ticks of the cut, boss period, margin in cells), computed by hand.
+#[test]
+fn a_caution_keeps_its_share_of_the_boss_reach_and_its_cells() {
+    let cases = [
+        (Caution::BOLD, 86, 1, 65),
+        (Caution::BOLD, 35, 3, 9),
+        (Caution::CAREFUL, 86, 1, 88),
+        (Caution::CAREFUL, 69, 3, 25),
+    ];
+    for (caution, ticks, period, margin) in cases {
+        assert_eq!(
+            caution.margin(ticks, period),
+            margin,
+            "{caution:?} {ticks} {period}"
+        );
+    }
 }
 
 #[test]
@@ -94,7 +124,7 @@ fn greedy_cuts_only_a_one_cell_strip_beside_a_minion() {
             heading: Dir::Left,
         },
     });
-    let plan = best_cut(&game).expect("a strip");
+    let plan = best_cut(&game, Caution::CAREFUL).expect("a strip");
     assert_eq!(plan.depth, 1);
 }
 

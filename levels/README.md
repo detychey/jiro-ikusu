@@ -17,7 +17,7 @@ clear rate comes from the play test (plan M2.9).
 
 | # | Name | `level_id` | B | Boss spawn | Boss period | Minions | Minion period | R | T | Lives | Target | Target clear rate | Measured clear rate |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 01 | open | `0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9` | 5 | (20, 20)-(34, 34) | 2 | 0 | 0 | 0 | 2700 | 3 | 7500 bp | 95 % | – |
+| 01 | open | `0x73b1224cbb7c3f5cfbdd2ee95895a9189c65470c8ddd2760fd675ae2753205fe` | 5 | (20, 20)-(34, 34) | 3 | 0 | 0 | 0 | 2700 | 5 | 7500 bp | 95 % | – |
 
 ## 01-open
 
