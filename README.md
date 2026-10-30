@@ -2,6 +2,8 @@
 
 A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It runs on a Raspberry Pi Pico fitted with a Waveshare Pico-LCD-1.3, and in the browser.
 
+Play the browser build of `main` at [jiro-ikusu.win](https://jiro-ikusu.win). Every pull request that touches the game gets its own preview, linked in a comment on the pull request.
+
 > **Status: specification, rules frozen (milestone M0, 2026-10-28), no game code yet.** This README is the project specification. It is built from [`plan-draft.md`](plan-draft.md), the original draft (kept for reference). It also fixes the parts of the draft that would break determinism or the economics, and records the decisions, taken and still open, in [§13](#13-open-decisions). A rule tied to a decision is tagged with its ID, e.g. *(D3)*.
 
 ## Contents

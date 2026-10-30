@@ -2,3 +2,5 @@ target/
 node_modules/
 dist/
 web/test/out/
+web/test-results/
+web/playwright-report/

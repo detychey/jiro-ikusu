@@ -1,0 +1,119 @@
+# Cloudflare Pages (plan M2.2, P9): every pull request that touches the game gets its own
+# preview, and every push to main deploys production, served at https://jiro-ikusu.win.
+# - build: no secrets. It builds the wasm and the site and runs the Playwright smoke test on it,
+#   so a broken build is never deployed, then uploads web/dist.
+# - deploy: the only job with the Cloudflare secrets. It checks out the deploy scripts alone,
+#   installs wrangler from their lockfile without install scripts, and deploys the artifact.
+name: pages
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'core/**'
+      - 'shell/**'
+      - 'levels/**'
+      - 'vectors/**'
+      - 'scripts/deploy/**'
+      - '.github/workflows/pages.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A newer push cancels an older pull-request run; production deploys on main always finish.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Toolchain
+        run: bash scripts/bootstrap.sh core
+
+      - uses: Swatinem/rust-cache@v2.9.3
+
+      - name: jiro-wasm
+        run: bash web/wasm/build-wasm.sh
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build the site
+        run: |
+          npm --prefix web ci
+          npm --prefix web run build
+
+      - name: Smoke test
+        run: |
+          npx --prefix web playwright install --with-deps chromium
+          npm --prefix web run e2e
+
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: site
+          path: web/dist
+          retention-days: 3
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/deploy
+
+      - uses: actions/download-artifact@v7.0.0
+        with:
+          name: site
+          path: web/dist
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+
+      - name: Deploy
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PR_NUMBER: ${{ github.event.number }}
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund --prefix scripts/deploy
+          bash scripts/deploy/deploy.sh
+
+      - name: Post the preview URL on the pull request
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.deploy.outputs.url != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          body="Preview of ${HEAD_SHA::7}: $URL"
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --edit-last --body "$body" \
+            || gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "$body"
