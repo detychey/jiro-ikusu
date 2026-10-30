@@ -95,7 +95,7 @@ fn two_runs_with_one_seed_write_identical_reports() {
     for out in ["first", "second"] {
         let out = dir.join(out).display().to_string();
         let args = [
-            "--levels", &levels, "--runs", "20", "--seed", "3", "--out", &out,
+            "--levels", &levels, "--only", "1", "--runs", "20", "--seed", "3", "--out", &out,
         ];
         run(&args).expect("playtest");
     }
@@ -187,7 +187,7 @@ fn a_bot_seeds_from_the_first_8_bytes_of_its_nonce() {
 
 #[test]
 fn the_levels_hash_names_the_committed_report() {
-    let levels = [l01()];
+    let levels = load_levels(&levels_dir()).expect("levels");
     let report = Report {
         levels: &levels,
         policies: &[],
@@ -368,7 +368,7 @@ fn the_check_file_names_the_mix_that_plays() {
         path.display().to_string(),
     );
     let args = [
-        "--levels", &levels, "--runs", "10", "--out", &out, "--check", &path,
+        "--levels", &levels, "--only", "1", "--runs", "10", "--out", &out, "--check", &path,
     ];
     run(&args).expect("in band");
     let json = fs::read_dir(dir.join("out"))
@@ -391,7 +391,7 @@ fn the_check_file_fails_a_level_outside_its_band() {
         path.display().to_string(),
     );
     let args = [
-        "--levels", &levels, "--runs", "10", "--out", &out, "--check", &path,
+        "--levels", &levels, "--only", "1", "--runs", "10", "--out", &out, "--check", &path,
     ];
     let error = run(&args).expect_err("out of band");
     assert!(error.contains("level 01 open"), "{error}");
