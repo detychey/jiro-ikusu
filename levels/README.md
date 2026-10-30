@@ -16,7 +16,7 @@ The target and measured clear rates come from the playtest bots (plan M2.6) and 
 
 | # | Name | `level_id` | B | Boss spawn | Boss period | Minions | Minion period | R | T | Lives | Target | Target clear rate | Measured clear rate |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 01 | open | `0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9` | 5 | (20, 20)-(34, 34) | 2 | 0 | 0 | 0 | 2700 | 3 | 7500 bp | – | – |
+| 01 | open | `0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9` | 5 | (20, 20)-(34, 34) | 2 | 0 | 0 | 0 | 2700 | 3 | 7500 bp | 90 % | – |
 
 ## 01-open
 
