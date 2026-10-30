@@ -8,7 +8,7 @@ mod game_hits;
 mod game_long;
 pub mod journal;
 pub mod level;
-mod play;
+pub mod play;
 
 use jiro_core::Error;
 

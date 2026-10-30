@@ -178,7 +178,7 @@ fn the_table_shows_every_knob_and_the_field_of_a_level() {
         source: source.clone(),
         bytes,
     };
-    let table = table(&[built]);
+    let table = table(&[built], None);
     let row = format!(
         "| 07 | rich | `{}` | 3 | (10, 12)-(40, 44) | 4 | 3 | 2 | 45 | 1800 | 2 | 6000 bp | – | – |\n",
         hex(&level_id(&bytes))

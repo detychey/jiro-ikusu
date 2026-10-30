@@ -1,0 +1,6 @@
+{
+  "mix": ["greedy", "committer"],
+  "tolerance_pct": 5,
+  "floor_bp": 500,
+  "clear_rate_pct": [95, 90, 85, 80, 74, 68, 62, 56, 50, 44, 38, 33, 28, 23, 19, 15]
+}
