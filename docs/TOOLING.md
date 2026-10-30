@@ -288,6 +288,7 @@ Monthly budget: 1,500 minutes for this repository (see Decisions, P14). The `get
 | `ci.yml`, job `rust`, from M1.1 | 2: the job took 72 s, of which debug tests 11 s, release tests 21 s (mostly the LTO build) and the target and MSRV builds 11 s | M1.1, run [40871486955](https://github.com/detychey/jiro-ikusu/actions/runs/40871486955) |
 | `ci.yml`, job `rust`, from M1.11 | 4: the job took 192 s with the 43 game vectors of M1.9, the version gate and wasm-parity, and 207 s on M2.1's run | M1.11 and M2.1, runs [40974842315](https://github.com/detychey/jiro-ikusu/actions/runs/40974842315) and [40975310871](https://github.com/detychey/jiro-ikusu/actions/runs/40975310871) |
 | `ci.yml`, job `web` | 1: the job took 45 s with its caches warm: toolchain, wasm build, npm ci, typecheck, lint, vitest, build and the native replay check | M2.1, run [40975310871](https://github.com/detychey/jiro-ikusu/actions/runs/40975310871) |
+| `pages.yml` | 3: job `build` took 66 s (2 minutes), of which the smoke test 31 s; job `deploy` took 22 s (1 minute), of which wrangler 13 s | M2.2, run [40975816996](https://github.com/detychey/jiro-ikusu/actions/runs/40975816996) |
 
 ## CI runners and access (M0.4)
 
