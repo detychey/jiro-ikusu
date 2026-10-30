@@ -557,10 +557,11 @@ fn a_nonce_plays_the_level_it_draws_as_a_challenge_level() {
 #[test]
 fn a_nonce_refuses_a_level_its_run_does_not_draw() {
     let dir = scratch("nonce-missing");
+    fs::copy(levels_dir().join("01-open.bin"), dir.join("01-open.bin")).expect("copy");
     let (run_nonce, level_index) = nonce_drawing_l01();
     let other = (level_index + 1) % 6;
     let (levels, nonce_hex, index, out) = (
-        levels_dir().display().to_string(),
+        dir.display().to_string(),
         hex(&run_nonce),
         other.to_string(),
         dir.join("level.jrn").display().to_string(),

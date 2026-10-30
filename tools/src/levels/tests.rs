@@ -1,5 +1,8 @@
 use std::path::PathBuf;
 
+use jiro_core::game::Game;
+use jiro_core::types::InputMask;
+
 use super::*;
 
 /// The open-field level of README §5, as published in its worked example.
@@ -115,6 +118,24 @@ fn every_source_is_the_render_of_its_bytes() {
         let bytes = build(&text).unwrap_or_else(|error| panic!("{}", error.describe(&file)));
         let level = decode(&bytes).expect("built bytes decode");
         assert_eq!(render(&level).as_deref(), Ok(text.as_str()), "{file}");
+    }
+}
+
+#[test]
+fn no_level_hits_the_player_on_its_first_tick() {
+    for (file, text) in sources() {
+        let level = decode(&build(&text).expect("build")).expect("decode");
+        for bits in 0..=0x7f {
+            let mut game = Game::new(&level, &[0; 32], 0).expect("valid level");
+            let start = (game.player.lives, game.player.shield);
+            game.step(InputMask::new(bits).expect("mask"))
+                .expect("tick 0");
+            assert_eq!(
+                (game.player.lives, game.player.shield),
+                start,
+                "{file}, input {bits:#04x}"
+            );
+        }
     }
 }
 
