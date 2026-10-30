@@ -1,8 +1,9 @@
-//! jiro-tools, the native target (README §3): `vectors` writes vectors/, and `replay` replays a
-//! journal and diagnoses another target's disagreement.
+//! jiro-tools, the native target (README §3): `vectors` writes vectors/, `replay` replays a
+//! journal and diagnoses another target's disagreement, and `level` builds the level sources.
 
 mod coverage;
 mod json;
+mod levels;
 mod preimage;
 mod replay;
 mod scenarios;
@@ -21,7 +22,10 @@ fn main() -> ExitCode {
     {
         ["vectors"] => vectors::write(&repo_root()),
         ["replay", rest @ ..] => replay::run(rest),
-        _ => Err("usage: jiro-tools vectors | jiro-tools replay ...".to_string()),
+        ["level", rest @ ..] => levels::run(rest),
+        _ => Err(
+            "usage: jiro-tools vectors | jiro-tools replay ... | jiro-tools level ...".to_string(),
+        ),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

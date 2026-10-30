@@ -110,7 +110,7 @@ A tick changes only a handful of cells. So the renderer redraws the changed 4×4
 | `web/` | `wasm32` module | Canvas rendering, keyboard, replay viewer, level editor, wallet, Web Serial bridge |
 | `referee/` | Stylus contract or zkVM guest *(D2)* | `IReferee`: `verifyRun`, `verify` and `rulesVersion` ([§7.3](#73-verification-cost)) |
 | `contracts/` | (Solidity) | Payments, entropy, runs, seasons, maps |
-| `levels/` | (data) | The 16 levels |
+| `levels/` | (data) | The 16 levels: ASCII sources in `src/`, their level bytes, and a generated table |
 | `vectors/` | output of the native build | Golden test vectors that every target must reproduce |
 
 **Core language: Rust** *(D1, decided)*. The draft specifies C++; the core is written in Rust instead, for three reasons:
@@ -387,7 +387,7 @@ blocked-start validity: 39
 
 **The 16 levels** ramp up difficulty with the knobs in the table above: boss body size, boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the scoring weights of the testnet seasons and of the first mainnet season ([§8.4](#84-season-scoring)).
 
-**The level editor** in the browser produces level bytes, and the 16 levels are authored with it. The Superchallenge map generator is deferred with its mode.
+**Authoring** *(P10)*. The 16 levels are authored as ASCII sources in `levels/src/`, compiled by the level tool, or in the browser's level editor. Both produce level bytes through the core's single level codec, so a level drawn either way has the same bytes and the same `level_id`. The Superchallenge map generator is deferred with its mode.
 
 ## 6. Input journal and byte formats
 
