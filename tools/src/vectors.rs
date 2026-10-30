@@ -36,7 +36,7 @@ pub fn write(root: &Path) -> Result<(), String> {
             level_vector(&case)?,
         )?;
     }
-    rewrite(&vectors.join("format"), &files)?;
+    rewrite(&vectors.join("format"), is_vector_file, &files)?;
     let mut games = BTreeMap::new();
     let cases = scenarios::game::cases()?;
     for case in &cases {
@@ -48,7 +48,7 @@ pub fn write(root: &Path) -> Result<(), String> {
         )?;
         add(&mut games, format!("{}.trace", case.name), trace)?;
     }
-    rewrite(&vectors.join("game"), &games)?;
+    rewrite(&vectors.join("game"), is_vector_file, &games)?;
     let covers: Vec<(String, Vec<String>)> = cases
         .into_iter()
         .map(|case| (case.name, case.covers))
@@ -56,15 +56,17 @@ pub fn write(root: &Path) -> Result<(), String> {
     coverage::write(root, &covers)
 }
 
-/// Replaces the `.json` and `.trace` files of `dir` with `files`.
-fn rewrite<T: AsRef<[u8]>>(dir: &Path, files: &BTreeMap<String, T>) -> Result<(), String> {
+/// Replaces the files of `dir` that `generated` accepts with `files`, so a file whose generator
+/// is gone does not survive.
+pub fn rewrite<T: AsRef<[u8]>>(
+    dir: &Path,
+    generated: impl Fn(&Path) -> bool,
+    files: &BTreeMap<String, T>,
+) -> Result<(), String> {
     fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     for entry in fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
         let path = entry.map_err(|e| e.to_string())?.path();
-        if path
-            .extension()
-            .is_some_and(|ext| ext == "json" || ext == "trace")
-        {
+        if generated(&path) {
             fs::remove_file(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         }
     }
@@ -74,6 +76,11 @@ fn rewrite<T: AsRef<[u8]>>(dir: &Path, files: &BTreeMap<String, T>) -> Result<()
     }
     println!("wrote {} files to {}", files.len(), dir.display());
     Ok(())
+}
+
+fn is_vector_file(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|ext| ext == "json" || ext == "trace")
 }
 
 fn add<T>(files: &mut BTreeMap<String, T>, name: String, contents: T) -> Result<(), String> {
