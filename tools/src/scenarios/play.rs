@@ -212,29 +212,6 @@ pub struct Plan {
     pub width: u8,
 }
 
-impl Plan {
-    /// The direction that carries the cut on from where `game` left the player.
-    pub fn direction(self, game: &Game) -> Dir {
-        let pos = game.player.pos;
-        let travelled = |dir: Dir| distance(self.start, pos, dir);
-        let phases = if travelled(self.out) < i16::from(self.depth) {
-            [self.out, self.side, reverse(self.out)]
-        } else if travelled(self.side) < i16::from(self.width) {
-            [self.side, reverse(self.out), self.out]
-        } else {
-            [reverse(self.out), self.side, reverse(self.side)]
-        };
-        phases
-            .into_iter()
-            .find(|&dir| {
-                neighbor(pos, dir).is_some_and(|cell| {
-                    game.grid.at(cell) != Some(Cell::Trail) && !in_boss(game, cell)
-                })
-            })
-            .unwrap_or(reverse(self.out))
-    }
-}
-
 impl CaptureBot {
     pub fn new(seed: u64, max_leg: u8) -> Self {
         Self {
@@ -272,15 +249,29 @@ impl CaptureBot {
             }
             return walk_rail(&mut self.walk, &mut self.rng, game, order);
         }
-        self.plan
-            .get_or_insert(Plan {
-                out: Dir::Up,
-                side: Dir::Left,
-                start: player.cut_start,
-                depth: 0,
-                width: 0,
+        let plan = *self.plan.get_or_insert(Plan {
+            out: Dir::Up,
+            side: Dir::Left,
+            start: player.cut_start,
+            depth: 0,
+            width: 0,
+        });
+        let travelled = |dir: Dir| distance(plan.start, player.pos, dir);
+        let phases = if travelled(plan.out) < i16::from(plan.depth) {
+            [plan.out, plan.side, reverse(plan.out)]
+        } else if travelled(plan.side) < i16::from(plan.width) {
+            [plan.side, reverse(plan.out), plan.out]
+        } else {
+            [reverse(plan.out), plan.side, reverse(plan.side)]
+        };
+        phases
+            .into_iter()
+            .find(|&dir| {
+                neighbor(player.pos, dir).is_some_and(|cell| {
+                    game.grid.at(cell) != Some(Cell::Trail) && !in_boss(game, cell)
+                })
             })
-            .direction(game)
+            .unwrap_or(reverse(plan.out))
     }
 }
 

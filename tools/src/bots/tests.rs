@@ -1,22 +1,12 @@
 use jiro_core::game::{EndReason, Game};
-use jiro_core::journal::{Header, Mode};
-use jiro_core::level::{Level, decode, encode, level_id};
+use jiro_core::level::{Level, decode};
 
 use super::*;
-use crate::scenarios::play::play;
+use crate::scenarios::play::{header, play};
 
 fn l01() -> Level {
     let bytes = std::fs::read(crate::repo_root().join("levels/01-open.bin")).expect("L01");
     decode(&bytes).expect("decode")
-}
-
-fn header(level: &Level, k: u8) -> Header {
-    Header {
-        mode: Mode::Training,
-        run_nonce: [k; 32],
-        level_id: level_id(&encode(level)),
-        level_index: 0,
-    }
 }
 
 #[test]
@@ -25,7 +15,7 @@ fn greedy_clears_the_open_field_level() {
     for k in 0..10 {
         let recorder = play(
             &level,
-            &header(&level, k),
+            &header(&level, [k; 32]),
             Policy::Greedy.bot(u64::from(k)),
             |_| {},
         )
@@ -42,6 +32,16 @@ fn committer_banks_once_a_lost_life_leaves_its_last() {
     assert_ne!(bot(&game), InputMask::X);
     game.player.lives = 1;
     assert_eq!(bot(&game), InputMask::X);
+}
+
+#[test]
+fn committer_plays_on_at_two_lives() {
+    let level = l01();
+    let mut game = Game::new(&level, &[1; 32], 0).expect("game");
+    let mut bot = Policy::Committer.bot(1);
+    bot(&game);
+    game.player.lives = 2;
+    assert_ne!(bot(&game), InputMask::X);
 }
 
 #[test]

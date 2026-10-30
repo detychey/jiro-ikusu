@@ -9,6 +9,9 @@ use jiro_core::types::{Cell, CellIndex, Dir, InputMask, Pos};
 
 use crate::scenarios::play::{Plan, Rng, distance, mask, reverse, walk_rail};
 
+#[cfg(test)]
+mod tests;
+
 /// The depths and widths Greedy weighs, in cells.
 const LEGS: [u8; 12] = [1, 2, 3, 5, 8, 12, 17, 23, 30, 38, 47, 57];
 
@@ -16,7 +19,9 @@ const LEGS: [u8; 12] = [1, 2, 3, 5, 8, 12, 17, 23, 30, 38, 47, 57];
 /// cut is open.
 const BOSS_MARGIN: i16 = 2;
 
-/// Cells kept between a minion and a rectangle.
+/// Cells kept between a minion and a rectangle deeper than one cell. A strip one cell deep is
+/// exempt: minions move only on the rail, so a minion right behind the player would otherwise
+/// block every cut, and the strip, cut along the rail, captures the rail ahead of the minion.
 const MINION_MARGIN: i16 = 3;
 
 pub struct Greedy {
@@ -129,9 +134,10 @@ fn best_cut(game: &Game) -> Option<Plan> {
                     let ticks = (2 * i16::from(depth) + i16::from(width)) / 2 + 1;
                     let margin = ticks / i16::from(game.boss.period) + BOSS_MARGIN;
                     let safe = boss.gap(rectangle) >= margin
-                        && minions
-                            .iter()
-                            .all(|minion| minion.gap(rectangle) >= MINION_MARGIN);
+                        && (depth == 1
+                            || minions
+                                .iter()
+                                .all(|minion| minion.gap(rectangle) >= MINION_MARGIN));
                     if safe && best.is_none_or(|(area, _)| cells > area) {
                         let plan = Plan {
                             out,

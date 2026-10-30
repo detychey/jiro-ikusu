@@ -190,6 +190,20 @@ fn the_table_shows_every_knob_and_the_field_of_a_level() {
     );
 }
 
+#[test]
+fn the_table_shows_each_level_s_target_clear_rate() {
+    let source = rich();
+    let bytes = build(&source).expect("the rich level is valid");
+    let built = Built {
+        stem: "07-rich".to_string(),
+        level: decode(&bytes).expect("decode"),
+        source,
+        bytes,
+    };
+    let rates: Vec<u16> = (0..16).map(|i| 95 - 5 * i).collect();
+    assert!(table(&[built], Some(&rates)).contains("| 6000 bp | 65 % | – |"));
+}
+
 /// Each rule of README §5 that a source can break, at the line that breaks it.
 #[test]
 fn each_broken_rule_is_reported_at_its_line() {
