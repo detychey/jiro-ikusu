@@ -1,5 +1,5 @@
-boss_size=6
-boss_spawn=20,20,33,33
+boss_size=8
+boss_spawn=20,20,31,31
 boss_period=2
 minion_period=3
 respawn_delay=90

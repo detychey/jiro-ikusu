@@ -1,4 +1,4 @@
-boss_size=5
+boss_size=4
 boss_spawn=20,20,34,34
 boss_period=2
 minion_period=3

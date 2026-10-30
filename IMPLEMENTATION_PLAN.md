@@ -1379,7 +1379,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - minions go from 0 to 2, with slow periods first, then faster ones;
   - corridor-making obstacles start around level 5. Under the reference mix of M2.11, corridors raise the clear rate (`reports/bold-sweep.md`), so a corridor level needs a faster or larger boss, or more minions, to stay in its band;
   - lives, 5 on L01, ease the steps between the other knobs;
-  - the time limit and the target vary late in the ramp.
+  - the target varies late in the ramp. The time limit stays at 2,700 ticks: the owner chose the bold bot of M2.11 over short limits.
 - **Done when:**
   - all 8 levels are valid, with distinct ids;
   - each level's reference clear rate over 1,000 seeds is within its band, and its median effective claim is above the floor;
