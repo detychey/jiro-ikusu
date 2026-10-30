@@ -1209,10 +1209,11 @@ Each milestone's README §9 "done when" closes when these items merge:
 | M2.4 | Level sources, level tool, levels table and L01 | M1.4 | M | Approve the README §5 amendment |
 | M2.5 | Level editor | M2.1, M2.4 | M | none |
 | M2.6 | Playtest bots, target curve and floor | M1.8, M2.4, M1.15 if built | M | Approve the target curve and the floor |
-| M2.7 | Levels 1-8 | M2.6 | M | Approve the layouts |
+| M2.7 | Levels 1-8 | M2.6, M2.11 | M | Approve the layouts |
 | M2.8 | Levels 9-16 | M2.7 | M | Approve the layouts |
 | M2.9 | Play test, calibration gate, weights, gate-set journals; level freeze | M1.10, M2.2, M2.8 | M | Play the 16 levels on the PR preview |
 | M2.10 | Browser Training mode | M2.1, M2.3, M2.5, M2.9 | S | Optional check on the PR preview |
+| M2.11 | Bold playtest bot in the reference mix | M2.6 | S | Approve the bold bot, the mix and the retuned L01 |
 
 #### M2.1 Browser game shell
 
@@ -1438,6 +1439,22 @@ Each milestone's README §9 "done when" closes when these items merge:
   With M2.9, this closes README §9's M2, whose deliverables include the replay viewer (M2.3) and the editor (M2.5), so this PR updates the status lines.
 - **Verify with:** `npm --prefix web test -- training && npm --prefix web run build`
 - **Skills:** none; tier `web`. **README:** §8.1, §8.4, §9 M2. **Needs user:** none. Optional, not gating: play a few levels in Training on this PR's preview, and check the scores and local bests (round D7).
+
+#### M2.11 Bold playtest bot in the reference mix
+
+- **Goal:** a reference mix whose clear rate falls with the knobs of the ramp (boss speed and size, minions, corridors), so that M2.7 and M2.8 can meet the P11 curve with the default 3-minute time limit.
+- **Why:** M2.6's Greedy keeps the boss out of its reach for the whole cut. On an open field it clears 100 % whatever the boss's speed or size, and still 90 % with an 8-cell boss moving every tick and three period-1 minions; corridors give 94 % to 100 %. Only short time limits bring it lower: the curve's 56 % at level 8 needs limits of about 45 s. The owner chose a bolder bot over short limits (2026-10-30).
+- **Deliverables:**
+  - Greedy's boss margin becomes a `Caution`: `reach_pct` percent of the cells the boss can move while the cut is open, plus `cells`. Greedy keeps 100 % and 2 cells; the new **Bold** policy keeps 75 % and 1 cell.
+  - Committer plays Bold's cuts.
+  - `levels/targets.json`: the reference mix becomes Bold and Committer.
+  - L01 retuned to its band under the new mix: boss period 3 and 5 lives. `levels/README.md` and the playtest report are regenerated.
+- **Done when:**
+  - `--check` passes on L01 with the new mix;
+  - over 300 runs, the mix's clear rate falls from at least 90 % on an open field with a period-3 boss and 5 lives to at most 25 % with an 8-cell boss at period 1 and three period-1 minions, with the steps between listed in the PR;
+  - the drift gates are green.
+- **Verify with:** `cargo run -p jiro-tools --release --locked -- playtest --levels levels/ --only 1 --runs 1000 --seed 1 --check levels/targets.json`
+- **Skills:** `parity-testing`. **README:** §5. **Needs user:** approve the bold bot, the reference mix and the retuned L01 (merge; round D3).
 
 ## 8. M3 Pico
 
@@ -2327,7 +2344,7 @@ Core
 Browser, levels and bots
   M1.11 -> M2.1 -> M2.2, M2.3
   M1.4 -> M2.4 ; M2.1 + M2.4 -> M2.5
-  M1.8 + M2.4 (+ M1.15 if built) -> M2.6 -> M2.7 -> M2.8
+  M1.8 + M2.4 (+ M1.15 if built) -> M2.6 -> M2.11 -> M2.7 -> M2.8
   M1.10 + M2.2 + M2.8 -> M2.9 ; M2.1 + M2.3 + M2.5 + M2.9 -> M2.10
 
 Device (bring-up starts during M1)
@@ -2355,7 +2372,7 @@ dApp and season
   M5.2 + M3.4 + M4.14 -> M5.4 ; M4.14 + M5.3 + M5.4 -> M5.5 ; M5.3 + M5.5 -> M5.6
 ```
 
-**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40.
+**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40. M2.11, a follow-up of M2.6 on the levels chain, adds one more.
 
 ```text
 M0.1 1 > M0.5 3 > M0.6 5 > M1.1 7 > M1.3 9 > M1.5 11 > M1.7 13 > M1.8 16 > M1.15 18
@@ -2422,6 +2439,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 - [ ] **D1, does not gate** (M2.2 ready): play the open-field level on the PR's preview, and comment on feel, controls and rendering.
 - [ ] **D2** (M2.4 ready; slack 5): approve the README §5 amendment.
 - [ ] **D3, critical** (M2.6 ready): approve the target curve and the floor.
+- [ ] **D3, critical** (M2.11 ready): approve the bold bot, the reference mix of Bold and Committer, and the retuned L01.
 - [ ] **D4, critical** (M2.7 ready): approve layouts 1-8 from the ASCII previews and the bot numbers; the levels are also playable on the PR's preview.
 - [ ] **D5, critical** (M2.8 ready): approve layouts 9-16.
 - [ ] **D6, critical** (M2.9 ready): play all 16 levels on the PR's preview, and comment one line per level. Merging freezes the levels.

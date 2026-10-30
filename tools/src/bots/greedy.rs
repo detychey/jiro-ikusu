@@ -1,5 +1,6 @@
 //! Greedy: from the rail, the largest rectangle it can cut out while the boss and the minions stay
-//! clear of it, cut with A held. With no such rectangle in reach, it walks along the rail.
+//! clear of it, cut with A held. With no such rectangle in reach, it walks along the rail. Its
+//! `Caution` sets how far it keeps the boss.
 
 use jiro_core::boss::Boss;
 use jiro_core::game::Game;
@@ -15,9 +16,32 @@ mod tests;
 /// The depths and widths Greedy weighs, in cells.
 const LEGS: [u8; 12] = [1, 2, 3, 5, 8, 12, 17, 23, 30, 38, 47, 57];
 
-/// Cells kept between the boss and a rectangle, on top of the cells the boss can move while the
-/// cut is open.
-const BOSS_MARGIN: i16 = 2;
+/// How far Greedy keeps the boss from a rectangle: `reach_pct` percent of the cells the boss can
+/// move while the cut is open, plus `cells`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Caution {
+    pub reach_pct: i16,
+    pub cells: i16,
+}
+
+impl Caution {
+    /// Out of the boss's reach for the whole cut, and 2 cells more.
+    pub const CAREFUL: Self = Self {
+        reach_pct: 100,
+        cells: 2,
+    };
+
+    /// Three quarters of the boss's reach, and 1 cell more: a fast boss can catch a long cut.
+    pub const BOLD: Self = Self {
+        reach_pct: 75,
+        cells: 1,
+    };
+
+    /// The margin, in cells, for a cut of `ticks` ticks from a boss that moves every `period`.
+    fn margin(self, ticks: i16, period: u8) -> i16 {
+        ticks * self.reach_pct / (100 * i16::from(period)) + self.cells
+    }
+}
 
 /// Cells kept between a minion and a rectangle deeper than one cell. A strip one cell deep is
 /// exempt: minions move only on the rail, so a minion right behind the player would otherwise
@@ -25,6 +49,7 @@ const BOSS_MARGIN: i16 = 2;
 const MINION_MARGIN: i16 = 3;
 
 pub struct Greedy {
+    caution: Caution,
     rng: Rng,
     cut: Option<Cut>,
     walk: Dir,
@@ -71,8 +96,9 @@ impl Cut {
 }
 
 impl Greedy {
-    pub fn new(seed: u64) -> Self {
+    pub fn new(seed: u64, caution: Caution) -> Self {
         Self {
+            caution,
             rng: Rng::new(seed),
             cut: None,
             walk: Dir::Left,
@@ -85,7 +111,7 @@ impl Greedy {
         {
             return cut.mask(game);
         }
-        self.cut = best_cut(game).map(|plan| Cut {
+        self.cut = best_cut(game, self.caution).map(|plan| Cut {
             plan,
             leg: Leg::Out,
         });
@@ -100,9 +126,9 @@ impl Greedy {
 }
 
 /// The largest safe rectangle the player can cut from its rail cell: open cells only, on a
-/// straight run of claimed cells that closes the cut, far enough from the boss for the time the
-/// cut takes, and from the minions.
-fn best_cut(game: &Game) -> Option<Plan> {
+/// straight run of claimed cells that closes the cut, as far from the boss as `caution` asks for
+/// the time the cut takes, and away from the minions.
+fn best_cut(game: &Game, caution: Caution) -> Option<Plan> {
     let open = OpenCells::new(&game.grid);
     let start = game.player.pos;
     let boss = Area::of_boss(&game.boss);
@@ -132,7 +158,7 @@ fn best_cut(game: &Game) -> Option<Plan> {
                         continue;
                     }
                     let ticks = (2 * i16::from(depth) + i16::from(width)) / 2 + 1;
-                    let margin = ticks / i16::from(game.boss.period) + BOSS_MARGIN;
+                    let margin = caution.margin(ticks, game.boss.period);
                     let safe = boss.gap(rectangle) >= margin
                         && (depth == 1
                             || minions

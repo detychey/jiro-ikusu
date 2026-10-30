@@ -154,10 +154,11 @@ fn every_bot_journal_decodes_and_replays_to_its_sample() {
 fn each_policy_plays_run_0_of_l01_as_pinned() {
     let level = l01();
     let cases = [
-        (Policy::EdgeNibbler, EndReason::OutOfLives, 0, 1397),
-        (Policy::Greedy, EndReason::Cleared, 7719, 554),
-        (Policy::Committer, EndReason::Cleared, 7719, 554),
-        (Policy::RandomWalk, EndReason::Cleared, 8519, 1076),
+        (Policy::EdgeNibbler, EndReason::Cleared, 7654, 2340),
+        (Policy::Greedy, EndReason::Cleared, 7514, 266),
+        (Policy::Bold, EndReason::Cleared, 8041, 409),
+        (Policy::Committer, EndReason::Cleared, 8041, 409),
+        (Policy::RandomWalk, EndReason::OutOfLives, 0, 1072),
     ];
     for (policy, end, effective_bp, ticks_used) in cases {
         let (_, played) =
@@ -370,7 +371,12 @@ fn the_check_file_names_the_mix_that_plays() {
         "--levels", &levels, "--runs", "10", "--out", &out, "--check", &path,
     ];
     run(&args).expect("in band");
-    let report = fs::read_to_string(dir.join("out/playtest-72a1248f3d26.json")).expect("report");
+    let json = fs::read_dir(dir.join("out"))
+        .expect("reports")
+        .map(|entry| entry.expect("entry").path())
+        .find(|path| path.extension().is_some_and(|ext| ext == "json"))
+        .expect("a JSON report");
+    let report = fs::read_to_string(json).expect("report");
     let report: Value = serde_json::from_str(&report).expect("json");
     assert_eq!(report["policies"], json!(["greedy"]));
 }

@@ -8,7 +8,7 @@ use jiro_core::game::Game;
 use jiro_core::types::InputMask;
 
 use crate::scenarios::play::{CaptureBot, random_play};
-use greedy::Greedy;
+use greedy::{Caution, Greedy};
 
 #[cfg(test)]
 mod tests;
@@ -20,9 +20,12 @@ const NIBBLE_LEG: u8 = 3;
 pub enum Policy {
     /// Small U-shaped cuts from the rail; never commits.
     EdgeNibbler,
-    /// The largest rectangle away from the boss and the minions; never commits.
+    /// The largest rectangle out of the boss's reach and away from the minions; never commits.
     Greedy,
-    /// Greedy's cuts, and banks the claim with X once a lost life leaves it at its last one,
+    /// Greedy with a thin margin: it starts cuts the boss can reach while they are open, and
+    /// never commits.
+    Bold,
+    /// Bold's cuts, and banks the claim with X once a lost life leaves it at its last one,
     /// rather than risk a level that scores zero (D5).
     Committer,
     /// Random directions, the baseline.
@@ -30,9 +33,10 @@ pub enum Policy {
 }
 
 impl Policy {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::EdgeNibbler,
         Self::Greedy,
+        Self::Bold,
         Self::Committer,
         Self::RandomWalk,
     ];
@@ -41,6 +45,7 @@ impl Policy {
         match self {
             Self::EdgeNibbler => "edge-nibbler",
             Self::Greedy => "greedy",
+            Self::Bold => "bold",
             Self::Committer => "committer",
             Self::RandomWalk => "random-walk",
         }
@@ -64,11 +69,15 @@ impl Policy {
                 Box::new(move |game| bot.direction(game).mask())
             }
             Self::Greedy => {
-                let mut bot = Greedy::new(seed);
+                let mut bot = Greedy::new(seed, Caution::CAREFUL);
+                Box::new(move |game| bot.mask(game))
+            }
+            Self::Bold => {
+                let mut bot = Greedy::new(seed, Caution::BOLD);
                 Box::new(move |game| bot.mask(game))
             }
             Self::Committer => {
-                let mut bot = Greedy::new(seed);
+                let mut bot = Greedy::new(seed, Caution::BOLD);
                 let mut start_lives = None;
                 Box::new(move |game| {
                     let start = *start_lives.get_or_insert(game.player.lives);
