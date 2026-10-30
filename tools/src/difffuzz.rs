@@ -5,7 +5,6 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use jiro_core::journal;
 use jiro_core::keccak::keccak256;
 use jiro_tools::cases::{Case, case};
 
@@ -56,12 +55,10 @@ fn parse(args: &[&str]) -> Result<(u64, u32, PathBuf), String> {
 fn case_file(seed: u64, index: u32) -> Result<String, String> {
     let Case {
         level,
+        header,
         journal,
         weight_bp,
-    } = case(seed, index);
-    let header = journal::decode(&journal)
-        .map_err(|error| format!("case {index}: the journal decodes to {error:?}"))?
-        .header;
+    } = case(seed, index)?;
     let (result, trace) = traced_replay(&level, &journal, weight_bp);
     let outcome = result
         .map_err(|error| format!("case {index}: replay of a recorded case gives {error:?}"))?;

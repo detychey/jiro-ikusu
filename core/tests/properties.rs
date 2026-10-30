@@ -23,6 +23,11 @@ fn case_count() -> u32 {
     })
 }
 
+/// Case `index` of seed 1, or a panic naming the case when drawing it fails.
+fn drawn(index: u32) -> Case {
+    case(SEED, index).unwrap_or_else(|error| panic!("{error}"))
+}
+
 /// Replays every case, calling `check` with the case's index after each processed tick.
 fn observe_every_case(mut check: impl FnMut(u32, &Game)) {
     for index in 0..case_count() {
@@ -30,7 +35,8 @@ fn observe_every_case(mut check: impl FnMut(u32, &Game)) {
             level,
             journal,
             weight_bp,
-        } = case(SEED, index);
+            ..
+        } = drawn(index);
         replay_observed(&level, &journal, weight_bp, |game| check(index, game))
             .unwrap_or_else(|error| panic!("case {index}: replay gives {error:?}"));
     }
@@ -89,9 +95,11 @@ fn minions_stay_on_rail_cells() {
 }
 
 /// Replay returns an Outcome or an Error on arbitrary bytes, and never code 15, which no input
-/// reaches (README §6.3). Half of the inputs are random bytes; the other half are cases with
-/// bytes changed at random, and the journal's level id then follows the changed level, so that
-/// a level the changes leave valid is played.
+/// reaches (README §6.3). Half of the inputs are random bytes: their journal's version and
+/// rulesVersion match about one time in 16 million, so the header rejects nearly all of them
+/// before the level is read. The other half are cases with bytes changed at random, and the
+/// journal's level id then follows the changed level, so that a level the changes leave valid
+/// is played.
 #[test]
 #[cfg_attr(debug_assertions, ignore)]
 fn replay_returns_an_outcome_or_an_error_on_arbitrary_bytes() {
@@ -99,7 +107,7 @@ fn replay_returns_an_outcome_or_an_error_on_arbitrary_bytes() {
         let mut rng = Rng::new(u64::from(index));
         let (level, journal) = if rng.one_in(2) {
             (
-                random_bytes(&mut rng, LEVEL_LEN + 2),
+                random_bytes(&mut rng, LEVEL_LEN),
                 random_bytes(&mut rng, 600),
             )
         } else {
@@ -119,7 +127,8 @@ fn two_replays_of_the_same_input_are_identical() {
             level,
             journal,
             weight_bp,
-        } = case(SEED, index);
+            ..
+        } = drawn(index);
         let traced = || {
             let mut trace = Vec::new();
             let result = replay_observed(&level, &journal, weight_bp, |game| {
@@ -131,7 +140,7 @@ fn two_replays_of_the_same_input_are_identical() {
     }
 }
 
-/// Up to `max` random bytes; one time in four exactly `max`, the length of a whole level.
+/// Up to `max` random bytes, one time in four exactly `max`.
 fn random_bytes(rng: &mut Rng, max: usize) -> Vec<u8> {
     let len = if rng.one_in(4) {
         max
@@ -144,7 +153,7 @@ fn random_bytes(rng: &mut Rng, max: usize) -> Vec<u8> {
 /// A case with 1 to 8 random bytes of its level or journal replaced, the level's first byte
 /// kept at the version one time in two, and the journal's level id rewritten to the changed level.
 fn changed_case(rng: &mut Rng, index: u32) -> (Vec<u8>, Vec<u8>) {
-    let Case { level, journal, .. } = case(SEED, index);
+    let Case { level, journal, .. } = drawn(index);
     let (mut level, mut journal) = (level.to_vec(), journal);
     for _ in 0..rng.range(1, 8) {
         let bytes = if rng.one_in(2) {

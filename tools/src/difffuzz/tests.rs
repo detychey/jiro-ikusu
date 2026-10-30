@@ -50,16 +50,33 @@ fn a_smaller_set_removes_the_case_files_of_a_larger_one() {
     assert_eq!(names, ["case-00000.json", "case-00001.json"]);
 }
 
-#[test]
-fn a_case_count_outside_its_range_is_refused() {
-    for cases in ["0", "10001"] {
-        let error = parse(&["--seed", "1", "--cases", cases, "--out", "x"]).expect_err(cases);
-        assert!(error.starts_with("--cases: 1 to 10000"), "{error}");
-    }
+fn refusal(args: &[&str]) -> String {
+    parse(args).expect_err("refused")
 }
 
 #[test]
-fn every_flag_is_required() {
-    let error = parse(&["--seed", "1", "--cases", "2"]).expect_err("no --out");
-    assert_eq!(error, USAGE);
+fn zero_cases_are_refused() {
+    let error = refusal(&["--seed", "1", "--cases", "0", "--out", "x"]);
+    assert_eq!(error, "--cases: 1 to 10000, got 0");
+}
+
+#[test]
+fn more_cases_than_the_most_are_refused() {
+    let error = refusal(&["--seed", "1", "--cases", "10001", "--out", "x"]);
+    assert_eq!(error, "--cases: 1 to 10000, got 10001");
+}
+
+#[test]
+fn a_missing_seed_is_refused() {
+    assert_eq!(refusal(&["--cases", "2", "--out", "x"]), USAGE);
+}
+
+#[test]
+fn a_missing_case_count_is_refused() {
+    assert_eq!(refusal(&["--seed", "1", "--out", "x"]), USAGE);
+}
+
+#[test]
+fn a_missing_out_directory_is_refused() {
+    assert_eq!(refusal(&["--seed", "1", "--cases", "2"]), USAGE);
 }

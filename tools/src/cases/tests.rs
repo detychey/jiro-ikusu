@@ -9,15 +9,24 @@ use super::*;
 
 /// The fixed set of plan M1.10: seed 1, 200 cases.
 fn fixed_set() -> impl Iterator<Item = Case> {
-    (0..200).map(|index| case(1, index))
+    (0..200).map(|index| drawn(1, index))
+}
+
+fn drawn(seed: u64, index: u32) -> Case {
+    case(seed, index).expect("a case")
 }
 
 #[test]
 fn a_case_is_drawn_the_same_every_time() {
-    let (first, second) = (case(1, 7), case(1, 7));
+    let (first, second) = (drawn(1, 7), drawn(1, 7));
     assert_eq!(
-        (first.level, first.journal, first.weight_bp),
-        (second.level, second.journal, second.weight_bp)
+        (first.level, first.header, first.journal, first.weight_bp),
+        (
+            second.level,
+            second.header,
+            second.journal,
+            second.weight_bp
+        )
     );
 }
 
