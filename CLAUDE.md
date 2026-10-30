@@ -25,8 +25,9 @@ Jiro-ikusu: a territory-capture arcade game, played on a Raspberry Pi Pico or in
 | a byte format | Bump the format's version; regenerate `vectors/format/` |
 | `core/src/consts.rs` | README §2, §4 and §5 |
 | `levels/src/**` | Rebuild `levels/*.bin` and `levels/README.md`. Once M2.6 has merged, the playtest report. Once M2.9 has merged, the calibration rule above. |
+| `levels/targets.json` or `tools/src/bots/**` | Rerun `playtest --check levels/targets.json` and regenerate its report in `reports/`; a targets change also rebuilds `levels/README.md`. Once M2.9 has merged, the calibration rule above. |
 | `seasons/*.json` | README §8.4 and `docs/ECONOMY.md` |
 | `contracts/src/**` | README §7 and §8, if a frozen rule or range changes; regenerate `contracts/abi/` (from M4.3); the threat table of `docs/ECONOMY.md`, if a mitigation moved |
 | `vectors/**` | Regenerate `vectors/pack.bin` and `firmware/emu/transcripts/` (from M3.3) |
 
-Owners of numbers: README §4 and §5 own the game's rule numbers and defaults; README §7 and §8 own those of runs, settlement and seasons, parameter ranges included; `levels/README.md`, generated from `levels/src/`, owns the per-level knobs; `seasons/*.json` own the season parameters; `docs/ECONOMY.md` derives from them and owns none.
+Owners of numbers: README §4 and §5 own the game's rule numbers and defaults; README §7 and §8 own those of runs, settlement and seasons, parameter ranges included; `levels/README.md`, generated from `levels/src/`, owns the per-level knobs; `levels/targets.json` owns the reference mix of playtest bots, the target clear rates, their tolerance and the claim floor (README §5, P11); `seasons/*.json` own the season parameters; `docs/ECONOMY.md` derives from them and owns none.

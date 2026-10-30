@@ -1345,7 +1345,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `tools/src/bots/`, modeled on ethblockdigger's [`scripts/playtest.ts`](https://github.com/detychey/ethblockdigger/blob/main/scripts/playtest.ts) and its `src/sim/policies`. The policies:
     - EdgeNibbler: small cuts from the rail;
     - Greedy: the largest rectangle away from the boss and the minions;
-    - Committer: banks the claim with X at 1 life or above a claim threshold;
+    - Committer: Greedy's cuts, and banks the claim with X once a lost life leaves it at its last one. A claim threshold below the level's target would bank before most clears: at 6,000 bp, Committer banked 95.0 % of 1,000 L01 runs at seed 1, so no mix of the four policies holding it could reach 90 % at level 1 (M2.6's measurement);
     - RandomWalk: the baseline.
   - `jiro-tools playtest`:
     - bots emit one raw mask per tick through the core Recorder, and `replay()` scores them;

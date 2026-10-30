@@ -25,6 +25,7 @@ use jiro_core::level::{Level, Rect, decode, encode, level_id, validate};
 use jiro_core::types::{Cell, CellIndex, Pos};
 
 use crate::json::hex;
+use crate::playtest::Targets;
 use crate::vectors::rewrite;
 
 #[cfg(test)]
@@ -511,7 +512,18 @@ fn build_dir(src: &Path, out: &Path) -> Result<(), String> {
     for level in &built {
         files.insert(format!("{}.bin", level.stem), level.bytes.to_vec());
     }
-    files.insert("README.md".to_string(), table(&built).into_bytes());
+    let targets_file = out.join("targets.json");
+    let targets = targets_file
+        .exists()
+        .then(|| Targets::read(&targets_file))
+        .transpose()?;
+    let clear_rates = targets
+        .as_ref()
+        .map(|targets| targets.clear_rate_pct.as_slice());
+    files.insert(
+        "README.md".to_string(),
+        table(&built, clear_rates).into_bytes(),
+    );
     rewrite(out, is_level_file, &files)
 }
 
@@ -526,7 +538,7 @@ fn is_level_file(path: &Path) -> bool {
 }
 
 /// The index NN of a stem `NN-name`, if the stem has that form.
-fn level_index(stem: &str) -> Option<u8> {
+pub fn level_index(stem: &str) -> Option<u8> {
     let (index, name) = stem.split_once('-')?;
     let two_digits = index.len() == 2 && index.chars().all(|c| c.is_ascii_digit());
     let valid_name = !name.is_empty()
@@ -537,15 +549,20 @@ fn level_index(stem: &str) -> Option<u8> {
     (two_digits && valid_name && (1..=SEASON_LEVELS).contains(&usize::from(index))).then_some(index)
 }
 
-fn table(built: &[Built]) -> String {
+/// The generated levels table, with each level's target clear rate from `clear_rates`, the
+/// rates of `targets.json` by index, when there is one.
+fn table(built: &[Built], clear_rates: Option<&[u16]>) -> String {
     let keys: Vec<String> = KEYS.iter().map(|key| format!("`{key}`")).collect();
     let mut text = TABLE_INTRO.replace("{keys}", &keys.join(", "));
     for level in built {
         let l = &level.level;
         let Rect { x0, y0, x1, y1 } = l.spawn;
         let (index, name) = level.stem.split_once('-').expect("checked by level_index");
+        let target = clear_rates
+            .and_then(|rates| rates.get(usize::from(level_index(&level.stem)?) - 1))
+            .map_or("–".to_string(), |rate| format!("{rate} %"));
         text.push_str(&format!(
-            "| {index} | {name} | `{}` | {} | ({x0}, {y0})-({x1}, {y1}) | {} | {} | {} | {} | {} | {} | {} bp | – | – |\n",
+            "| {index} | {name} | `{}` | {} | ({x0}, {y0})-({x1}, {y1}) | {} | {} | {} | {} | {} | {} | {} bp | {target} | – |\n",
             hex(&level_id(&level.bytes)),
             l.boss_size,
             l.boss_period,
@@ -584,8 +601,9 @@ obstacle, `.` an open cell, `m` a minion spawn. The border is always claimed, so
 too. The minions take their slots in row-major order, one minion per cell.
 `jiro-tools level render <file.bin>` writes a level's source.
 
-The target and measured clear rates come from the playtest bots (plan M2.6) and the play test
-(plan M2.9).
+The target clear rate is that of the reference mix of playtest bots, from `levels/targets.json`
+(plan M2.6, P11); `jiro-tools playtest --check levels/targets.json` measures it. The measured
+clear rate comes from the play test (plan M2.9).
 
 | # | Name | `level_id` | B | Boss spawn | Boss period | Minions | Minion period | R | T | Lives | Target | Target clear rate | Measured clear rate |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|

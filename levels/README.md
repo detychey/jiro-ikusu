@@ -11,12 +11,13 @@ obstacle, `.` an open cell, `m` a minion spawn. The border is always claimed, so
 too. The minions take their slots in row-major order, one minion per cell.
 `jiro-tools level render <file.bin>` writes a level's source.
 
-The target and measured clear rates come from the playtest bots (plan M2.6) and the play test
-(plan M2.9).
+The target clear rate is that of the reference mix of playtest bots, from `levels/targets.json`
+(plan M2.6, P11); `jiro-tools playtest --check levels/targets.json` measures it. The measured
+clear rate comes from the play test (plan M2.9).
 
 | # | Name | `level_id` | B | Boss spawn | Boss period | Minions | Minion period | R | T | Lives | Target | Target clear rate | Measured clear rate |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 01 | open | `0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9` | 5 | (20, 20)-(34, 34) | 2 | 0 | 0 | 0 | 2700 | 3 | 7500 bp | – | – |
+| 01 | open | `0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9` | 5 | (20, 20)-(34, 34) | 2 | 0 | 0 | 0 | 2700 | 3 | 7500 bp | 95 % | – |
 
 ## 01-open
 

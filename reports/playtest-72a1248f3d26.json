@@ -1,0 +1,59 @@
+{
+  "levels": [
+    {
+      "index": 1,
+      "levelId": "0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9",
+      "mix": {
+        "clearRatePerMille": 1000,
+        "commitRatePerMille": 0,
+        "deathRatePerMille": 0,
+        "effectiveClaimQuartilesBp": [
+          7559,
+          7651,
+          7886
+        ],
+        "medianTicksUsed": 442,
+        "runs": 2000,
+        "timeLimitRatePerMille": 0
+      },
+      "name": "open",
+      "policies": {
+        "committer": {
+          "clearRatePerMille": 1000,
+          "commitRatePerMille": 0,
+          "deathRatePerMille": 0,
+          "effectiveClaimQuartilesBp": [
+            7559,
+            7651,
+            7886
+          ],
+          "medianTicksUsed": 442,
+          "runs": 1000,
+          "timeLimitRatePerMille": 0
+        },
+        "greedy": {
+          "clearRatePerMille": 1000,
+          "commitRatePerMille": 0,
+          "deathRatePerMille": 0,
+          "effectiveClaimQuartilesBp": [
+            7559,
+            7651,
+            7886
+          ],
+          "medianTicksUsed": 442,
+          "runs": 1000,
+          "timeLimitRatePerMille": 0
+        }
+      }
+    }
+  ],
+  "levelsHash": "72a1248f3d26",
+  "policies": [
+    "greedy",
+    "committer"
+  ],
+  "referenceMix": true,
+  "rulesVersion": 2,
+  "runs": 1000,
+  "seed": 1
+}

@@ -57,28 +57,41 @@ pub fn nonce(name: &str, k: u32) -> [u8; 32] {
     keccak256(&[b"jiro.vector.", name.as_bytes(), &k.to_be_bytes()])
 }
 
-/// Plays `level` from tick 0 until it ends, asking `policy` for each tick's raw mask with the
-/// game as the previous tick left it.
-pub fn record(
+/// Plays `level` from tick 0 until it ends, through the Recorder, asking `policy` for each tick's
+/// raw mask with the game as the previous tick left it. `observe` sees the game before tick 0 and
+/// after every processed tick.
+pub fn play(
     level: &Level,
     header: &Header,
     mut policy: impl FnMut(&Game) -> InputMask,
-) -> Result<Run, String> {
+    mut observe: impl FnMut(&Game),
+) -> Result<Recorder, String> {
     let mut recorder = Recorder::new(level, header).map_err(|error| format!("{error:?}"))?;
-    let mut states = vec![recorder.game().clone()];
+    observe(recorder.game());
     loop {
         let raw = policy(recorder.game());
         let end = recorder
             .step(raw)
             .map_err(|error| format!("recorder: {error:?}"))?;
-        states.push(recorder.game().clone());
+        observe(recorder.game());
         if end.is_some() {
-            return Ok(Run {
-                journal: recorder.journal().to_vec(),
-                states,
-            });
+            return Ok(recorder);
         }
     }
+}
+
+/// Plays `level` like `play`, and keeps every state.
+pub fn record(
+    level: &Level,
+    header: &Header,
+    policy: impl FnMut(&Game) -> InputMask,
+) -> Result<Run, String> {
+    let mut states = Vec::new();
+    let recorder = play(level, header, policy, |game| states.push(game.clone()))?;
+    Ok(Run {
+        journal: recorder.journal().to_vec(),
+        states,
+    })
 }
 
 /// The first run, over the nonces of `name`, that `wanted` accepts.
@@ -171,7 +184,7 @@ impl Rng {
         self.next().is_multiple_of(odds)
     }
 
-    fn shuffled(&mut self, mut dirs: [Dir; 4]) -> [Dir; 4] {
+    pub fn shuffled(&mut self, mut dirs: [Dir; 4]) -> [Dir; 4] {
         for i in (1..4).rev() {
             dirs.swap(i, (self.next() % (i as u64 + 1)) as usize);
         }
@@ -188,13 +201,15 @@ pub struct CaptureBot {
     max_leg: u8,
 }
 
+/// A U-shaped cut from the rail cell `start`: `depth` cells `out`, `width` cells to the `side`,
+/// then back until the cut closes.
 #[derive(Clone, Copy)]
-struct Plan {
-    out: Dir,
-    side: Dir,
-    start: Pos,
-    depth: u8,
-    width: u8,
+pub struct Plan {
+    pub out: Dir,
+    pub side: Dir,
+    pub start: Pos,
+    pub depth: u8,
+    pub width: u8,
 }
 
 impl CaptureBot {
@@ -232,7 +247,7 @@ impl CaptureBot {
                 });
                 return out;
             }
-            return self.walk_rail(game, order);
+            return walk_rail(&mut self.walk, &mut self.rng, game, order);
         }
         let plan = *self.plan.get_or_insert(Plan {
             out: Dir::Up,
@@ -258,28 +273,30 @@ impl CaptureBot {
             })
             .unwrap_or(reverse(plan.out))
     }
+}
 
-    fn walk_rail(&mut self, game: &Game, order: [Dir; 4]) -> Dir {
-        let pos = game.player.pos;
-        let walkable = |dir: Dir| {
-            neighbor(pos, dir).is_some_and(|cell| {
-                game.grid.at(cell) == Some(Cell::Claimed)
-                    && (game.grid.is_rail(cell) || !game.grid.is_rail(pos))
-            })
-        };
-        if !walkable(self.walk) || self.rng.one_in(40) {
-            self.walk = order
-                .into_iter()
-                .find(|&dir| walkable(dir) && dir != reverse(self.walk))
-                .or_else(|| order.into_iter().find(|&dir| walkable(dir)))
-                .unwrap_or(self.walk);
-        }
-        self.walk
+/// The direction along the rail: `walk` while it stays walkable, except for a turn one time in
+/// 40, otherwise the first walkable direction of `order` that does not turn back.
+pub fn walk_rail(walk: &mut Dir, rng: &mut Rng, game: &Game, order: [Dir; 4]) -> Dir {
+    let pos = game.player.pos;
+    let walkable = |dir: Dir| {
+        neighbor(pos, dir).is_some_and(|cell| {
+            game.grid.at(cell) == Some(Cell::Claimed)
+                && (game.grid.is_rail(cell) || !game.grid.is_rail(pos))
+        })
+    };
+    if !walkable(*walk) || rng.one_in(40) {
+        *walk = order
+            .into_iter()
+            .find(|&dir| walkable(dir) && dir != reverse(*walk))
+            .or_else(|| order.into_iter().find(|&dir| walkable(dir)))
+            .unwrap_or(*walk);
     }
+    *walk
 }
 
 /// How far `to` lies from `from` in the direction `dir`.
-fn distance(from: Pos, to: Pos, dir: Dir) -> i16 {
+pub fn distance(from: Pos, to: Pos, dir: Dir) -> i16 {
     let (dx, dy) = dir.offset();
     (i16::from(to.x) - i16::from(from.x)) * i16::from(dx)
         + (i16::from(to.y) - i16::from(from.y)) * i16::from(dy)

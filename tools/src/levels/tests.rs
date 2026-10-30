@@ -178,7 +178,7 @@ fn the_table_shows_every_knob_and_the_field_of_a_level() {
         source: source.clone(),
         bytes,
     };
-    let table = table(&[built]);
+    let table = table(&[built], None);
     let row = format!(
         "| 07 | rich | `{}` | 3 | (10, 12)-(40, 44) | 4 | 3 | 2 | 45 | 1800 | 2 | 6000 bp | – | – |\n",
         hex(&level_id(&bytes))
@@ -188,6 +188,20 @@ fn the_table_shows_every_knob_and_the_field_of_a_level() {
         table.contains(&row) && table.contains(&format!("```text\n{field}```")),
         "{table}"
     );
+}
+
+#[test]
+fn the_table_shows_each_level_s_target_clear_rate() {
+    let source = rich();
+    let bytes = build(&source).expect("the rich level is valid");
+    let built = Built {
+        stem: "07-rich".to_string(),
+        level: decode(&bytes).expect("decode"),
+        source,
+        bytes,
+    };
+    let rates: Vec<u16> = (0..16).map(|i| 95 - 5 * i).collect();
+    assert!(table(&[built], Some(&rates)).contains("| 6000 bp | 65 % | – |"));
 }
 
 /// Each rule of README §5 that a source can break, at the line that breaks it.

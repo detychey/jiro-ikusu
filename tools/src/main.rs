@@ -1,9 +1,12 @@
 //! jiro-tools, the native target (README §3): `vectors` writes vectors/, `replay` replays a
-//! journal and diagnoses another target's disagreement, and `level` builds the level sources.
+//! journal and diagnoses another target's disagreement, `level` builds the level sources, and
+//! `playtest` plays the levels with bots.
 
+mod bots;
 mod coverage;
 mod json;
 mod levels;
+mod playtest;
 mod preimage;
 mod replay;
 mod scenarios;
@@ -23,9 +26,8 @@ fn main() -> ExitCode {
         ["vectors"] => vectors::write(&repo_root()),
         ["replay", rest @ ..] => replay::run(rest),
         ["level", rest @ ..] => levels::run(rest),
-        _ => Err(
-            "usage: jiro-tools vectors | jiro-tools replay ... | jiro-tools level ...".to_string(),
-        ),
+        ["playtest", rest @ ..] => playtest::run(rest),
+        _ => Err("usage: jiro-tools vectors | replay ... | level ... | playtest ...".to_string()),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

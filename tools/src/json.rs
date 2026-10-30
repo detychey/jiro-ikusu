@@ -55,7 +55,7 @@ pub fn hex(bytes: &[u8]) -> String {
 pub fn parse_hex(text: &str) -> Result<Vec<u8>, String> {
     let digits = text
         .strip_prefix("0x")
-        .filter(|digits| digits.len() % 2 == 0)
+        .filter(|digits| digits.is_ascii() && digits.len() % 2 == 0)
         .ok_or(format!("not 0x-prefixed hex bytes: {text}"))?;
     (0..digits.len())
         .step_by(2)
