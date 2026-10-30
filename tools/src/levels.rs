@@ -7,8 +7,8 @@
 //! then the 60 × 60 field, row y on line 10 + y: `#` an obstacle, `.` an open cell, `m` a minion
 //! spawn. The border is always claimed, so it is written `#`, or `m` for a spawn on it. A spawn
 //! is a rail cell, so an `m` inside the border is an obstacle too. The minions take their slots
-//! in row-major order. Sources are canonical, so each level has one source: the render of its
-//! bytes.
+//! in row-major order, one minion per cell. Sources are canonical, with LF line endings, so each
+//! level has one source: the render of its bytes.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -26,6 +26,9 @@ use jiro_core::types::{Cell, CellIndex, Pos};
 
 use crate::json::hex;
 use crate::vectors::rewrite;
+
+#[cfg(test)]
+mod tests;
 
 const USAGE: &str = concat!(
     "usage: jiro-tools level build <src dir> <out dir> | level validate <file>... | ",
@@ -107,21 +110,31 @@ pub fn run(args: &[&str]) -> Result<(), String> {
 
 /// The level bytes of a source, if the source is well formed and the level valid.
 pub fn build(text: &str) -> Result<[u8; LEVEL_LEN], SourceError> {
-    let level = parse(text)?;
+    let (level, spawns) = parse(text)?;
     let bytes = encode(&level);
-    check(&bytes).map_err(|error| locate(&level, error))?;
+    check(&bytes).map_err(|error| locate(&level, &spawns, error))?;
     Ok(bytes)
 }
 
 /// The canonical source of a valid level, or why no source writes it.
 pub fn render(level: &Level) -> Result<String, String> {
-    let spawns: Vec<usize> = level
-        .minions()
-        .map(|spawn| CellIndex::new(spawn).map(CellIndex::get))
-        .collect::<Option<_>>()
-        .ok_or("a minion spawn is outside the grid")?;
-    if !spawns.is_sorted_by(|a, b| a < b) {
+    let spawns: Vec<Pos> = level.minions().collect();
+    let indices: Vec<usize> = spawns
+        .iter()
+        .map(|&spawn| {
+            CellIndex::new(spawn)
+                .expect("rule 28 keeps a spawn inside the grid")
+                .get()
+        })
+        .collect();
+    if !indices.is_sorted() {
         return Err("its minion spawns are not in row-major order, so no source writes it".into());
+    }
+    if let Some(pair) = spawns.windows(2).find(|pair| pair[0] == pair[1]) {
+        return Err(format!(
+            "two minions share the spawn ({}, {}), so no source writes it",
+            pair[0].x, pair[0].y
+        ));
     }
     let Rect { x0, y0, x1, y1 } = level.spawn;
     let values = [
@@ -140,7 +153,7 @@ pub fn render(level: &Level) -> Result<String, String> {
     }
     text.push('\n');
     for (cell, obstacle) in CellIndex::all().zip(level.obstacle_bits()) {
-        text.push(if spawns.contains(&cell.get()) {
+        text.push(if indices.contains(&cell.get()) {
             'm'
         } else if obstacle || cell.pos().is_border() {
             '#'
@@ -161,7 +174,15 @@ fn check(bytes: &[u8]) -> Result<Level, Error> {
     Ok(level)
 }
 
-fn parse(text: &str) -> Result<Level, SourceError> {
+/// The level a source draws, and every minion spawn it draws, more than `MINION_SLOTS` included:
+/// the core's rule order decides when too many minions is the first broken rule.
+fn parse(text: &str) -> Result<(Level, Vec<Pos>), SourceError> {
+    if text.starts_with('\u{feff}') {
+        return Err(SourceError::at(1, "remove the byte-order mark"));
+    }
+    if let Some(index) = text.split('\n').position(|line| line.contains('\r')) {
+        return Err(SourceError::at(index + 1, "use LF line endings, not CRLF"));
+    }
     let body = text
         .strip_suffix('\n')
         .ok_or_else(|| SourceError::at(text.split('\n').count(), "end the file with a newline"))?;
@@ -188,20 +209,23 @@ fn parse(text: &str) -> Result<Level, SourceError> {
     }
     let (obstacles, spawns) = parse_field(&lines)?;
     let mut minion_spawns = [Pos { x: 0, y: 0 }; MINION_SLOTS];
-    minion_spawns[..spawns.len()].copy_from_slice(&spawns);
-    Ok(Level {
+    for (slot, &spawn) in minion_spawns.iter_mut().zip(&spawns) {
+        *slot = spawn;
+    }
+    let level = Level {
         obstacles,
         boss_size,
         spawn: Rect { x0, y0, x1, y1 },
         boss_period,
-        minion_count: u8::try_from(spawns.len()).expect("at most MINION_SLOTS spawns"),
+        minion_count: u8::try_from(spawns.len()).unwrap_or(u8::MAX),
         minion_spawns,
         minion_period,
         respawn_delay,
         time_limit,
         lives,
         target_bp,
-    })
+    };
+    Ok((level, spawns))
 }
 
 /// The value of header line `index` + 1, which must hold the key `KEYS[index]`.
@@ -266,13 +290,6 @@ fn parse_field(lines: &[&str]) -> Result<([u8; OBSTACLE_BYTES], Vec<Pos>), Sourc
                 }
             };
             if symbol == 'm' {
-                if spawns.len() == MINION_SLOTS {
-                    return Err(SourceError {
-                        line: line_number,
-                        rule: Some(Error::MinionCount.code()),
-                        message: format!("at most {MINION_SLOTS} minions"),
-                    });
-                }
                 spawns.push(pos);
             }
             if obstacle {
@@ -288,11 +305,14 @@ fn parse_field(lines: &[&str]) -> Result<([u8; OBSTACLE_BYTES], Vec<Pos>), Sourc
     Ok((obstacles, spawns))
 }
 
-/// The source line where `level` breaks the rule of `error`, and the reason.
-fn locate(level: &Level, error: Error) -> SourceError {
+/// The source line where `level`, drawn with `spawns`, breaks the rule of `error`, and why.
+fn locate(level: &Level, spawns: &[Pos], error: Error) -> SourceError {
     let grid = Grid::level_start(level);
     let knob = |name: &str, rule: &str| {
-        let index = KEYS.iter().position(|key| *key == name).unwrap_or(0);
+        let index = KEYS
+            .iter()
+            .position(|key| *key == name)
+            .expect("a key of KEYS");
         (index + 1, format!("{name}: {rule}"))
     };
     let row = |pos: Pos| FIELD_LINE + usize::from(pos.y);
@@ -304,6 +324,16 @@ fn locate(level: &Level, error: Error) -> SourceError {
             "the body stays inside the border: x0, y0 ≥ 1 and x1, y1 ≤ 59 − B",
         ),
         Error::BossPeriod => knob("boss_period", "at least 1"),
+        Error::MinionCount => {
+            let extra = spawns[MINION_SLOTS];
+            (
+                row(extra),
+                format!(
+                    "at most {MINION_SLOTS} minions; the spawn ({}, {}) is one more",
+                    extra.x, extra.y
+                ),
+            )
+        }
         Error::MinionPeriod => knob("minion_period", "at least 1 with minions, 0 without"),
         Error::RespawnDelay => knob("respawn_delay", "at least 1 with minions, 0 without"),
         Error::TimeLimit => knob("time_limit", "1 to 2,700 ticks"),
@@ -313,7 +343,7 @@ fn locate(level: &Level, error: Error) -> SourceError {
             Some(pos) => (
                 row(pos),
                 format!(
-                    "the open area is not one region: ({}, {}) is cut off",
+                    "the open area is not one region: ({}, {}) is cut off from the largest one",
                     pos.x, pos.y
                 ),
             ),
@@ -326,31 +356,43 @@ fn locate(level: &Level, error: Error) -> SourceError {
                 grid.count(Cell::Empty)
             ),
         ),
-        Error::BossSpawn => match body_obstacle(level, &grid) {
-            Some(pos) => (
+        Error::BossSpawn => {
+            let pos = body_obstacle(level, &grid).expect("rule 37 is broken by a claimed cell");
+            (
                 row(pos),
                 format!(
                     "the boss body can cover the obstacle at ({}, {})",
                     pos.x, pos.y
                 ),
-            ),
-            None => knob("boss_spawn", "the boss body can cover an obstacle"),
-        },
-        Error::MinionSpawnRail => match level.minions().find(|&spawn| !grid.is_rail(spawn)) {
-            Some(pos) => (
+            )
+        }
+        Error::MinionSpawnRail => {
+            let pos = level
+                .minions()
+                .find(|&spawn| !grid.is_rail(spawn))
+                .expect("rule 38 is broken by a spawn");
+            (
                 row(pos),
                 format!(
                     "the minion spawn ({}, {}) is not a rail cell: it has no open neighbor",
                     pos.x, pos.y
                 ),
-            ),
-            None => (FIELD_LINE, "a minion spawn is not a rail cell".to_string()),
-        },
-        Error::PlayerStartRail => (
-            row(PLAYER_START),
-            "the player start (30, 59) is not a rail cell: it has no open neighbor".to_string(),
-        ),
-        other => (1, format!("{other:?}")),
+            )
+        }
+        Error::PlayerStartRail => {
+            let Pos { x, y } = PLAYER_START;
+            let above = y - 1;
+            (
+                row(Pos { x, y: above }),
+                format!(
+                    "({}, {above}), ({x}, {above}) and ({}, {above}) are all claimed, so the \
+                     player start ({x}, {y}) has no open neighbor",
+                    x - 1,
+                    x + 1
+                ),
+            )
+        }
+        other => unreachable!("a parsed source cannot break rule {}", other.code()),
     };
     SourceError {
         line,
@@ -359,14 +401,21 @@ fn locate(level: &Level, error: Error) -> SourceError {
     }
 }
 
-/// The first open cell, in row-major order, outside the region of the first open cell.
+/// The first open cell, in row-major order, outside the largest region of the open area, or
+/// `None` when the field has no open cell.
 fn cut_off(grid: &Grid) -> Option<Pos> {
     let mut grid = grid.clone();
-    let first = CellIndex::all().find(|&cell| grid.get(cell) == Cell::Empty)?;
-    grid.mark_boss_zone([first], &mut [0; CAPTURE_STACK])?;
-    CellIndex::all()
-        .find(|&cell| grid.get(cell) == Cell::Empty)
-        .map(CellIndex::pos)
+    let mut regions = Vec::new();
+    while let Some(first) = CellIndex::all().find(|&cell| grid.get(cell) == Cell::Empty) {
+        let marked = grid.count(Cell::BossZone);
+        grid.mark_boss_zone([first], &mut [0; CAPTURE_STACK])
+            .expect("the open area fits the stack");
+        regions.push((first.pos(), grid.count(Cell::BossZone) - marked));
+    }
+    let largest = (0..regions.len()).max_by_key(|&region| regions[region].1)?;
+    (0..regions.len())
+        .find(|&region| region != largest)
+        .map(|region| regions[region].0)
 }
 
 /// The first claimed cell, in row-major order, that the boss body covers from some start.
@@ -413,7 +462,8 @@ struct Built {
 }
 
 /// Builds every source of `src` into `out`: the `.bin` files and the generated README.md. A
-/// broken source fails the build, and nothing is written.
+/// broken source fails the build, and nothing is written. The build replaces only the level
+/// files of `out`, so a `.bin` file whose source is gone does not survive.
 fn build_dir(src: &Path, out: &Path) -> Result<(), String> {
     let mut sources = Vec::new();
     for entry in fs::read_dir(src).map_err(|e| format!("{}: {e}", src.display()))? {
@@ -421,6 +471,9 @@ fn build_dir(src: &Path, out: &Path) -> Result<(), String> {
         if path.extension().is_some_and(|ext| ext == "txt") {
             sources.push(path);
         }
+    }
+    if sources.is_empty() {
+        return Err(format!("{}: no NN-name.txt source", src.display()));
     }
     sources.sort();
     let mut built = Vec::new();
@@ -459,7 +512,17 @@ fn build_dir(src: &Path, out: &Path) -> Result<(), String> {
         files.insert(format!("{}.bin", level.stem), level.bytes.to_vec());
     }
     files.insert("README.md".to_string(), table(&built).into_bytes());
-    rewrite(out, &["bin", "md"], &files)
+    rewrite(out, is_level_file, &files)
+}
+
+/// A level's bytes, `NN-name.bin`, as `build_dir` writes them.
+fn is_level_file(path: &Path) -> bool {
+    path.extension().is_some_and(|ext| ext == "bin")
+        && path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .and_then(level_index)
+            .is_some()
 }
 
 /// The index NN of a stem `NN-name`, if the stem has that form.
@@ -495,10 +558,10 @@ fn table(built: &[Built]) -> String {
         ));
     }
     for level in built {
-        let field = level
+        let (_, field) = level
             .source
             .split_once("\n\n")
-            .map_or("", |(_, field)| field);
+            .expect("a built source has a blank line");
         text.push_str(&format!(
             "\n## {}\n\n`levels/src/{}.txt`\n\n```text\n{field}```\n",
             level.stem, level.stem
@@ -518,8 +581,8 @@ A source is a header, one `key=value` line for each of {keys}, in this order, wi
 `boss_spawn=x0,y0,x1,y1`; a blank line; then the 60 × 60 field, row y on line 10 + y: `#` an
 obstacle, `.` an open cell, `m` a minion spawn. The border is always claimed, so it is written
 `#`, or `m` for a spawn on it. A spawn is a rail cell, so an `m` inside the border is an obstacle
-too. The minions take their slots in row-major order. `jiro-tools level render <file.bin>`
-writes a level's source.
+too. The minions take their slots in row-major order, one minion per cell.
+`jiro-tools level render <file.bin>` writes a level's source.
 
 The target and measured clear rates come from the playtest bots (plan M2.6) and the play test
 (plan M2.9).
@@ -527,257 +590,3 @@ The target and measured clear rates come from the playtest bots (plan M2.6) and 
 | # | Name | `level_id` | B | Boss spawn | Boss period | Minions | Minion period | R | T | Lives | Target | Target clear rate | Measured clear rate |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 ";
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// L01, the open-field level of README §5.
-    fn l01() -> String {
-        fs::read_to_string(crate::repo_root().join("levels/src/01-open.txt")).expect("L01")
-    }
-
-    fn with_line(text: &str, line: usize, replacement: &str) -> String {
-        let mut lines: Vec<&str> = text.split('\n').collect();
-        lines[line - 1] = replacement;
-        lines.join("\n")
-    }
-
-    fn with_cells(text: &str, cells: &[(usize, usize, char)]) -> String {
-        let mut lines: Vec<String> = text.split('\n').map(String::from).collect();
-        for &(x, y, symbol) in cells {
-            let row = &mut lines[FIELD_LINE - 1 + y];
-            row.replace_range(x..=x, &symbol.to_string());
-        }
-        lines.join("\n")
-    }
-
-    /// `text` with minion spawns at `cells`, and the minion knobs that minions need.
-    fn with_minions(text: &str, cells: &[(usize, usize, char)]) -> String {
-        let text = with_line(text, 4, "minion_period=1");
-        with_cells(&with_line(&text, 5, "respawn_delay=1"), cells)
-    }
-
-    fn sources() -> Vec<(String, String)> {
-        let dir = crate::repo_root().join("levels/src");
-        let mut sources: Vec<(String, String)> = fs::read_dir(&dir)
-            .expect("levels/src")
-            .map(|entry| entry.expect("entry").path())
-            .filter(|path| path.extension().is_some_and(|ext| ext == "txt"))
-            .map(|path| {
-                let text = fs::read_to_string(&path).expect("source");
-                (path.display().to_string(), text)
-            })
-            .collect();
-        sources.sort();
-        sources
-    }
-
-    #[test]
-    fn every_source_is_the_render_of_its_bytes() {
-        for (file, text) in sources() {
-            let bytes = build(&text).unwrap_or_else(|error| panic!("{}", error.describe(&file)));
-            let level = decode(&bytes).expect("built bytes decode");
-            assert_eq!(render(&level).as_deref(), Ok(text.as_str()), "{file}");
-        }
-    }
-
-    #[test]
-    fn l01_is_the_open_field_level_of_readme_section_5() {
-        let bytes = build(&l01()).expect("L01 is valid");
-        assert_eq!(
-            hex(&level_id(&bytes)),
-            "0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9"
-        );
-    }
-
-    #[test]
-    fn the_levels_table_lists_the_id_of_every_bin_file() {
-        let levels = crate::repo_root().join("levels");
-        let table = fs::read_to_string(levels.join("README.md")).expect("levels/README.md");
-        for (file, _) in sources() {
-            let stem = Path::new(&file)
-                .file_stem()
-                .expect("stem")
-                .to_string_lossy()
-                .into_owned();
-            let bytes = fs::read(levels.join(format!("{stem}.bin"))).expect("bin");
-            let (index, name) = stem.split_once('-').expect("NN-name");
-            let row = format!("| {index} | {name} | `{}` |", hex(&level_id(&bytes)));
-            assert!(table.contains(&row), "{row}");
-        }
-    }
-
-    /// Each rule of README §5 that a source can break, at the line that breaks it.
-    #[test]
-    fn each_broken_rule_is_reported_at_its_line() {
-        let l01 = l01();
-        let wall: Vec<(usize, usize, char)> = (1..59).map(|y| (10, y, '#')).collect();
-        let crowded: Vec<(usize, usize, char)> = (1..31)
-            .flat_map(|y| (1..59).map(move |x| (x, y, '#')))
-            .collect();
-        let boxed_spawn: Vec<(usize, usize, char)> = (9..12)
-            .flat_map(|y| (9..12).map(move |x| (x, y, if (x, y) == (10, 10) { 'm' } else { '#' })))
-            .collect();
-        let cases: Vec<(&str, String, usize, Error)> = vec![
-            (
-                "boss size",
-                with_line(&l01, 1, "boss_size=9"),
-                1,
-                Error::BossSize,
-            ),
-            (
-                "spawn order",
-                with_line(&l01, 2, "boss_spawn=34,20,20,34"),
-                2,
-                Error::SpawnOrder,
-            ),
-            (
-                "spawn bounds",
-                with_line(&l01, 2, "boss_spawn=0,20,34,34"),
-                2,
-                Error::SpawnBounds,
-            ),
-            (
-                "boss period",
-                with_line(&l01, 3, "boss_period=0"),
-                3,
-                Error::BossPeriod,
-            ),
-            (
-                "minion count",
-                with_cells(&l01, &[(1, 0, 'm'), (2, 0, 'm'), (3, 0, 'm'), (4, 0, 'm')]),
-                FIELD_LINE,
-                Error::MinionCount,
-            ),
-            (
-                "minion period",
-                with_line(&l01, 4, "minion_period=1"),
-                4,
-                Error::MinionPeriod,
-            ),
-            (
-                "respawn delay",
-                with_line(&l01, 5, "respawn_delay=1"),
-                5,
-                Error::RespawnDelay,
-            ),
-            (
-                "time limit",
-                with_line(&l01, 6, "time_limit=2701"),
-                6,
-                Error::TimeLimit,
-            ),
-            ("lives", with_line(&l01, 7, "lives=0"), 7, Error::Lives),
-            (
-                "target",
-                with_line(&l01, 8, "target_bp=10001"),
-                8,
-                Error::Target,
-            ),
-            (
-                "split open area",
-                with_cells(&l01, &wall),
-                FIELD_LINE + 1,
-                Error::OpenAreaSplit,
-            ),
-            (
-                "small open area",
-                with_cells(&l01, &crowded),
-                FIELD_LINE,
-                Error::OpenAreaSmall,
-            ),
-            (
-                "boss spawn",
-                with_cells(&l01, &[(25, 25, '#')]),
-                FIELD_LINE + 25,
-                Error::BossSpawn,
-            ),
-            (
-                "minion rail",
-                with_minions(&l01, &boxed_spawn),
-                FIELD_LINE + 10,
-                Error::MinionSpawnRail,
-            ),
-            (
-                "player start",
-                with_cells(&l01, &[(29, 58, '#'), (30, 58, '#'), (31, 58, '#')]),
-                FIELD_LINE + 59,
-                Error::PlayerStartRail,
-            ),
-        ];
-        for (name, text, line, rule) in cases {
-            let error = build(&text).expect_err(name);
-            assert_eq!(
-                (error.line, error.rule),
-                (line, Some(rule.code())),
-                "{name}: {error:?}"
-            );
-        }
-    }
-
-    /// Each malformed source, at the line that breaks the format.
-    #[test]
-    fn each_malformed_source_is_reported_at_its_line() {
-        let l01 = l01();
-        let truncated: String = l01.split_inclusive('\n').take(FIELD_LINE + 30).collect();
-        let cases: Vec<(&str, String, usize)> = vec![
-            ("unknown key", with_line(&l01, 1, "size=5"), 1),
-            (
-                "keys out of order",
-                with_line(&l01, 3, "minion_period=0"),
-                3,
-            ),
-            ("leading zero", with_line(&l01, 1, "boss_size=05"), 1),
-            (
-                "out of the field's type",
-                with_line(&l01, 1, "boss_size=300"),
-                1,
-            ),
-            (
-                "three spawn numbers",
-                with_line(&l01, 2, "boss_spawn=20,20,34"),
-                2,
-            ),
-            (
-                "no blank line",
-                with_line(&l01, FIELD_LINE - 1, "x"),
-                FIELD_LINE - 1,
-            ),
-            (
-                "short row",
-                with_line(&l01, FIELD_LINE + 5, &"#".repeat(59)),
-                FIELD_LINE + 5,
-            ),
-            (
-                "unknown cell",
-                with_cells(&l01, &[(5, 5, 'x')]),
-                FIELD_LINE + 5,
-            ),
-            (
-                "open border",
-                with_cells(&l01, &[(0, 5, '.')]),
-                FIELD_LINE + 5,
-            ),
-            ("missing rows", truncated, FIELD_LINE + 31),
-            ("line after the field", format!("{l01}\n"), FIELD_LINE + 60),
-            (
-                "no final newline",
-                l01.trim_end().to_string(),
-                FIELD_LINE + 59,
-            ),
-        ];
-        for (name, text, line) in cases {
-            let error = build(&text).expect_err(name);
-            assert_eq!((error.line, error.rule), (line, None), "{name}: {error:?}");
-        }
-    }
-
-    #[test]
-    fn render_refuses_minion_spawns_out_of_row_major_order() {
-        let text = with_minions(&l01(), &[(1, 0, 'm'), (2, 0, 'm')]);
-        let mut level = decode(&build(&text).expect("two minions")).expect("decode");
-        level.minion_spawns.swap(0, 1);
-        assert!(render(&level).is_err());
-    }
-}

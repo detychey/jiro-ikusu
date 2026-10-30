@@ -8,8 +8,8 @@ A source is a header, one `key=value` line for each of `boss_size`, `boss_spawn`
 `boss_spawn=x0,y0,x1,y1`; a blank line; then the 60 × 60 field, row y on line 10 + y: `#` an
 obstacle, `.` an open cell, `m` a minion spawn. The border is always claimed, so it is written
 `#`, or `m` for a spawn on it. A spawn is a rail cell, so an `m` inside the border is an obstacle
-too. The minions take their slots in row-major order. `jiro-tools level render <file.bin>`
-writes a level's source.
+too. The minions take their slots in row-major order, one minion per cell.
+`jiro-tools level render <file.bin>` writes a level's source.
 
 The target and measured clear rates come from the playtest bots (plan M2.6) and the play test
 (plan M2.9).

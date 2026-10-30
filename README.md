@@ -355,7 +355,7 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 | | whole level | 472 bytes | exactly 472 bytes (20) |
 | 0 | version | u8 | 1 (21) |
 | 1 | obstacle bitmap | 450 bytes | cell i = y × 60 + x is bit 7 − i % 8 of byte i / 8, so the first byte's high bit is cell (0, 0); a set bit is an obstacle; border bits must be 0 (22) |
-| 451 | boss body size B | u8 | 2 to 8 *(D9)*; the level tool defaults to 5 (23) |
+| 451 | boss body size B | u8 | 2 to 8 *(D9)* (23) |
 | 452 | boss spawn rectangle | 4 × u8: x0, y0, x1, y1 | the top-left cells the body may start on, inclusive. x0 ≤ x1 and y0 ≤ y1 (24). x0 ≥ 1, y0 ≥ 1, x1 ≤ 59 − B and y1 ≤ 59 − B, so the body stays inside the border; B is checked first, so 59 − B cannot underflow (25) |
 | 456 | boss move period | u8 | at least 1 (26) |
 | 457 | minion count | u8 | 0 to 3 (27) |
@@ -387,7 +387,7 @@ blocked-start validity: 39
 
 **The 16 levels** ramp up difficulty with the knobs in the table above: boss body size, boss and minion periods, minion count, obstacle layouts that create corridors, time limit and target. Each level gets a target clear rate for scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). The bots' completion data also seeds the scoring weights of the testnet seasons and of the first mainnet season ([§8.4](#84-season-scoring)).
 
-**Authoring** *(P10)*. The 16 levels are authored as ASCII sources in `levels/src/`, compiled by the level tool, or in the browser's level editor. Both produce level bytes through the core's single level codec, so a level drawn either way has the same bytes and the same `level_id`. The Superchallenge map generator is deferred with its mode.
+**Authoring** *(P10)*. The 16 levels are authored as ASCII sources in `levels/src/`, compiled by the level tool, or in the browser's level editor. Both produce level bytes through the core's single level codec. A source gives the minion slots to its spawn cells in row-major order, one minion per cell, and the editor numbers the spawns it exports the same way. So every level the editor draws has a source, and a level drawn either way has the same bytes and the same `level_id`. The Superchallenge map generator is deferred with its mode.
 
 ## 6. Input journal and byte formats
 

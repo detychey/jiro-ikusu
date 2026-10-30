@@ -1,1 +1,2 @@
 *.trace binary
+levels/src/*.txt text eol=lf
