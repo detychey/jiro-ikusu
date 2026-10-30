@@ -188,7 +188,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
     })
 }
 
-fn number<T: std::str::FromStr>(flag: &str, value: &str) -> Result<T, String> {
+pub fn number<T: std::str::FromStr>(flag: &str, value: &str) -> Result<T, String> {
     value
         .parse()
         .map_err(|_| format!("{flag}: not a number in range: {value}"))

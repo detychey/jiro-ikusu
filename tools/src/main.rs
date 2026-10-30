@@ -1,9 +1,11 @@
 //! jiro-tools, the native target (README §3): `vectors` writes vectors/, `replay` replays a
-//! journal and diagnoses another target's disagreement, `level` builds the level sources, and
-//! `playtest` plays the levels with bots.
+//! journal and diagnoses another target's disagreement, `level` builds the level sources,
+//! `playtest` plays the levels with bots, and `difffuzz` writes random cases for differential
+//! fuzzing.
 
 mod bots;
 mod coverage;
+mod difffuzz;
 mod json;
 mod levels;
 mod playtest;
@@ -27,7 +29,11 @@ fn main() -> ExitCode {
         ["replay", rest @ ..] => replay::run(rest),
         ["level", rest @ ..] => levels::run(rest),
         ["playtest", rest @ ..] => playtest::run(rest),
-        _ => Err("usage: jiro-tools vectors | replay ... | level ... | playtest ...".to_string()),
+        ["difffuzz", rest @ ..] => difffuzz::run(rest),
+        _ => Err(
+            "usage: jiro-tools vectors | replay ... | level ... | playtest ... | difffuzz ..."
+                .to_string(),
+        ),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

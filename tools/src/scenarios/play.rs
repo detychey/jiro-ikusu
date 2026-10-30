@@ -9,6 +9,8 @@ use jiro_core::level::{Level, encode, level_id};
 use jiro_core::recorder::Recorder;
 use jiro_core::types::{Cell, Dir, InputMask, Pos};
 
+pub use jiro_tools::random::{Rng, random_play};
+
 /// A recorded run: the journal, and the game before tick 0 and after every processed tick.
 pub struct Run {
     pub journal: Vec<u8>,
@@ -159,39 +161,6 @@ pub fn in_boss(game: &Game, pos: Pos) -> bool {
     game.boss.body().any(|cell| cell == pos)
 }
 
-/// A xorshift64 generator for scripted randomness.
-pub struct Rng(u64);
-
-impl Rng {
-    pub fn new(seed: u64) -> Self {
-        Self(seed.wrapping_mul(0x9e37_79b9_7f4a_7c15) | 1)
-    }
-
-    pub fn next(&mut self) -> u64 {
-        self.0 ^= self.0 << 13;
-        self.0 ^= self.0 >> 7;
-        self.0 ^= self.0 << 17;
-        self.0
-    }
-
-    /// A number in `low..=high`.
-    pub fn range(&mut self, low: u8, high: u8) -> u8 {
-        low + (self.next() % u64::from(high - low + 1)) as u8
-    }
-
-    /// True with probability 1 / `odds`.
-    pub fn one_in(&mut self, odds: u64) -> bool {
-        self.next().is_multiple_of(odds)
-    }
-
-    pub fn shuffled(&mut self, mut dirs: [Dir; 4]) -> [Dir; 4] {
-        for i in (1..4).rev() {
-            dirs.swap(i, (self.next() % (i as u64 + 1)) as usize);
-        }
-        dirs
-    }
-}
-
 /// A bot that cuts small U shapes off the rail: out from the rail, sideways, then back until the
 /// cut closes. Off a cut it walks along the rail to the next cell with open field beside it.
 pub struct CaptureBot {
@@ -300,33 +269,4 @@ pub fn distance(from: Pos, to: Pos, dir: Dir) -> i16 {
     let (dx, dy) = dir.offset();
     (i16::from(to.x) - i16::from(from.x)) * i16::from(dx)
         + (i16::from(to.y) - i16::from(from.y)) * i16::from(dy)
-}
-
-/// Random masks: a new mask on about one tick in `hold`, with each direction bit set at
-/// random, A and B (with `all_bits`) set one time in three, and X one time in `commit_odds`.
-pub fn random_play(
-    seed: u64,
-    hold: u64,
-    commit_odds: u64,
-    all_bits: bool,
-) -> impl FnMut(&Game) -> InputMask {
-    let mut rng = Rng::new(seed);
-    move |game| {
-        if game.ticks_used > 0 && !rng.one_in(hold) {
-            return game.mask;
-        }
-        let mut bits = (rng.next() & 0x0f) as u8;
-        if all_bits {
-            if rng.one_in(3) {
-                bits |= InputMask::A.bits();
-            }
-            if rng.one_in(3) {
-                bits |= InputMask::B.bits();
-            }
-        }
-        if rng.one_in(commit_odds) {
-            bits |= InputMask::X.bits();
-        }
-        InputMask::new(bits).expect("bit 7 clear")
-    }
 }

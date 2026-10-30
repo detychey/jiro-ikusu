@@ -8,6 +8,8 @@ use jiro_core::types::Pos;
 
 use super::{Case, case};
 
+pub use jiro_tools::cases::with_obstacles;
+
 /// README §5, the open-field level: bytes 451 to 471 and its level id.
 const OPEN_FIELD_TAIL: &str = "0x051414222202000000000000000000000a8c031d4c";
 const OPEN_FIELD_ID: &str = "0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9";
@@ -35,14 +37,6 @@ pub fn open_field() -> Level {
 
 pub fn open_field_id() -> [u8; 32] {
     level_id(&encode(&open_field()))
-}
-
-pub fn with_obstacles(mut level: Level, cells: impl IntoIterator<Item = (u8, u8)>) -> Level {
-    for (x, y) in cells {
-        let cell = usize::from(y) * 60 + usize::from(x);
-        level.obstacles[cell / 8] |= 0x80 >> (cell % 8);
-    }
-    level
 }
 
 pub fn with_minions(level: Level, spawns: &[(u8, u8)]) -> Level {
