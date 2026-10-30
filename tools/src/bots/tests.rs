@@ -35,6 +35,16 @@ fn committer_banks_once_a_lost_life_leaves_its_last() {
 }
 
 #[test]
+fn bold_plays_on_at_its_last_life() {
+    let level = l01();
+    let mut game = Game::new(&level, &[1; 32], 0).expect("game");
+    let mut bot = Policy::Bold.bot(1);
+    bot(&game);
+    game.player.lives = 1;
+    assert_ne!(bot(&game), InputMask::X);
+}
+
+#[test]
 fn committer_plays_on_at_two_lives() {
     let level = l01();
     let mut game = Game::new(&level, &[1; 32], 0).expect("game");

@@ -91,8 +91,26 @@ fn greedy_keeps_the_boss_beyond_the_cells_it_can_move() {
     let rectangle = Area::spanned(plan.start, plan.out, plan.side, plan.depth, plan.width)
         .expect("inside the grid");
     let ticks = (2 * i16::from(plan.depth) + i16::from(plan.width)) / 2 + 1;
-    let margin = Caution::CAREFUL.margin(ticks, game.boss.period);
+    let margin = ticks / i16::from(game.boss.period) + 2;
     assert!(Area::of_boss(&game.boss).gap(rectangle) >= margin);
+}
+
+/// (caution, ticks of the cut, boss period, margin in cells), computed by hand.
+#[test]
+fn a_caution_keeps_its_share_of_the_boss_reach_and_its_cells() {
+    let cases = [
+        (Caution::BOLD, 86, 1, 65),
+        (Caution::BOLD, 35, 3, 9),
+        (Caution::CAREFUL, 86, 1, 88),
+        (Caution::CAREFUL, 69, 3, 25),
+    ];
+    for (caution, ticks, period, margin) in cases {
+        assert_eq!(
+            caution.margin(ticks, period),
+            margin,
+            "{caution:?} {ticks} {period}"
+        );
+    }
 }
 
 #[test]
