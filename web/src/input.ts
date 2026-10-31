@@ -1,6 +1,8 @@
 // Controls and their key bindings (README §2, §6.1, D8). Input produces controls, never keys,
 // so the journal does not depend on the bindings.
 
+import { load, save, type Storage } from "./storage";
+
 export const CONTROLS = ["up", "down", "left", "right", "a", "b", "x"] as const;
 export type Control = (typeof CONTROLS)[number];
 export type Bindings = Record<Control, string>;
@@ -34,30 +36,15 @@ export const DEFAULT_BINDINGS: Bindings = {
 
 const STORAGE_KEY = "jiro-ikusu.bindings";
 
-export interface Storage {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-}
-
 /** The stored bindings, or the defaults when storage is missing, unreadable or invalid. */
 export function loadBindings(storage: Storage | undefined): Bindings {
-  try {
-    const stored: unknown = JSON.parse(storage?.getItem(STORAGE_KEY) ?? "null");
-    return isBindings(stored) ? stored : { ...DEFAULT_BINDINGS };
-  } catch {
-    return { ...DEFAULT_BINDINGS };
-  }
+  return load(storage, STORAGE_KEY, isBindings, () => ({ ...DEFAULT_BINDINGS }));
 }
 
 /** Stores the bindings; returns false when storage is missing or refuses, which leaves the
  *  game playable with the bindings of this page. */
 export function saveBindings(storage: Storage | undefined, bindings: Bindings): boolean {
-  try {
-    storage?.setItem(STORAGE_KEY, JSON.stringify(bindings));
-    return storage !== undefined;
-  } catch {
-    return false;
-  }
+  return save(storage, STORAGE_KEY, bindings);
 }
 
 /** Binds `control` to `code`, or refuses, with a message, a key already bound to another
