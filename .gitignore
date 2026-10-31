@@ -4,3 +4,4 @@ dist/
 web/test/out/
 web/test-results/
 web/playwright-report/
+*.uf2

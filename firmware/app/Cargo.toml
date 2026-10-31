@@ -1,0 +1,20 @@
+[package]
+name = "jiro-firmware"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+cortex-m-rt = "0.7.7"
+embassy-executor = { version = "=0.10.0", features = ["platform-cortex-m", "executor-thread"] }
+# boot2-generic-03h reads flash with the plain 03h command, which any SPI flash chip answers.
+# embassy-rp's default, boot2-w25q080, drives Winbond W25Q chips in quad mode, and RP2040 clones
+# ship other flash chips. Its reads are about 3 times slower than quad mode's, as the boot2
+# source says.
+embassy-rp = { version = "=0.10.0", features = ["rp2040", "time-driver", "critical-section-impl", "boot2-generic-03h"] }
+embassy-time = "=0.5.1"
+jiro-core = { path = "../../core" }
+jiro-firmware-drivers = { path = "../drivers" }
+jiro-shell = { path = "../../shell" }
+panic-halt = "1.0.0"

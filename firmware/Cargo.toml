@@ -1,0 +1,31 @@
+[workspace]
+resolver = "3"
+members = ["app", "drivers"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[profile.dev]
+overflow-checks = true
+
+[profile.test]
+overflow-checks = true
+
+[profile.bench]
+overflow-checks = true
+
+# opt-level "s" sizes the device image down without "z"'s cost in speed on the 15 Hz tick.
+[profile.release]
+overflow-checks = true
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+opt-level = "s"
+
+[profile.stylus]
+inherits = "release"
+opt-level = "z"

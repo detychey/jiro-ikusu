@@ -255,3 +255,104 @@ jobs:
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: bash scripts/check-drift.sh .
+
+  # The firmware row of plan §3.4: the device's own workspace, firmware/, with its drivers' host
+  # tests, the bringup build for the RP2040, bringup.uf2 as an artifact, and the static memory
+  # gate, which prints .text, .data and .bss. Its steps skip when no path of the `firmware` filter
+  # changed, except on workflow_dispatch. Once the toolchain is installed, every check runs even
+  # after another check failed.
+  firmware:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: dorny/paths-filter@v4.0.3
+        id: changes
+        with:
+          filters: |
+            firmware:
+              - 'firmware/**'
+              - 'core/**'
+              - 'shell/**'
+              - 'Cargo.toml'
+              - 'rust-toolchain.toml'
+              - 'scripts/bootstrap.sh'
+              - 'scripts/check-fw-mem.sh'
+              - '.github/workflows/ci.yml'
+
+      # The UF2 converter builds against libudev; bootstrap.sh checks these packages but runs
+      # apt-get without sudo.
+      - name: Packages for the UF2 converter
+        id: packages
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.changes.outputs.firmware == 'true' }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libudev-dev pkg-config
+
+      - uses: actions/cache@v6.1.0
+        if: ${{ steps.packages.outcome == 'success' }}
+        with:
+          path: |
+            ~/.cargo/bin/elf2uf2-rs
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: elf2uf2-rs-${{ runner.os }}-${{ hashFiles('scripts/bootstrap.sh') }}
+
+      - name: Toolchain and UF2 converter
+        id: toolchain
+        if: ${{ steps.packages.outcome == 'success' }}
+        run: bash scripts/bootstrap.sh firmware
+
+      - uses: Swatinem/rust-cache@v2.9.3
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        with:
+          workspaces: firmware -> target
+          cache-bin: false
+
+      - name: Format (firmware)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        working-directory: firmware
+        run: cargo fmt --all --check
+
+      - name: Clippy (firmware)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        working-directory: firmware
+        run: |
+          status=0
+          cargo clippy --locked -p jiro-firmware -- -D warnings || status=1
+          cargo clippy --locked -p jiro-firmware-drivers --all-targets \
+            --target x86_64-unknown-linux-gnu -- -D warnings || status=1
+          exit "$status"
+
+      - name: Driver host tests (firmware)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        working-directory: firmware
+        run: cargo test --locked -p jiro-firmware-drivers --target x86_64-unknown-linux-gnu
+
+      - name: bringup.uf2 (firmware)
+        id: bringup
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        working-directory: firmware
+        run: |
+          cargo build --release --locked -p jiro-firmware --bin bringup
+          elf2uf2-rs target/thumbv6m-none-eabi/release/bringup bringup.uf2
+
+      - name: Static memory gate (firmware)
+        if: ${{ !cancelled() && steps.bringup.outcome == 'success' }}
+        run: bash scripts/check-fw-mem.sh firmware/target/thumbv6m-none-eabi/release/bringup
+
+      - uses: actions/upload-artifact@v7.0.2
+        if: ${{ !cancelled() && steps.bringup.outcome == 'success' }}
+        with:
+          name: bringup-uf2
+          path: firmware/bringup.uf2
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: The checks left the tree clean
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: bash scripts/check-drift.sh .
