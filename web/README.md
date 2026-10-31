@@ -32,15 +32,16 @@ The canvas exposes `data-state-hash`, `data-ticks-used` and, once the level has 
 
 The game page is Training (README §8.1): free, with no wallet, and no network call once the
 engine and the levels have loaded. Each attempt draws a random run nonce, as README §6.3 allows
-in Training. The picker lists the 16 levels, then the other levels, which play unscored: the
-open field, walls and minions, and the editor's level. A level file is scored when it is one of
-the 16 levels.
+in Training. The picker lists the 16 levels, then the other levels: the open field, walls and
+minions, and the editor's level. A level from any source, a file or the editor included, is
+scored when it is one of the 16 levels, and plays unscored otherwise.
 
 An attempt on one of the 16 levels scores as a season scores it (README §8.4): the core replays
 the attempt's journal with the level's weight from `seasons/calibration-1.json` and gives its
 `level_score`. The page refuses to start when its 16 levels are not that file's, under the
 engine's rules version. Each level's best score stays in localStorage, under the rules version,
-the level id and the weight it was made with, so a new calibration starts every level afresh.
+the level id and the weight it was made with, so a best counts only under the scoring it was
+made with. Each new score is compared with the bests stored by every tab, not only this one's.
 Without storage the page still plays, and keeps the bests for the page only. After each attempt
 the end screen offers the journal, which the replay viewer replays.
 

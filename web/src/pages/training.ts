@@ -108,6 +108,15 @@ export function beats(score: number, best: number | undefined): boolean {
   return best === undefined || score > best;
 }
 
+/** The bests of both, with the higher score of each level. */
+export function mergeBests(bests: Bests, others: Bests): Bests {
+  const merged = { ...bests };
+  for (const [key, score] of Object.entries(others)) {
+    if (beats(score, merged[key])) merged[key] = score;
+  }
+  return merged;
+}
+
 /** The end screen's score line: the level score, against the best before the attempt. */
 export function scoreLine(score: number, best: number | undefined): string {
   if (best === undefined) return `Score ${score}, the first on this level.`;
@@ -195,7 +204,7 @@ export function mount(): void {
     const scored = document.createElement("optgroup");
     scored.label = "Training: the 16 levels";
     const others = document.createElement("optgroup");
-    others.label = "Other levels, not scored";
+    others.label = "Other levels";
     for (const { name, level } of training) {
       levels.set(name, () => level);
       scored.append(new Option(name, name));
@@ -302,11 +311,13 @@ export function mount(): void {
     if (weightBp === undefined) return "Not one of the 16 levels, so not scored.";
     const score = attemptScore(core, level, journal, weightBp);
     const key = bestKey(core.rulesVersion, levelId, weightBp);
+    // Another tab may have stored bests since this page loaded them.
+    bests = mergeBests(bests, loadBests(storage));
     const line = scoreLine(score, bests[key]);
-    if (!beats(score, bests[key])) return line;
-    bests = { ...bests, [key]: score };
+    const isBest = beats(score, bests[key]);
+    if (isBest) bests = { ...bests, [key]: score };
     showBests();
-    return saveBests(storage, bests) ? line : `${line} Best kept for this page only.`;
+    return !isBest || saveBests(storage, bests) ? line : `${line} Best kept for this page only.`;
   }
 
   function downloadJournal(): void {

@@ -8,6 +8,7 @@ import {
   beats,
   bestKey,
   loadBests,
+  mergeBests,
   saveBests,
   scoreLine,
   type TrainingLevel,
@@ -94,6 +95,10 @@ describe("training", () => {
   it("keeps a best per rules version, level id and weight", () => {
     const keys = [bestKey(2, FIRST_ID, 15_503), bestKey(3, FIRST_ID, 15_503), bestKey(2, FIRST_ID, 15_504)];
     expect(new Set(keys).size).toBe(3);
+  });
+
+  it("merges the bests of another tab, keeping the higher score of each level", () => {
+    expect(mergeBests({ a: 10, b: 5 }, { b: 7, c: 0, a: 3 })).toEqual({ a: 10, b: 7, c: 0 });
   });
 
   it("restores the bests it stored", () => {
