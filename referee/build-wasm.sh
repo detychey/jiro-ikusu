@@ -10,7 +10,7 @@
 #
 # Requires: rustup, node and npm.
 # Usage: referee/build-wasm.sh; the module is $CARGO_TARGET_DIR (default target/)
-# /jiro_referee_stylus.opt.wasm. Deploy with: cargo stylus deploy --wasm-file <that file>.
+# /jiro_referee_stylus.opt.wasm, which M4.2 deploys.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
