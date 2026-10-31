@@ -1,0 +1,23 @@
+[package]
+name = "jiro-referee-stylus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+jiro-core = { path = "../../core" }
+stylus-sdk = "=0.10.8"
+
+[dev-dependencies]
+serde_json = "1"
+stylus-sdk = { version = "=0.10.8", features = ["stylus-test"] }
+
+[features]
+export-abi = ["stylus-sdk/export-abi"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("contract-client-gen"))'] }
