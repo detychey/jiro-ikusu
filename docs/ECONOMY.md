@@ -23,7 +23,7 @@ Only `claim` and `withdrawRake` send ETH out of `Season`, and neither `closeSeas
 - the rake not yet withdrawn;
 - the unclaimed players' pots of closed seasons, dust included.
 
-**Scores.** A run's score, the sum of its six level scores, sets its share of the players' pot. Testnet seasons take their weights from `seasons/calibration-1.json` (README §8.4): there, a median run of the reference mix scores `medianPoints` on every level, so the draw of six levels does not decide the ranking.
+**Scores.** A run's score, the sum of its six level scores, sets its share of the players' pot. Testnet seasons take their weights from `seasons/calibration-1.json` (README §8.4): there, a median run of the reference mix scores `medianPoints`, or one point less by rounding, on every level, so the draw of six levels does not decide the ranking.
 
 ## 2. Costs
 

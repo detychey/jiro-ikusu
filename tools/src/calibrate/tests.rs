@@ -48,6 +48,11 @@ fn p_is_the_largest_multiple_of_1000_that_keeps_every_weight_in_a_u16() {
 }
 
 #[test]
+fn p_may_give_a_weight_of_exactly_65535() {
+    assert_eq!(weights(&[2_594], 500), Ok((17_000, vec![65_535])));
+}
+
+#[test]
 fn a_median_below_the_floor_is_weighted_at_the_floor() {
     assert_eq!(
         weights(&[300, 9_000], 500),

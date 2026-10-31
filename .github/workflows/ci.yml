@@ -4,8 +4,8 @@
 # stylus row generates M1.10's 200 fixed difffuzz cases before the tests, whose TestVM replay
 # of jiro-referee-stylus needs them, and size-gates the Stylus wasm after them. The job always
 # starts and reports a status; its steps skip when no path of the `rust` filter changed (Rust
-# sources, scripts, tools/xcheck, vectors, levels, the wasm builds and the wasm runner, this
-# workflow), except on workflow_dispatch, where every step runs. Once the toolchain is
+# sources, scripts, tools/xcheck, vectors, levels, the playtest reports that levels/README.md
+# reads, the wasm builds and the wasm runner, this workflow), except on workflow_dispatch, where every step runs. Once the toolchain is
 # installed, every check runs even after another check failed, so one run reports every
 # failure.
 name: ci
@@ -51,6 +51,7 @@ jobs:
               - 'tools/xcheck/**'
               - 'vectors/**'
               - 'levels/**'
+              - 'reports/playtest-*.json'
               - 'web/wasm/**'
               - 'web/test/vectors.mjs'
               - 'referee/**'

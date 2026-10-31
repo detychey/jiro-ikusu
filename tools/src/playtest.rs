@@ -285,6 +285,11 @@ pub(crate) fn nonce(seed: u64, k: u32) -> [u8; 32] {
     keccak256(&[b"jiro.playtest.", &seed.to_be_bytes(), &k.to_be_bytes()])
 }
 
+/// The number of events of a journal the Recorder wrote.
+pub(crate) fn events(journal: &[u8]) -> u16 {
+    u16::try_from((journal.len() - HEADER_LEN) / EVENT_LEN).expect("at most 2,700 events")
+}
+
 /// The randomness seed of a bot playing under `nonce`.
 fn bot_seed(nonce: &[u8; 32]) -> u64 {
     u64::from_be_bytes(nonce[..8].try_into().expect("8 bytes"))
@@ -321,8 +326,7 @@ pub(crate) fn play_level(
         return Err(format!("{}: replay disagrees with the Recorder", context()));
     }
     let effective_bp = u16::try_from(outcome.level_score).expect("a claim is at most 10,000 bp");
-    let events =
-        u16::try_from((journal.len() - HEADER_LEN) / EVENT_LEN).expect("at most 2,700 events");
+    let events = events(&journal);
     Ok((
         journal,
         Sample {

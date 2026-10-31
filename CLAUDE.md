@@ -21,11 +21,11 @@ Jiro-ikusu: a territory-capture arcade game, played on a Raspberry Pi Pico or in
 
 | A change to | Also, in the same PR |
 |---|---|
-| `core/src/**` that changes behavior | Bump `RULES_VERSION`. Update README §4-§6, and §7.3, §8.2 or §8.4 where the Outcome, the draw or level scores change. Regenerate `vectors/` and explain the moved outcomes. Once M2.6 has merged, rerun the playtest and regenerate its report. Once M2.9 has merged, rerun `calibrate --check`: regenerate the calibration file in place until a season that references it has opened, and write a new calibration file for a new season after that. |
+| `core/src/**` that changes behavior | Bump `RULES_VERSION`. Update README §4-§6, and §7.3, §8.2 or §8.4 where the Outcome, the draw or level scores change. Regenerate `vectors/` and explain the moved outcomes. Once M2.6 has merged, rerun the playtest, regenerate its report and rebuild `levels/README.md`, whose measured clear rates come from it. Once M2.9 has merged, rerun `calibrate --check`: regenerate the calibration file in place until a season that references it has opened, and write a new calibration file for a new season after that. |
 | a byte format | Bump the format's version; regenerate `vectors/format/` |
 | `core/src/consts.rs` | README §2, §4 and §5 |
-| `levels/src/**` | Rebuild `levels/*.bin` and `levels/README.md`. Once M2.6 has merged, the playtest report. Once M2.9 has merged, the calibration rule above. |
-| `levels/targets.json` or `tools/src/bots/**` | Rerun `playtest --check levels/targets.json` and regenerate its report in `reports/`; a targets change also rebuilds `levels/README.md`. Once M2.9 has merged, the calibration rule above. |
+| `levels/src/**` | Rebuild `levels/*.bin` and `levels/README.md`. Once M2.6 has merged, the playtest report, then `levels/README.md` again, whose measured clear rates come from it. Once M2.9 has merged, the calibration rule above. |
+| `levels/targets.json` or `tools/src/bots/**` | Rerun `playtest --check levels/targets.json` and regenerate its report in `reports/`, then rebuild `levels/README.md`, whose measured clear rates come from it. Once M2.9 has merged, the calibration rule above. |
 | `seasons/*.json` | README §8.4 and `docs/ECONOMY.md` |
 | `contracts/src/**` | README §7 and §8, if a frozen rule or range changes; regenerate `contracts/abi/` (from M4.3); the threat table of `docs/ECONOMY.md`, if a mitigation moved |
 | `vectors/**` | Regenerate `vectors/pack.bin` and `firmware/emu/transcripts/` (from M3.3) |

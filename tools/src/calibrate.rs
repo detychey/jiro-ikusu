@@ -19,7 +19,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
 
-use jiro_core::consts::{BP, EVENT_LEN, HEADER_LEN, RULES_VERSION, SEASON_LEVELS};
+use jiro_core::consts::{BP, RULES_VERSION, SEASON_LEVELS};
 use jiro_core::game::EndReason;
 use jiro_core::journal::Header;
 use jiro_core::level::level_id;
@@ -28,8 +28,8 @@ use serde_json::json;
 use crate::bots::Policy;
 use crate::json::hex;
 use crate::playtest::{
-    LevelFile, Sample, Stats, Targets, check_mix, load_levels, nonce, number, percent, play_all,
-    play_level,
+    LevelFile, Sample, Stats, Targets, check_mix, events, load_levels, nonce, number, percent,
+    play_all, play_level,
 };
 use crate::scenarios::game::GameCase;
 use crate::scenarios::game_long::worst_case_policy;
@@ -209,7 +209,9 @@ fn weights(medians: &[u16], floor_bp: u16) -> Result<(u32, Vec<u16>), String> {
     if lowest == 0 {
         return Err("a median effective claim of 0 bp, with a floor of 0 bp, has no weight".into());
     }
-    let points = u64::from(u16::MAX) * lowest / u64::from(BP) / POINTS_STEP * POINTS_STEP;
+    // A weight floor(P × BP / claim) fits in a u16 while P × BP < 65,536 × claim.
+    let points =
+        ((u64::from(u16::MAX) + 1) * lowest - 1) / u64::from(BP) / POINTS_STEP * POINTS_STEP;
     if points == 0 {
         return Err(format!(
             "no P of {POINTS_STEP} points or more keeps a weight within a u16 for a claim of \
@@ -299,8 +301,7 @@ fn synthetic(level: &LevelFile, weight_bp: u16, runs: u32, seed: u64) -> Result<
         let header = header(&level.level, nonce(seed, run));
         let recorder = play(&level.level, &header, worst_case_policy(), |_| {})?;
         let game = recorder.game();
-        let events = u16::try_from((recorder.journal().len() - HEADER_LEN) / EVENT_LEN)
-            .expect("at most 2,700 events");
+        let events = events(recorder.journal());
         if best
             .as_ref()
             .is_none_or(|(ticks, most, ..)| (game.ticks_used, events) > (*ticks, *most))

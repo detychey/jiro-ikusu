@@ -2,8 +2,9 @@
 # a PR, on workflow_dispatch, and weekly on schedule. A PR run checks 2,000 cases per property, a
 # dispatch the count it is given, and the scheduled run the full counts: 100,000 cases per
 # property, the arbitrary inputs through replay among them, the 100,000-board minion coverage
-# run, and `calibrate --check`, whose calibration file, report, levels table and gate set must
-# match the committed ones (plan M2.9). A scheduled run skips its work when main has no commit
+# run, and the playtest, the levels build and `calibrate --check`, whose playtest report, levels
+# table, calibration file, calibration report and gate set must match the committed ones (plan
+# M2.6, M2.9). A scheduled run skips its work when main has no commit
 # since the previous scheduled run.
 # Once the toolchain is installed, every check runs even after another check failed. Never a
 # required check.
@@ -101,6 +102,8 @@ jobs:
         run: |
           echo "=== BEGIN calibrate ==="
           status=0
+          cargo run -p jiro-tools --release --locked -- playtest --levels levels --check levels/targets.json || status=1
+          cargo run -p jiro-tools --locked -- level build levels/src levels || status=1
           cargo run -p jiro-tools --release --locked -- calibrate --check --out seasons/calibration-1.json || status=1
           bash scripts/check-drift.sh seasons/ levels/ vectors/ reports/ || status=1
           echo "=== END calibrate ==="

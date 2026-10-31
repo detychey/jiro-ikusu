@@ -349,10 +349,10 @@ Each milestone's README §9 "done when" closes when these items merge:
 
       | A change to | Also, in the same PR |
       |---|---|
-      | `core/src/**` that changes behavior | Bump `RULES_VERSION`. Update README §4-§6. Regenerate `vectors/` and explain the moved outcomes. Once M2.6 has merged, rerun the playtest and regenerate its report. Once M2.9 has merged, rerun `calibrate --check`: regenerate the calibration file in place until a season that references it has opened, and write a new calibration file for a new season after that. |
+      | `core/src/**` that changes behavior | Bump `RULES_VERSION`. Update README §4-§6. Regenerate `vectors/` and explain the moved outcomes. Once M2.6 has merged, rerun the playtest, regenerate its report and rebuild `levels/README.md`, whose measured clear rates come from it. Once M2.9 has merged, rerun `calibrate --check`: regenerate the calibration file in place until a season that references it has opened, and write a new calibration file for a new season after that. |
       | a byte format | Bump the format's version; regenerate `vectors/format/` |
       | `core/src/consts.rs` | README §2, §4 and §5 |
-      | `levels/src/**` | Rebuild `levels/*.bin` and `levels/README.md`. Once M2.6 has merged, the playtest report. Once M2.9 has merged, the calibration rule above. |
+      | `levels/src/**` | Rebuild `levels/*.bin` and `levels/README.md`. Once M2.6 has merged, the playtest report, then `levels/README.md` again, whose measured clear rates come from it. Once M2.9 has merged, the calibration rule above. |
       | `seasons/*.json` | README §8.4 and `docs/ECONOMY.md` |
       | `contracts/src/**` | Regenerate `contracts/abi/` (from M4.3); the threat table of `docs/ECONOMY.md`, if a mitigation moved |
       | `vectors/**` | Regenerate `vectors/pack.bin` and `firmware/emu/transcripts/` (from M3.3) |
