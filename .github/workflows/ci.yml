@@ -1,8 +1,10 @@
 # Private CI profile (plan §1.3, P14): the rust, rust-release, targets, determinism,
-# vectors-drift, levels-drift and wasm-parity rows of plan §3.4 run as step groups of one
-# `rust` job; vectors-drift also runs the version gate, scripts/check-rules-version.sh. The job
-# always starts and reports a status; its steps skip when no path of the `rust` filter changed
-# (Rust sources, scripts, tools/xcheck, vectors, levels, the wasm build and its runner, this
+# vectors-drift, levels-drift, wasm-parity and stylus rows of plan §3.4 run as step groups of
+# one `rust` job; vectors-drift also runs the version gate, scripts/check-rules-version.sh. The
+# stylus row generates M1.10's 200 fixed difffuzz cases before the tests, whose TestVM replay
+# of jiro-referee-stylus needs them, and size-gates the Stylus wasm after them. The job always
+# starts and reports a status; its steps skip when no path of the `rust` filter changed (Rust
+# sources, scripts, tools/xcheck, vectors, levels, the wasm builds and the wasm runner, this
 # workflow), except on workflow_dispatch, where every step runs. Once the toolchain is
 # installed, every check runs even after another check failed, so one run reports every
 # failure.
@@ -25,7 +27,7 @@ permissions:
 jobs:
   rust:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         shell: bash
@@ -51,6 +53,7 @@ jobs:
               - 'levels/**'
               - 'web/wasm/**'
               - 'web/test/vectors.mjs'
+              - 'referee/**'
               - '.github/workflows/ci.yml'
             rules:
               - 'README.md'
@@ -99,6 +102,10 @@ jobs:
       - name: Clippy (rust)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: The 200 fixed difffuzz cases, for the referee's TestVM replay (stylus)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: cargo run -p jiro-tools --release --locked -- difffuzz --seed 1 --cases 200 --out target/difffuzz
 
       - name: Tests, debug (rust)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
@@ -164,6 +171,10 @@ jobs:
         run: |
           bash web/wasm/build-wasm.sh
           node web/test/vectors.mjs vectors/
+
+      - name: The Stylus referee fits the contract size limit (stylus)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: bash referee/build-wasm.sh
 
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
