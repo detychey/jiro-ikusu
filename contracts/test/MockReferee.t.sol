@@ -50,7 +50,11 @@ contract MockRefereeTest is Test {
         }
     }
 
-    function runInputs() private pure returns (bytes[6] memory levels, bytes[6] memory journals, uint16[6] memory weightsBp) {
+    function runInputs()
+        private
+        pure
+        returns (bytes[6] memory levels, bytes[6] memory journals, uint16[6] memory weightsBp)
+    {
         for (uint8 levelIndex; levelIndex < 6; ++levelIndex) {
             levels[levelIndex] = levelOf(levelIndex);
             journals[levelIndex] = journalOf(levelIndex);
