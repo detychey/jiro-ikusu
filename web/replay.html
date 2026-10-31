@@ -16,7 +16,7 @@
         <canvas id="field" aria-label="Replayed field"></canvas>
       </section>
       <aside class="side">
-        <form id="load" class="setup">
+        <form id="load" class="setup" novalidate>
           <fieldset>
             <legend>Game vector, with its .trace file to compare</legend>
             <input id="vector-files" type="file" accept=".json,.trace" multiple />
@@ -27,7 +27,7 @@
             <label>Level hex <textarea id="level-hex" rows="2" spellcheck="false"></textarea></label>
             <label>Journal file <input id="journal-file" type="file" accept=".jrn,application/octet-stream" /></label>
             <label>Journal hex <textarea id="journal-hex" rows="2" spellcheck="false"></textarea></label>
-            <label>Weight (bp) <input id="weight" type="number" min="0" max="65535" step="1" value="10000" required /></label>
+            <label>Weight (bp) <input id="weight" type="number" min="0" max="65535" value="10000" /></label>
           </fieldset>
           <button type="submit">Replay</button>
           <p id="load-error" class="error" role="alert"></p>

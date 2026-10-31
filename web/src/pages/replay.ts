@@ -127,7 +127,8 @@ function vectorRecording(text: string, file: string): Recording {
   return { level: fromHex(level), journal: fromHex(journal), weightBp: weight(weightBp, file) };
 }
 
-/** A weight in basis points, a whole number from 0 to 65,535 (README §8.4). */
+/** A weight in basis points, a whole number from 0 to 65,535: the referee's uint16 weightBp
+ *  (README §7.3). */
 function weight(value: unknown, source: string): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 0xffff) {
     throw new Error(`${source}: the weight is a whole number of basis points from 0 to 65,535`);

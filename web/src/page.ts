@@ -18,7 +18,8 @@ export async function loadCore(): Promise<Core> {
   return Core.load(await response.arrayBuffer());
 }
 
-/** Sizes the field to the largest integer scale that fits beside the side panel. */
+/** Sizes the field to the largest integer scale that fits the window, less the page's padding
+ *  and header. */
 export function fitField(renderer: Renderer): void {
   renderer.fit(Math.min(window.innerWidth - 32, 960), window.innerHeight - 160);
 }

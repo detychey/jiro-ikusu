@@ -59,7 +59,7 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/render.ts` | The 240 × 240 field at an integer scale, redrawing only the changed cells |
 | `src/main.ts` | The game page: level picker, HUD, end screen, journal download, bindings panel |
 | `src/pages/replay.ts` | The replay viewer: the view of a replayed journal, the trace comparison and the page |
-| `src/page.ts` | What the pages share: elements by id, loading the engine, claims in percent |
+| `src/page.ts` | What the pages share: elements by id, loading the engine, the field's size, error messages, claims in percent |
 | `src/journal.ts` | The events of a journal the core has accepted |
 | `src/errors.ts` | The core's error codes by name, with their meaning |
 | `test/*.test.ts` | vitest: the clock, the bindings, play and replay through the wasm build, the error names |
