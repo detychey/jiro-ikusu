@@ -20,7 +20,7 @@ use crate::random::{Rng, random_play};
 #[cfg(test)]
 mod tests;
 
-/// The most levels one case draws. About one draw in four breaks a validity rule of README §5,
+/// The most levels one case draws. About one draw in five breaks a validity rule of README §5,
 /// and no case of seed 1 among its first 100,000 needs more than 8 draws.
 const MAX_DRAWS: u32 = 100;
 
@@ -60,14 +60,15 @@ pub fn case(seed: u64, index: u32) -> Result<Case, String> {
     let mut recorder =
         Recorder::new(&level, &header).map_err(|error| failed("a valid level", error))?;
     let mut policy = random_play(rng.next_u64(), u64::from(rng.range(1, 30)), 500, true);
-    while recorder
-        .step(policy(recorder.game()))
-        .map_err(|error| {
-            let tick = recorder.game().ticks_used.saturating_sub(1);
-            failed(&format!("tick {tick}"), error)
-        })?
-        .is_none()
-    {}
+    loop {
+        let tick = recorder.game().ticks_used;
+        let end = recorder
+            .step(policy(recorder.game()))
+            .map_err(|error| failed(&format!("tick {tick}"), error))?;
+        if end.is_some() {
+            break;
+        }
+    }
     Ok(Case {
         level: bytes,
         header,
@@ -86,9 +87,10 @@ pub fn with_obstacles(mut level: Level, cells: impl IntoIterator<Item = (u8, u8)
 }
 
 /// A random level, or `None` when the draw breaks a validity rule of README §5 that the draw does
-/// not exclude (codes 35, 36, 37 and 39): up to 7 obstacle blocks, a spawn area for a B × B body
-/// with B from 2 to 8, and up to 3 minions on rail cells. The ranges hold by construction, so any
-/// other error is a core bug.
+/// not exclude (codes 35, 37 and 39): up to 7 obstacle blocks, a spawn area for a B × B body with
+/// B from 2 to 8, and up to 3 minions on rail cells. The ranges hold by construction, and the at
+/// most 1,008 obstacle cells leave more than the 1,682 open cells of rule 36, so any other error
+/// is a core bug.
 fn random_level(rng: &mut Rng) -> Result<Option<Level>, Error> {
     let mut blocks = Vec::new();
     for _ in 0..rng.below(8) {
@@ -129,9 +131,7 @@ fn random_level(rng: &mut Rng) -> Result<Option<Level>, Error> {
     let mut stack = [0; CAPTURE_STACK];
     let start = match validate(&level, &mut stack) {
         Ok(start) => start,
-        Err(
-            Error::OpenAreaSplit | Error::OpenAreaSmall | Error::BossSpawn | Error::PlayerStartRail,
-        ) => return Ok(None),
+        Err(Error::OpenAreaSplit | Error::BossSpawn | Error::PlayerStartRail) => return Ok(None),
         Err(error) => return Err(error),
     };
     let count = rng.range(0, MINION_SLOTS as u8);
