@@ -22,7 +22,8 @@ The page takes optional query parameters:
 
 - `level`: a level name from the picker;
 - `nonce`: a 32-byte run nonce in hex (by default each Training run draws a random one);
-- `autoplay`: start without pressing Play.
+- `autoplay`: start without pressing Play;
+- `hex`: a level's bytes in hex, played as "Edited level" (the level editor's Play button sets it).
 
 The canvas exposes `data-state-hash`, `data-ticks-used` and, once the level has ended,
 `data-end-reason`, for the smoke test.
@@ -36,6 +37,16 @@ referee does and gives the Outcome; a journal the core rejects shows its error c
 pause and step move through the ticks, and the slider seeks, which plays the journal again from
 tick 0. Each tick shows its state hash and the inputs held, and a vector's trace is compared tick
 for tick, with the first tick that differs.
+
+## Level editor
+
+`editor.html` (plan M2.5) edits a level: paint obstacles, place up to 3 minion spawns, which take
+their slots in row-major order as a level source gives them (README §5), and set the boss body
+size, its spawn rectangle and the other fields. The editor has no format of its own: jiro-wasm's
+`decode_level` and `encode_level` run the core's level codec on the editor's model, so a level
+drawn here has the same bytes and `level_id` as its source compiled by the level tool. After
+every change the core validates the bytes and shows the first rule they break, with its code.
+It imports and exports `.bin` files and hex, and Play opens the game on the edited level.
 
 ## Controls
 
@@ -59,6 +70,8 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/render.ts` | The 240 × 240 field at an integer scale, redrawing only the changed cells |
 | `src/main.ts` | The game page: level picker, HUD, end screen, journal download, bindings panel |
 | `src/pages/replay.ts` | The replay viewer: the view of a replayed journal, the trace comparison and the page |
+| `src/pages/editor.ts` | The level editor: painting, fields, live validation, import, export and Play |
+| `src/level.ts` | The editor's model of a level, its cells and fields, which the core encodes and decodes |
 | `src/page.ts` | What the pages share: elements by id, loading the engine, the field's size, error messages, claims in percent |
 | `src/journal.ts` | The events of a journal the core has accepted |
 | `src/errors.ts` | The core's error codes by name, with their meaning |

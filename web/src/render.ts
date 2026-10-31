@@ -3,9 +3,9 @@
 // grid layer; the entities are drawn on top of a copy of it every frame.
 
 import type { Snapshot } from "./core";
+import { FIELD_CELLS } from "./level";
 
 export const CELL_PX = 4;
-export const FIELD_CELLS = 60;
 export const FIELD_PX = CELL_PX * FIELD_CELLS;
 
 /** The colors of the cell values 0 to 3; BOSS_ZONE exists only during a capture. */
@@ -17,21 +17,23 @@ export const ENTITY_COLORS = {
   minion: "#3cff78",
 } as const;
 
+/** A rectangle to draw over the grid, in pixels. */
 export interface Rect {
   color: string;
   x: number;
   y: number;
-  size: number;
+  width: number;
+  height: number;
 }
 
-/** The entities to draw over the grid, in pixels, back to front: boss, minions, player. */
+/** The rectangle of `width` × `height` cells whose top-left cell is (x, y). */
+export function cellRect(x: number, y: number, width: number, height: number, color: string): Rect {
+  return { color, x: x * CELL_PX, y: y * CELL_PX, width: width * CELL_PX, height: height * CELL_PX };
+}
+
+/** The entities to draw over the grid, back to front: boss, minions, player. */
 export function entityRects(snapshot: Snapshot): Rect[] {
-  const cell = (x: number, y: number, cells: number, color: string): Rect => ({
-    color,
-    x: x * CELL_PX,
-    y: y * CELL_PX,
-    size: cells * CELL_PX,
-  });
+  const cell = (x: number, y: number, cells: number, color: string) => cellRect(x, y, cells, cells, color);
   const { boss, player } = snapshot;
   return [
     cell(boss.x, boss.y, boss.size, ENTITY_COLORS.boss),
@@ -90,10 +92,15 @@ export class Renderer {
 
   /** Shows the grid layer with the entities of `snapshot` on top. */
   frame(snapshot: Snapshot): void {
+    this.show(entityRects(snapshot));
+  }
+
+  /** Shows the grid layer with `rects` on top, back to front. */
+  show(rects: Rect[]): void {
     this.context.drawImage(this.gridLayer, 0, 0);
-    for (const rect of entityRects(snapshot)) {
+    for (const rect of rects) {
       this.context.fillStyle = rect.color;
-      this.context.fillRect(rect.x, rect.y, rect.size, rect.size);
+      this.context.fillRect(rect.x, rect.y, rect.width, rect.height);
     }
   }
 }

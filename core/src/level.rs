@@ -4,7 +4,7 @@
 use core::num::NonZeroU16;
 
 use crate::consts::{
-    BP, CAPTURE_STACK, LEVEL_LEN, LEVEL_VERSION, MAX_BOSS_SIZE, MAX_TICKS, MIN_BOSS_SIZE,
+    BP, CAPTURE_STACK, CELLS, LEVEL_LEN, LEVEL_VERSION, MAX_BOSS_SIZE, MAX_TICKS, MIN_BOSS_SIZE,
     MIN_OPEN_AREA, MINION_SLOTS, OBSTACLE_BYTES, PLAYER_START, W,
 };
 use crate::error::Error;
@@ -44,6 +44,18 @@ impl Level {
         self.obstacles
             .iter()
             .flat_map(|&byte| (0..8).map(move |bit| (byte << bit) & 0x80 != 0))
+    }
+
+    /// The obstacle bitmap of `cells`, one obstacle bit per cell in row-major order: the
+    /// inverse of `obstacle_bits`.
+    pub fn obstacle_bitmap(cells: &[bool; CELLS]) -> [u8; OBSTACLE_BYTES] {
+        let mut bitmap = [0; OBSTACLE_BYTES];
+        for (byte, bits) in bitmap.iter_mut().zip(cells.as_chunks::<8>().0) {
+            *byte = bits
+                .iter()
+                .fold(0_u8, |byte, &bit| byte.wrapping_shl(1) | u8::from(bit));
+        }
+        bitmap
     }
 
     /// The spawns of the level's minions: its first `minion_count` slots.

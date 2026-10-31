@@ -84,8 +84,13 @@ async function main(): Promise<void> {
   if (params.has("autoplay")) await play();
 }
 
+/** The picker's name for the level of the `hex` parameter, which the editor's Play button sets. */
+const EDITED_LEVEL = "Edited level";
+
 function listLevels(): void {
   const vectorLevel = (input: string) => async () => fromHex(input);
+  const edited = params.get("hex");
+  if (edited !== null) levels.set(EDITED_LEVEL, vectorLevel(edited));
   levels.set("Open field", vectorLevel(openField.input));
   levels.set("Walls and minions", vectorLevel(wallsAndMinions.input));
   for (const [path, url] of Object.entries(BUNDLED_LEVELS)) {
@@ -93,7 +98,7 @@ function listLevels(): void {
     levels.set(name, async () => new Uint8Array(await (await fetch(url)).arrayBuffer()));
   }
   for (const name of levels.keys()) levelSelect.add(new Option(name, name));
-  const asked = params.get("level");
+  const asked = edited !== null ? EDITED_LEVEL : params.get("level");
   if (asked !== null && levels.has(asked)) levelSelect.value = asked;
 }
 

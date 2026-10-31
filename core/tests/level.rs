@@ -4,7 +4,7 @@
 use std::num::NonZeroU16;
 
 use jiro_core::Error;
-use jiro_core::consts::{CAPTURE_STACK, LEVEL_LEN, PLAYER_START};
+use jiro_core::consts::{CAPTURE_STACK, CELLS, LEVEL_LEN, PLAYER_START};
 use jiro_core::grid::claim_bp;
 use jiro_core::level::{Level, LevelStart, Rect, decode, encode, level_id, validate};
 use jiro_core::types::{Cell, CellIndex, Pos};
@@ -952,4 +952,18 @@ fn claim_bp_is_one_floor_division() {
     for (captured, expected) in cases {
         assert_eq!(claim_bp(captured, claimable), expected, "{captured} cells");
     }
+}
+
+/// `obstacle_bitmap` inverts `obstacle_bits`, at every bit position of every byte.
+#[test]
+fn the_bitmap_of_a_level_s_obstacle_bits_is_its_obstacles() {
+    let level = Level {
+        obstacles: core::array::from_fn(|i| (i as u8).wrapping_mul(37)),
+        ..open_field()
+    };
+    let mut cells = [false; CELLS];
+    for (cell, bit) in cells.iter_mut().zip(level.obstacle_bits()) {
+        *cell = bit;
+    }
+    assert_eq!(Level::obstacle_bitmap(&cells), level.obstacles);
 }

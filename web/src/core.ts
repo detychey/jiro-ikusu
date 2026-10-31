@@ -3,13 +3,12 @@
 // of the interface never goes unnoticed.
 
 import { MAX_JOURNAL_LEN } from "./journal";
+import { EDIT_FIELDS, editedLevel, editFields, FIELD_CELLS, type Level, LEVEL_LEN, MINION_SLOTS } from "./level";
 
 export const MISUSE = 255;
 export const HASH_LEN = 32;
-export const MINION_SLOTS = 3;
-export const GRID_CELLS = 3_600;
+export const GRID_CELLS = FIELD_CELLS * FIELD_CELLS;
 export const OUTCOME_LEN = 110;
-export const LEVEL_LEN = 472;
 
 /** README §4.10 and the Outcome's endReason (§7.3). */
 export const END_REASONS = ["Committed", "Cleared", "Out of lives", "Time limit"] as const;
@@ -21,6 +20,13 @@ interface Exports {
   input_capacity(): number;
   rules_version(): number;
   validate_level(len: number): number;
+  level_id(len: number): number;
+  level_id_ptr(): number;
+  decode_level(len: number): number;
+  encode_level(): number;
+  edit_cells_ptr(): number;
+  edit_fields_ptr(): number;
+  level_out_ptr(): number;
   load_level(len: number): number;
   start(mode: number, levelIndex: number): number;
   tick(rawMask: number): number;
@@ -113,6 +119,56 @@ export class Core {
 
   get rulesVersion(): number {
     return this.wasm.rules_version();
+  }
+
+  /** Checks `level` (README §5); returns 0 for a valid level, otherwise its error code. */
+  validateLevel(level: Uint8Array): number {
+    // The length is checked first, so bytes past one more than a level cannot change the code.
+    const checked = level.subarray(0, LEVEL_LEN + 1);
+    this.input(checked);
+    return this.wasm.validate_level(checked.length);
+  }
+
+  /** keccak256 of `level`, its level id (README §5), whether or not it is valid. */
+  levelId(level: Uint8Array): Uint8Array<ArrayBuffer> {
+    this.input(level);
+    this.check("level_id", this.wasm.level_id(level.length));
+    return this.view(this.wasm.level_id_ptr(), HASH_LEN).slice();
+  }
+
+  /** The editor's model of level bytes, decoded by the core's codec (README §5), or the code of
+   *  the first rule the decoder checks that they break (20 to 34). */
+  decodeLevel(bytes: Uint8Array): Level | { code: number } {
+    // The length is checked first, so bytes past one more than a level cannot change the code.
+    const checked = bytes.subarray(0, LEVEL_LEN + 1);
+    this.input(checked);
+    const code = this.wasm.decode_level(checked.length);
+    if (code === MISUSE) throw new CoreError("decode_level", code);
+    if (code !== 0) return { code };
+    const fields = this.editFields();
+    return editedLevel(
+      this.view(this.wasm.edit_cells_ptr(), GRID_CELLS).slice(),
+      Array.from({ length: EDIT_FIELDS }, (_, i) => fields.getUint32(4 * i, true)),
+    );
+  }
+
+  /** The level bytes of the editor's model, encoded by the core's codec (README §5), valid or
+   *  not. A cell other than 0 or 1, or a field its bytes cannot hold, throws. */
+  encodeLevel(level: Level): Uint8Array<ArrayBuffer> {
+    const values = editFields(level);
+    if (level.cells.length !== GRID_CELLS || values.some((value) => !Number.isInteger(value) || value < 0 || value > 0xffff_ffff)) {
+      throw new CoreError("encode_level", MISUSE);
+    }
+    this.view(this.wasm.edit_cells_ptr(), GRID_CELLS).set(level.cells);
+    const fields = this.editFields();
+    values.forEach((value, i) => fields.setUint32(4 * i, value, true));
+    this.check("encode_level", this.wasm.encode_level());
+    return this.view(this.wasm.level_out_ptr(), LEVEL_LEN).slice();
+  }
+
+  /** The editor's fields in wasm memory: EDIT_FIELDS u32 values, little-endian like all of it. */
+  private editFields(): DataView {
+    return new DataView(this.wasm.memory.buffer, this.wasm.edit_fields_ptr(), 4 * EDIT_FIELDS);
   }
 
   /** Validates `level` (README §5) and keeps it for `start`; returns 0 or its error code. */
