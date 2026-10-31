@@ -30,16 +30,17 @@ use jiro_core::game::Game;
 use jiro_core::grid;
 use jiro_core::hash::{self, PREIMAGE_LEN, heading_code, preimage};
 use jiro_core::journal::{Header, Mode};
-use jiro_core::level::{self, Level, level_id};
+use jiro_core::level::{self, Level, Rect};
 use jiro_core::minion::State;
 use jiro_core::recorder::Recorder;
 use jiro_core::replay::{Outcome, replay_observed};
-use jiro_core::types::{CellIndex, InputMask};
+use jiro_core::types::{CellIndex, InputMask, Pos};
 use jiro_shell::dirty::DirtyCells;
 
 /// The code of a call the interface does not allow: a level or a journal longer than the input
-/// buffer, a weight above 65,535, `start` before `load_level`, or `tick` before `start`. The
-/// core's codes are all below it.
+/// buffer, a weight above 65,535, `start` before `load_level`, `tick` before `start`, or an edit
+/// cell other than 0 or 1 or an edit field wider than its bytes (`encode_level`). The core's
+/// codes are all below it.
 pub const MISUSE: u32 = 255;
 /// The input buffer holds a level and a journal side by side, malformed ones included.
 const INPUT_CAPACITY: usize = 16 * 1024;
@@ -49,6 +50,10 @@ const TRACE_CAPACITY: usize = MAX_TICKS as usize * HASH_LEN;
 /// (32 bytes each), levelIndex, drawSlot and mode (1 byte each), rulesVersion (2), endReason
 /// (1), claimBp (2), ticksUsed (2) and levelScore (4), integers big-endian.
 const OUTCOME_LEN: usize = 110;
+/// The editor's fields of a level besides its obstacles, as u32 values in this order: boss size,
+/// spawn x0, y0, x1 and y1, boss period, minion count, the x and y of each minion slot, minion
+/// period, respawn delay, time limit, lives and target.
+const EDIT_FIELDS: usize = 18;
 
 struct Engine {
     input: [u8; INPUT_CAPACITY],
@@ -59,6 +64,13 @@ struct Engine {
     /// The cells changed since the last `dirty_cells` call, for redrawing (not consensus).
     dirty: DirtyCells,
     hash: [u8; HASH_LEN],
+    level_id: [u8; HASH_LEN],
+    /// The editor's level (plan M2.5): one byte per cell in row-major order, 1 for an obstacle.
+    edit_cells: [u8; CELLS],
+    /// The editor's other fields, in the order of `EDIT_FIELDS`.
+    edit_fields: [u32; EDIT_FIELDS],
+    /// The level bytes that the last `encode_level` call wrote.
+    level_out: [u8; LEVEL_LEN],
     preimage: [u8; PREIMAGE_LEN],
     trace: [u8; TRACE_CAPACITY],
     trace_ticks: u16,
@@ -102,6 +114,10 @@ static ENGINE: Static = Static(UnsafeCell::new(Engine {
     grid: [0; CELLS],
     dirty: DirtyCells::new(),
     hash: [0; HASH_LEN],
+    level_id: [0; HASH_LEN],
+    edit_cells: [0; CELLS],
+    edit_fields: [0; EDIT_FIELDS],
+    level_out: [0; LEVEL_LEN],
     preimage: [0; PREIMAGE_LEN],
     trace: [0; TRACE_CAPACITY],
     trace_ticks: 0,
@@ -178,6 +194,176 @@ pub extern "C" fn validate_level(len: u32) -> u32 {
     }
 }
 
+/// Computes keccak256 of the first `len` bytes of the input buffer, the level id of level bytes
+/// (README §5), valid or not, into the 32 bytes at `level_id_ptr`.
+#[unsafe(no_mangle)]
+pub extern "C" fn level_id(len: u32) -> u32 {
+    let Engine {
+        input, level_id, ..
+    } = engine();
+    match self::input(input, len) {
+        Some(bytes) => {
+            *level_id = level::level_id(bytes);
+            0
+        }
+        None => MISUSE,
+    }
+}
+
+/// The level id that the last `level_id` call computed.
+#[unsafe(no_mangle)]
+pub extern "C" fn level_id_ptr() -> *const u8 {
+    engine().level_id.as_ptr()
+}
+
+/// Decodes the level bytes in the first `len` bytes of the input buffer with the core's codec
+/// (README §5) into the editor's buffers, `edit_cells_ptr` and `edit_fields_ptr`. Returns 0, or
+/// the code of the first rule the decoder checks that the bytes break (20 to 34), leaving the
+/// buffers as they were.
+#[unsafe(no_mangle)]
+pub extern "C" fn decode_level(len: u32) -> u32 {
+    let Engine {
+        input,
+        edit_cells,
+        edit_fields,
+        ..
+    } = engine();
+    let Some(bytes) = self::input(input, len) else {
+        return MISUSE;
+    };
+    match level::decode(bytes) {
+        Ok(level) => {
+            for (cell, obstacle) in edit_cells.iter_mut().zip(level.obstacle_bits()) {
+                *cell = u8::from(obstacle);
+            }
+            *edit_fields = edit_fields_of(&level);
+            0
+        }
+        Err(error) => u32::from(error.code()),
+    }
+}
+
+/// Encodes the editor's buffers with the core's codec (README §5) into the 472 bytes at
+/// `level_out_ptr`, valid or not. Returns 0, or `MISUSE` when a cell is neither 0 nor 1, or a
+/// field does not fit its width in the level bytes.
+#[unsafe(no_mangle)]
+pub extern "C" fn encode_level() -> u32 {
+    let Engine {
+        edit_cells,
+        edit_fields,
+        level_out,
+        ..
+    } = engine();
+    match edited_level(edit_cells, edit_fields) {
+        Some(edited) => {
+            *level_out = level::encode(&edited);
+            0
+        }
+        None => MISUSE,
+    }
+}
+
+/// The editor's cells, `CELLS` bytes, which `decode_level` writes and `encode_level` reads.
+#[unsafe(no_mangle)]
+pub extern "C" fn edit_cells_ptr() -> *mut u8 {
+    engine().edit_cells.as_mut_ptr()
+}
+
+/// The editor's fields, `EDIT_FIELDS` u32 values, which `decode_level` writes and
+/// `encode_level` reads.
+#[unsafe(no_mangle)]
+pub extern "C" fn edit_fields_ptr() -> *mut u32 {
+    engine().edit_fields.as_mut_ptr()
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn level_out_ptr() -> *const u8 {
+    engine().level_out.as_ptr()
+}
+
+fn edit_fields_of(level: &Level) -> [u32; EDIT_FIELDS] {
+    let [m0, m1, m2] = level.minion_spawns;
+    let Rect { x0, y0, x1, y1 } = level.spawn;
+    [
+        u32::from(level.boss_size),
+        u32::from(x0),
+        u32::from(y0),
+        u32::from(x1),
+        u32::from(y1),
+        u32::from(level.boss_period),
+        u32::from(level.minion_count),
+        u32::from(m0.x),
+        u32::from(m0.y),
+        u32::from(m1.x),
+        u32::from(m1.y),
+        u32::from(m2.x),
+        u32::from(m2.y),
+        u32::from(level.minion_period),
+        u32::from(level.respawn_delay),
+        u32::from(level.time_limit),
+        u32::from(level.lives),
+        u32::from(level.target_bp),
+    ]
+}
+
+/// The level of the editor's buffers, or `None` when a value does not fit.
+fn edited_level(cells: &[u8; CELLS], fields: &[u32; EDIT_FIELDS]) -> Option<Level> {
+    let mut obstacles = [false; CELLS];
+    for (obstacle, &cell) in obstacles.iter_mut().zip(cells) {
+        *obstacle = match cell {
+            0 => false,
+            1 => true,
+            _ => return None,
+        };
+    }
+    let [
+        boss_size,
+        x0,
+        y0,
+        x1,
+        y1,
+        boss_period,
+        minion_count,
+        m0x,
+        m0y,
+        m1x,
+        m1y,
+        m2x,
+        m2y,
+        minion_period,
+        respawn_delay,
+        time_limit,
+        lives,
+        target_bp,
+    ] = *fields;
+    let byte = |value: u32| u8::try_from(value).ok();
+    let word = |value: u32| u16::try_from(value).ok();
+    let pos = |x: u32, y: u32| {
+        Some(Pos {
+            x: byte(x)?,
+            y: byte(y)?,
+        })
+    };
+    Some(Level {
+        obstacles: Level::obstacle_bitmap(&obstacles),
+        boss_size: byte(boss_size)?,
+        spawn: Rect {
+            x0: byte(x0)?,
+            y0: byte(y0)?,
+            x1: byte(x1)?,
+            y1: byte(y1)?,
+        },
+        boss_period: byte(boss_period)?,
+        minion_count: byte(minion_count)?,
+        minion_spawns: [pos(m0x, m0y)?, pos(m1x, m1y)?, pos(m2x, m2y)?],
+        minion_period: byte(minion_period)?,
+        respawn_delay: word(respawn_delay)?,
+        time_limit: word(time_limit)?,
+        lives: byte(lives)?,
+        target_bp: word(target_bp)?,
+    })
+}
+
 /// Checks the level in the first `len` bytes of the input buffer, as `validate_level` does,
 /// and, if valid, makes it the level that `start` plays, ending any level in play. A rejected
 /// level changes nothing.
@@ -231,7 +417,7 @@ pub extern "C" fn start(mode: u32, level_index: u32) -> u32 {
     let header = Header {
         mode,
         run_nonce,
-        level_id: level_id(level_bytes),
+        level_id: level::level_id(level_bytes),
         level_index,
     };
     match Recorder::new(level, &header) {

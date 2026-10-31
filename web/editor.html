@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jiro-ikusu level editor</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Jiro-ikusu level editor</h1>
+      <p>Edit a level's bytes; the core checks them after every change. <a href="./">Play</a> · <a href="replay.html">Replay viewer</a></p>
+    </header>
+    <main>
+      <section class="field">
+        <canvas id="field" style="touch-action: none" aria-label="Level field: paint obstacles or place minion spawns"></canvas>
+      </section>
+      <aside class="side">
+        <div class="setup">
+          <p id="status" role="status">–</p>
+          <p id="message" class="error" role="alert"></p>
+          <dl class="hud">
+            <dt>Level id</dt><dd><code id="level-id">–</code></dd>
+            <dt>Minions</dt><dd id="minions">–</dd>
+          </dl>
+          <div class="actions">
+            <a id="play" class="button" hidden>Play this level</a>
+            <button id="download" type="button">Download .bin</button>
+            <button id="new" type="button">New</button>
+          </div>
+        </div>
+        <form id="tools" class="setup">
+          <fieldset>
+            <legend>Click or drag on the field</legend>
+            <label><input type="radio" name="tool" value="obstacle" checked /> Obstacle</label>
+            <label><input type="radio" name="tool" value="erase" /> Erase</label>
+            <label><input type="radio" name="tool" value="minion" /> Minion spawn (add or remove)</label>
+          </fieldset>
+        </form>
+        <form class="setup numbers">
+          <fieldset>
+            <legend>Boss</legend>
+            <label>Body size B <input id="boss-size" type="number" min="0" max="255" /></label>
+            <label>Spawn x0 <input id="spawn-x0" type="number" min="0" max="255" /></label>
+            <label>Spawn y0 <input id="spawn-y0" type="number" min="0" max="255" /></label>
+            <label>Spawn x1 <input id="spawn-x1" type="number" min="0" max="255" /></label>
+            <label>Spawn y1 <input id="spawn-y1" type="number" min="0" max="255" /></label>
+            <label>Move period <input id="boss-period" type="number" min="0" max="255" /></label>
+          </fieldset>
+          <fieldset>
+            <legend>Minions</legend>
+            <label>Move period <input id="minion-period" type="number" min="0" max="255" /></label>
+            <label>Respawn delay R <input id="respawn-delay" type="number" min="0" max="65535" /></label>
+          </fieldset>
+          <fieldset>
+            <legend>Level</legend>
+            <label>Time limit T <input id="time-limit" type="number" min="0" max="65535" /></label>
+            <label>Lives <input id="lives" type="number" min="0" max="255" /></label>
+            <label>Target (bp) <input id="target" type="number" min="0" max="65535" /></label>
+          </fieldset>
+        </form>
+        <div class="setup">
+          <label>Import a .bin file <input id="import-file" type="file" accept=".bin,application/octet-stream" /></label>
+          <label>Or hex <textarea id="hex-in" rows="2" spellcheck="false"></textarea></label>
+          <button id="import-hex" type="button">Import hex</button>
+          <label>The level's bytes <textarea id="hex-out" rows="4" readonly spellcheck="false"></textarea></label>
+        </div>
+      </aside>
+    </main>
+    <script type="module">
+      import { mount } from "/src/pages/editor.ts";
+      mount();
+    </script>
+  </body>
+</html>
