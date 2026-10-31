@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jiro-ikusu replay</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Jiro-ikusu replay</h1>
+      <p>Watch and audit a journal: the core replays it as the referee does. <a href="./">Play</a></p>
+    </header>
+    <main>
+      <section class="field">
+        <canvas id="field" aria-label="Replayed field"></canvas>
+      </section>
+      <aside class="side">
+        <form id="load" class="setup">
+          <fieldset>
+            <legend>Game vector, with its .trace file to compare</legend>
+            <input id="vector-files" type="file" accept=".json,.trace" multiple />
+          </fieldset>
+          <fieldset>
+            <legend>Or a level and a journal, each from a file or from hex</legend>
+            <label>Level file <input id="level-file" type="file" accept=".bin,application/octet-stream" /></label>
+            <label>Level hex <textarea id="level-hex" rows="2" spellcheck="false"></textarea></label>
+            <label>Journal file <input id="journal-file" type="file" accept=".jrn,application/octet-stream" /></label>
+            <label>Journal hex <textarea id="journal-hex" rows="2" spellcheck="false"></textarea></label>
+            <label>Weight (bp) <input id="weight" type="number" min="0" max="65535" value="10000" /></label>
+          </fieldset>
+          <button type="submit">Replay</button>
+          <p id="load-error" class="error" role="alert"></p>
+        </form>
+        <div id="player" class="setup" hidden>
+          <div class="actions">
+            <button id="play-pause" type="button">Play</button>
+            <button id="step" type="button">Step</button>
+          </div>
+          <label>Ticks played <input id="scrub" type="range" min="0" max="0" value="0" /></label>
+          <dl class="hud">
+            <dt>Ticks played</dt><dd id="tick">–</dd>
+            <dt>Inputs of the last tick</dt><dd id="held">–</dd>
+            <dt>State hash</dt><dd><code id="hash">–</code></dd>
+            <dt>Trace</dt><dd><span id="compare">–</span> <button id="go-to-mismatch" type="button" hidden>Show</button></dd>
+          </dl>
+          <table id="outcome" class="outcome"></table>
+        </div>
+      </aside>
+    </main>
+    <script type="module">
+      import { mount } from "/src/pages/replay.ts";
+      mount();
+    </script>
+  </body>
+</html>

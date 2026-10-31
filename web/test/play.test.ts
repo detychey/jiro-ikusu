@@ -1,7 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { Core, fromHex, hex } from "../src/core";
-import { type Bindings, type Control, CONTROLS, CONTROL_BITS, DEFAULT_BINDINGS, HeldKeys, rebind } from "../src/input";
+import { type Bindings, type Control, CONTROLS, controlsOf, DEFAULT_BINDINGS, HeldKeys, rebind } from "../src/input";
+import { journalEvents } from "../src/journal";
 import { TICK_HZ } from "../src/loop";
 import { startSession } from "../src/session";
 
@@ -24,15 +25,7 @@ function vector(name: string): GameVector {
 
 /** The controls held on each tick, from a journal's events (README §6.2). */
 function schedule(journal: Uint8Array): Map<number, Control[]> {
-  const count = (journal[69] ?? 0) * 256 + (journal[70] ?? 0);
-  const events = new Map<number, Control[]>();
-  for (let i = 0; i < count; i += 1) {
-    const at = 71 + 3 * i;
-    const tick = (journal[at] ?? 0) * 256 + (journal[at + 1] ?? 0);
-    const mask = journal[at + 2] ?? 0;
-    events.set(tick, CONTROLS.filter((control) => (mask & CONTROL_BITS[control]) !== 0));
-  }
-  return events;
+  return new Map(journalEvents(journal).map(({ tick, mask }) => [tick, controlsOf(mask)]));
 }
 
 /** Plays `level` on a fake clock: before tick k is due, the keys of `controlsAt(k)` (if any)

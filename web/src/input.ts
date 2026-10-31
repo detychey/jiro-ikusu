@@ -16,6 +16,11 @@ export const CONTROL_BITS: Record<Control, number> = {
   x: 1 << 6,
 };
 
+/** The controls a mask holds, in the order of CONTROLS. */
+export function controlsOf(mask: number): Control[] {
+  return CONTROLS.filter((control) => (mask & CONTROL_BITS[control]) !== 0);
+}
+
 /** KeyboardEvent.code of each control by default: the arrows, and the keys A, B and X. */
 export const DEFAULT_BINDINGS: Bindings = {
   up: "ArrowUp",
