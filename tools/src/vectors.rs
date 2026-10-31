@@ -6,9 +6,10 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
+use jiro_core::Error;
 use jiro_core::consts::{CAPTURE_STACK, MAX_JOURNAL_LEN, RULES_VERSION};
 use jiro_core::hash::state_hash;
-use jiro_core::journal::{self, Event};
+use jiro_core::journal::{self, Event, Header};
 use jiro_core::keccak::keccak256;
 use jiro_core::level::{self, level_id};
 use jiro_core::replay::{Outcome, replay_observed};
@@ -148,22 +149,18 @@ fn header_fields<'a>(kind: &str, case: &Case) -> Vec<(&'a str, Value)> {
 
 /// The vector and its trace: the state hash of every processed tick, in tick order.
 fn game_vector(case: &GameCase) -> Result<(String, Vec<u8>), String> {
-    let mut trace = Vec::new();
-    let result = replay_observed(&case.level, &case.journal, case.weight_bp, |game| {
-        trace.extend(state_hash(game))
-    });
+    let (result, trace) = traced_replay(&case.level, &case.journal, case.weight_bp);
     let mut fields = vec![
         ("kind", Value::Str("game".to_string())),
         ("name", Value::Str(case.name.clone())),
         ("covers", Value::List(case.covers.clone())),
-        ("rulesVersion", Value::Int(u64::from(RULES_VERSION))),
-        ("level", Value::Str(hex(&case.level))),
-        ("runNonce", Value::Str(hex(&case.header.run_nonce))),
-        ("levelIndex", Value::Int(u64::from(case.header.level_index))),
-        ("mode", Value::Int(case.header.mode as u64)),
-        ("weightBp", Value::Int(u64::from(case.weight_bp))),
-        ("journal", Value::Str(hex(&case.journal))),
     ];
+    fields.extend(game_inputs(
+        &case.level,
+        &case.header,
+        case.weight_bp,
+        &case.journal,
+    ));
     match (result, case.expect) {
         (Ok(outcome), Ok(end)) if outcome.end_reason == end => {
             fields.push(("outcome", Value::Object(outcome_fields(&outcome))));
@@ -193,8 +190,39 @@ fn game_vector(case: &GameCase) -> Result<(String, Vec<u8>), String> {
     Ok((object(&fields)?, trace))
 }
 
+/// The replay's result and its trace: the state hash of every processed tick, in tick order.
+pub fn traced_replay(
+    level: &[u8],
+    journal: &[u8],
+    weight_bp: u16,
+) -> (Result<Outcome, Error>, Vec<u8>) {
+    let mut trace = Vec::new();
+    let result = replay_observed(level, journal, weight_bp, |game| {
+        trace.extend(state_hash(game))
+    });
+    (result, trace)
+}
+
+/// The inputs of a game vector (README §6.6), as its fields.
+pub fn game_inputs(
+    level: &[u8],
+    header: &Header,
+    weight_bp: u16,
+    journal: &[u8],
+) -> Vec<(&'static str, Value)> {
+    vec![
+        ("rulesVersion", Value::Int(u64::from(RULES_VERSION))),
+        ("level", Value::Str(hex(level))),
+        ("runNonce", Value::Str(hex(&header.run_nonce))),
+        ("levelIndex", Value::Int(u64::from(header.level_index))),
+        ("mode", Value::Int(header.mode as u64)),
+        ("weightBp", Value::Int(u64::from(weight_bp))),
+        ("journal", Value::Str(hex(journal))),
+    ]
+}
+
 /// The eleven fields of README §7.3's Outcome, under their Solidity names.
-fn outcome_fields(outcome: &Outcome) -> Vec<(&'static str, Value)> {
+pub fn outcome_fields(outcome: &Outcome) -> Vec<(&'static str, Value)> {
     vec![
         ("journalHash", Value::Str(hex(&outcome.journal_hash))),
         ("levelId", Value::Str(hex(&outcome.level_id))),
