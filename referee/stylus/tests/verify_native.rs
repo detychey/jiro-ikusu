@@ -1,7 +1,8 @@
 //! The Stylus referee through stylus-test's TestVM (plan M4.1), which runs the contract's code
-//! natively; M4.2 runs its wasm build. Every vector of vectors/ and the 200 fixed difffuzz cases
-//! of M1.10 replay to their recorded Outcome, or revert with their recorded code. The cases are
-//! generated first, and this test fails without them:
+//! natively; M4.2 runs its wasm build. Every vector of vectors/, the gate set of vectors/levels/
+//! included, and the 200 fixed difffuzz cases of M1.10 replay to their recorded Outcome, or
+//! revert with their recorded code. The cases are generated first, and this test fails without
+//! them:
 //! `cargo run -p jiro-tools --release --locked -- difffuzz --seed 1 --cases 200 --out target/difffuzz`.
 
 use std::path::{Path, PathBuf};
@@ -164,6 +165,25 @@ fn every_game_vector_verifies_to_its_outcome_or_reverts_with_its_code() {
         }
     }
     assert_eq!(games.len(), 43, "vectors/game holds 43 vectors");
+}
+
+#[test]
+fn every_gate_set_vector_verifies_to_its_outcome() {
+    let gates = vectors("levels");
+    for (name, vector) in &gates {
+        let outcome = verify(
+            &bytes(&vector["level"]),
+            &bytes(&vector["journal"]),
+            weight(vector),
+        )
+        .unwrap_or_else(|reason| panic!("{name}: {reason}"));
+        assert_eq!(recorded(&outcome), vector["outcome"], "{name}");
+    }
+    assert_eq!(
+        gates.len(),
+        32,
+        "vectors/levels holds the 32 gate-set vectors"
+    );
 }
 
 #[test]

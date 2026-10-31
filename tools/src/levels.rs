@@ -25,7 +25,7 @@ use jiro_core::level::{Level, Rect, decode, encode, level_id, validate};
 use jiro_core::types::{Cell, CellIndex, Pos};
 
 use crate::json::hex;
-use crate::playtest::Targets;
+use crate::playtest::{Targets, levels_hash, percent};
 use crate::vectors::rewrite;
 
 #[cfg(test)]
@@ -520,11 +520,40 @@ fn build_dir(src: &Path, out: &Path) -> Result<(), String> {
     let clear_rates = targets
         .as_ref()
         .map(|targets| targets.clear_rate_pct.as_slice());
+    let ids: Vec<[u8; 32]> = built.iter().map(|level| level_id(&level.bytes)).collect();
+    let report = out
+        .parent()
+        .unwrap_or(Path::new(""))
+        .join("reports")
+        .join(format!("playtest-{}.json", levels_hash(&ids)));
+    let measured = report
+        .exists()
+        .then(|| measured_rates(&report))
+        .transpose()?
+        .unwrap_or_default();
     files.insert(
         "README.md".to_string(),
-        table(&built, clear_rates).into_bytes(),
+        table(&built, clear_rates, &measured).into_bytes(),
     );
     rewrite(out, is_level_file, &files)
+}
+
+/// The reference mix's clear rate of each level of a playtest report, in tenths of a percent, by
+/// level id.
+fn measured_rates(report: &Path) -> Result<BTreeMap<String, u32>, String> {
+    let bad = || format!("{}: not a reference playtest report", report.display());
+    let text = fs::read_to_string(report).map_err(|e| format!("{}: {e}", report.display()))?;
+    let value: serde_json::Value = serde_json::from_str(&text).map_err(|_| bad())?;
+    value["levels"]
+        .as_array()
+        .ok_or_else(bad)?
+        .iter()
+        .map(|level| {
+            let id = level["levelId"].as_str().ok_or_else(bad)?;
+            let rate = level["mix"]["clearRatePerMille"].as_u64().ok_or_else(bad)?;
+            Ok((id.to_string(), u32::try_from(rate).map_err(|_| bad())?))
+        })
+        .collect()
 }
 
 /// A level's bytes, `NN-name.bin`, as `build_dir` writes them.
@@ -550,8 +579,9 @@ pub fn level_index(stem: &str) -> Option<u8> {
 }
 
 /// The generated levels table, with each level's target clear rate from `clear_rates`, the
-/// rates of `targets.json` by index, when there is one.
-fn table(built: &[Built], clear_rates: Option<&[u16]>) -> String {
+/// rates of `targets.json` by index, when there is one, and its measured clear rate from
+/// `measured`, in tenths of a percent by level id.
+fn table(built: &[Built], clear_rates: Option<&[u16]>, measured: &BTreeMap<String, u32>) -> String {
     let keys: Vec<String> = KEYS.iter().map(|key| format!("`{key}`")).collect();
     let mut text = TABLE_INTRO.replace("{keys}", &keys.join(", "));
     for level in built {
@@ -561,9 +591,12 @@ fn table(built: &[Built], clear_rates: Option<&[u16]>) -> String {
         let target = clear_rates
             .and_then(|rates| rates.get(usize::from(level_index(&level.stem)?) - 1))
             .map_or("–".to_string(), |rate| format!("{rate} %"));
+        let id = hex(&level_id(&level.bytes));
+        let measured = measured
+            .get(&id)
+            .map_or("–".to_string(), |&per_mille| percent(per_mille));
         text.push_str(&format!(
-            "| {index} | {name} | `{}` | {} | ({x0}, {y0})-({x1}, {y1}) | {} | {} | {} | {} | {} | {} | {} bp | {target} | – |\n",
-            hex(&level_id(&level.bytes)),
+            "| {index} | {name} | `{id}` | {} | ({x0}, {y0})-({x1}, {y1}) | {} | {} | {} | {} | {} | {} | {} bp | {target} | {measured} |\n",
             l.boss_size,
             l.boss_period,
             l.minion_count,
@@ -602,8 +635,10 @@ too. The minions take their slots in row-major order, one minion per cell.
 `jiro-tools level render <file.bin>` writes a level's source.
 
 The target clear rate is that of the reference mix of playtest bots, from `levels/targets.json`
-(plan M2.6, P11); `jiro-tools playtest --check levels/targets.json` measures it. The measured
-clear rate comes from the play test (plan M2.9).
+(plan M2.6, P11). The measured clear rate is the mix's in the reference playtest report of these
+levels, `reports/playtest-<hash>.json`, which `jiro-tools playtest --check levels/targets.json`
+writes: the runs on which `jiro-tools calibrate` sets the season weights (plan M2.9). It reads
+`–` while no report of these levels exists.
 
 | # | Name | `level_id` | B | Boss spawn | Boss period | Minions | Minion period | R | T | Lives | Target | Target clear rate | Measured clear rate |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|

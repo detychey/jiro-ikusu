@@ -57,10 +57,7 @@ fn worst_case() -> Result<GameCase, String> {
     let (level_header, run) = first_run(
         name,
         &level,
-        || {
-            let mut bot = CaptureBot::new(3, 5);
-            Box::new(every_tick(move |game: &Game| bot.direction(game).mask()))
-        },
+        || Box::new(worst_case_policy()),
         |run| run.last().end == Some(EndReason::TimeLimit) && run.captures() >= 20,
     )?;
     check(
@@ -78,6 +75,13 @@ fn worst_case() -> Result<GameCase, String> {
         level_header,
         run,
     ))
+}
+
+/// The worst case's policy: small captures, an event on every tick, and never a commit. M2.9's
+/// gate set also plays it on each season level.
+pub fn worst_case_policy() -> impl FnMut(&Game) -> InputMask {
+    let mut bot = CaptureBot::new(3, 5);
+    every_tick(move |game: &Game| bot.direction(game).mask())
 }
 
 /// COV-13: 2,700 events, the mask alternating between left and right along the bottom border.

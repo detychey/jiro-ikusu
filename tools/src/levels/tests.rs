@@ -199,7 +199,7 @@ fn the_table_shows_every_knob_and_the_field_of_a_level() {
         source: source.clone(),
         bytes,
     };
-    let table = table(&[built], None);
+    let table = table(&[built], None, &BTreeMap::new());
     let row = format!(
         "| 07 | rich | `{}` | 3 | (10, 12)-(40, 44) | 4 | 3 | 2 | 45 | 1800 | 2 | 6000 bp | – | – |\n",
         hex(&level_id(&bytes))
@@ -222,7 +222,42 @@ fn the_table_shows_each_level_s_target_clear_rate() {
         bytes,
     };
     let rates: Vec<u16> = (0..16).map(|i| 95 - 5 * i).collect();
-    assert!(table(&[built], Some(&rates)).contains("| 6000 bp | 65 % | – |"));
+    assert!(table(&[built], Some(&rates), &BTreeMap::new()).contains("| 6000 bp | 65 % | – |"));
+}
+
+#[test]
+fn the_table_shows_each_level_s_measured_clear_rate_by_level_id() {
+    let source = rich();
+    let bytes = build(&source).expect("the rich level is valid");
+    let built = Built {
+        stem: "07-rich".to_string(),
+        level: decode(&bytes).expect("decode"),
+        source,
+        bytes,
+    };
+    let measured = BTreeMap::from([(hex(&level_id(&bytes)), 638)]);
+    assert!(table(&[built], None, &measured).contains("| 6000 bp | – | 63.8 % |"));
+}
+
+#[test]
+fn a_build_reads_the_measured_clear_rates_of_the_reference_report_of_its_levels() {
+    let dir = scratch("measured");
+    let (_, source) = sources().into_iter().next().expect("a source");
+    fs::write(dir.join("src/01-open.txt"), &source).expect("source");
+    let bytes = build(&source).expect("build");
+    let report = dir.join("reports").join(format!(
+        "playtest-{}.json",
+        levels_hash(&[level_id(&bytes)])
+    ));
+    fs::create_dir_all(dir.join("reports")).expect("reports");
+    let text = format!(
+        r#"{{"levels": [{{"levelId": "{}", "mix": {{"clearRatePerMille": 948}}}}]}}"#,
+        hex(&level_id(&bytes))
+    );
+    fs::write(&report, text).expect("report");
+    build_dir(&dir.join("src"), &dir.join("levels")).expect("build");
+    let readme = fs::read_to_string(dir.join("levels/README.md")).expect("README");
+    assert!(readme.contains("| 94.8 % |\n"), "{readme}");
 }
 
 /// Each rule of README §5 that a source can break, at the line that breaks it.

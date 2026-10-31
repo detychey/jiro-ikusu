@@ -151,7 +151,9 @@ fn hex_digits(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-fn check_game(file: &str, vector: &Value) {
+/// A game vector of `vectors/<kind>/` against the core: its replay inputs, its trace and its
+/// Outcome or error.
+fn check_game(kind: &str, file: &str, vector: &Value) {
     assert_eq!(
         int(vector, "rulesVersion"),
         u64::from(RULES_VERSION),
@@ -183,7 +185,7 @@ fn check_game(file: &str, vector: &Value) {
         |game| trace.extend(state_hash(game)),
     );
     let recorded =
-        std::fs::read(vectors_dir("game").join(vector["trace"].as_str().unwrap())).unwrap();
+        std::fs::read(vectors_dir(kind).join(vector["trace"].as_str().unwrap())).unwrap();
     // The trace first: a rule change shows as the first tick whose state differs, the clue that
     // `jiro-tools replay --dump-tick --diff` then turns into field names.
     let first_differing_tick = trace
@@ -225,7 +227,22 @@ fn every_game_vector_matches_the_core() {
     assert!(!vectors.is_empty(), "no vectors in vectors/game");
     for (file, vector) in &vectors {
         assert_eq!(vector["kind"].as_str(), Some("game"), "{file}: field kind");
-        check_game(file, vector);
+        check_game("game", file, vector);
+    }
+}
+
+/// The gate set of M2.9 (plan §4): each level's longest bot journal and synthetic worst case.
+#[test]
+fn every_gate_set_vector_matches_the_core() {
+    let vectors = vectors_in("levels");
+    assert_eq!(
+        vectors.len(),
+        32,
+        "vectors/levels holds the 32 gate-set vectors"
+    );
+    for (file, vector) in &vectors {
+        assert_eq!(vector["kind"].as_str(), Some("game"), "{file}: field kind");
+        check_game("levels", file, vector);
     }
 }
 
