@@ -1,0 +1,13 @@
+[package]
+name = "zk-host"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+hex = "0.4"
+serde_json = "1"
+sp1-sdk = { version = "=6.10.0", features = ["blocking"] }
+
+[build-dependencies]
+sp1-build = "=6.10.0"
