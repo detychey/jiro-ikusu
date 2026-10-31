@@ -79,7 +79,7 @@ pub fn rewrite<T: AsRef<[u8]>>(
     Ok(())
 }
 
-fn is_vector_file(path: &Path) -> bool {
+pub fn is_vector_file(path: &Path) -> bool {
     path.extension()
         .is_some_and(|ext| ext == "json" || ext == "trace")
 }
@@ -148,7 +148,7 @@ fn header_fields<'a>(kind: &str, case: &Case) -> Vec<(&'a str, Value)> {
 }
 
 /// The vector and its trace: the state hash of every processed tick, in tick order.
-fn game_vector(case: &GameCase) -> Result<(String, Vec<u8>), String> {
+pub fn game_vector(case: &GameCase) -> Result<(String, Vec<u8>), String> {
     let (result, trace) = traced_replay(&case.level, &case.journal, case.weight_bp);
     let mut fields = vec![
         ("kind", Value::Str("game".to_string())),

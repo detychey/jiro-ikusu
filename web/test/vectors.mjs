@@ -4,14 +4,14 @@
 //   rejected with its recorded code, a valid one must pass the decoder (no code 1 to 11).
 // - format/level-*: validate_level, load_level and replay (with a journal for that level's id)
 //   must return the recorded code, or accept a valid level with its recorded id.
-// - game/*: replay must give the recorded Outcome or error, and the trace tick for tick. Each
-//   game that ends is also played live through load_level, start and tick, which must give the
-//   same per-tick state hashes and the vector's journal bytes. On a trace mismatch the runner
-//   names the first differing tick and prints the wasm state preimage at that tick, for
-//   `jiro-tools replay --diff`.
+// - game/* and levels/* (the gate set of plan §4): replay must give the recorded Outcome or
+//   error, and the trace tick for tick. Each game that ends is also played live through
+//   load_level, start and tick, which must give the same per-tick state hashes and the vector's
+//   journal bytes. On a trace mismatch the runner names the first differing tick and prints the
+//   wasm state preimage at that tick, for `jiro-tools replay --diff`.
 // Usage: node web/test/vectors.mjs <vectors dir> [jiro_wasm.wasm]
 import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const WASM_DEFAULT = join(
   process.env.CARGO_TARGET_DIR ?? new URL("../../target", import.meta.url).pathname,
@@ -169,11 +169,11 @@ function playLive(file, vector, level, journal, recorded) {
   }
 }
 
-const games = readVectors("game");
+const games = [...readVectors("game"), ...readVectors("levels")];
 for (const { file, vector } of games) {
   const level = bytes(vector.level);
   const journal = bytes(vector.journal);
-  const recorded = Uint8Array.from(readFileSync(join(vectorsDir, "game", vector.trace)));
+  const recorded = Uint8Array.from(readFileSync(join(vectorsDir, dirname(file), vector.trace)));
   if (vector.rulesVersion !== wasm.rules_version()) fail(file, `rulesVersion ${vector.rulesVersion}, the wasm core has ${wasm.rules_version()}`);
   const code = wasm.replay(...input(level, journal), vector.weightBp);
   if ("error" in vector) {

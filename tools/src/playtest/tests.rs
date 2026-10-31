@@ -48,6 +48,7 @@ fn sample(end: EndReason, effective_bp: u16) -> Sample {
         end,
         effective_bp,
         ticks_used: 100,
+        events: 0,
     }
 }
 
@@ -163,12 +164,12 @@ fn each_policy_plays_run_0_of_l01_as_pinned() {
     for (policy, end, effective_bp, ticks_used) in cases {
         let (_, played) =
             play_level(&level, &header(&level.level, nonce(1, 0)), policy).expect("play");
-        let pinned = Sample {
-            end,
-            effective_bp,
-            ticks_used,
-        };
-        assert_eq!(played, pinned, "{}", policy.name());
+        assert_eq!(
+            (played.end, played.effective_bp, played.ticks_used),
+            (end, effective_bp, ticks_used),
+            "{}",
+            policy.name()
+        );
     }
 }
 

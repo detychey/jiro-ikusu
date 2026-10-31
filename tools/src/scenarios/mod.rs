@@ -5,7 +5,7 @@
 pub mod game;
 mod game_cuts;
 mod game_hits;
-mod game_long;
+pub mod game_long;
 pub mod journal;
 pub mod level;
 pub mod play;

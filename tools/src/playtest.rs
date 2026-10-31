@@ -15,7 +15,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::thread;
 
-use jiro_core::consts::{BP, RULES_VERSION, RUN_LEVELS, SEASON_LEVELS};
+use jiro_core::consts::{BP, EVENT_LEN, HEADER_LEN, RULES_VERSION, RUN_LEVELS, SEASON_LEVELS};
 use jiro_core::game::EndReason;
 use jiro_core::journal::{self, Header, Mode};
 use jiro_core::keccak::keccak256;
@@ -58,20 +58,22 @@ struct Args {
 }
 
 /// A level of the levels directory.
-struct LevelFile {
-    index: u8,
-    name: String,
-    bytes: Vec<u8>,
-    level: Level,
+pub(crate) struct LevelFile {
+    pub(crate) index: u8,
+    pub(crate) name: String,
+    pub(crate) bytes: Vec<u8>,
+    pub(crate) level: Level,
 }
 
 /// How one run ended, from `replay()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct Sample {
-    end: EndReason,
+pub(crate) struct Sample {
+    pub(crate) end: EndReason,
     /// The claim the run scores: `claim_bp`, or 0 when its lives ran out (D5).
-    effective_bp: u16,
-    ticks_used: u16,
+    pub(crate) effective_bp: u16,
+    pub(crate) ticks_used: u16,
+    /// The journal's events.
+    pub(crate) events: u16,
 }
 
 /// The reference mix and the bands of `levels/targets.json` (P11).
@@ -210,7 +212,7 @@ fn range(text: &str) -> Result<Range<u8>, String> {
 
 /// The `NN-name.bin` levels of `dir`, in index order, each checked by the core. Any other `.bin`
 /// file, or two files with one index, fails.
-fn load_levels(dir: &Path) -> Result<Vec<LevelFile>, String> {
+pub(crate) fn load_levels(dir: &Path) -> Result<Vec<LevelFile>, String> {
     let mut levels = Vec::new();
     for entry in fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
         let path = entry.map_err(|e| e.to_string())?.path();
@@ -279,7 +281,7 @@ fn select(
 }
 
 /// The run nonce of run `k` under `seed`: keccak256("jiro.playtest." ‖ seed ‖ k), big-endian.
-fn nonce(seed: u64, k: u32) -> [u8; 32] {
+pub(crate) fn nonce(seed: u64, k: u32) -> [u8; 32] {
     keccak256(&[b"jiro.playtest.", &seed.to_be_bytes(), &k.to_be_bytes()])
 }
 
@@ -290,7 +292,7 @@ fn bot_seed(nonce: &[u8; 32]) -> u64 {
 
 /// Plays one level and returns its journal and how it ended. The journal must decode strictly,
 /// and `replay()` scores it; a replay that disagrees with the Recorder's game fails loud.
-fn play_level(
+pub(crate) fn play_level(
     level: &LevelFile,
     header: &Header,
     policy: Policy,
@@ -319,12 +321,15 @@ fn play_level(
         return Err(format!("{}: replay disagrees with the Recorder", context()));
     }
     let effective_bp = u16::try_from(outcome.level_score).expect("a claim is at most 10,000 bp");
+    let events =
+        u16::try_from((journal.len() - HEADER_LEN) / EVENT_LEN).expect("at most 2,700 events");
     Ok((
         journal,
         Sample {
             end: outcome.end_reason,
             effective_bp,
             ticks_used: outcome.ticks_used,
+            events,
         },
     ))
 }
@@ -332,7 +337,7 @@ fn play_level(
 /// `samples[level][policy][k]`: every policy plays the Training run k of every level, k in
 /// `0..runs`. The runs split into contiguous ranges of k, one per thread, merged in k order, so
 /// the samples do not depend on the number of threads.
-fn play_all(
+pub(crate) fn play_all(
     levels: &[LevelFile],
     policies: &[Policy],
     runs: u32,
@@ -477,19 +482,19 @@ impl Targets {
 }
 
 /// The statistics of a set of runs.
-struct Stats {
-    runs: u32,
-    cleared: u32,
+pub(crate) struct Stats {
+    pub(crate) runs: u32,
+    pub(crate) cleared: u32,
     died: u32,
     committed: u32,
     timed_out: u32,
     /// The first quartile, median and third quartile of the effective claim.
-    effective_bp: [u16; 3],
+    pub(crate) effective_bp: [u16; 3],
     median_ticks: u16,
 }
 
 impl Stats {
-    fn of<'a>(samples: impl Iterator<Item = &'a Sample>) -> Self {
+    pub(crate) fn of<'a>(samples: impl Iterator<Item = &'a Sample>) -> Self {
         let samples: Vec<&Sample> = samples.collect();
         let count = |end: EndReason| samples.iter().filter(|s| s.end == end).count() as u32;
         let mut effective: Vec<u16> = samples.iter().map(|s| s.effective_bp).collect();
@@ -508,7 +513,7 @@ impl Stats {
     }
 
     /// A count as a rate in tenths of a percent, rounded down.
-    fn per_mille(&self, count: u32) -> u32 {
+    pub(crate) fn per_mille(&self, count: u32) -> u32 {
         count * 1_000 / self.runs
     }
 
@@ -544,7 +549,7 @@ fn quartile(sorted: &[u16], k: usize) -> u16 {
     sorted[(sorted.len() - 1) * k / 4]
 }
 
-fn percent(per_mille: u32) -> String {
+pub(crate) fn percent(per_mille: u32) -> String {
     format!("{}.{} %", per_mille / 10, per_mille % 10)
 }
 
@@ -558,6 +563,31 @@ struct Report<'a> {
     seed: u64,
 }
 
+/// The first 6 bytes of keccak256 over level ids in index order, in hex: the name of a playtest
+/// report of those levels.
+pub(crate) fn levels_hash(ids: &[[u8; 32]]) -> String {
+    let parts: Vec<&[u8]> = ids.iter().map(|id| id.as_slice()).collect();
+    hex(&keccak256(&parts)[..6])[2..].to_string()
+}
+
+/// Checks the bands and the floor of `targets` on `samples[level][policy]`, whose policies are
+/// the reference mix of `targets`.
+pub(crate) fn check_mix(
+    levels: &[LevelFile],
+    samples: &[Vec<Vec<Sample>>],
+    targets: &Targets,
+) -> Result<(), String> {
+    Report {
+        levels,
+        policies: &targets.mix,
+        mix: true,
+        samples,
+        runs: 0,
+        seed: 0,
+    }
+    .check(targets)
+}
+
 impl Report<'_> {
     /// The first 6 bytes of keccak256 over the played levels' ids, in index order.
     fn levels_hash(&self) -> String {
@@ -566,8 +596,7 @@ impl Report<'_> {
             .iter()
             .map(|level| level_id(&level.bytes))
             .collect();
-        let parts: Vec<&[u8]> = ids.iter().map(|id| id.as_slice()).collect();
-        hex(&keccak256(&parts)[..6])[2..].to_string()
+        levels_hash(&ids)
     }
 
     fn mix_stats(&self, level: usize) -> Stats {
