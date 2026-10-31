@@ -1,13 +1,9 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { Core, fromHex, hex } from "../src/core";
-import { type Bindings, type Control, CONTROLS, controlsOf, DEFAULT_BINDINGS, HeldKeys, rebind } from "../src/input";
-import { journalEvents } from "../src/journal";
-import { TICK_HZ } from "../src/loop";
-import { startSession } from "../src/session";
+import { fromHex, hex } from "../src/core";
+import { type Bindings, type Control, CONTROLS, DEFAULT_BINDINGS, rebind } from "../src/input";
+import { loadEngine, play, repo, schedule } from "./drive";
 
-const repo = new URL("../../", import.meta.url);
-const wasm = readFileSync(new URL("target/wasm32-unknown-unknown/release/jiro_wasm.wasm", repo));
 const openField = fromHex(JSON.parse(readFileSync(new URL("vectors/format/level-open-field.json", repo), "utf8")).input);
 
 interface GameVector {
@@ -23,42 +19,11 @@ function vector(name: string): GameVector {
   return JSON.parse(readFileSync(new URL(`vectors/game/${name}.json`, repo), "utf8"));
 }
 
-/** The controls held on each tick, from a journal's events (README §6.2). */
-function schedule(journal: Uint8Array): Map<number, Control[]> {
-  return new Map(journalEvents(journal).map(({ tick, mask }) => [tick, controlsOf(mask)]));
-}
-
-/** Plays `level` on a fake clock: before tick k is due, the keys of `controlsAt(k)` (if any)
- *  replace the keys held, under `bindings`. Returns the journal and the final state hash. */
-async function play(
-  level: Uint8Array,
-  runNonce: Uint8Array,
-  bindings: Bindings,
-  controlsAt: (tick: number) => Control[] | undefined,
-): Promise<{ journal: Uint8Array; hash: string }> {
-  const core = await Core.load(wasm);
-  const keys = new HeldKeys(bindings);
-  let time = 5_000;
-  const t0 = time;
-  const loop = startSession(core, level, runNonce, keys, () => time);
-  for (let tick = 0; ; tick += 1) {
-    const controls = controlsAt(tick);
-    if (controls !== undefined) {
-      keys.clear();
-      for (const control of controls) keys.down(bindings[control]);
-    }
-    time = t0 + (tick * 1000) / TICK_HZ + 1;
-    if (loop.pump() !== undefined) break;
-    expect(loop.ticksRun).toBe(tick + 1);
-  }
-  return { journal: core.journal(), hash: hex(core.stateHash()) };
-}
-
 async function playVector(name: string) {
   const recorded = vector(name);
   expect([recorded.mode, recorded.levelIndex]).toEqual([0, 0]);
   const events = schedule(fromHex(recorded.journal));
-  return play(fromHex(recorded.level), fromHex(recorded.runNonce), DEFAULT_BINDINGS, (tick) => events.get(tick));
+  return play(await loadEngine(), fromHex(recorded.level), fromHex(recorded.runNonce), DEFAULT_BINDINGS, (tick) => events.get(tick));
 }
 
 function finalHash(name: string): string {
@@ -91,15 +56,13 @@ describe("play", () => {
       rebound = next;
     }
     const nonce = fromHex(vector("open-field-empty").runNonce);
-    const [original, remapped] = await Promise.all([
-      play(openField, nonce, DEFAULT_BINDINGS, scripted),
-      play(openField, nonce, rebound, scripted),
-    ]);
+    const original = play(await loadEngine(), openField, nonce, DEFAULT_BINDINGS, scripted);
+    const remapped = play(await loadEngine(), openField, nonce, rebound, scripted);
     expect(hex(remapped.journal)).toBe(hex(original.journal));
   });
 
   it("writes the journal and end-screen hash of a scripted run for native replay", async () => {
-    const { journal, hash } = await play(openField, fromHex(vector("open-field-empty").runNonce), DEFAULT_BINDINGS, scripted);
+    const { journal, hash } = play(await loadEngine(), openField, fromHex(vector("open-field-empty").runNonce), DEFAULT_BINDINGS, scripted);
     const out = new URL("out/", import.meta.url);
     mkdirSync(out, { recursive: true });
     writeFileSync(new URL("scripted.jrn", out), journal);

@@ -28,6 +28,22 @@ The page takes optional query parameters:
 The canvas exposes `data-state-hash`, `data-ticks-used` and, once the level has ended,
 `data-end-reason`, for the smoke test.
 
+## Training
+
+The game page is Training (README §8.1): free, with no wallet, and no network call once the
+engine and the levels have loaded. Each attempt draws a random run nonce, as README §6.3 allows
+in Training. The picker lists the 16 levels, then the other levels, which play unscored: the
+open field, walls and minions, and the editor's level. A level file is scored when it is one of
+the 16 levels.
+
+An attempt on one of the 16 levels scores as a season scores it (README §8.4): the core replays
+the attempt's journal with the level's weight from `seasons/calibration-1.json` and gives its
+`level_score`. The page refuses to start when its 16 levels are not that file's, under the
+engine's rules version. Each level's best score stays in localStorage, under the rules version,
+the level id and the weight it was made with, so a new calibration starts every level afresh.
+Without storage the page still plays, and keeps the bests for the page only. After each attempt
+the end screen offers the journal, which the replay viewer replays.
+
 ## Replay viewer
 
 `replay.html` (plan M2.3) watches and audits a journal: load a game vector with its `.trace`
@@ -68,14 +84,16 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/core.ts` | Typed loader of the `jiro-wasm` exports |
 | `src/loop.ts` | The 15 Hz tick clock: tick k is due at t0 + k × 1000 / 15 ms; late ticks run as soon as possible, none is skipped or run twice |
 | `src/input.ts` | Controls, bindings and the held keys |
+| `src/storage.ts` | Values kept in localStorage as JSON, with a fallback when storage is missing or refuses |
 | `src/session.ts` | One level in play: core, clock and keys on the single input path |
 | `src/render.ts` | The 240 × 240 field at an integer scale, redrawing only the changed cells |
-| `src/main.ts` | The game page: level picker, HUD, end screen, journal download, bindings panel |
+| `src/pages/training.ts` | The game page, Training: level picker, HUD, end screen, score and local bests, journal download, bindings panel |
 | `src/pages/replay.ts` | The replay viewer: the view of a replayed journal, the trace comparison and the page |
 | `src/pages/editor.ts` | The level editor: painting, fields, live validation, import, export and Play |
 | `src/level.ts` | The editor's model of a level, its cells and fields, which the core encodes and decodes |
 | `src/page.ts` | What the pages share: elements by id, loading the engine, the field's size, error messages, claims in percent |
 | `src/journal.ts` | The events of a journal the core has accepted |
 | `src/errors.ts` | The core's error codes by name, with their meaning |
-| `test/*.test.ts` | vitest: the clock, the bindings, play, replay and the level editor through the wasm build, the error names |
+| `test/*.test.ts` | vitest: the clock, the bindings, play, Training, replay and the level editor through the wasm build, the error names |
+| `test/drive.ts` | Plays a level through the page's session on a fake clock, with the controls of a journal or a script |
 | `test/vectors.mjs` | The wasm parity runner of M1.11 (plain Node) |

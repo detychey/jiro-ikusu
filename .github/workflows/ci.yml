@@ -207,6 +207,7 @@ jobs:
             web:
               - 'web/**'
               - 'levels/**'
+              - 'seasons/**'
               - 'core/**'
               - 'shell/**'
               - 'tools/**'

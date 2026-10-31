@@ -9,7 +9,7 @@
   <body>
     <header>
       <h1>Jiro-ikusu</h1>
-      <p>Cut the field away from the boss. Claim the level's target to clear it. <a href="replay.html">Replay viewer</a> · <a href="editor.html">Level editor</a></p>
+      <p>Training: cut the field away from the boss, and claim the level's target to clear it. The 16 levels score as a season scores them, and your bests stay in this browser. <a href="replay.html">Replay viewer</a> · <a href="editor.html">Level editor</a></p>
     </header>
     <main>
       <section class="field">
@@ -17,6 +17,7 @@
         <div id="end" class="end" hidden>
           <h2 id="end-title"></h2>
           <p id="end-detail"></p>
+          <p id="end-score"></p>
           <p class="hash">State hash <code id="end-hash"></code></p>
           <div class="actions">
             <button id="download" type="button">Download journal (.jrn)</button>
@@ -45,6 +46,9 @@
         </details>
       </aside>
     </main>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module">
+      import { mount } from "/src/pages/training.ts";
+      mount();
+    </script>
   </body>
 </html>
