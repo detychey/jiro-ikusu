@@ -4,3 +4,6 @@ dist/
 web/test/out/
 web/test-results/
 web/playwright-report/
+
+# Per-user Claude Code settings
+.claude/settings.local.json

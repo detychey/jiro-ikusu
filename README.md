@@ -864,7 +864,7 @@ The draft's five system prompts, revised, live in [`.claude/skills/`](.claude/sk
 
 ### ethskills
 
-[`skills-import.md`](skills-import.md) lists the ethskills to import: the `ship` index/router skill, which is already vetted and committed in ethblockdigger, and 20 topic skills. ethskills.com was unreachable from ethblockdigger's sandbox, but it is reachable from this repository's cloud sessions, so the import can now be done directly.
+The `ship` guide and 19 topic skills live in `.claude/skills/<name>/`, copied byte for byte from ethskills.com on 2026-10-31 and pinned by `scripts/ethskills.sha256`; [`skills-import.md`](skills-import.md) records each one's source, fetch date and checksum. The ethskills root index, from ethblockdigger, lives in [`.claude/skills/ethskills/`](.claude/skills/ethskills/SKILL.md). `feedback` is not imported: it posts project notes to ethskills.com, which `CLAUDE.md` forbids.
 
 By milestone:
 
@@ -905,7 +905,7 @@ M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`]
 
 - [`plan-draft.md`](plan-draft.md): the original draft this README is built from.
 - [`GUIDELINES.md`](GUIDELINES.md): workflow rules for coding agents.
-- [`skills-import.md`](skills-import.md): the ethskills import list.
+- [`skills-import.md`](skills-import.md): the ethskills import, with each skill's source, fetch date and checksum.
 - [`TODO.md`](TODO.md): deferred work, starting with Superchallenge mode.
 - [`name.md`](name.md): the name in Japanese and Chinese.
 - [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md): the work breakdown of milestones M0 to M5.
