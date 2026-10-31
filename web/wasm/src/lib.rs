@@ -38,8 +38,9 @@ use jiro_core::types::{CellIndex, InputMask, Pos};
 use jiro_shell::dirty::DirtyCells;
 
 /// The code of a call the interface does not allow: a level or a journal longer than the input
-/// buffer, a weight above 65,535, `start` before `load_level`, or `tick` before `start`. The
-/// core's codes are all below it.
+/// buffer, a weight above 65,535, `start` before `load_level`, `tick` before `start`, or an edit
+/// cell other than 0 or 1 or an edit field wider than its bytes (`encode_level`). The core's
+/// codes are all below it.
 pub const MISUSE: u32 = 255;
 /// The input buffer holds a level and a journal side by side, malformed ones included.
 const INPUT_CAPACITY: usize = 16 * 1024;

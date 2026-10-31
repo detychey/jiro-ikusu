@@ -194,6 +194,7 @@ jobs:
           filters: |
             web:
               - 'web/**'
+              - 'levels/**'
               - 'core/**'
               - 'shell/**'
               - 'tools/**'

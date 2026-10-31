@@ -89,17 +89,25 @@ export function minionAt(level: Level, cell: Cell): number {
   return level.minionSpawns.slice(0, level.minionCount).findIndex(({ x, y }) => x === cell.x && y === cell.y);
 }
 
-/** Removes the minion spawn at `cell`, or adds one there if a slot is free. The spawns take
- *  their slots in row-major order, as a level source gives them (README §5, P10), and the slots
- *  past the count stay (0, 0). Returns false when all slots are taken. */
+/** Gives the first `minionCount` spawns their slots in row-major order, as a level source does
+ *  (README §5, P10), and sets the slots past the count to (0, 0). Returns the cell that two
+ *  spawns share, if any: no source writes such a level. */
+export function numberSpawns(level: Level): Cell | undefined {
+  const spawns = level.minionSpawns.slice(0, level.minionCount).sort((a, b) => index(a) - index(b));
+  level.minionSpawns = Array.from({ length: MINION_SLOTS }, (_, i) => spawns[i] ?? { x: 0, y: 0 });
+  return spawns.find((spawn, i) => i > 0 && index(spawn) === index(spawns[i - 1] ?? spawn));
+}
+
+/** Removes the minion spawn at `cell`, or adds one there if a slot is free, numbering the
+ *  spawns as `numberSpawns` does. Returns false when all slots are taken. */
 export function toggleMinion(level: Level, cell: Cell): boolean {
   const slot = minionAt(level, cell);
   const spawns = level.minionSpawns.slice(0, level.minionCount);
   if (slot >= 0) spawns.splice(slot, 1);
   else if (spawns.length < MINION_SLOTS) spawns.push({ ...cell });
   else return false;
-  spawns.sort((a, b) => index(a) - index(b));
+  level.minionSpawns = spawns;
   level.minionCount = spawns.length;
-  level.minionSpawns = Array.from({ length: MINION_SLOTS }, (_, i) => spawns[i] ?? { x: 0, y: 0 });
+  numberSpawns(level);
   return true;
 }

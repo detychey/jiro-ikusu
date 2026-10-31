@@ -4,8 +4,18 @@ import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import { Core, CoreError, fromHex, hex } from "../src/core";
 import { describeError, ERRORS } from "../src/errors";
-import { FIELD_CELLS, isBorder, isObstacle, type Level, minionAt, MINION_SLOTS, setObstacle, toggleMinion } from "../src/level";
-import { levelStatus } from "../src/pages/editor";
+import {
+  FIELD_CELLS,
+  isBorder,
+  isObstacle,
+  type Level,
+  minionAt,
+  MINION_SLOTS,
+  numberSpawns,
+  setObstacle,
+  toggleMinion,
+} from "../src/level";
+import { levelStatus, lineCells } from "../src/pages/editor";
 
 const repo = new URL("../../", import.meta.url);
 const core = await Core.load(readFileSync(new URL("target/wasm32-unknown-unknown/release/jiro_wasm.wasm", repo)));
@@ -214,6 +224,49 @@ describe("level editor", () => {
         { x: 7, y: 0 },
         { x: 0, y: 0 },
       ],
+    ]);
+  });
+
+  it("numbers the spawns of an imported level in row-major order", () => {
+    const vector = formatLevels.find(({ name }) => name === "level-walls-and-minions.json")?.vector;
+    const level = decoded(fromHex(vector?.input ?? ""));
+    expect([numberSpawns(level), level.minionSpawns]).toEqual([
+      undefined,
+      [
+        { x: 0, y: 0 },
+        { x: 12, y: 0 },
+        { x: 59, y: 30 },
+      ],
+    ]);
+  });
+
+  it("finds two minions sharing a spawn, which no source writes", () => {
+    const level = blankLevel();
+    level.minionCount = 2;
+    level.minionSpawns = [
+      { x: 30, y: 0 },
+      { x: 30, y: 0 },
+      { x: 0, y: 0 },
+    ];
+    expect(numberSpawns(level)).toEqual({ x: 30, y: 0 });
+  });
+
+  it.each([
+    [{ x: 1, y: 1 }, { x: 40, y: 7 }],
+    [{ x: 30, y: 50 }, { x: 28, y: 3 }],
+    [{ x: 58, y: 58 }, { x: 1, y: 1 }],
+    [{ x: 9, y: 9 }, { x: 9, y: 9 }],
+  ])("paints every cell of the line from %o to %o, without a gap", (from, to) => {
+    const cells = lineCells(from, to);
+    const steps = cells.slice(1).map((cell, i) => {
+      const previous = cells[i] ?? cell;
+      return Math.max(Math.abs(cell.x - previous.x), Math.abs(cell.y - previous.y));
+    });
+    expect([cells[0], cells.at(-1), cells.length, steps.every((step) => step === 1)]).toEqual([
+      from,
+      to,
+      Math.max(Math.abs(to.x - from.x), Math.abs(to.y - from.y)) + 1,
+      true,
     ]);
   });
 

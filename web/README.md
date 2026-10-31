@@ -42,7 +42,9 @@ for tick, with the first tick that differs.
 
 `editor.html` (plan M2.5) edits a level: paint obstacles, place up to 3 minion spawns, which take
 their slots in row-major order as a level source gives them (README §5), and set the boss body
-size, its spawn rectangle and the other fields. The editor has no format of its own: jiro-wasm's
+size, its spawn rectangle and the other fields. An imported level gets its spawns numbered the
+same way, and the page says so when that changes its bytes; a level with two minions on one
+cell, which no source writes, is not imported. The editor has no format of its own: jiro-wasm's
 `decode_level` and `encode_level` run the core's level codec on the editor's model, so a level
 drawn here has the same bytes and `level_id` as its source compiled by the level tool. After
 every change the core validates the bytes and shows the first rule they break, with its code.
@@ -75,5 +77,5 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/page.ts` | What the pages share: elements by id, loading the engine, the field's size, error messages, claims in percent |
 | `src/journal.ts` | The events of a journal the core has accepted |
 | `src/errors.ts` | The core's error codes by name, with their meaning |
-| `test/*.test.ts` | vitest: the clock, the bindings, play and replay through the wasm build, the error names |
+| `test/*.test.ts` | vitest: the clock, the bindings, play, replay and the level editor through the wasm build, the error names |
 | `test/vectors.mjs` | The wasm parity runner of M1.11 (plain Node) |

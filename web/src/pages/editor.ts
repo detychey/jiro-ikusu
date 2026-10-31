@@ -11,6 +11,7 @@ import {
   isBorder,
   isObstacle,
   type Level,
+  numberSpawns,
   PLAYER_START,
   setObstacle,
   toggleMinion,
@@ -34,6 +35,29 @@ export function startCells(level: Level): Uint8Array {
 }
 
 const SPAWN_AREA_COLOR = "#ff3cf055";
+
+/** The cells of the line from `from` to `to`, both included (Bresenham's algorithm), so that a
+ *  stroke paints every cell it crosses however far apart its pointer events land. */
+export function lineCells(from: Cell, to: Cell): Cell[] {
+  const [dx, dy] = [Math.abs(to.x - from.x), -Math.abs(to.y - from.y)];
+  const [sx, sy] = [Math.sign(to.x - from.x), Math.sign(to.y - from.y)];
+  const cells: Cell[] = [];
+  let { x, y } = from;
+  let error = dx + dy;
+  for (;;) {
+    cells.push({ x, y });
+    if (x === to.x && y === to.y) return cells;
+    const doubled = 2 * error;
+    if (doubled >= dy) {
+      error += dy;
+      x += sx;
+    }
+    if (doubled <= dx) {
+      error += dx;
+      y += sy;
+    }
+  }
+}
 
 /** The cells the boss body may cover from its spawn rectangle, the body at its first spawn cell,
  *  the minion spawns and the player start. */
@@ -87,7 +111,8 @@ export function mount(): void {
   let core: Core;
   let level: Level;
   let bytes: Uint8Array<ArrayBuffer>;
-  let painting = false;
+  /** The last cell of the stroke being painted, if one is. */
+  let stroke: Cell | undefined;
 
   const tool = () => (element<HTMLFormElement>("tools").elements.namedItem("tool") as RadioNodeList).value as Tool;
 
@@ -140,11 +165,13 @@ export function mount(): void {
     return x >= 0 && y >= 0 && x < FIELD_CELLS && y < FIELD_CELLS ? { x, y } : undefined;
   }
 
-  function paint(event: PointerEvent): void {
-    const cell = cellAt(event);
-    if (cell === undefined || tool() === "minion") return;
+  /** Paints or erases the cells from the stroke's last cell to `cell`, in one change. The border
+   *  is always claimed, so it is left alone: an obstacle bit there breaks rule 22 unseen. */
+  function strokeTo(cell: Cell): void {
     const obstacle = tool() === "obstacle";
-    if (isObstacle(level, cell) !== obstacle) change((draft) => setObstacle(draft, cell, obstacle));
+    const cells = lineCells(stroke ?? cell, cell).filter((c) => !isBorder(c) && isObstacle(level, c) !== obstacle);
+    stroke = cell;
+    if (cells.length > 0) change((draft) => cells.forEach((c) => setObstacle(draft, c, obstacle)));
   }
 
   function importBytes(imported: Uint8Array): void {
@@ -153,9 +180,16 @@ export function mount(): void {
       message.textContent = `Not imported: ${describeError(decoded.code)}.`;
       return;
     }
-    message.textContent = "";
+    const shared = numberSpawns(decoded);
+    if (shared !== undefined) {
+      message.textContent = `Not imported: two minions share the spawn (${shared.x}, ${shared.y}), so no source writes it.`;
+      return;
+    }
     level = decoded;
     update();
+    message.textContent = bytes.every((byte, i) => byte === imported[i])
+      ? ""
+      : "Imported with its minion spawns numbered in row-major order, as a level source gives them, which changes its bytes and level id.";
   }
 
   function download(): void {
@@ -179,16 +213,19 @@ export function mount(): void {
         });
         return;
       }
-      painting = true;
+      stroke = undefined;
       canvas.setPointerCapture(event.pointerId);
-      paint(event);
+      strokeTo(cell);
     });
     canvas.addEventListener("pointermove", (event) => {
-      if (painting) paint(event);
+      const cell = cellAt(event);
+      if (stroke !== undefined && cell !== undefined) strokeTo(cell);
     });
-    canvas.addEventListener("pointerup", () => {
-      painting = false;
-    });
+    for (const end of ["pointerup", "pointercancel", "lostpointercapture"]) {
+      canvas.addEventListener(end, () => {
+        stroke = undefined;
+      });
+    }
     for (const field of NUMBER_FIELDS) {
       const input = element<HTMLInputElement>(field.id);
       input.addEventListener("change", () =>
@@ -201,9 +238,13 @@ export function mount(): void {
         }),
       );
     }
-    element<HTMLInputElement>("import-file").addEventListener("change", async (event) => {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (file !== undefined) importBytes(new Uint8Array(await file.arrayBuffer()));
+    const importFile = element<HTMLInputElement>("import-file");
+    importFile.addEventListener("change", async () => {
+      const file = importFile.files?.[0];
+      if (file === undefined) return;
+      importBytes(new Uint8Array(await file.arrayBuffer()));
+      // Cleared, so that choosing the same file again imports it again.
+      importFile.value = "";
     });
     element("import-hex").addEventListener("click", () => {
       try {
