@@ -36,8 +36,9 @@ export function startCells(level: Level): Uint8Array {
 
 const SPAWN_AREA_COLOR = "#ff3cf055";
 
-/** The cells of the line from `from` to `to`, both included (Bresenham's algorithm), so that a
- *  stroke paints every cell it crosses however far apart its pointer events land. */
+/** The cells of the line from `from` to `to`, both included (Bresenham's algorithm): one cell
+ *  per step, diagonals included, so that a stroke leaves no gap however far apart its pointer
+ *  events land. */
 export function lineCells(from: Cell, to: Cell): Cell[] {
   const [dx, dy] = [Math.abs(to.x - from.x), -Math.abs(to.y - from.y)];
   const [sx, sy] = [Math.sign(to.x - from.x), Math.sign(to.y - from.y)];
@@ -111,8 +112,9 @@ export function mount(): void {
   let core: Core;
   let level: Level;
   let bytes: Uint8Array<ArrayBuffer>;
-  /** The last cell of the stroke being painted, if one is. */
-  let stroke: Cell | undefined;
+  /** The stroke being painted, if one is: its pointer, its last cell, clamped to the field, and
+   *  whether the pointer was on the field there. */
+  let stroke: { pointerId: number; last: Cell; onField: boolean } | undefined;
 
   const tool = () => (element<HTMLFormElement>("tools").elements.namedItem("tool") as RadioNodeList).value as Tool;
 
@@ -158,19 +160,27 @@ export function mount(): void {
     update();
   }
 
-  function cellAt(event: PointerEvent): Cell | undefined {
+  /** The cell under the pointer, clamped to the field, and whether the pointer is on the field. */
+  function cellAt(event: PointerEvent): { cell: Cell; onField: boolean } {
     const box = canvas.getBoundingClientRect();
-    const x = Math.floor(((event.clientX - box.left) / box.width) * FIELD_CELLS);
-    const y = Math.floor(((event.clientY - box.top) / box.height) * FIELD_CELLS);
-    return x >= 0 && y >= 0 && x < FIELD_CELLS && y < FIELD_CELLS ? { x, y } : undefined;
+    const along = (offset: number, size: number) => Math.floor((offset / size) * FIELD_CELLS);
+    const [x, y] = [along(event.clientX - box.left, box.width), along(event.clientY - box.top, box.height)];
+    const clamp = (value: number) => Math.min(Math.max(value, 0), FIELD_CELLS - 1);
+    return { cell: { x: clamp(x), y: clamp(y) }, onField: x === clamp(x) && y === clamp(y) };
   }
 
-  /** Paints or erases the cells from the stroke's last cell to `cell`, in one change. The border
-   *  is always claimed, so it is left alone: an obstacle bit there breaks rule 22 unseen. */
-  function strokeTo(cell: Cell): void {
+  /** Paints or erases, in one change, the cells from the stroke's last cell to the pointer's.
+   *  Off the field the pointer is clamped to the border, which is always claimed and so left
+   *  alone (an obstacle bit there breaks rule 22 unseen); a move that starts and ends off the
+   *  field paints nothing, so that it never cuts across the field. */
+  function strokeTo(event: PointerEvent): void {
+    if (stroke === undefined || event.pointerId !== stroke.pointerId) return;
+    const { cell, onField } = cellAt(event);
+    const from = stroke;
+    stroke = { ...from, last: cell, onField };
+    if (!onField && !from.onField) return;
     const obstacle = tool() === "obstacle";
-    const cells = lineCells(stroke ?? cell, cell).filter((c) => !isBorder(c) && isObstacle(level, c) !== obstacle);
-    stroke = cell;
+    const cells = lineCells(from.last, cell).filter((c) => !isBorder(c) && isObstacle(level, c) !== obstacle);
     if (cells.length > 0) change((draft) => cells.forEach((c) => setObstacle(draft, c, obstacle)));
   }
 
@@ -205,25 +215,22 @@ export function mount(): void {
     fitField(renderer);
     window.addEventListener("resize", () => fitField(renderer));
     canvas.addEventListener("pointerdown", (event) => {
-      const cell = cellAt(event);
-      if (cell === undefined) return;
+      const { cell, onField } = cellAt(event);
+      if (!onField || !event.isPrimary) return;
       if (tool() === "minion") {
         change((draft) => {
           if (!toggleMinion(draft, cell)) throw new Error("a level has at most 3 minions: remove one first");
         });
         return;
       }
-      stroke = undefined;
+      stroke = { pointerId: event.pointerId, last: cell, onField };
       canvas.setPointerCapture(event.pointerId);
-      strokeTo(cell);
+      strokeTo(event);
     });
-    canvas.addEventListener("pointermove", (event) => {
-      const cell = cellAt(event);
-      if (stroke !== undefined && cell !== undefined) strokeTo(cell);
-    });
-    for (const end of ["pointerup", "pointercancel", "lostpointercapture"]) {
-      canvas.addEventListener(end, () => {
-        stroke = undefined;
+    canvas.addEventListener("pointermove", strokeTo);
+    for (const end of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
+      canvas.addEventListener(end, (event) => {
+        if (event.pointerId === stroke?.pointerId) stroke = undefined;
       });
     }
     for (const field of NUMBER_FIELDS) {
