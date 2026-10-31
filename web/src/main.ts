@@ -5,7 +5,7 @@
 
 import openField from "../../vectors/format/level-open-field.json";
 import wallsAndMinions from "../../vectors/format/level-walls-and-minions.json";
-import { Core, type EndReason, fromHex, hex } from "./core";
+import { type Core, type EndReason, fromHex, hex } from "./core";
 import {
   type Bindings,
   type Control,
@@ -16,10 +16,9 @@ import {
   saveBindings,
 } from "./input";
 import type { Loop } from "./loop";
+import { element, fitField, loadCore, messageOf, percent } from "./page";
 import { Renderer } from "./render";
 import { runNonce, startSession } from "./session";
-
-const WASM_URL = new URL("../../target/wasm32-unknown-unknown/release/jiro_wasm.wasm", import.meta.url);
 
 const BUNDLED_LEVELS: Record<string, string> = import.meta.glob("../../levels/*.bin", {
   query: "?url",
@@ -36,12 +35,6 @@ const CONTROL_NAMES: Record<Control, string> = {
   b: "B (shield)",
   x: "X (commit)",
 };
-
-function element<T extends HTMLElement>(id: string): T {
-  const found = document.getElementById(id);
-  if (found === null) throw new Error(`#${id} is missing from the page`);
-  return found as T;
-}
 
 const canvas = element<HTMLCanvasElement>("field");
 const levelSelect = element<HTMLSelectElement>("level");
@@ -71,13 +64,11 @@ let levelName = "";
 async function main(): Promise<void> {
   const nonce = params.get("nonce");
   if (nonce !== null) fixedNonce = fromHex(nonce);
-  const response = await fetch(WASM_URL);
-  if (!response.ok) throw new Error(`could not load the game engine (${response.status})`);
-  core = await Core.load(await response.arrayBuffer());
+  core = await loadCore();
   listLevels();
   showBindings();
-  fitCanvas();
-  window.addEventListener("resize", fitCanvas);
+  fitField(renderer);
+  window.addEventListener("resize", () => fitField(renderer));
   window.addEventListener("keydown", onKey);
   window.addEventListener("keyup", (event) => keys.up(event.code));
   window.addEventListener("blur", () => keys.clear());
@@ -121,7 +112,7 @@ async function play(): Promise<void> {
     levelName = name;
     loop = startSession(core, level, runNonce(fixedNonce), keys, () => performance.now());
   } catch (error) {
-    setupError.textContent = error instanceof Error ? error.message : String(error);
+    setupError.textContent = messageOf(error);
     return;
   }
   endScreen.hidden = true;
@@ -169,10 +160,6 @@ function showEnd(end: EndReason): void {
   element("end-hash").title = stateHash;
   endScreen.hidden = false;
   loop = undefined;
-}
-
-function percent(bp: number): string {
-  return `${(bp / 100).toFixed(2)} %`;
 }
 
 function downloadJournal(): void {
@@ -230,10 +217,6 @@ function finishRebinding(control: Control, code: string): void {
   showBindings();
 }
 
-function fitCanvas(): void {
-  renderer.fit(Math.min(window.innerWidth - 32, 960), window.innerHeight - 160);
-}
-
 main().catch((error: unknown) => {
-  setupError.textContent = error instanceof Error ? error.message : String(error);
+  setupError.textContent = messageOf(error);
 });

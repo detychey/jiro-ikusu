@@ -30,9 +30,17 @@ canvas { display: block; background: #000; image-rendering: pixelated; }
 .hud dt { color: var(--muted); }
 .hud dd { margin: 0; font-variant-numeric: tabular-nums; }
 .setup { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--panel); }
+.setup[hidden] { display: none; }
 .controls { padding: 12px; background: var(--panel); }
 .controls table { border-collapse: collapse; }
 .controls td { padding: 2px 8px 2px 0; }
 button { font: inherit; padding: 6px 12px; border: 0; border-radius: 4px; background: var(--accent); color: white; cursor: pointer; }
 select, input { font: inherit; }
+input[type="file"] { max-width: 100%; }
 .error { color: var(--danger); min-height: 1.2em; margin: 0; }
+fieldset { display: flex; flex-direction: column; gap: 8px; min-inline-size: 0; margin: 0; border: 1px solid var(--muted); }
+textarea { font: 0.8rem ui-monospace, monospace; width: 100%; box-sizing: border-box; }
+.hud code { overflow-wrap: anywhere; font-size: 0.8rem; }
+.outcome { border-collapse: collapse; font-size: 0.85rem; }
+.outcome td { padding: 2px 8px 2px 0; overflow-wrap: anywhere; }
+.outcome td:first-child { color: var(--muted); white-space: nowrap; }

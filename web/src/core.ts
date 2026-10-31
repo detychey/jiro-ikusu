@@ -2,10 +2,14 @@
 // that moves bytes through wasm memory. A call that returns a non-zero code throws, so a misuse
 // of the interface never goes unnoticed.
 
+import { MAX_JOURNAL_LEN } from "./journal";
+
 export const MISUSE = 255;
 export const HASH_LEN = 32;
 export const MINION_SLOTS = 3;
 export const GRID_CELLS = 3_600;
+export const OUTCOME_LEN = 110;
+export const LEVEL_LEN = 472;
 
 /** README §4.10 and the Outcome's endReason (§7.3). */
 export const END_REASONS = ["Committed", "Cleared", "Out of lives", "Time limit"] as const;
@@ -44,6 +48,10 @@ interface Exports {
   state_hash(): number;
   journal_ptr(): number;
   journal_len(): number;
+  replay(levelLen: number, journalLen: number, weightBp: number): number;
+  outcome_ptr(): number;
+  trace_ptr(): number;
+  trace_ticks(): number;
 }
 
 export interface Minion {
@@ -66,6 +74,25 @@ export interface Snapshot {
   ticksUsed: number;
   ticksLeft: number;
 }
+
+/** README §7.3's Outcome, field for field, byte strings as 0x-prefixed hex. */
+export interface Outcome {
+  journalHash: string;
+  levelId: string;
+  runNonce: string;
+  levelIndex: number;
+  drawSlot: number;
+  mode: number;
+  rulesVersion: number;
+  endReason: EndReason;
+  claimBp: number;
+  ticksUsed: number;
+  levelScore: number;
+}
+
+/** What replay returns: the Outcome, or the code of the first broken rule (README §6.3), and
+ *  either way the state hash of every tick played, in tick order. */
+export type Replayed = { outcome: Outcome; trace: Uint8Array } | { code: number; trace: Uint8Array };
 
 export class CoreError extends Error {
   constructor(
@@ -161,9 +188,30 @@ export class Core {
     return this.view(this.wasm.journal_ptr(), this.wasm.journal_len()).slice();
   }
 
-  private input(bytes: Uint8Array): void {
-    if (bytes.length > this.wasm.input_capacity()) throw new CoreError("input", MISUSE);
-    this.view(this.wasm.input_ptr(), bytes.length).set(bytes);
+  /** Replays `journal` on `level`, scored with `weightBp`, as the referee does (README §7.3).
+   *  The level in play is left as it was. */
+  replay(level: Uint8Array, journal: Uint8Array, weightBp: number): Replayed {
+    if (!Number.isInteger(weightBp) || weightBp < 0 || weightBp > 0xffff) throw new CoreError("replay", MISUSE);
+    // Bytes past one more than the longest valid level or journal cannot change replay's result,
+    // so longer inputs are cut to fit the input buffer.
+    const [levelPart, journalPart] = [level.subarray(0, LEVEL_LEN + 1), journal.subarray(0, MAX_JOURNAL_LEN + 1)];
+    this.input(levelPart, journalPart);
+    const code = this.wasm.replay(levelPart.length, journalPart.length, weightBp);
+    if (code === MISUSE) throw new CoreError("replay", code);
+    const trace = this.view(this.wasm.trace_ptr(), this.wasm.trace_ticks() * HASH_LEN).slice();
+    if (code !== 0) return { code, trace };
+    return { outcome: decodeOutcome(this.view(this.wasm.outcome_ptr(), OUTCOME_LEN)), trace };
+  }
+
+  /** Writes `parts` side by side at the start of the input buffer. */
+  private input(...parts: Uint8Array[]): void {
+    const total = parts.reduce((sum, part) => sum + part.length, 0);
+    if (total > this.wasm.input_capacity()) throw new CoreError("input", MISUSE);
+    let at = this.wasm.input_ptr();
+    for (const part of parts) {
+      this.view(at, part.length).set(part);
+      at += part.length;
+    }
   }
 
   private view(ptr: number, len: number): Uint8Array<ArrayBuffer> {
@@ -173,6 +221,32 @@ export class Core {
   private check(call: string, code: number): void {
     if (code !== 0) throw new CoreError(call, code);
   }
+}
+
+/** The Outcome bytes of jiro-wasm: the fields of README §7.3 in order, integers big-endian. */
+function decodeOutcome(bytes: Uint8Array): Outcome {
+  let at = 0;
+  const take = (len: number) => bytes.subarray(at, (at += len));
+  const int = (len: number) => take(len).reduce((value, byte) => value * 256 + byte, 0);
+  return {
+    journalHash: hex(take(HASH_LEN)),
+    levelId: hex(take(HASH_LEN)),
+    runNonce: hex(take(HASH_LEN)),
+    levelIndex: int(1),
+    drawSlot: int(1),
+    mode: int(1),
+    rulesVersion: int(2),
+    endReason: endReasonOf(int(1)),
+    claimBp: int(2),
+    ticksUsed: int(2),
+    levelScore: int(4),
+  };
+}
+
+function endReasonOf(code: number): EndReason {
+  const reason = END_REASONS[code - 1];
+  if (reason === undefined) throw new Error(`the core returned end reason ${code}`);
+  return reason;
 }
 
 export function hex(bytes: Uint8Array): string {

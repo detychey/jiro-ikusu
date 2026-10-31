@@ -27,6 +27,16 @@ The page takes optional query parameters:
 The canvas exposes `data-state-hash`, `data-ticks-used` and, once the level has ended,
 `data-end-reason`, for the smoke test.
 
+## Replay viewer
+
+`replay.html` (plan M2.3) watches and audits a journal: load a game vector with its `.trace`
+file, or a level and a journal, each from a file or from hex; choosing one source clears the
+others, so the page never replays an input left over from earlier. The core replays them as the
+referee does and gives the Outcome; a journal the core rejects shows its error code. Play,
+pause and step move through the ticks, and the slider seeks, which plays the journal again from
+tick 0. Each tick shows its state hash and the inputs held, and a vector's trace is compared tick
+for tick, with the first tick that differs.
+
 ## Controls
 
 The defaults are the arrow keys for the joystick, and the keys A, B and X for the device keys of
@@ -47,6 +57,10 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/input.ts` | Controls, bindings and the held keys |
 | `src/session.ts` | One level in play: core, clock and keys on the single input path |
 | `src/render.ts` | The 240 × 240 field at an integer scale, redrawing only the changed cells |
-| `src/main.ts` | The page: level picker, HUD, end screen, journal download, bindings panel |
-| `test/*.test.ts` | vitest: the clock, the bindings, and play through the wasm build |
+| `src/main.ts` | The game page: level picker, HUD, end screen, journal download, bindings panel |
+| `src/pages/replay.ts` | The replay viewer: the view of a replayed journal, the trace comparison and the page |
+| `src/page.ts` | What the pages share: elements by id, loading the engine, the field's size, error messages, claims in percent |
+| `src/journal.ts` | The events of a journal the core has accepted |
+| `src/errors.ts` | The core's error codes by name, with their meaning |
+| `test/*.test.ts` | vitest: the clock, the bindings, play and replay through the wasm build, the error names |
 | `test/vectors.mjs` | The wasm parity runner of M1.11 (plain Node) |
