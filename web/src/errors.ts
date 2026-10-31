@@ -3,7 +3,7 @@
 
 export const ERRORS: Readonly<Record<number, readonly [name: string, meaning: string]>> = {
   1: ["Truncated", "the journal ends inside its 71-byte header or its events"],
-  2: ["TrailingBytes", "bytes follow the journal's last event"],
+  2: ["TrailingBytes", "bytes follow the journal's header and events"],
   3: ["Version", "the journal's version is not 1"],
   4: ["RulesVersion", "the journal was played under another rules version"],
   5: ["Mode", "the journal's mode is 2 or above"],

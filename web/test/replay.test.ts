@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { Core, END_REASONS, fromHex, HASH_LEN, hex, type Outcome } from "../src/core";
+import { Core, CoreError, END_REASONS, fromHex, HASH_LEN, hex, type Outcome } from "../src/core";
 import { describeError } from "../src/errors";
 import { firstMismatch, heldControls, type Recording, ReplayView } from "../src/pages/replay";
 
@@ -49,6 +49,26 @@ function open(given: Recording): ReplayView {
 /** The Outcome as a game vector records it, with the end reason as its code (README §7.3). */
 const recorded = (outcome: Outcome) => ({ ...outcome, endReason: END_REASONS.indexOf(outcome.endReason) + 1 });
 
+function gameVector(name: string): Vector {
+  const found = games.find((game) => game.name === `${name}.json`);
+  if (found === undefined) throw new Error(`vectors/game/${name}.json not found`);
+  return found.vector;
+}
+
+/** The state hash after each of 0 to `ticks` ticks, stepping from tick 0. */
+function steppedHashes(view: ReplayView): string[] {
+  view.seek(0);
+  const hashes = [hex(view.hash())];
+  while (view.tick < view.ticks) {
+    view.step();
+    hashes.push(hex(view.hash()));
+  }
+  return hashes;
+}
+
+const traceHashes = (bytes: Uint8Array) =>
+  Array.from({ length: bytes.length / HASH_LEN }, (_, t) => hex(bytes.subarray(t * HASH_LEN, (t + 1) * HASH_LEN)));
+
 describe("replay viewer", () => {
   it.each(played)("ends $name on the vector's final state hash and Outcome", ({ vector }) => {
     const view = open(recording(vector));
@@ -61,24 +81,20 @@ describe("replay viewer", () => {
   });
 
   it.each(played)("plays $name tick by tick on the vector's trace", ({ vector }) => {
-    const view = open(recording(vector));
-    const hashes: string[] = [];
-    while (view.tick < view.ticks) {
-      view.step();
-      hashes.push(hex(view.hash()));
-    }
-    const expected = trace(vector);
-    expect(hashes).toEqual(Array.from({ length: view.ticks }, (_, t) => hex(expected.subarray(t * HASH_LEN, (t + 1) * HASH_LEN))));
+    expect(steppedHashes(open(recording(vector))).slice(1)).toEqual(traceHashes(trace(vector)));
+  });
+
+  it("plays a Challenge journal at level index 5 tick by tick on the core's trace", () => {
+    const journal = fromHex(format("journal-challenge-level-5"));
+    const view = open({ level: openField, journal, weightBp: 10_000 });
+    expect([view.outcome.mode, view.outcome.levelIndex]).toEqual([1, 5]);
+    expect(steppedHashes(view).slice(1)).toEqual(traceHashes(view.trace));
   });
 
   it.each(played)("gives the same state hash seeking to a tick of $name as stepping to it", ({ vector }) => {
     const view = open(recording(vector));
-    const stepped = [hex(view.hash())];
-    while (view.tick < view.ticks) {
-      view.step();
-      stepped.push(hex(view.hash()));
-    }
-    const ticks = [view.ticks, 0, 1, Math.floor(view.ticks / 2), view.ticks - 1];
+    const stepped = steppedHashes(view);
+    const ticks = [view.ticks, 0, 1, Math.floor(view.ticks / 2), view.ticks - 1, Math.floor(view.ticks / 3)];
     const sought = ticks.map((tick) => {
       view.seek(tick);
       return hex(view.hash());
@@ -108,28 +124,43 @@ describe("replay viewer", () => {
     },
   );
 
+  it("shows the code of a level too long for the engine's input buffer", () => {
+    const level = new Uint8Array(20_000);
+    level.set(openField);
+    expect(ReplayView.open(core, { level, journal: openFieldJournal, weightBp: 10_000 })).toEqual({ code: 20 });
+  });
+
+  it("shows the code of a journal followed by more bytes than the engine's input buffer holds", () => {
+    const journal = new Uint8Array(20_000);
+    journal.set(openFieldJournal);
+    expect(ReplayView.open(core, { level: openField, journal, weightBp: 10_000 })).toEqual({ code: 2 });
+  });
+
+  it.each([Number.NaN, -1, 65_536, 1.5])("refuses the weight %s", (weightBp) => {
+    expect(() => core.replay(openField, openFieldJournal, weightBp)).toThrow(CoreError);
+  });
+
   it("reports the first tick of a corrupted trace", () => {
-    const { vector } = played.find(({ name }) => name === "worst-case.json") ?? { vector: undefined };
-    if (vector === undefined) throw new Error("vectors/game/worst-case.json not found");
+    const vector = gameVector("worst-case");
     const corrupted = trace(vector).slice();
     corrupted[1_234 * HASH_LEN + 17] = (corrupted[1_234 * HASH_LEN + 17] ?? 0) ^ 1;
     expect(firstMismatch(open(recording(vector)).trace, corrupted)).toBe(1_234);
   });
 
   it("reports the end of a trace cut short", () => {
-    const { vector } = played[0] ?? { vector: undefined };
-    if (vector === undefined) throw new Error("no played game vector");
-    const view = open(recording(vector));
+    const view = open(recording(gameVector("open-field-capture")));
     expect(firstMismatch(view.trace, view.trace.subarray(0, (view.ticks - 1) * HASH_LEN))).toBe(view.ticks - 1);
   });
 
   it("finds no mismatch in an equal trace", () => {
-    const { vector } = played[0] ?? { vector: undefined };
-    if (vector === undefined) throw new Error("no played game vector");
+    const vector = gameVector("open-field-capture");
     expect(firstMismatch(open(recording(vector)).trace, trace(vector))).toBeUndefined();
   });
 
-  it("names the controls a mask holds", () => {
-    expect([heldControls(0), heldControls(0b1010_001)]).toEqual(["none", "up a x"]);
+  it.each([
+    [0, "none"],
+    [0b1010_001, "up a x"],
+  ])("names the controls the mask %i holds", (mask, names) => {
+    expect(heldControls(mask)).toBe(names);
   });
 });

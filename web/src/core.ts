@@ -2,11 +2,14 @@
 // that moves bytes through wasm memory. A call that returns a non-zero code throws, so a misuse
 // of the interface never goes unnoticed.
 
+import { MAX_JOURNAL_LEN } from "./journal";
+
 export const MISUSE = 255;
 export const HASH_LEN = 32;
 export const MINION_SLOTS = 3;
 export const GRID_CELLS = 3_600;
 export const OUTCOME_LEN = 110;
+export const LEVEL_LEN = 472;
 
 /** README §4.10 and the Outcome's endReason (§7.3). */
 export const END_REASONS = ["Committed", "Cleared", "Out of lives", "Time limit"] as const;
@@ -188,8 +191,12 @@ export class Core {
   /** Replays `journal` on `level`, scored with `weightBp`, as the referee does (README §7.3).
    *  The level in play is left as it was. */
   replay(level: Uint8Array, journal: Uint8Array, weightBp: number): Replayed {
-    this.input(level, journal);
-    const code = this.wasm.replay(level.length, journal.length, weightBp);
+    if (!Number.isInteger(weightBp) || weightBp < 0 || weightBp > 0xffff) throw new CoreError("replay", MISUSE);
+    // Bytes past one more than the longest valid level or journal cannot change replay's result,
+    // so longer inputs are cut to fit the input buffer.
+    const [levelPart, journalPart] = [level.subarray(0, LEVEL_LEN + 1), journal.subarray(0, MAX_JOURNAL_LEN + 1)];
+    this.input(levelPart, journalPart);
+    const code = this.wasm.replay(levelPart.length, journalPart.length, weightBp);
     if (code === MISUSE) throw new CoreError("replay", code);
     const trace = this.view(this.wasm.trace_ptr(), this.wasm.trace_ticks() * HASH_LEN).slice();
     if (code !== 0) return { code, trace };

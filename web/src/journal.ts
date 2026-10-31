@@ -3,6 +3,8 @@
 
 export const HEADER_LEN = 71;
 export const EVENT_LEN = 3;
+export const MAX_EVENTS = 2_700;
+export const MAX_JOURNAL_LEN = HEADER_LEN + EVENT_LEN * MAX_EVENTS;
 
 export interface JournalEvent {
   tick: number;

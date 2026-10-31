@@ -16,7 +16,7 @@ import {
   saveBindings,
 } from "./input";
 import type { Loop } from "./loop";
-import { element, loadCore, percent } from "./page";
+import { element, fitField, loadCore, messageOf, percent } from "./page";
 import { Renderer } from "./render";
 import { runNonce, startSession } from "./session";
 
@@ -67,8 +67,8 @@ async function main(): Promise<void> {
   core = await loadCore();
   listLevels();
   showBindings();
-  fitCanvas();
-  window.addEventListener("resize", fitCanvas);
+  fitField(renderer);
+  window.addEventListener("resize", () => fitField(renderer));
   window.addEventListener("keydown", onKey);
   window.addEventListener("keyup", (event) => keys.up(event.code));
   window.addEventListener("blur", () => keys.clear());
@@ -112,7 +112,7 @@ async function play(): Promise<void> {
     levelName = name;
     loop = startSession(core, level, runNonce(fixedNonce), keys, () => performance.now());
   } catch (error) {
-    setupError.textContent = error instanceof Error ? error.message : String(error);
+    setupError.textContent = messageOf(error);
     return;
   }
   endScreen.hidden = true;
@@ -217,10 +217,6 @@ function finishRebinding(control: Control, code: string): void {
   showBindings();
 }
 
-function fitCanvas(): void {
-  renderer.fit(Math.min(window.innerWidth - 32, 960), window.innerHeight - 160);
-}
-
 main().catch((error: unknown) => {
-  setupError.textContent = error instanceof Error ? error.message : String(error);
+  setupError.textContent = messageOf(error);
 });

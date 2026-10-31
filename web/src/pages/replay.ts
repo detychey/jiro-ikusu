@@ -8,7 +8,7 @@ import { describeError } from "../errors";
 import { controlsOf } from "../input";
 import { type JournalEvent, journalEvents } from "../journal";
 import { createLoop, type Loop } from "../loop";
-import { element, loadCore, percent } from "../page";
+import { element, fitField, loadCore, messageOf, percent } from "../page";
 import { Renderer } from "../render";
 
 /** The bytes a replay takes (README §7.3). */
@@ -117,54 +117,104 @@ export function heldControls(mask: number): string {
   return held.length === 0 ? "none" : held.join(" ");
 }
 
-/** The fields of a game vector that a replay takes (README §6.6). */
-interface GameVector {
-  level: string;
-  journal: string;
-  weightBp: number;
+/** The recording of a game vector (README §6.6), from its JSON text. */
+function vectorRecording(text: string, file: string): Recording {
+  const vector: unknown = JSON.parse(text);
+  const { level, journal, weightBp } = (vector ?? {}) as Record<string, unknown>;
+  if (typeof level !== "string" || typeof journal !== "string") {
+    throw new Error(`${file} is not a game vector: it has no level and journal`);
+  }
+  return { level: fromHex(level), journal: fromHex(journal), weightBp: weight(weightBp, file) };
+}
+
+/** A weight in basis points, a whole number from 0 to 65,535 (README §8.4). */
+function weight(value: unknown, source: string): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 0xffff) {
+    throw new Error(`${source}: the weight is a whole number of basis points from 0 to 65,535`);
+  }
+  return value;
 }
 
 /** Runs the page: replay.html. */
 export function mount(): void {
-  const canvas = element<HTMLCanvasElement>("field");
+  const fieldView = element<HTMLElement>("field-view");
   const loadError = element<HTMLParagraphElement>("load-error");
   const player = element<HTMLDivElement>("player");
   const scrub = element<HTMLInputElement>("scrub");
   const playPause = element<HTMLButtonElement>("play-pause");
-  const renderer = new Renderer(canvas);
+  const vectorFiles = element<HTMLInputElement>("vector-files");
+  const weightField = element<HTMLInputElement>("weight");
+  const part = (name: "level" | "journal") => ({
+    name,
+    file: element<HTMLInputElement>(`${name}-file`),
+    hex: element<HTMLTextAreaElement>(`${name}-hex`),
+  });
+  const levelPart = part("level");
+  const journalPart = part("journal");
+  const parts = [levelPart, journalPart];
+  const renderer = new Renderer(element<HTMLCanvasElement>("field"));
   let core: Core;
   let view: ReplayView | undefined;
   let expected: Uint8Array | undefined;
   let loop: Loop<true> | undefined;
 
-  const fit = () => renderer.fit(Math.min(window.innerWidth - 32, 960), window.innerHeight - 160);
+  /** One source at a time: choosing a vector clears the level and the journal, and choosing a
+   *  file or typing hex for one of them clears the vector and that part's other input. */
+  function keepOneSource(): void {
+    vectorFiles.addEventListener("change", () => {
+      for (const part of parts) {
+        part.file.value = "";
+        part.hex.value = "";
+      }
+    });
+    for (const part of parts) {
+      part.file.addEventListener("change", () => {
+        vectorFiles.value = "";
+        part.hex.value = "";
+      });
+      part.hex.addEventListener("input", () => {
+        vectorFiles.value = "";
+        part.file.value = "";
+      });
+    }
+    weightField.addEventListener("input", () => {
+      vectorFiles.value = "";
+    });
+  }
 
-  const bytesOf = async (input: HTMLInputElement): Promise<Uint8Array | undefined> => {
-    const file = input.files?.[0];
-    return file === undefined ? undefined : new Uint8Array(await file.arrayBuffer());
-  };
+  async function bytesOf({ name, file, hex: hexField }: ReturnType<typeof part>): Promise<Uint8Array> {
+    const chosenFile = file.files?.[0];
+    if (chosenFile !== undefined) return new Uint8Array(await chosenFile.arrayBuffer());
+    const text = hexField.value.trim();
+    if (text === "") throw new Error(`give the ${name} as a file or as hex`);
+    return fromHex(text);
+  }
 
   /** The recording and the trace to compare with: a game vector and its .trace file, or else a
-   *  level and a journal, each from its file or else its hex field. */
+   *  level and a journal, each from its file or its hex field. */
   async function chosen(): Promise<[Recording, Uint8Array | undefined]> {
-    const files = Array.from(element<HTMLInputElement>("vector-files").files ?? []);
-    const vectorFile = files.find((file) => file.name.endsWith(".json"));
-    if (vectorFile !== undefined) {
-      const vector = JSON.parse(await vectorFile.text()) as GameVector;
+    const files = Array.from(vectorFiles.files ?? []);
+    if (files.length > 0) {
+      const vectorFile = files.find((file) => file.name.endsWith(".json"));
       const traceFile = files.find((file) => file.name.endsWith(".trace"));
+      if (vectorFile === undefined || files.length > (traceFile === undefined ? 1 : 2)) {
+        throw new Error("choose one game vector's .json file, with its .trace file to compare");
+      }
       const trace = traceFile === undefined ? undefined : new Uint8Array(await traceFile.arrayBuffer());
-      return [{ level: fromHex(vector.level), journal: fromHex(vector.journal), weightBp: vector.weightBp }, trace];
+      return [vectorRecording(await vectorFile.text(), vectorFile.name), trace];
     }
-    const level =
-      (await bytesOf(element("level-file"))) ?? fromHex(element<HTMLTextAreaElement>("level-hex").value.trim());
-    const journal =
-      (await bytesOf(element("journal-file"))) ?? fromHex(element<HTMLTextAreaElement>("journal-hex").value.trim());
-    return [{ level, journal, weightBp: Number(element<HTMLInputElement>("weight").value) }, undefined];
+    const recording = {
+      level: await bytesOf(levelPart),
+      journal: await bytesOf(journalPart),
+      weightBp: weight(weightField.valueAsNumber, "Weight"),
+    };
+    return [recording, undefined];
   }
 
   async function load(): Promise<void> {
     pause();
     loadError.textContent = "";
+    fieldView.hidden = true;
     player.hidden = true;
     view = undefined;
     try {
@@ -177,12 +227,13 @@ export function mount(): void {
       view = opened;
       expected = trace;
     } catch (error) {
-      loadError.textContent = error instanceof Error ? error.message : String(error);
+      loadError.textContent = messageOf(error);
       return;
     }
     scrub.max = String(view.ticks);
     showOutcome(view.outcome);
     showCompare();
+    fieldView.hidden = false;
     player.hidden = false;
     show();
   }
@@ -195,7 +246,6 @@ export function mount(): void {
     element("tick").textContent = `${view.tick} of ${view.ticks}`;
     element("held").textContent = view.tick > 0 ? heldControls(view.held(view.tick - 1)) : "–";
     element("hash").textContent = hex(view.hash());
-    canvas.dataset.ticksUsed = String(view.tick);
   }
 
   function showOutcome(outcome: Outcome): void {
@@ -276,8 +326,9 @@ export function mount(): void {
 
   async function start(): Promise<void> {
     core = await loadCore();
-    fit();
-    window.addEventListener("resize", fit);
+    fitField(renderer);
+    window.addEventListener("resize", () => fitField(renderer));
+    keepOneSource();
     element<HTMLFormElement>("load").addEventListener("submit", (event) => {
       event.preventDefault();
       void load();
@@ -292,6 +343,6 @@ export function mount(): void {
   }
 
   start().catch((error: unknown) => {
-    loadError.textContent = error instanceof Error ? error.message : String(error);
+    loadError.textContent = messageOf(error);
   });
 }

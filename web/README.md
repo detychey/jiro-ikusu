@@ -30,7 +30,8 @@ The canvas exposes `data-state-hash`, `data-ticks-used` and, once the level has 
 ## Replay viewer
 
 `replay.html` (plan M2.3) watches and audits a journal: load a game vector with its `.trace`
-file, or a level and a journal, each from a file or from hex. The core replays them as the
+file, or a level and a journal, each from a file or from hex; choosing one source clears the
+others, so the page never replays an input left over from earlier. The core replays them as the
 referee does and gives the Outcome; a journal the core rejects shows its error code. Play,
 pause and step move through the ticks, and the slider seeks, which plays the journal again from
 tick 0. Each tick shows its state hash and the inputs held, and a vector's trace is compared tick

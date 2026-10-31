@@ -12,7 +12,7 @@
       <p>Watch and audit a journal: the core replays it as the referee does. <a href="./">Play</a></p>
     </header>
     <main>
-      <section class="field">
+      <section id="field-view" class="field" hidden>
         <canvas id="field" aria-label="Replayed field"></canvas>
       </section>
       <aside class="side">
@@ -27,7 +27,7 @@
             <label>Level hex <textarea id="level-hex" rows="2" spellcheck="false"></textarea></label>
             <label>Journal file <input id="journal-file" type="file" accept=".jrn,application/octet-stream" /></label>
             <label>Journal hex <textarea id="journal-hex" rows="2" spellcheck="false"></textarea></label>
-            <label>Weight (bp) <input id="weight" type="number" min="0" max="65535" value="10000" /></label>
+            <label>Weight (bp) <input id="weight" type="number" min="0" max="65535" step="1" value="10000" required /></label>
           </fieldset>
           <button type="submit">Replay</button>
           <p id="load-error" class="error" role="alert"></p>
