@@ -31,8 +31,8 @@ Gas is the unit; an ETH cost is gas × the Arbitrum base fee at the time.
 
 | Cost | Value | Filled by |
 |---|---|---|
-| `startRun` and `revealRun` gas | TBD (M4.6) | M4.6 |
-| `commitRun` gas, with a typical six-journal blob and a full one (6 × 8,171 bytes) | TBD (M4.6) | M4.6 |
+| `startRun` and `revealRun` gas | `startRun` 131,898 (166,098 for the contract's first run), `revealRun` 63,284, before the L1 data fee ([`VERIFICATION.md`](VERIFICATION.md#challenge-gas)) | M4.6 |
+| `commitRun` gas, with a typical six-journal blob and a full one (6 × 8,171 bytes) | typical (1,604 bytes of calldata): 99,049; full (49,604 bytes): 864,069, or 1,940,390 under EIP-7623's calldata floor; before the L1 data fee ([`VERIFICATION.md`](VERIFICATION.md#challenge-gas)) | M4.6 |
 | Stylus `verify` gas per level, provisional | TBD (M4.2) | M4.2 |
 | Stylus gas gate over the gate set, and gas per six-level run | TBD (M4.9) | M4.9 |
 | Settlement gas, excluding `verifyRun` | TBD (M4.7) | M4.7 |
