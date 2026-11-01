@@ -1,0 +1,10 @@
+{
+  "name": "jiro-contracts-scripts",
+  "private": true,
+  "description": "Contract scripts on ethers v6: the Stylus activation reading (M4.3), then deploy, gas, end-to-end and season operations (plan M4, M5)",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "ethers": "6.17.0"
+  }
+}

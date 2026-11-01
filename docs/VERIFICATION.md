@@ -1,5 +1,31 @@
 # Verification
 
+## Stylus activation
+
+[`scripts/contracts/activation.mjs`](../scripts/contracts/activation.mjs) reads `ArbWasm.activationGas()` from the precompile at `0x0000000000000000000000000000000000000071`, at the chain's latest block. New Stylus activations count as open at or below 30,000,000, cargo-stylus 0.10.10's threshold, as ethblockdigger's `scripts/contracts/checks.ts` checks: the chain owner pauses them by raising `activationGas` above it (README §7.3). M4.9, M4.10 and M4.16 reuse it.
+
+| Network | chainId | Block | Date (UTC) | `activationGas` | Activations |
+|---|---|---|---|---|---|
+| Arbitrum Sepolia | 421614 | 324,664,851 | 2026-10-31 12:23:24 | 18,446,744,073,709,551,615 (2^64 − 1) | paused |
+| Arbitrum One | 42161 | 519,986,698 | 2026-10-31 12:23:25 | 18,446,744,073,709,551,615 (2^64 − 1) | paused |
+
+- **First readings,** M4.3, with `activation.mjs` at commit e3623c2856a206366ef942e53b60fa3c7d849a8e, Node v22.22.0 and ethers 6.17.0:
+
+  ```bash
+  npm ci --prefix scripts/contracts
+  node scripts/contracts/activation.mjs --rpc https://sepolia-rollup.arbitrum.io/rpc
+  node scripts/contracts/activation.mjs --rpc https://arb1.arbitrum.io/rpc
+  ```
+
+  ```text
+  chainId 421614, block 324664851 (2026-10-31T12:23:24.000Z): activationGas 18446744073709551615, above 30000000: activations paused
+  chainId 42161, block 519986698 (2026-10-31T12:23:25.000Z): activationGas 18446744073709551615, above 30000000: activations paused
+  ```
+
+- **Reading.** Both chains hold `activationGas` at the uint64 maximum, so the pause of README §7.3 still holds on both.
+
+## zkVM trials
+
 Trial records of the zkVM frameworks for the zk path of `IReferee` (README §7.3). Each framework gets one row in the summary and one section below, with the same fields in the same order. M1.16 measured SP1; M1.17 adds RISC Zero in the same shape. M1.12 then compares the frameworks that pass the four tooling checks, on cycles and price, and records the choice in README §13 D2.
 
 The four tooling checks of README §7.3:
@@ -9,17 +35,17 @@ The four tooling checks of README §7.3:
 3. **Mock:** it has a fast mock or dev mode for tests.
 4. **Verifier:** it has a verifier contract on Arbitrum, with Foundry test support.
 
-## Summary
+### Summary
 
 | Framework | Version | Install | Execute | Mock | Verifier | Vectors reproduced | Cycles, heaviest level | CPU proof of a small level | Onchain-verifiable wrapping | Prover network, Groth16 proof of a six-level run | Kept branch |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | SP1 | v6.10.0 (circuits v6.1.0) | PASS | PASS | PASS | PASS | 75 of 75 | 31,227,278 (`10-worst`) | core: 92 s, 11.6 GiB; compressed: out of memory at 13.4 GiB | FAIL: out of memory in the container and on Actions | 0.433 PROVE (about 0.00004 ETH) | `zk-trial-sp1` |
 
-## SP1
+### SP1
 
 Measured on 2026-10-31 in the agents' container: 4 CPUs, 15.7 GiB of RAM, no swap, no GPU. The session's processes run in a memory cgroup capped at 14,341,885,952 bytes (13.36 GiB); Docker containers run outside it. The code is the kept branch `zk-trial-sp1` at commit `7573082`, and its workflow at `9d129ad`. The core is that of `main` at `cd3121d` (`RULES_VERSION` 2), whose `core/` and `vectors/` are unchanged at `4e3d1f8`.
 
-### Version and install
+#### Version and install
 
 - **Version:** `~/.sp1/bin/cargo-prove prove --version` prints `cargo-prove sp1 (d83ed91 2026-10-23T15:23:03.526885682Z)`, the v6.10.0 release asset. The SDK crates are pinned to `=6.10.0` from crates.io: `sp1-sdk` (feature `blocking`), `sp1-build` and `sp1-zkvm`. Their circuit version, `SP1_CIRCUIT_VERSION`, is `v6.1.0`: it names the circuit artifacts, the gnark Docker image and the onchain verifiers below.
 - **Toolchain:** `rustc +succinct --version` prints `rustc 1.96.0-dev` (LLVM 22.1.2), the value that M0.2 recorded in [`TOOLING.md`](TOOLING.md). sp1-build compiles the guest for `riscv64im-succinct-zkvm-elf`, which is RV64IM, with `panic=abort`.
@@ -32,7 +58,7 @@ Measured on 2026-10-31 in the agents' container: 4 CPUs, 15.7 GiB of RAM, no swa
 - **Other URLs fetched:** `index.crates.io` and `static.crates.io` (the SDK, 2.3 GB of registry sources with the other crates), `archive.ubuntu.com` (protoc), `git clone` of `github.com/succinctlabs/sp1-contracts` and `github.com/succinctlabs/sp1-project-template` with their submodules, `binaries.soliditylang.org` (solc 0.8.20 for sp1-contracts), `docs.succinct.xyz`, `explorer.succinct.xyz`, the network RPC `rpc.mainnet.succinct.xyz`, the public RPCs `arb1.arbitrum.io/rpc`, `sepolia-rollup.arbitrum.io/rpc` and `ethereum-rpc.publicnode.com`, and `api.coingecko.com`.
 - **Build:** `cargo build --release --manifest-path referee/zk/Cargo.toml -p zk-host` builds the guest through `sp1-build` and then the host. The guest alone builds in 1 min 16 s (`cargo prove build` in `referee/zk/guest`). The host took 11 min in the container once the dependencies of the failed first build were compiled, and 15 min 51 s from scratch on a 2-vCPU runner. Every change to the host relinks it with the plan §3.3 release profile (fat LTO, one codegen unit): 4 min 23 s in the container. The guest ELFs are 68,696 bytes (`verify`) and 70,656 bytes (`trace`).
 
-### The four checks
+#### The four checks
 
 | Check | Result | Shown by |
 |---|---|---|
@@ -41,7 +67,7 @@ Measured on 2026-10-31 in the agents' container: 4 CPUs, 15.7 GiB of RAM, no swa
 | Mock | PASS: a mock Groth16 proof round-trips in 7.84 s | `cargo test --release --manifest-path referee/zk/Cargo.toml -p zk-host` (test `a_mock_proof_round_trips_to_the_vector_outcome`) |
 | Verifier | PASS: gateways and v6.1.0 verifiers on Arbitrum One and Arbitrum Sepolia, routed and not frozen; SP1's Foundry tests pass | `cast call` and `forge test`, in [Onchain verifier](#onchain-verifier) |
 
-### Trial code
+#### Trial code
 
 On the kept branch `zk-trial-sp1`, which is pushed and never merged. `referee/zk/` is its own workspace, already excluded from the root one, so the main workspace and CI are untouched. Its root manifest and the guest's manifest carry the plan §3.3 profiles, and `bash scripts/check-profiles.sh` passes on that branch.
 
@@ -56,7 +82,7 @@ On the kept branch `zk-trial-sp1`, which is pushed and never merged. `referee/zk
 - **`peak-memory.sh`** samples resident memory every 0.5 s, since `/usr/bin/time` is not installed: the command's process tree and the processes of Docker containers.
 - **`.github/workflows/zk-trial-sp1.yml`** runs on pushes to the branch: build, one execution, the Groth16 artifacts, then the Groth16 proof of a small vector, with a memory sampler.
 
-### Executor: cycles per vector
+#### Executor: cycles per vector
 
 `zk-host execute` reproduced the Outcome, or the error code, and `traceKeccak` of all 75 game vectors: 43 in `vectors/game/` and 32 in `vectors/levels/`. Cycles are the verify program's executed instructions (`ExecutionReport::total_instruction_count`). Prover gas is the executor's `ExecutionReport::gas()`, in prover gas units (PGU), the unit the prover network bills. Trace-guest cycles include a state hash per tick and are test-only.
 
@@ -65,7 +91,7 @@ On the kept branch `zk-trial-sp1`, which is pushed and never merged. `referee/zk
 - **Six-level run:** `zk-host execute-run` on the heaviest vector of each of the six heaviest levels (`10-worst`, `16-worst`, `04-worst`, `08-worst`, `03-worst`, `14-synthetic`) took 136,915,482 cycles and 119,502,086 PGU, and reproduced the six Outcomes.
 - **Keccak:** the guest uses the core's software keccak (tiny-keccak 2.0.2). SP1's patched tiny-keccak, which uses its keccak precompile, was not tried.
 
-#### `vectors/game/`
+##### `vectors/game/`
 
 | Vector | Ticks used or error | Cycles | Prover gas (PGU) | Trace-guest cycles |
 |---|---:|---:|---:|---:|
@@ -113,7 +139,7 @@ On the kept branch `zk-trial-sp1`, which is pushed and never merged. `referee/zk
 | `swap-collision` | 11 | 993,598 | 967,582 | 2,282,362 |
 | `worst-case` | 2,700 | 28,816,801 | 25,218,367 | 283,122,799 |
 
-#### `vectors/levels/`
+##### `vectors/levels/`
 
 | Vector | Ticks used or error | Cycles | Prover gas (PGU) | Trace-guest cycles |
 |---|---:|---:|---:|---:|
@@ -150,7 +176,7 @@ On the kept branch `zk-trial-sp1`, which is pushed and never merged. `referee/zk
 | `16-synthetic` | 1,607 | 15,085,304 | 13,249,789 | 166,274,727 |
 | `16-worst` | 2,700 | 24,680,236 | 21,551,784 | 278,566,155 |
 
-### Proving on the CPU
+#### Proving on the CPU
 
 `bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove <mode> vectors/game/commit-at-tick-0.json`, the smallest accepted vector (977,049 cycles):
 
@@ -162,7 +188,7 @@ On the kept branch `zk-trial-sp1`, which is pushed and never merged. `referee/zk
 
 The program's verifying key hash is `0x0029a2e92eff5078355a839e50e7b98fb75f9aa072503d2946513fbcf9ebf9ff`. SP1's [hardware requirements](https://docs.succinct.xyz/docs/sp1/getting-started/hardware-requirements) ask for 16 GB or more for core and compressed proofs, whatever the program's size: memory did not shrink with one worker per stage.
 
-### Wrapping
+#### Wrapping
 
 The onchain-verifiable proof wraps the compressed proof into Groth16 or PLONK. By default SP1 runs that last step in Docker, with `ghcr.io/succinctlabs/sp1-gnark:v6.1.0`; the SDK's `native-gnark` feature links gnark through Go instead, and was not tried. SP1's hardware page gives about 14 GB for the Groth16 step and 60 GB for PLONK, so only Groth16 was tried.
 
@@ -172,7 +198,7 @@ The onchain-verifiable proof wraps the compressed proof into Groth16 or PLONK. B
 - **On Actions: FAIL.** [Run 41200644739](https://github.com/detychey/jiro-ikusu/actions/runs/41200644739) and [run 41202821606](https://github.com/detychey/jiro-ikusu/actions/runs/41202821606), on `ubuntu-24.04` (image 20261025.353.1): 2 vCPUs, 7,932 MiB of RAM and 3,071 MiB of swap. The host built, executed `commit-at-tick-0` (PASS) and installed the artifacts, then `zk-host prove groth16 vectors/game/commit-at-tick-0.json` ended with `The runner has received a shutdown signal`, after 326 s and 198 s. In the second run, the sampler's last line, 8 s before the shutdown, read `used 7701 MiB, swap used 2821 MiB`, up from 890 MiB at the start: the runner ran out of memory during the STARK proving, most likely before the Docker step. The two runs took 24.6 and 17.3 minutes (25 and 18 billed minutes, rounded per job).
 - **Docker:** needed by default, for the gnark step only. The core and compressed proofs run in the host process.
 
-### Onchain verifier
+#### Onchain verifier
 
 - **Gateways,** which route a proof to the verifier its first four bytes name. The same address on Arbitrum One (42161) and Arbitrum Sepolia (421614), from SP1's [contract addresses](https://docs.succinct.xyz/docs/sp1/verification/contract-addresses) page and [`sp1-contracts`](https://github.com/succinctlabs/sp1-contracts) `contracts/deployments/42161.json` and `421614.json` at commit `d3629729`:
   - Groth16: `0x397A5f7f3dBd538f23DE225B51f532c34448dA9B`
@@ -186,7 +212,7 @@ The onchain-verifiable proof wraps the compressed proof into Groth16 or PLONK. B
   - `sp1-contracts` at `d3629729`: `cd contracts && forge test`, 18 tests passed, 0 failed, among them the gateway's 12 and `test_VerifyProof_V6` on real v6.0.0 fixtures, at 234,718 gas for Groth16 and 291,639 for PLONK.
   - `sp1-contracts` also ships `SP1MockVerifier`, which accepts an empty proof: the mock proofs of the SDK have empty onchain bytes.
 
-### Prover network
+#### Prover network
 
 The Succinct Prover Network sells proofs by auction; its docs are [here](https://docs.succinct.xyz/docs/sp1/prover-network/intro). Read on 2026-10-31.
 
@@ -207,7 +233,7 @@ The Succinct Prover Network sells proofs by auction; its docs are [here](https:/
 
   The base fee is 84% of the run proof's price. A Groth16 run proof costs about 80% of the 0.00005 ETH run fee ($0.112).
 
-### Findings for M1.12
+#### Findings for M1.12
 
 - **All four checks pass.** The executor reproduces every vector, the mock round trip takes 8 s, and the verifiers are live on both Arbitrum chains.
 - **No real proof here.** In this container, an SP1 compressed proof, and so any onchain-verifiable proof, does not fit in the session's 13.36 GiB, nor in a 2-vCPU, 7.7 GiB runner. Real proofs need the prover network (a mainnet PROVE account), a public repository's 16 GB runners (below SP1's stated need once the Groth16 step runs alongside), or a machine with 32 GB or more. This is M1.12's question for the user.

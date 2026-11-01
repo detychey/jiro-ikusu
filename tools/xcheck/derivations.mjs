@@ -1,5 +1,6 @@
 // Writes vectors/derivations.json (README §6.6): level seeds and deflection keys, level ids,
-// boss starts, draws and run commitments, computed with ethers independently of the core.
+// boss starts, draws and run commitments, computed with ethers independently of the core, and
+// run nonces, which only the contracts compute.
 // Usage: node derivations.mjs [--write]; without --write, prints the fixture.
 import { writeFileSync } from "node:fs";
 import { getBytes, keccak256, solidityPackedKeccak256 } from "ethers";
@@ -10,10 +11,12 @@ import {
   draw,
   encodeJournal,
   encodeLevel,
+  exampleEntropy,
   exampleRunNonce,
   hex,
   levelSeed,
   openField,
+  runNonceOf,
   wideSpawn,
 } from "./lib.mjs";
 
@@ -95,7 +98,14 @@ const runCommitments = runs.map(({ runNonce, mode, events }) => {
   return { journals: journals.map(hex), journalHashes, runCommitment };
 });
 
-const fixture = JSON.stringify({ levelSeeds, levelIds, bossStarts, draws, runCommitments }, null, 2) + "\n";
+const fixtureEntropy = (k) => getBytes(solidityPackedKeccak256(["string", "uint16"], ["jiro.fixture.entropy", k]));
+const entropies = [exampleEntropy, new Uint8Array(32), new Uint8Array(32).fill(0xff), fixtureEntropy(0), fixtureEntropy(1)];
+const runIds = [1, 2, 255, 256, 2 ** 32, Number.MAX_SAFE_INTEGER];
+const runNonces = entropies.flatMap((entropy) =>
+  runIds.map((runId) => ({ entropy: hex(entropy), runId, runNonce: hex(runNonceOf(entropy, runId)) })),
+);
+
+const fixture = JSON.stringify({ levelSeeds, levelIds, bossStarts, draws, runCommitments, runNonces }, null, 2) + "\n";
 if (process.argv[2] === "--write") writeFileSync(FIXTURE, fixture);
 else if (process.argv.length > 2) throw new Error("usage: derivations.mjs [--write]");
 else process.stdout.write(fixture);

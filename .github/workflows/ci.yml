@@ -255,3 +255,56 @@ jobs:
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: bash scripts/check-drift.sh .
+
+  # The contracts row of plan §3.4: forge builds the contracts and runs their tests, then
+  # scripts/contracts/abi.sh regenerates contracts/abi/, which must not drift. Its steps skip
+  # when no path of the `contracts` filter changed, except on workflow_dispatch.
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # forge-std and OpenZeppelin, pinned as submodules under contracts/lib.
+          submodules: true
+
+      - uses: dorny/paths-filter@v4.0.3
+        id: changes
+        with:
+          filters: |
+            contracts:
+              - 'contracts/**'
+              - 'scripts/contracts/**'
+              - 'scripts/check-drift.sh'
+              - 'vectors/derivations.json'
+              - '.gitmodules'
+              - '.github/workflows/ci.yml'
+
+      - uses: foundry-rs/foundry-toolchain@v1.9.2
+        id: toolchain
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.changes.outputs.contracts == 'true' }}
+        with:
+          version: v1.8.6
+          # Its cache holds RPC responses for fork tests, which this job has none of.
+          cache: false
+
+      - name: Contracts build and pass their tests (contracts)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        working-directory: contracts
+        run: |
+          forge --version
+          forge build
+          forge test -vv
+
+      - name: ABIs match the contracts (contracts)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
+          bash scripts/contracts/abi.sh
+          bash scripts/check-drift.sh contracts/abi/
+
+      - name: The checks left the tree clean
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: bash scripts/check-drift.sh .
