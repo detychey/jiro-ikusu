@@ -1,0 +1,111 @@
+# Stylus gas on nitro-devnode (plan M4.2, README §7.3), private CI profile (plan §1.3, P14): when
+# the `ci:heavy` label is added to a PR, and on workflow_dispatch. In the public profile it would
+# run on PRs that touch core/, referee/, vectors/, scripts/contracts/stylus-gas.mjs or this file.
+# It deploys and activates referee/build-wasm.sh's module on a local Nitro dev node, with
+# nitro-devnode's public prefunded development key, which is not a secret. stylus-gas.mjs then
+# checks every vector's and every fixed difffuzz case's Outcome against native, and prints the
+# gas table between `=== BEGIN stylus-gas ===` and `=== END stylus-gas ===`. Never a required
+# check.
+name: stylus-gas
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  stylus-gas:
+    if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'ci:heavy' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    env:
+      RPC: http://127.0.0.1:8547
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: foundry-rs/foundry-toolchain@v1.9.2
+        with:
+          version: v1.8.6
+          cache: false
+
+      # The image pull overlaps the builds below; the deploy step waits for the node.
+      - name: Start nitro-devnode
+        working-directory: scripts/contracts/nitro
+        run: |
+          cast --version
+          nohup bash run-dev-node.sh > "$RUNNER_TEMP/devnode.log" 2>&1 &
+          echo "DEVNODE_PID=$!" >> "$GITHUB_ENV"
+
+      - name: Toolchain
+        run: bash scripts/bootstrap.sh core
+
+      - uses: Swatinem/rust-cache@v2.9.3
+
+      - uses: actions/cache@v6.1.0
+        id: cargo-stylus
+        with:
+          path: ~/.cargo/bin/cargo-stylus
+          key: cargo-stylus-0.10.10-${{ runner.os }}-rust-1.98.0
+
+      - name: cargo-stylus 0.10.10
+        if: ${{ steps.cargo-stylus.outputs.cache-hit != 'true' }}
+        run: cargo install --locked cargo-stylus --version 0.10.10
+
+      - name: Build the referee
+        run: bash referee/build-wasm.sh
+
+      - name: Deploy and activate the referee
+        run: |
+          for _ in $(seq 1 600); do
+            grep -q 'press Ctrl-C to stop' "$RUNNER_TEMP/devnode.log" && break
+            kill -0 "$DEVNODE_PID" 2>/dev/null || break
+            sleep 1
+          done
+          if ! grep -q 'press Ctrl-C to stop' "$RUNNER_TEMP/devnode.log"; then
+            tail -n 100 "$RUNNER_TEMP/devnode.log"
+            echo "::error::nitro-devnode did not become ready"
+            exit 1
+          fi
+          docker image inspect --format '{{index .RepoDigests 0}}' "$(docker inspect --format '{{.Config.Image}}' nitro-dev)"
+          cargo stylus --version
+          dev_key="$(sed -n 's/^PRIVATE_KEY=//p' scripts/contracts/nitro/run-dev-node.sh)"
+          if ! output="$(cargo stylus deploy --wasm-file target/jiro_referee_stylus.opt.wasm \
+            --endpoint "$RPC" --private-key "$dev_key" --no-verify 2>&1)"; then
+            echo "$output"
+            echo "::error::cargo stylus deploy failed"
+            exit 1
+          fi
+          output="$(sed 's/\x1b\[[0-9;]*m//g' <<< "$output")"
+          echo "$output"
+          address="$(sed -n 's/.*deployed code at address: \(0x[0-9a-fA-F]\{40\}\).*/\1/p' <<< "$output")"
+          if [ -z "$address" ] || ! grep -q "successfully activated contract $address" <<< "$output"; then
+            echo "::error::cargo stylus did not deploy and activate the referee"
+            exit 1
+          fi
+          echo "REFEREE=$address" >> "$GITHUB_ENV"
+
+      - name: The 200 fixed difffuzz cases
+        run: cargo run -p jiro-tools --release --locked -- difffuzz --seed 1 --cases 200 --out target/difffuzz
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/contracts/package-lock.json
+
+      - name: Gas and outcomes (stylus-gas.mjs)
+        run: |
+          npm --prefix scripts/contracts ci
+          node scripts/contracts/stylus-gas.mjs --rpc "$RPC" --referee "$REFEREE" vectors/ target/difffuzz
