@@ -45,3 +45,10 @@ textarea { font: 0.8rem ui-monospace, monospace; width: 100%; box-sizing: border
 .outcome { border-collapse: collapse; font-size: 0.85rem; }
 .outcome td { padding: 2px 8px 2px 0; overflow-wrap: anywhere; }
 .outcome td:first-child { color: var(--muted); white-space: nowrap; }
+.wallet { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--panel); max-width: 480px; }
+.wallet p { margin: 0; }
+.wallet button[hidden], .wallet a[hidden] { display: none; }
+a { color: #8fa6ff; }
+footer { margin-top: 24px; color: var(--muted); font-size: 0.85rem; }
+footer dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 16px; margin: 0; }
+footer dd { margin: 0; overflow-wrap: anywhere; }

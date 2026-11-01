@@ -24,6 +24,112 @@
 
 - **Reading.** Both chains hold `activationGas` at the uint64 maximum, so the pause of README §7.3 still holds on both.
 
+## Stylus gas
+
+**Provisional** (plan M4.2): the first gas figures of the Stylus referee, measured on its deployed wasm on a local Nitro dev node, while new activations on the public chains are paused ([Stylus activation](#stylus-activation)). This is a report, not the gate: M4.9 runs the gate on the gate set, and a figure above 1,000,000 here is a warning that marks nothing, M4.15 included.
+
+- **How.** [`stylus-gas.yml`](../.github/workflows/stylus-gas.yml) starts nitro-devnode with the vendored [`run-dev-node.sh`](../scripts/contracts/nitro/run-dev-node.sh), builds the referee with [`referee/build-wasm.sh`](../referee/build-wasm.sh), deploys and activates it with `cargo stylus deploy --no-verify` and nitro-devnode's public development key, generates M1.10's 200 fixed difffuzz cases, and runs [`scripts/contracts/stylus-gas.mjs`](../scripts/contracts/stylus-gas.mjs). For every game vector and gate-set vector, the script's `eth_call` of `verify` must return the vector's Outcome, or revert with its `replay error <code>`, and its `eth_estimateGas` of `verify` gives the figure below. For each difffuzz case, `eth_call` must return native's Outcome. Any mismatch fails the run.
+- **What a figure counts.** `eth_estimateGas` of the whole `verify` transaction: the 21,000 base, the calldata and the replay. `run-dev-node.sh` sets the L1 price per unit to 0, so no L1 data component is included. The program is not cached in ArbOS; locally, a cache bid of 0 left every figure unchanged.
+- **Measured** on 2026-11-01 by the secondary route, in the agents' container (4 CPUs) with `dockerd` started as in [`TOOLING.md`](TOOLING.md): the scripts at commit `2090029105c05d78b4285229c67d223b539e28d2`, and `core/`, `referee/` and `vectors/` of `main` at `001c758710e26813fc19d3bdcc117538d2dd8de5` (`RULES_VERSION` 2). Tools: `offchainlabs/nitro-node:v3.12.2-5f02f3f` (digest `sha256:87548501c3ee41cff84e6764cc86f65eb7f0a14e2e50a0d3219d462e5793680d`), nitro-devnode at `ebb523d4ed9c04d4183743af844a038e9843f352`, cargo-stylus 0.10.10, Foundry 1.8.6, Node v22.22.0 and ethers 6.17.0. The module: 44,500 bytes raw and 19,000 bytes brotli, sha256 `afb5755f2cd3b24d586ded67d3c9e77c37a4aef00a03e6bcea2a2965339f58db`. A second deployment on a fresh node gave the same table.
+
+  ```bash
+  (cd scripts/contracts/nitro && bash run-dev-node.sh)   # in its own shell, until "press Ctrl-C to stop"
+  bash referee/build-wasm.sh
+  cargo stylus deploy --wasm-file target/jiro_referee_stylus.opt.wasm --endpoint http://127.0.0.1:8547 \
+    --private-key "$(sed -n 's/^PRIVATE_KEY=//p' scripts/contracts/nitro/run-dev-node.sh)" --no-verify
+  cargo run -p jiro-tools --release --locked -- difffuzz --seed 1 --cases 200 --out target/difffuzz
+  npm ci --prefix scripts/contracts
+  node scripts/contracts/stylus-gas.mjs --rpc http://127.0.0.1:8547 --referee <deployed address> vectors/ target/difffuzz
+  ```
+
+- **CI run:** [41335622698](https://github.com/detychey/jiro-ikusu/actions/runs/41335622698), on PR #45 at 7d91876 (the `ci:heavy` label). Its table equals the one below: the same gas on every vector, maximum 11,599,408 on `levels/10-worst`, and 75 vectors and 200 difffuzz cases with 0 mismatches.
+
+### Reading
+
+- **Outcomes:** all 75 vectors and all 200 fixed difffuzz cases equal native: 71 Outcomes, and the 4 rejected game vectors revert with their recorded codes.
+- **Above 1M (a warning):** 41 of the 71 measured vectors, the 32 of the gate set among them. The maximum is 11,599,408 gas (`levels/10-worst`); `worst-case` takes 10,632,722 and `full-journal` 1,301,508. The gate set runs from 1,599,425 (`05-worst`) to 11,599,408.
+- **For M4.9 and M4.15.** The smallest figure is 271,192 (`boss-corridor-b2`, 400 ticks), and `commit-at-tick-0`, one tick, takes 313,515: most of a short replay's cost comes before its ticks. Ticks alone do not set the cost: `open-field-empty`, 2,700 ticks without an event, takes 511,206, and `open-field-capture`, 162 ticks with captures, 1,246,460.
+
+### Table
+
+| Vector | Ticks used | Journal bytes | Gas (eth_estimateGas) |
+|---|---:|---:|---:|
+| game/boss-bumps-trail | 57 | 77 | 335,900 |
+| game/boss-corridor-b2 | 400 | 71 | 271,192 |
+| game/boss-corridor-b8 | 400 | 71 | 316,887 |
+| game/capture-around-obstacle | 17 | 83 | 497,083 |
+| game/capture-edge-rectangle | 17 | 83 | 497,251 |
+| game/capture-l-shape | 36 | 80 | 496,421 |
+| game/capture-split-boss-left | 60 | 77 | 432,675 |
+| game/capture-split-boss-right | 60 | 77 | 428,151 |
+| game/clear-and-last-life | 9 | 80 | 491,142 |
+| game/clear-the-level | 61 | 233 | 499,030 |
+| game/commit-at-tick-0 | 1 | 74 | 313,515 |
+| game/commit-during-cut | 6 | 77 | 313,808 |
+| game/event-at-last-tick | 20 | 74 | 308,255 |
+| game/fast-cut-close-first-sub-step | 10 | 80 | 496,712 |
+| game/fast-cut | 7 | 80 | 315,073 |
+| game/full-journal | 2700 | 8171 | 1,301,508 |
+| game/last-life-on-last-tick | 10 | 71 | 313,506 |
+| game/minion-stranded-respawns | 58 | 83 | 500,763 |
+| game/open-field-capture | 162 | 383 | 1,246,460 |
+| game/open-field-empty | 2700 | 71 | 511,206 |
+| game/random-all-1 | 617 | 347 | 846,119 |
+| game/random-all-2 | 651 | 416 | 1,263,295 |
+| game/random-all-3 | 1425 | 731 | 1,927,992 |
+| game/random-all-4 | 907 | 491 | 1,103,931 |
+| game/random-dirs-1 | 572 | 332 | 752,241 |
+| game/random-dirs-2 | 717 | 374 | 1,266,957 |
+| game/random-dirs-3 | 1430 | 755 | 1,294,176 |
+| game/random-dirs-4 | 1166 | 704 | 2,458,749 |
+| game/rejected-event-after-end | - | 77 | reverts: replay error 14 |
+| game/rejected-event-at-time-limit | - | 74 | reverts: replay error 13 |
+| game/rejected-level-before-its-id | - | 71 | reverts: replay error 33 |
+| game/rejected-level-id | - | 71 | reverts: replay error 12 |
+| game/respawn-after-bottom-captured | 166 | 89 | 711,250 |
+| game/several-hits-one-life | 11 | 77 | 318,886 |
+| game/several-hits-while-invulnerable | 11 | 83 | 319,109 |
+| game/several-hits-with-shield | 11 | 77 | 313,560 |
+| game/shield-absorbs-a-hit | 13 | 77 | 313,775 |
+| game/slow-shield | 11 | 77 | 313,987 |
+| game/step-onto-boss-from-below | 19 | 80 | 322,240 |
+| game/step-onto-boss-from-right | 19 | 80 | 322,150 |
+| game/stranded-off-rail | 109 | 92 | 523,515 |
+| game/swap-collision | 11 | 77 | 319,173 |
+| game/worst-case | 2700 | 8171 | 10,632,722 |
+| levels/01-synthetic | 2458 | 7445 | 6,283,665 |
+| levels/01-worst | 2700 | 5558 | 6,308,876 |
+| levels/02-synthetic | 2458 | 7445 | 6,402,435 |
+| levels/02-worst | 2700 | 5558 | 6,424,170 |
+| levels/03-synthetic | 2520 | 7631 | 7,186,359 |
+| levels/03-worst | 2700 | 5576 | 7,283,863 |
+| levels/04-synthetic | 2415 | 7316 | 6,044,284 |
+| levels/04-worst | 2700 | 5882 | 7,655,029 |
+| levels/05-synthetic | 1328 | 4055 | 5,109,935 |
+| levels/05-worst | 2700 | 1028 | 1,599,425 |
+| levels/06-synthetic | 1335 | 4076 | 6,006,621 |
+| levels/06-worst | 2700 | 1082 | 1,948,272 |
+| levels/07-synthetic | 2080 | 6311 | 5,459,181 |
+| levels/07-worst | 2700 | 4007 | 5,883,429 |
+| levels/08-synthetic | 2204 | 6683 | 5,517,927 |
+| levels/08-worst | 2700 | 1250 | 7,868,570 |
+| levels/09-synthetic | 1238 | 3785 | 5,660,938 |
+| levels/09-worst | 2700 | 1031 | 2,190,902 |
+| levels/10-synthetic | 1456 | 4439 | 6,275,699 |
+| levels/10-worst | 2700 | 1874 | 11,599,408 |
+| levels/11-synthetic | 1233 | 3770 | 5,697,751 |
+| levels/11-worst | 2700 | 1070 | 3,063,991 |
+| levels/12-synthetic | 1597 | 4862 | 5,676,793 |
+| levels/12-worst | 2700 | 1073 | 2,727,967 |
+| levels/13-synthetic | 1604 | 4883 | 5,128,489 |
+| levels/13-worst | 2221 | 3296 | 5,298,297 |
+| levels/14-synthetic | 1740 | 5291 | 7,057,238 |
+| levels/14-worst | 2700 | 4019 | 6,773,301 |
+| levels/15-synthetic | 1496 | 4559 | 5,566,942 |
+| levels/15-worst | 2700 | 4016 | 6,722,971 |
+| levels/16-synthetic | 1607 | 4892 | 5,653,844 |
+| levels/16-worst | 2700 | 1262 | 9,447,196 |
+
 ## zkVM trials
 
 Trial records of the zkVM frameworks for the zk path of `IReferee` (README §7.3). Each framework gets one row in the summary and one section below, with the same fields in the same order. M1.16 measured SP1 and M1.17 RISC Zero, in the same shape, and [SP1 and RISC Zero side by side](#sp1-and-risc-zero-side-by-side) sets their facts next to each other. M1.12 then compares the frameworks that pass the four tooling checks, on cycles and price, and records the choice in README §13 D2.
@@ -460,3 +566,80 @@ The facts M1.12 compares, from the two sections above; it makes no choice. Times
 | Verification gas, framework fixture | 234,718 (Groth16, `forge test`) | 252,496 (`forge test`); 277,009 estimated on Arbitrum One for this trial's proof |
 | Prover network | Succinct Prover Network: PROVE on Ethereum mainnet, minimum deposit 0.01 PROVE | Boundless: ETH on Base, no minimum deposit |
 | Run proof price | 0.433 PROVE ($0.090), Groth16 | about 0.000011 ETH ($0.024) at market averages, mostly aggregated proofs; raw Groth16 not priced |
+
+## Challenge gas
+
+M4.6 measured the gas of each step of a Challenge run (README §7.2) with forge 1.8.6, solc 0.8.28, the optimizer at 200 runs and `evmVersion` shanghai:
+
+```bash
+cd contracts && forge test --match-contract ChallengeGas -vv
+```
+
+Foundry meters a call from a test as a transaction: its gas includes the 21,000 base and the calldata's EIP-2028 gas, as anvil 1.8.6's receipts of the same calls confirm, to the unit. Neither includes Arbitrum's L1 data fee, which is charged on top, as extra gas, from the L1 price at the time.
+
+| Step | Calldata | Gas |
+|---|---:|---:|
+| `startRun` | 36 B | 131,898; on anvil, 166,098 for the contract's first run, which writes the run counter and the season's fee total from zero |
+| `revealRun` | 36 B | 63,284 |
+| `commitRun`, typical blob: 6 journals of 32 events, 167 B each | 1,604 B | 99,049, of which 17,120 calldata gas |
+| `commitRun`, full blob: 6 journals of 2,700 events, 8,171 B each | 49,604 B | 864,069, of which 767,756 calldata gas; 1,940,390 under EIP-7623's calldata floor |
+
+- **Typical blob.** 32 events per level is the bots' mean median of 439 ticks per level ([`reports/playtest-449f231636aa.json`](../reports/playtest-449f231636aa.json)) at the 0.073 events per tick of the user's two play-test journals ([`reports/playtest-human-1.md`](../reports/playtest-human-1.md)).
+- **The calldata floor.** EIP-7623 charges at least 21,000 + 10 gas per calldata token (a zero byte is 1 token, any other byte 4). Anvil 1.8.6 applies it to the full blob under every hardfork tried (shanghai, cancun and prague): 21,000 + 10 × 191,939 = 1,940,390. Foundry's test EVM does not. Whether Arbitrum's ArbOS charges the floor is not verified here; M4.16 measures the commit on nitro-devnode.
+- **`commitSlackOf`.** `commitRun` reads the season's `commitSlack` through `Season.commitSlackOf`. Reading it through `paramsOf`, which copies all the season's parameters, cost 153,571 gas on the typical blob, 54,522 more.
+
+## Settlement gas
+
+M4.7 measured settlement (README §7.2) at commit 0fee0a072b52204a7c1a53984b8ef83d11d56f15, with forge 1.8.6, solc 0.8.28, the optimizer at 200 runs and `evmVersion` shanghai, as [Challenge gas](#challenge-gas) measures the other steps:
+
+```bash
+cd contracts && forge test --match-contract SettlementGas -vvvv
+```
+
+The run is the one of `SettlementTest`: the calibration season (`seasons/calibration-1.json`), and six levels that replay the gate-set vectors `05-synthetic`, `13-worst`, `10-synthetic`, `08-worst`, `01-synthetic` and `16-worst` of `vectors/levels/`, with journals of 4,055, 3,296, 4,439, 1,250, 7,445 and 1,262 bytes. MockReferee returns their Outcomes. Its own frame, read from the trace, is the part that a real referee replaces, so the settlement gas excluding the referee is the transaction's gas minus that frame.
+
+| Call | Calldata | Gas | MockReferee frame | Excluding the referee | of which calldata gas | of which `Season.recordRun` |
+|---|---:|---:|---:|---:|---:|---:|
+| `settleRun` | 25,636 B | 666,564 | 89,961 (`verifyRun`) | 576,603 | 353,908 | 75,319 |
+| `settleLevel`, level 0 of an unsettled run | 4,996 B | 169,477 | 15,427 (`verify`) | 154,050 | 70,600 | none |
+| `settleLevel`, level 5, which records the run | 2,212 B | 187,250 | 14,345 (`verify`) | 172,905 | 25,528 | 75,319 |
+
+- **What remains,** without the 21,000 base, the calldata and the referee: 201,695 gas for `settleRun`, 62,450 and 126,377 for the two `settleLevel` calls. It covers hashing the journals and the levels, `Season`'s slot and weight of each level, the Outcome checks, the deadline, the settlement record and `recordRun`'s best-run update. A player's first settled run of the season writes its best run from zero; a run that does not rank above the player's best skips that write.
+- **Calldata dominates.** Each level adds its 472 level bytes and its journal. Under EIP-7623's calldata floor ([Challenge gas](#challenge-gas)), `settleRun` would cost at least 21,000 + 10 × 88,477 tokens = 905,770 gas. As for `commitRun`, M4.16 measures what ArbOS charges, and Arbitrum's L1 data fee comes on top.
+- **Not cross-checked on anvil.** M4.6 matched Foundry's metering against anvil's receipts for `startRun`, `revealRun` and `commitRun`; M4.7 did not repeat that check for settlement.
+- **The other steps moved.** With settlement in `Challenge`, `forge test --match-contract ChallengeGas -vv` now gives `startRun` 131,976, `revealRun` 63,294, and `commitRun` 99,113 (typical blob) and 864,133 (full blob): 10 to 78 gas more than the table above, from the longer function dispatch.
+
+## Run file v1
+
+The run file carries everything needed to replay, prove and settle one committed Challenge run, without reading the commit transaction: what the dApp hands to a prover (M4.10), shows and exports (M5.2), and what the season job settles from (M5.5). It is a JSON object:
+
+| Field | JSON type | Content |
+|---|---|---|
+| `version` | number | 1, the run file format version |
+| `chainId` | number | the chain of `Challenge`, such as 421614 for Arbitrum Sepolia |
+| `challenge` | string | the `Challenge` address, 20 bytes in hex |
+| `runId` | string | the run's `uint256` id, in decimal: a run id may exceed JSON's exact integers |
+| `runNonce` | string | the run nonce that `revealRun` recorded (README §6.4), 32 bytes in hex |
+| `levels` | array of 6 strings | the six level bytes (README §5) in `levelIndex` order, in hex |
+| `drawSlots` | array of 6 numbers | the six draw slots of the run nonce (README §8.2): `drawSlots[i]` is the season slot of `levels[i]` |
+| `journals` | array of 6 strings | the six committed journals (README §6.3) in `levelIndex` order, in hex |
+
+Byte strings are lowercase hex with a `0x` prefix, as in `vectors/`.
+
+```json
+{
+  "version": 1,
+  "chainId": 421614,
+  "challenge": "0x…",
+  "runId": "1",
+  "runNonce": "0x…",
+  "levels": ["0x01…", "0x01…", "0x01…", "0x01…", "0x01…", "0x01…"],
+  "drawSlots": [1, 0, 10, 14, 12, 2],
+  "journals": ["0x0100020100…", "0x0100020100…", "0x0100020100…", "0x0100020100…", "0x0100020100…", "0x0100020100…"]
+}
+```
+
+- **Level bytes, not level ids.** The file holds the levels themselves, so it replays and proves with nothing else; each level id is keccak256 of its bytes. The season's 16 level ids are onchain, so a reader can check `keccak256(levels[i])` against `levelIds[drawSlots[i]]` of the run's season without running the draw.
+- **What a reader checks** before it proves or settles, all against the chain named by `chainId` and `challenge`: `runs(runId)` holds this `runNonce` and the commitment keccak256(keccak256(`journals[0]`) ‖ … ‖ keccak256(`journals[5]`)) (README §6.4), and each `keccak256(levels[i])` is the season's level id in `drawSlots[i]`. The rest is checked at settlement, from the Outcomes of the replay: each journal's header carries this `runNonce`, `levelIndex` i, the level's id and mode 1, and each Outcome's draw slot equals `drawSlots[i]` (P17).
+- **Settling from it.** `settleRun(runId, levels, journals, proof)`, or `settleLevel(runId, i, [keccak256 of each journal], levels[i], journals[i], proof)` level by level. The file carries no proof: on Stylus there is none, and on zk the prover produces it from the file.
+- **Not in the file:** the season, which `runs(runId)` gives, and the weights, which the season gives. A score in the file would be trusted by nothing (README §6.4), so there is none.

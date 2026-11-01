@@ -9,3 +9,7 @@ contracts/cache/
 
 # Per-user Claude Code settings
 .claude/settings.local.json
+
+# Records of local chains, which exist only while their node runs (deployments/README.md)
+deployments/local.json
+deployments/nitro-devnode.json

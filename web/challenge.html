@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jiro-ikusu Challenge</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Jiro-ikusu Challenge</h1>
+      <p>Challenge runs are paid in ETH and verified onchain, on Arbitrum. Connect a browser wallet to play them. <a href="index.html">Training</a> · <a href="replay.html">Replay viewer</a> · <a href="editor.html">Level editor</a></p>
+    </header>
+    <main>
+      <section class="wallet" aria-label="Wallet">
+        <p id="wallet-status">Not connected.</p>
+        <button id="connect" type="button">Connect wallet</button>
+        <button id="switch" type="button" hidden></button>
+        <p id="balance" hidden></p>
+        <a id="faucet" target="_blank" rel="noreferrer" hidden>Get test ETH from an Arbitrum Sepolia faucet</a>
+        <p id="wallet-error" class="error" role="alert"></p>
+      </section>
+    </main>
+    <footer id="footer"></footer>
+    <script type="module">
+      import { mount } from "/src/pages/challenge.ts";
+      mount();
+    </script>
+  </body>
+</html>

@@ -1,12 +1,15 @@
 // Writes vectors/derivations.json (README §6.6): level seeds and deflection keys, level ids,
 // boss starts, draws and run commitments, computed with ethers independently of the core, and
-// run nonces, which only the contracts compute.
+// run nonces and settlement deadlines (README §7.2), which only the contracts compute.
 // Usage: node derivations.mjs [--write]; without --write, prints the fixture.
 import { writeFileSync } from "node:fs";
 import { getBytes, keccak256, solidityPackedKeccak256 } from "ethers";
 import {
+  MAX_TICKS,
+  TICKS_PER_SECOND,
   blockedStart,
   bossStart,
+  deadline,
   deflectionKey,
   draw,
   encodeJournal,
@@ -105,7 +108,40 @@ const runNonces = entropies.flatMap((entropy) =>
   runIds.map((runId) => ({ entropy: hex(entropy), runId, runNonce: hex(runNonceOf(entropy, runId)) })),
 );
 
-const fixture = JSON.stringify({ levelSeeds, levelIds, bossStarts, draws, runCommitments, runNonces }, null, 2) + "\n";
+// Each run on both sides of a ceil-division boundary (15k and 15k + 1 ticks used), committed at
+// its deadline and one second after, as long as commitRun still accepts the commit.
+const MAX_PLAY_SECONDS = 1080;
+const ticksUsedOf = (total) => {
+  if (total < 6 || total > 6 * MAX_TICKS) throw new Error(`no six levels use ${total} ticks`);
+  const ticksUsed = Array(6).fill(1);
+  let rest = total - 6;
+  for (let i = 0; i < 6; i++) {
+    const added = Math.min(rest, MAX_TICKS - 1);
+    ticksUsed[i] += added;
+    rest -= added;
+  }
+  return ticksUsed;
+};
+const boundaryTotals = [6, ...[1, 2, 362, 1079].flatMap((k) => [TICKS_PER_SECOND * k, TICKS_PER_SECOND * k + 1]), 6 * MAX_TICKS];
+const deadlineRuns = [
+  { revealedAt: 1_000_000, commitSlack: 120, ticksUsed: [1, 2700, 1800, 900, 15, 16] },
+  ...[
+    { revealedAt: 1_000_000, commitSlack: 1 },
+    { revealedAt: 1_000_000, commitSlack: 120 },
+    { revealedAt: 1_761_955_200, commitSlack: 3600 },
+  ].flatMap((run) => boundaryTotals.map((total) => ({ ...run, ticksUsed: ticksUsedOf(total) }))),
+];
+const deadlines = deadlineRuns.flatMap(({ revealedAt, commitSlack, ticksUsed }) => {
+  const onTimeUntil = deadline(revealedAt, ticksUsed, commitSlack);
+  const latestCommit = revealedAt + MAX_PLAY_SECONDS + commitSlack;
+  if (onTimeUntil > latestCommit) throw new Error(`deadline ${onTimeUntil} is past the commit bound ${latestCommit}`);
+  return [onTimeUntil, onTimeUntil + 1]
+    .filter((committedAt) => committedAt <= latestCommit)
+    .map((committedAt) => ({ revealedAt, ticksUsed, commitSlack, committedAt, onTime: committedAt <= onTimeUntil }));
+});
+
+const fixture =
+  JSON.stringify({ levelSeeds, levelIds, bossStarts, draws, runCommitments, runNonces, deadlines }, null, 2) + "\n";
 if (process.argv[2] === "--write") writeFileSync(FIXTURE, fixture);
 else if (process.argv.length > 2) throw new Error("usage: derivations.mjs [--write]");
 else process.stdout.write(fixture);
