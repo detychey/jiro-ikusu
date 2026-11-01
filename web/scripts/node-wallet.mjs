@@ -18,13 +18,24 @@ export function rpcClient(rpc) {
   };
 }
 
-/** A wallet sharing the node's account `account`; `beforeTransaction` runs before each one is sent. */
+const RECEIPT_POLL_MS = 50;
+
+/**
+ * A wallet sharing the node's account `account`; `beforeTransaction` runs before each one is sent.
+ * It answers a transaction once its receipt exists: anvil may answer before it has mined the
+ * transaction's block, and on a chain with no later block ethers would then wait for one forever.
+ */
 export function nodeWallet(send, account, beforeTransaction = async () => {}) {
   return {
     request: async ({ method, params = [] }) => {
       if (method === "eth_requestAccounts" || method === "eth_accounts") return [account];
-      if (method === "eth_sendTransaction") await beforeTransaction();
-      return send(method, params);
+      if (method !== "eth_sendTransaction") return send(method, params);
+      await beforeTransaction();
+      const hash = await send(method, params);
+      while ((await send("eth_getTransactionReceipt", [hash])) === null) {
+        await new Promise((resolve) => setTimeout(resolve, RECEIPT_POLL_MS));
+      }
+      return hash;
     },
   };
 }
