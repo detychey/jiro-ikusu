@@ -618,7 +618,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     - `level`: input hex; the expected `level_id` and re-encoded hex, or the expected error code.
     - `game`: `name`, `covers` (README sections and tags), `rulesVersion`, `level` (hex), `runNonce`, `levelIndex`, `mode`, `weightBp`, `journal` (hex), the expected outcome or error code, the `.trace` file name and its keccak256 digest. M0.7 adds the outcome keys.
 
-    Derivation fixtures (seeds, boss starts, draws, commitments; later run nonces and deadline cases) live in `vectors/derivations.json` (M1.2). A `.trace` file holds 32 bytes per processed tick.
+    Derivation fixtures (seeds, boss starts, draws, commitments, run nonces; later deadline cases) live in `vectors/derivations.json` (M1.2). A `.trace` file holds 32 bytes per processed tick.
   - **Diagnosis.** A runner reports the first differing tick. A target that can expose its state (native, wasm, the emulator) also prints its state-hash preimage at that tick. `jiro-tools replay --dump-tick <t> --diff <hex>` decodes that preimage, compares it with native's, and names the differing fields.
 - **Worked examples**, computed by `tools/xcheck/worked-examples.mjs` with ethers' keccak, committed with `tools/xcheck/{package.json, package-lock.json}` so anyone can rerun them:
   - the open-field level's bytes and `level_id`, and one validity failure, which become format vectors in M1.4;
