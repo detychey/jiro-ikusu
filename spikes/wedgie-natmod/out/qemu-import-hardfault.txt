@@ -1,0 +1,3 @@
+importing
+timed out
+exit: qemu exited; output so far: b'HardFault exception caught:\r\n\r\nCPU registers:\r\nR0:   20009828 R1:   00000000 R2:   00000000 R3:   00000A8B\r\nR4:   00000000 R5:   00000000 R6:   20009800 R7:   00001530\r\nR8:   00000000 R9:   000000F0 R10:  0002D888 R11:  20007920\r\nR12:  00000002 R13:  2003FB48 R14:  00011769 R15:  20018D70\r\nxPSR: 00000000\r\n'

@@ -1,0 +1,33 @@
+[package]
+name = "jiro-natmod"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+jiro-core = { path = "../../../../core" }
+# The core's own keccak crate and version (Cargo.lock of the repository), for the trace keccak.
+tiny-keccak = { version = "=2.0.2", features = ["keccak"] }
+
+[profile.dev]
+overflow-checks = true
+
+[profile.test]
+overflow-checks = true
+
+[profile.bench]
+overflow-checks = true
+
+[profile.release]
+opt-level = "s"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+# As the repository's release profile.
+overflow-checks = true
+debug = false
+
+[workspace]

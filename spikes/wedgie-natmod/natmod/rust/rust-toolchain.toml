@@ -1,0 +1,7 @@
+# The channel of /home/user/jiro-ikusu/rust-toolchain.toml, so the core builds with the
+# repository's pinned compiler.
+[toolchain]
+channel = "1.98.0"
+profile = "minimal"
+components = ["llvm-tools"]
+targets = ["thumbv6m-none-eabi"]
