@@ -257,8 +257,10 @@ jobs:
         run: bash scripts/check-drift.sh .
 
   # The contracts row of plan §3.4: forge builds the contracts and runs their tests, then
-  # scripts/contracts/abi.sh regenerates contracts/abi/, which must not drift. Its steps skip
-  # when no path of the `contracts` filter changed, except on workflow_dispatch.
+  # scripts/contracts/abi.sh regenerates contracts/abi/, which must not drift. The contract
+  # scripts' tests run, and `localnet.mjs --check` runs a Challenge run's happy path on anvil,
+  # which foundry-toolchain installs (plan M4.11). Its steps skip when no path of the
+  # `contracts` filter changed, except on workflow_dispatch.
   contracts:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -280,6 +282,8 @@ jobs:
               - 'scripts/contracts/**'
               - 'scripts/check-drift.sh'
               - 'vectors/derivations.json'
+              - 'vectors/levels/**'
+              - 'seasons/calibration-1.json'
               - '.gitmodules'
               - '.github/workflows/ci.yml'
 
@@ -304,6 +308,20 @@ jobs:
         run: |
           bash scripts/contracts/abi.sh
           bash scripts/check-drift.sh contracts/abi/
+
+      - uses: actions/setup-node@v7.1.0
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/contracts/package-lock.json
+
+      - name: Contract scripts pass their tests, and the local chain settles a run (contracts)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
+          npm --prefix scripts/contracts ci
+          node --test scripts/contracts/*.test.mjs
+          node scripts/contracts/localnet.mjs --check
 
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
