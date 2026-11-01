@@ -6,7 +6,7 @@ import {Challenge, Run, Settlement, SettlementStatus} from "../src/Challenge.sol
 import {Outcome} from "../src/interfaces/IReferee.sol";
 import {MockReferee} from "../src/mocks/MockReferee.sol";
 import {Season, SeasonParams, BestRun} from "../src/Season.sol";
-import {ChallengeFixture, journalOf, runOf} from "./Challenge.t.sol";
+import {ChallengeFixture, calldataGasOf, journalOf, runOf} from "./Challenge.t.sol";
 import {RULES_VERSION, COMMIT_SLACK, defaultParams, bestRunOf, settlementEndOf} from "./Season.t.sol";
 
 uint8 constant MODE_TRAINING = 0;
@@ -705,13 +705,14 @@ contract SettlementDeadlineTest is ChallengeFixture {
 }
 
 /// Settlement gas, for docs/VERIFICATION.md, measured as ChallengeGasTest measures the other
-/// steps. MockReferee's own frame is read from the trace and subtracted there:
+/// steps. The gas of MockReferee's frame is read from the trace and subtracted there:
 /// `forge test --match-contract SettlementGas -vvvv`.
 contract SettlementGasTest is SettlementFixture {
     function logLastCallGas(string memory label, bytes memory data) private {
         Vm.Gas memory gas = vm.lastCallGas();
         emit log_named_uint(string.concat(label, " gas"), gas.gasTotalUsed);
         emit log_named_uint(string.concat(label, " calldata bytes"), data.length);
+        emit log_named_uint(string.concat(label, " calldata gas"), calldataGasOf(data));
     }
 
     function test_Gas_SettleRun() public {

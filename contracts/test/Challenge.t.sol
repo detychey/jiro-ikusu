@@ -31,6 +31,13 @@ function runCommitmentOf(bytes[6] memory journals) pure returns (bytes32) {
     return keccak256(hashes);
 }
 
+/// EIP-2028 calldata gas: 4 per zero byte, 16 per other byte.
+function calldataGasOf(bytes memory data) pure returns (uint256 gas) {
+    for (uint256 i; i < data.length; ++i) {
+        gas += data[i] == 0 ? 4 : 16;
+    }
+}
+
 /// A journal v1 (README §6.3) with `eventCount` events, `tickStep` ticks apart, masks alternating
 /// between up and down. Challenge never parses it; its size and bytes set the commit's gas.
 function journalOf(bytes32 runNonce, uint8 levelIndex, uint16 eventCount, uint16 tickStep)
@@ -486,12 +493,6 @@ contract ChallengeGasTest is ChallengeFixture {
         emit log_named_uint(label, gas.gasTotalUsed);
     }
 
-    function calldataGasOf(bytes memory data) private pure returns (uint256 gas) {
-        for (uint256 i; i < data.length; ++i) {
-            gas += data[i] == 0 ? 4 : 16;
-        }
-    }
-
     function measureCommit(string memory label, uint16 eventCount, uint16 tickStep) private {
         uint256 runId = startAndRevealAs(alice, number);
         bytes[6] memory journals = sixJournalsOf(runOf(challenge, runId).runNonce, eventCount, tickStep);
@@ -534,10 +535,10 @@ contract ChallengeGasTest is ChallengeFixture {
 contract ChallengeHandler is CommonBase, StdCheats, StdUtils {
     Challenge internal immutable challenge;
     Season internal immutable season;
-    MockArbSys internal immutable arbSys;
-    ArbBlockhashEntropy internal immutable entropy;
+    MockArbSys private immutable arbSys;
+    ArbBlockhashEntropy private immutable entropy;
     MockReferee internal immutable referee;
-    address internal immutable operator;
+    address private immutable operator;
     address[] internal players;
     uint256 public feesPaid;
 
@@ -589,7 +590,7 @@ contract ChallengeHandler is CommonBase, StdCheats, StdUtils {
 
     /// One of the last eight runs, which are the ones still likely to be in their reveal window
     /// or before their commit bound.
-    function recentRun(uint256 runSeed, uint256 runCount) internal pure returns (uint256) {
+    function recentRun(uint256 runSeed, uint256 runCount) private pure returns (uint256) {
         return runCount - bound(runSeed, 0, runCount < 8 ? runCount - 1 : 7);
     }
 
