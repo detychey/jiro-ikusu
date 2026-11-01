@@ -463,9 +463,10 @@ contract ChallengeTest is ChallengeFixture {
     }
 }
 
-/// The gas of each step, for docs/ECONOMY.md. Each test logs the gas of one call, which excludes
-/// the transaction's intrinsic gas; the commit tests also log its calldata size and the EIP-2028
-/// calldata gas. Run with `forge test --match-contract ChallengeGas -vv`.
+/// The gas of each step, for docs/VERIFICATION.md. Each test logs the gas Foundry meters for one
+/// call from the test, which is the transaction's gas, intrinsic and calldata gas included, without
+/// EIP-7623's calldata floor. The commit tests also log the calldata size and its EIP-2028 gas, from
+/// which the floor follows. Run with `forge test --match-contract ChallengeGas -vv`.
 contract ChallengeGasTest is ChallengeFixture {
     /// Bot medians of 439 ticks per level on average (reports/playtest-449f231636aa.json), at the
     /// 0.073 events per tick of the user's play-test journals (reports/playtest-human-1.md).

@@ -239,3 +239,24 @@ The Succinct Prover Network sells proofs by auction; its docs are [here](https:/
 - **No real proof here.** In this container, an SP1 compressed proof, and so any onchain-verifiable proof, does not fit in the session's 13.36 GiB, nor in a 2-vCPU, 7.7 GiB runner. Real proofs need the prover network (a mainnet PROVE account), a public repository's 16 GB runners (below SP1's stated need once the Groth16 step runs alongside), or a machine with 32 GB or more. This is M1.12's question for the user.
 - **zk tier.** The bootstrap needs `protobuf-compiler`, and the circuit artifacts need 7.9 GB of disk. The zk-exec job of M1.12 needs a build cache: a clean build of the host takes about 16 minutes on a 2-vCPU runner, and `ci.yml`'s `rust` job has a 25-minute budget.
 - **TOOLING.md** says that Docker pulls from `ghcr.io` did not work; on 2026-10-31 the gnark image pulled from `ghcr.io`.
+
+## Challenge gas
+
+M4.6 measured the gas of each step of a Challenge run (README §7.2) with forge 1.8.6, solc 0.8.28, the optimizer at 200 runs and `evmVersion` shanghai:
+
+```bash
+cd contracts && forge test --match-contract ChallengeGas -vv
+```
+
+Foundry meters a call from a test as a transaction: its gas includes the 21,000 base and the calldata's EIP-2028 gas, as anvil 1.8.6's receipts of the same calls confirm, to the unit. Neither includes Arbitrum's L1 data fee, which is charged on top, as extra gas, from the L1 price at the time.
+
+| Step | Calldata | Gas |
+|---|---:|---:|
+| `startRun` | 36 B | 131,898; on anvil, 166,098 for the contract's first run, which writes the run counter and the season's fee total from zero |
+| `revealRun` | 36 B | 63,284 |
+| `commitRun`, typical blob: 6 journals of 32 events, 167 B each | 1,604 B | 99,049, of which 17,120 calldata gas |
+| `commitRun`, full blob: 6 journals of 2,700 events, 8,171 B each | 49,604 B | 864,069, of which 767,756 calldata gas; 1,940,390 under EIP-7623's calldata floor |
+
+- **Typical blob.** 32 events per level is the bots' mean median of 439 ticks per level ([`reports/playtest-449f231636aa.json`](../reports/playtest-449f231636aa.json)) at the 0.073 events per tick of the user's two play-test journals ([`reports/playtest-human-1.md`](../reports/playtest-human-1.md)).
+- **The calldata floor.** EIP-7623 charges at least 21,000 + 10 gas per calldata token (a zero byte is 1 token, any other byte 4). Anvil 1.8.6 applies it to the full blob under every hardfork tried (shanghai, cancun and prague): 21,000 + 10 × 191,939 = 1,940,390. Foundry's test EVM does not. Whether Arbitrum's ArbOS charges the floor is not verified here; M4.16 measures the commit on nitro-devnode.
+- **`commitSlackOf`.** `commitRun` reads the season's `commitSlack` through `Season.commitSlackOf`. Reading it through `paramsOf`, which copies all the season's parameters, cost 153,571 gas on the typical blob, 54,522 more.
