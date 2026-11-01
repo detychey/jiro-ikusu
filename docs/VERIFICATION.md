@@ -46,7 +46,7 @@ Measured on 2026-10-31 in the agents' container: 4 CPUs, 15.7 GiB of RAM, no swa
 On the kept branch `zk-trial-sp1`, which is pushed and never merged. `referee/zk/` is its own workspace, already excluded from the root one, so the main workspace and CI are untouched. Its root manifest and the guest's manifest carry the plan §3.3 profiles, and `bash scripts/check-profiles.sh` passes on that branch.
 
 - **`guest/`**, built by sp1-build as its own workspace, with the core as a path dependency. It reads a count, then for each level the level bytes, the journal bytes and `weightBp`. Two programs:
-  - `verify` replays each level with `jiro_core::replay`, and commits each Outcome as the ABI words of `(uint16 weightBp, Outcome)`: 384 bytes per level. It commits only once every level has replayed. A rejected journal makes it panic with replay's code, so it halts with exit code 1 and no public values. The v6.1.0 verifier contract reverts on a non-zero exit code (`InvalidExitCode`), so no proof of a rejected journal can verify onchain (README §7.3, "Rejections revert").
+  - `verify` replays each level with `jiro_core::replay`, and commits each Outcome as the ABI words of `(uint16 weightBp, Outcome)`: 384 bytes per level. It commits only once every level has replayed. A rejected journal makes it panic with replay's code, so it halts with a non-zero exit code and no public values (the executor checked both on the 4 rejected vectors). The v6.1.0 verifier contract reverts on a non-zero exit code (`InvalidExitCode`), so no proof of a rejected journal can verify onchain (README §7.3, "Rejections revert").
   - `trace`, test only, replays with `replay_observed` and commits, per level, replay's error code (0 when it accepts), the keccak256 of the trace of state hashes (`traceKeccak`, [`vectors/README.md`](../vectors/README.md)) and the encoded Outcome, or zeros.
 - **`host/`**, the `zk-host` binary:
   - `execute <files or directories>` runs every game vector through both programs. The trace program must reproduce the vector's error code, `traceKeccak` and all eleven Outcome fields, and `weightBp`. The verify program must reproduce the Outcome, or halt with no public values on a rejected journal. It prints the cycle table between `=== BEGIN zk-exec ===` and `=== END zk-exec ===`.
@@ -63,7 +63,7 @@ On the kept branch `zk-trial-sp1`, which is pushed and never merged. `referee/zk
 - **Fixed cost:** about 0.83 million cycles before the first tick (a journal rejected for its level id: 829,034), and 57,193 when the level bytes are rejected first.
 - **Per level:** the heaviest gate-set level is `10-worst`, at 31,227,278 cycles and 27,203,307 PGU. `worst-case` takes 28,816,801 cycles and 25,218,367 PGU. The 32 gate-set vectors average 16,148,337 cycles and 14,180,936 PGU.
 - **Six-level run:** `zk-host execute-run` on the heaviest vector of each of the six heaviest levels (`10-worst`, `16-worst`, `04-worst`, `08-worst`, `03-worst`, `14-synthetic`) took 136,915,482 cycles and 119,502,086 PGU, and reproduced the six Outcomes.
-- **Keccak:** the guest uses the core's software keccak (tiny-keccak 2.0.2). SP1's patched tiny-keccak, which uses its keccak precompile, was not tried; it would mostly lower the trace program's cycles and the fixed cost.
+- **Keccak:** the guest uses the core's software keccak (tiny-keccak 2.0.2). SP1's patched tiny-keccak, which uses its keccak precompile, was not tried.
 
 #### `vectors/game/`
 
