@@ -6,8 +6,9 @@ import { Core, CoreError, type EndReason } from "./core";
 import type { HeldKeys } from "./input";
 import { createLoop, type Loop } from "./loop";
 
-/** A Training run (README §8.1) at levelIndex 0. */
+/** The journal modes (README §6.3): Training (§8.1) plays at levelIndex 0. */
 export const TRAINING = 0;
+export const CHALLENGE = 1;
 
 export function startSession(
   core: Core,
@@ -15,10 +16,12 @@ export function startSession(
   runNonce: Uint8Array,
   keys: HeldKeys,
   now: () => number,
+  mode = TRAINING,
+  levelIndex = 0,
 ): Loop<EndReason> {
   const code = core.loadLevel(level);
   if (code !== 0) throw new CoreError("load_level", code);
-  core.start(runNonce, TRAINING, 0);
+  core.start(runNonce, mode, levelIndex);
   return createLoop({ now, sample: () => keys.sample(), tick: (mask) => core.tick(mask) });
 }
 

@@ -9,33 +9,12 @@
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { createServer } from "vite";
+import { nodeWallet, rpcClient } from "./node-wallet.mjs";
 
 const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 function check(what, actual, expected) {
   if (String(actual) !== String(expected)) throw new Error(`chain-smoke: ${what} is ${actual}, expected ${expected}`);
-}
-
-/** An EIP-1193 wallet backed by the node at `rpc`, sharing the node's account number `accountIndex`. */
-async function nodeWallet(rpc, accountIndex) {
-  let id = 0;
-  const send = async (method, params) => {
-    const response = await fetch(rpc, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: ++id, method, params }),
-    });
-    if (!response.ok) throw new Error(`chain-smoke: ${rpc} answered ${method} with HTTP ${response.status}`);
-    const { result, error } = await response.json();
-    if (error) throw Object.assign(new Error(`${method}: ${error.message}`), { code: error.code, data: error.data });
-    return result;
-  };
-  const account = (await send("eth_accounts", []))[accountIndex];
-  if (account === undefined) throw new Error(`chain-smoke: ${rpc} has no unlocked account ${accountIndex}`);
-  return {
-    request: ({ method, params = [] }) =>
-      method === "eth_requestAccounts" || method === "eth_accounts" ? [account] : send(method, params),
-  };
 }
 
 async function smoke(load, rpc, networkName, accountIndex) {
@@ -49,7 +28,10 @@ async function smoke(load, rpc, networkName, accountIndex) {
   const { deployedAt, backend, addresses } = deployment;
   console.log(`chain-smoke: deployments/${network.name}.json, generation of ${deployedAt} (${backend} referee), Challenge ${addresses.Challenge}`);
 
-  const wallet = await nodeWallet(rpc, accountIndex);
+  const send = rpcClient(rpc);
+  const account = (await send("eth_accounts"))[accountIndex];
+  if (account === undefined) throw new Error(`chain-smoke: ${rpc} has no unlocked account ${accountIndex}`);
+  const wallet = nodeWallet(send, account);
   const connection = await connect(wallet);
   if (!onNetwork(connection, network)) {
     throw new Error(`chain-smoke: ${rpc} serves chain ${connection.chainId}, not ${network.chainName} (${network.chainId})`);

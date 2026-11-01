@@ -9,6 +9,8 @@ export const MISUSE = 255;
 export const HASH_LEN = 32;
 export const GRID_CELLS = FIELD_CELLS * FIELD_CELLS;
 export const OUTCOME_LEN = 110;
+/** The levels of a Challenge run (README §8.2). */
+export const RUN_LEVELS = 6;
 
 /** README §4.10 and the Outcome's endReason (§7.3). */
 export const END_REASONS = ["Committed", "Cleared", "Out of lives", "Time limit"] as const;
@@ -22,6 +24,11 @@ interface Exports {
   validate_level(len: number): number;
   level_id(len: number): number;
   level_id_ptr(): number;
+  draw(): number;
+  draw_ptr(): number;
+  journal_hash(len: number): number;
+  run_commitment(): number;
+  digest_ptr(): number;
   decode_level(len: number): number;
   encode_level(): number;
   edit_cells_ptr(): number;
@@ -134,6 +141,30 @@ export class Core {
     this.input(level);
     this.check("level_id", this.wasm.level_id(level.length));
     return this.view(this.wasm.level_id_ptr(), HASH_LEN).slice();
+  }
+
+  /** The six draw slots of `runNonce` (README §8.2): the level at levelIndex k plays slot k. */
+  draw(runNonce: Uint8Array): number[] {
+    if (runNonce.length !== HASH_LEN) throw new Error(`a run nonce is ${HASH_LEN} bytes`);
+    this.input(runNonce);
+    this.check("draw", this.wasm.draw());
+    return Array.from(this.view(this.wasm.draw_ptr(), RUN_LEVELS));
+  }
+
+  /** keccak256 of journal bytes, as the run commitment uses it (README §6.4). */
+  journalHash(journal: Uint8Array): Uint8Array<ArrayBuffer> {
+    this.input(journal);
+    this.check("journal_hash", this.wasm.journal_hash(journal.length));
+    return this.view(this.wasm.digest_ptr(), HASH_LEN).slice();
+  }
+
+  /** The run commitment of six journals in levelIndex order (README §6.4). */
+  runCommitment(journals: readonly Uint8Array[]): Uint8Array<ArrayBuffer> {
+    if (journals.length !== RUN_LEVELS) throw new Error(`a run has ${RUN_LEVELS} journals`);
+    const hashes = journals.map((journal) => this.journalHash(journal));
+    this.input(...hashes);
+    this.check("run_commitment", this.wasm.run_commitment());
+    return this.view(this.wasm.digest_ptr(), HASH_LEN).slice();
   }
 
   /** The editor's model of level bytes, decoded by the core's codec (README §5), or the code of

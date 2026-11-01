@@ -25,15 +25,16 @@
 use core::cell::UnsafeCell;
 
 use jiro_core::Error;
-use jiro_core::consts::{CAPTURE_STACK, CELLS, LEVEL_LEN, MAX_TICKS, RULES_VERSION};
+use jiro_core::consts::{CAPTURE_STACK, CELLS, LEVEL_LEN, MAX_TICKS, RULES_VERSION, RUN_LEVELS};
 use jiro_core::game::Game;
 use jiro_core::grid;
 use jiro_core::hash::{self, PREIMAGE_LEN, heading_code, preimage};
-use jiro_core::journal::{Header, Mode};
+use jiro_core::journal::{self, Header, Mode};
 use jiro_core::level::{self, Level, Rect};
 use jiro_core::minion::State;
 use jiro_core::recorder::Recorder;
 use jiro_core::replay::{Outcome, replay_observed};
+use jiro_core::seed;
 use jiro_core::types::{CellIndex, InputMask, Pos};
 use jiro_shell::dirty::DirtyCells;
 
@@ -65,6 +66,10 @@ struct Engine {
     dirty: DirtyCells,
     hash: [u8; HASH_LEN],
     level_id: [u8; HASH_LEN],
+    /// The hash that the last `journal_hash` or `run_commitment` call computed.
+    digest: [u8; HASH_LEN],
+    /// The draw slots that the last `draw` call computed (README §8.2).
+    draw_slots: [u8; RUN_LEVELS],
     /// The editor's level (plan M2.5): one byte per cell in row-major order, 1 for an obstacle.
     edit_cells: [u8; CELLS],
     /// The editor's other fields, in the order of `EDIT_FIELDS`.
@@ -115,6 +120,8 @@ static ENGINE: Static = Static(UnsafeCell::new(Engine {
     dirty: DirtyCells::new(),
     hash: [0; HASH_LEN],
     level_id: [0; HASH_LEN],
+    digest: [0; HASH_LEN],
+    draw_slots: [0; RUN_LEVELS],
     edit_cells: [0; CELLS],
     edit_fields: [0; EDIT_FIELDS],
     level_out: [0; LEVEL_LEN],
@@ -214,6 +221,64 @@ pub extern "C" fn level_id(len: u32) -> u32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn level_id_ptr() -> *const u8 {
     engine().level_id.as_ptr()
+}
+
+/// The run's six draw slots (README §8.2), from the run nonce in the first 32 bytes of the
+/// input buffer, into the 6 bytes at `draw_ptr`.
+#[unsafe(no_mangle)]
+pub extern "C" fn draw() -> u32 {
+    let Engine {
+        input, draw_slots, ..
+    } = engine();
+    match input.first_chunk::<HASH_LEN>() {
+        Some(run_nonce) => {
+            *draw_slots = seed::draw(run_nonce);
+            0
+        }
+        None => MISUSE,
+    }
+}
+
+/// The draw slots that the last `draw` call computed.
+#[unsafe(no_mangle)]
+pub extern "C" fn draw_ptr() -> *const u8 {
+    engine().draw_slots.as_ptr()
+}
+
+/// keccak256 of the journal bytes in the first `len` bytes of the input buffer, as the run
+/// commitment uses it (README §6.4), into the 32 bytes at `digest_ptr`.
+#[unsafe(no_mangle)]
+pub extern "C" fn journal_hash(len: u32) -> u32 {
+    let Engine { input, digest, .. } = engine();
+    match self::input(input, len) {
+        Some(bytes) => {
+            *digest = journal::journal_hash(bytes);
+            0
+        }
+        None => MISUSE,
+    }
+}
+
+/// The run commitment (README §6.4) of the six journal hashes in the first 192 bytes of the
+/// input buffer, in `levelIndex` order, into the 32 bytes at `digest_ptr`.
+#[unsafe(no_mangle)]
+pub extern "C" fn run_commitment() -> u32 {
+    let Engine { input, digest, .. } = engine();
+    let Some(hashes) = input.first_chunk::<{ RUN_LEVELS * HASH_LEN }>() else {
+        return MISUSE;
+    };
+    let (chunks, _) = hashes.as_chunks::<HASH_LEN>();
+    let Ok(journal_hashes) = <[[u8; HASH_LEN]; RUN_LEVELS]>::try_from(chunks) else {
+        return MISUSE;
+    };
+    *digest = journal::run_commitment(&journal_hashes);
+    0
+}
+
+/// The hash that the last `journal_hash` or `run_commitment` call computed.
+#[unsafe(no_mangle)]
+pub extern "C" fn digest_ptr() -> *const u8 {
+    engine().digest.as_ptr()
 }
 
 /// Decodes the level bytes in the first `len` bytes of the input buffer with the core's codec

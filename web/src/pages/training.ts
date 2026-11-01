@@ -21,16 +21,11 @@ import {
   saveBindings,
 } from "../input";
 import type { Loop } from "../loop";
-import { element, fitField, loadCore, messageOf, percent } from "../page";
+import { element, fitField, loadCore, messageOf, percent, showHud } from "../page";
 import { Renderer } from "../render";
 import { runNonce, startSession } from "../session";
+import { shippedLevels } from "../shipped";
 import { browserStorage, load, save, type Storage } from "../storage";
-
-const BUNDLED_LEVELS: Record<string, string> = import.meta.glob("../../../levels/*.bin", {
-  query: "?url",
-  import: "default",
-  eager: true,
-});
 
 /** The scoring of a calibration file (README §8.4): its rules version, and the level ids and
  *  weights of the 16 levels in index order. */
@@ -195,12 +190,7 @@ export function mount(): void {
   /** Loads the 16 levels, checks them against the calibration, and lists them, then the other
    *  levels, which play unscored. */
   async function listLevels(): Promise<void> {
-    const bundled = await Promise.all(
-      Object.entries(BUNDLED_LEVELS)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(async ([path, url]): Promise<[string, Uint8Array]> => [path.replace(/^.*\//, "").replace(/\.bin$/, ""), await fetchLevel(url)]),
-    );
-    training = trainingLevels(core, calibration, bundled);
+    training = trainingLevels(core, calibration, await shippedLevels());
     const scored = document.createElement("optgroup");
     scored.label = "Training: the 16 levels";
     const others = document.createElement("optgroup");
@@ -221,12 +211,6 @@ export function mount(): void {
     showBests();
     const asked = edited !== null ? EDITED_LEVEL : params.get("level");
     if (asked !== null && levels.has(asked)) levelSelect.value = asked;
-  }
-
-  async function fetchLevel(url: string): Promise<Uint8Array> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`could not load the level ${url} (${response.status})`);
-    return new Uint8Array(await response.arrayBuffer());
   }
 
   /** Each of the 16 levels in the picker, with its best under the current scoring. */
@@ -274,7 +258,7 @@ export function mount(): void {
       renderer.drawCells(core.grid(), core.dirtyCells());
       const snapshot = core.snapshot();
       renderer.frame(snapshot);
-      showHud(snapshot.claimBp, snapshot.targetBp, snapshot.lives, snapshot.shield, snapshot.ticksLeft);
+      showHud(snapshot);
       canvas.dataset.stateHash = hex(core.stateHash());
       canvas.dataset.ticksUsed = String(snapshot.ticksUsed);
     }
@@ -283,13 +267,6 @@ export function mount(): void {
     } else {
       showEnd(end);
     }
-  }
-
-  function showHud(claimBp: number, targetBp: number, lives: number, shield: number, ticksLeft: number): void {
-    element("hud-claim").textContent = `${percent(claimBp)} of ${percent(targetBp)}`;
-    element("hud-lives").textContent = String(lives);
-    element("hud-shield").textContent = String(shield);
-    element("hud-time").textContent = `${Math.ceil(ticksLeft / 15)} s`;
   }
 
   function showEnd(end: EndReason): void {
