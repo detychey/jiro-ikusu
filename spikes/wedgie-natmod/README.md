@@ -17,3 +17,15 @@ The owner tests `out/jiro_core.mpy` on a real wedgie (RP2040, the rp2 port, wher
 ## Reproducing
 
 The scripts expect MicroPython v1.29.0 (github.com/micropython/micropython, commit 0fd6c573) at `dl/micropython`, pyelftools 0.32 for `mpy_ld`, `arm-none-eabi-gcc` and `qemu-system-arm`: `scripts/build-core.sh`, `make -C natmod/glue`, `scripts/build-harness.sh` and `scripts/run-harness.sh`, `scripts/build-qemu.sh`, then `scripts/qemu_natmod_vectors.py <firmware.elf> <jiro_core.mpy> <repo> <vector>...`.
+
+## The wedgie test app
+
+`app/` is a wedgie app (`mod` `jiro`, entry `run`): it imports `jiro_core.mpy`, replays four golden vectors (`app/jiro_vectors.json`, from `scripts/make_app_vectors.py`) and checks the code, the Outcome, the tick count, traceKeccak and the last state hash, then replays each played vector through the Recorder and checks its journal, end reason and final state hash. It shows PASS or FAIL per vector, prints details and the replay time over USB, and waits for green to finish.
+
+Install it from this folder with wedgie's CLI (https://wedgie.dev/wedgie.py), which asks the red FULL CONTROL question on the wedgie:
+
+```bash
+python3 wedgie.py install spikes/wedgie-natmod/app
+```
+
+Read the USB output with `python3 wedgie.py debug`, or on the wedgie's page at wedgie.dev/connect.
