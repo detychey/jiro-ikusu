@@ -19,19 +19,7 @@ export interface OutcomeInput {
   levelScore: BigNumberish;
 }
 
-export interface Outcome {
-  journalHash: string;
-  levelId: string;
-  runNonce: string;
-  levelIndex: bigint;
-  drawSlot: bigint;
-  mode: bigint;
-  rulesVersion: bigint;
-  endReason: bigint;
-  claimBp: bigint;
-  ticksUsed: bigint;
-  levelScore: bigint;
-}
+export type Outcome = [string, string, string, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint] & { journalHash: string; levelId: string; runNonce: string; levelIndex: bigint; drawSlot: bigint; mode: bigint; rulesVersion: bigint; endReason: bigint; claimBp: bigint; ticksUsed: bigint; levelScore: bigint };
 
 export interface MockReferee extends BaseContract {
   rulesVersion: BaseContractMethod<[], bigint, bigint>;

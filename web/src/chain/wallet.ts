@@ -44,13 +44,24 @@ export async function chainIdOf(wallet: Wallet): Promise<number> {
   return Number(await walletRequest(wallet, "eth_chainId", [], "the chain id request"));
 }
 
+function firstAccount(accounts: unknown): string | undefined {
+  const account = Array.isArray(accounts) ? accounts[0] : undefined;
+  return typeof account === "string" ? getAddress(account) : undefined;
+}
+
 /** Asks the wallet for an account, checksummed (EIP-55). The connection names the chain the wallet
  *  is on, which may be another network's. */
 export async function connect(wallet: Wallet): Promise<Connection> {
-  const accounts = await walletRequest(wallet, "eth_requestAccounts", [], "the connection request");
-  const account = Array.isArray(accounts) ? accounts[0] : undefined;
-  if (typeof account !== "string") throw new Error("the wallet shared no account");
-  return { account: getAddress(account), chainId: await chainIdOf(wallet) };
+  const account = firstAccount(await walletRequest(wallet, "eth_requestAccounts", [], "the connection request"));
+  if (account === undefined) throw new Error("the wallet shared no account");
+  return { account, chainId: await chainIdOf(wallet) };
+}
+
+/** The connection the wallet already shares, without prompting: undefined once the wallet is locked
+ *  or the page disconnected in it. */
+export async function sharedConnection(wallet: Wallet): Promise<Connection | undefined> {
+  const account = firstAccount(await walletRequest(wallet, "eth_accounts", [], "the accounts request"));
+  return account === undefined ? undefined : { account, chainId: await chainIdOf(wallet) };
 }
 
 export function onNetwork(connection: Connection, network: Network): boolean {

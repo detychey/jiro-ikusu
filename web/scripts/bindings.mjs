@@ -3,7 +3,9 @@
 // scripts/contracts/abi.sh writes, never by hand. A binding imports its ABI's JSON and declares:
 // - <Name>, the contract's functions as ethers BaseContractMethods: a view or pure function
 //   resolves to its result, any other function to its transaction;
-// - a <Struct>Input and a <Struct> type for each struct, as a call takes and returns it;
+// - a <Struct>Input and a <Struct> type for each struct, as a call takes and returns it. A
+//   returned struct is ethers' Result, an Array: a field whose name an Array or a Result already
+//   has (Season's `length`) reads as that member, so the type names it only by its index;
 // - <Name>Events, each event's arguments by name, if the contract has events;
 // - connect<Name>(address, runner).
 // Solidity integers are bigints, as ethers v6 returns them. An ABI with no entries, a library's,
@@ -12,6 +14,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Result } from "ethers";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const ABI_DIR = join(REPO_ROOT, "contracts", "abi");
@@ -58,13 +61,19 @@ function fieldsOf(where, params, input, structs) {
   });
 }
 
-/** A function's result: its one output, or ethers' Result as a tuple that also has the outputs' names. */
+/** ethers' Result as a tuple that also has the names of `params` it does not shadow. */
+function resultTupleOf(where, params, structs) {
+  const tuple = `[${params.map((param) => typeOf(where, param, false, structs)).join(", ")}]`;
+  if (params.some((param) => !param.name)) return tuple;
+  const named = params.filter((param) => !(param.name in Result.prototype));
+  return `${tuple} & { ${fieldsOf(where, named, false, structs).join("; ")} }`;
+}
+
+/** A function's result: its one output, or ethers' Result. */
 function resultOf(where, outputs, structs) {
   if (outputs.length === 0) return "void";
   if (outputs.length === 1) return typeOf(where, outputs[0], false, structs);
-  const tuple = `[${outputs.map((output) => typeOf(where, output, false, structs)).join(", ")}]`;
-  if (outputs.some((output) => !output.name)) return tuple;
-  return `${tuple} & { ${fieldsOf(where, outputs, false, structs).join("; ")} }`;
+  return resultTupleOf(where, outputs, structs);
 }
 
 function methodOf(contract, fragment, structs) {
@@ -94,7 +103,7 @@ function structTypes(structs) {
       written.add(name);
       lines.push(
         `export interface ${name}Input {\n${fieldsOf(name, components, true, structs).map((field) => `  ${field};`).join("\n")}\n}`,
-        `export interface ${name} {\n${fieldsOf(name, components, false, structs).map((field) => `  ${field};`).join("\n")}\n}`,
+        `export type ${name} = ${resultTupleOf(name, components, structs)};`,
       );
     }
   }

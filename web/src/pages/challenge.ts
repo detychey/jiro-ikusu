@@ -5,7 +5,18 @@
 import { bundledDeployment, type Deployment } from "../chain/deployments";
 import { footerEntries, renderFooter } from "../chain/footer";
 import { networkOfPage } from "../chain/networks";
-import { connect, formatEth, injectedWallet, onNetwork, signerOf, switchNetwork, type Wallet, WALLET_EVENTS } from "../chain/wallet";
+import {
+  type Connection,
+  connect,
+  formatEth,
+  injectedWallet,
+  onNetwork,
+  sharedConnection,
+  signerOf,
+  switchNetwork,
+  type Wallet,
+  WALLET_EVENTS,
+} from "../chain/wallet";
 import { element, messageOf } from "../page";
 
 function show(id: string, text: string): void {
@@ -15,9 +26,8 @@ function show(id: string, text: string): void {
 }
 
 /** Shows the wallet's account, network and balance, offering the switch when it is on another network. */
-async function refresh(wallet: Wallet, deployment: Deployment): Promise<void> {
+async function refresh(wallet: Wallet, deployment: Deployment, connection: Connection): Promise<void> {
   const { network } = deployment;
-  const connection = await connect(wallet);
   const switchButton = element<HTMLButtonElement>("switch");
   const faucet = element<HTMLAnchorElement>("faucet");
   if (!onNetwork(connection, network)) {
@@ -36,6 +46,20 @@ async function refresh(wallet: Wallet, deployment: Deployment): Promise<void> {
     faucet.href = network.faucetUrl;
     faucet.hidden = false;
   }
+}
+
+/** Clears the wallet's account, network and balance, and offers Connect again. */
+function showDisconnected(): void {
+  for (const id of ["wallet-status", "switch", "balance"]) show(id, "");
+  element<HTMLAnchorElement>("faucet").hidden = true;
+  element<HTMLButtonElement>("connect").hidden = false;
+}
+
+/** Shows the connection the wallet shares, without prompting, or that it shares none. */
+async function refreshShared(wallet: Wallet, deployment: Deployment): Promise<void> {
+  const connection = await sharedConnection(wallet);
+  if (connection === undefined) showDisconnected();
+  else await refresh(wallet, deployment, connection);
 }
 
 /** Runs `action` with `button` disabled until it settles, showing its error. */
@@ -73,13 +97,14 @@ export function mount(): void {
   let wallet: Wallet | undefined;
   connectButton.addEventListener("click", () => {
     void pending(connectButton, async () => {
+      const injected = wallet ?? injectedWallet(window as { ethereum?: Wallet });
+      await refresh(injected, deployment, await connect(injected));
+      connectButton.hidden = true;
       if (wallet === undefined) {
-        const injected = injectedWallet(window as { ethereum?: Wallet });
-        await refresh(injected, deployment);
         wallet = injected;
-        const onChange = (): void => void pending(connectButton, () => refresh(injected, deployment));
+        // A wallet event never prompts: a locked or disconnected wallet shows Connect again.
+        const onChange = (): void => void pending(connectButton, () => refreshShared(injected, deployment));
         for (const event of WALLET_EVENTS) injected.on?.(event, onChange);
-        connectButton.hidden = true;
       }
     });
   });
@@ -87,7 +112,7 @@ export function mount(): void {
     void pending(switchButton, async () => {
       if (wallet === undefined) throw new Error("connect the wallet first");
       await switchNetwork(wallet, deployment.network);
-      await refresh(wallet, deployment);
+      await refreshShared(wallet, deployment);
     });
   });
 }

@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { Interface, JsonRpcProvider, makeError, toBeHex } from "ethers";
-import { SEASON_ABI } from "../src/chain/bindings/Season";
+import { SEASON_ABI, type SeasonParams } from "../src/chain/bindings/Season";
 import { acceptingSeason, chainErrorMessage, connectContracts } from "../src/chain/contracts";
 import { bundledDeployment, type Deployment, newestGeneration } from "../src/chain/deployments";
 import { footerEntries } from "../src/chain/footer";
 import { ARBITRUM_SEPOLIA, LOCAL, networkOfPage } from "../src/chain/networks";
-import { connect, formatEth, injectedWallet, onNetwork, signerOf, switchNetwork, type Wallet } from "../src/chain/wallet";
+import {
+  connect,
+  formatEth,
+  injectedWallet,
+  onNetwork,
+  sharedConnection,
+  signerOf,
+  switchNetwork,
+  type Wallet,
+} from "../src/chain/wallet";
 
 const ACCOUNT = "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC";
 const MAINNET = 1;
@@ -58,6 +67,8 @@ interface MockOptions {
   rejects?: string[];
   call?: (data: string) => string;
   timestamp?: number;
+  /** The accounts eth_accounts shares: none once the wallet is locked or the page disconnected. */
+  shared?: string[];
 }
 
 function mockWallet(options: MockOptions) {
@@ -70,8 +81,9 @@ function mockWallet(options: MockOptions) {
       const params = (request.params ?? []) as Record<string, string>[];
       switch (request.method) {
         case "eth_requestAccounts":
-        case "eth_accounts":
           return [ACCOUNT];
+        case "eth_accounts":
+          return options.shared ?? [ACCOUNT];
         case "eth_chainId":
           return toBeHex(state.chainId);
         case "wallet_switchEthereumChain": {
@@ -145,6 +157,12 @@ describe("connecting", () => {
   it("reports a connection the user rejected", async () => {
     const { wallet } = mockWallet({ chainId: ARBITRUM_SEPOLIA.chainId, rejects: ["eth_requestAccounts"] });
     await expect(connect(wallet)).rejects.toThrow("the connection request was rejected in the wallet");
+  });
+
+  it("finds no shared connection, without prompting, once the wallet is locked or disconnected", async () => {
+    const { wallet, requests } = mockWallet({ chainId: ARBITRUM_SEPOLIA.chainId, shared: [] });
+    expect(await sharedConnection(wallet)).toBeUndefined();
+    expect(requests.map(({ method }) => method)).toEqual(["eth_accounts"]);
   });
 
   it("refuses a page without an injected wallet", () => {
@@ -308,6 +326,18 @@ describe("the season accepting runs", () => {
   it("refuses when the newest season has ended", async () => {
     const { season, provider } = await seasonOn(seasonCalls(2n, 50_000_000_000_000n, 2_000n), 2_000);
     await expect(acceptingSeason(season, provider)).rejects.toThrow("season 2 ended at 2000");
+  });
+});
+
+describe("a returned struct", () => {
+  it("reads Season's length field by index, as a Result's length is its field count", () => {
+    const params = [OLDER.Referee, 3, Array(16).fill(`0x${"01".repeat(32)}`), Array(16).fill(1), 1, 1000, 604_800, 1, 1, 1];
+    const result = SEASON.decodeFunctionResult("paramsOf", SEASON.encodeFunctionResult("paramsOf", [params]));
+    const decoded = result[0] as SeasonParams;
+    expect(decoded[6]).toBe(604_800n);
+    // @ts-expect-error SeasonParams names no length field: the name reads the Result's field count.
+    const shadowed: bigint = decoded.length;
+    expect(shadowed).toBe(10);
   });
 });
 

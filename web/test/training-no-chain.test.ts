@@ -54,7 +54,8 @@ describe("the wallet-free pages", () => {
   });
 
   it.each(WALLET_FREE_PAGES)("%s does not import ethers", (page) => {
-    expect([...importGraph(page).packages]).not.toContain("ethers");
+    const ethers = [...importGraph(page).packages].filter((name) => name === "ethers" || name.startsWith("ethers/"));
+    expect(ethers).toEqual([]);
   });
 
   it("the import graph reaches src/chain from the Challenge page", () => {

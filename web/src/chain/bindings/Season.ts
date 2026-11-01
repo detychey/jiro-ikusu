@@ -18,18 +18,7 @@ export interface SeasonParamsInput {
   minClears: BigNumberish;
 }
 
-export interface SeasonParams {
-  referee: string;
-  rulesVersion: bigint;
-  levelIds: string[];
-  weightsBp: bigint[];
-  runFee: bigint;
-  rakeBp: bigint;
-  length: bigint;
-  grace: bigint;
-  commitSlack: bigint;
-  minClears: bigint;
-}
+export type SeasonParams = [string, bigint, string[], bigint[], bigint, bigint, bigint, bigint, bigint, bigint] & { referee: string; rulesVersion: bigint; levelIds: string[]; weightsBp: bigint[]; runFee: bigint; rakeBp: bigint; grace: bigint; commitSlack: bigint; minClears: bigint };
 
 export interface Season extends BaseContract {
   MAX_COMMIT_SLACK: BaseContractMethod<[], bigint, bigint>;
