@@ -9,7 +9,7 @@
 //          [--rules-version <n>, for mock] [--rpc <url>]
 // The local chain's deployer is the node's first unlocked account (anvil's development account 0).
 // On nitro-devnode, DEPLOYER_KEY holds the deployer's key.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -24,7 +24,10 @@ export const NETWORKS = {
   "nitro-devnode": { chainId: 412346, rpc: "http://127.0.0.1:8547" },
 };
 const ARB_SYS_PRECOMPILE = "0x0000000000000000000000000000000000000064";
-const STYLUS_WASM = "target/jiro_referee_stylus.opt.wasm";
+// Where referee/build-wasm.sh writes the module: $CARGO_TARGET_DIR, by default target/.
+const STYLUS_WASM = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "jiro_referee_stylus.opt.wasm");
+// nitro-devnode seals a block per transaction within milliseconds; ethers polls receipts every 4 s by default.
+const RECEIPT_POLLING_MS = 100;
 
 export function deploymentFileOf(network) {
   return join(REPO_ROOT, "deployments", `${network}.json`);
@@ -47,19 +50,19 @@ export function buildContracts() {
 export async function connect(network, rpc) {
   const expected = NETWORKS[network];
   if (!expected) throw new Error(`unknown network ${network}: expected one of ${Object.keys(NETWORKS).join(", ")}`);
-  const provider = new JsonRpcProvider(rpc, undefined, { staticNetwork: true, cacheTimeout: -1 });
+  const provider = new JsonRpcProvider(rpc, undefined, { staticNetwork: true, cacheTimeout: -1, pollingInterval: RECEIPT_POLLING_MS });
   const chainId = Number((await provider.getNetwork()).chainId);
   if (chainId !== expected.chainId) throw new Error(`${rpc} serves chain ${chainId}, not ${network} (${expected.chainId})`);
   return provider;
 }
 
-/** Waits for `transaction`, decoding a revert with `contract`'s custom errors. */
+/** Waits for `transaction`, decoding a revert with `contract`'s custom errors, if a contract is given. */
 export async function sendTransaction(label, transaction, contract) {
   let receipt;
   try {
     receipt = await (await transaction).wait();
   } catch (error) {
-    const reason = error.data ? contract.interface.parseError(error.data) : null;
+    const reason = error.data && contract ? contract.interface.parseError(error.data) : null;
     if (!reason) throw error;
     throw new Error(`${label} reverts with ${reason.name}(${reason.args.join(", ")})`, { cause: error });
   }
@@ -87,19 +90,22 @@ async function deployStylusReferee(provider, rpc, deployerKey) {
   execFileSync("bash", [join(REPO_ROOT, "referee", "build-wasm.sh")], { stdio: ["ignore", "inherit", "inherit"] });
   // The key goes through a private temp file: argv is visible in ps and is echoed by execFileSync's errors.
   const keyDir = mkdtempSync(join(tmpdir(), "stylus-deploy-"));
-  let output;
+  let deployed;
   try {
     writeFileSync(join(keyDir, "key"), deployerKey, { mode: 0o600 });
-    output = stripVTControlCharacters(
-      execFileSync(
-        "cargo",
-        ["stylus", "deploy", "--wasm-file", STYLUS_WASM, "--endpoint", rpc, "--private-key-path", join(keyDir, "key"), "--no-verify"],
-        { cwd: REPO_ROOT, encoding: "utf8" },
-      ),
+    deployed = spawnSync(
+      "cargo",
+      ["stylus", "deploy", "--wasm-file", STYLUS_WASM, "--endpoint", rpc, "--private-key-path", join(keyDir, "key"), "--no-verify"],
+      { cwd: REPO_ROOT, encoding: "utf8" },
     );
   } finally {
     rmSync(keyDir, { recursive: true, force: true });
   }
+  if (deployed.error) throw deployed.error;
+  // cargo-stylus reports the deployment and the activation on stderr.
+  const output = stripVTControlCharacters(deployed.stdout + deployed.stderr);
+  console.log(output.trim());
+  if (deployed.status !== 0) throw new Error(`cargo stylus deploy exited ${deployed.status ?? deployed.signal}`);
   const address = output.match(/deployed code at address:?\s*(0x[0-9a-fA-F]{40})/i)?.[1];
   if (!address || !output.includes(`successfully activated contract ${address}`)) {
     throw new Error(`cargo stylus did not deploy and activate the referee:\n${output}`);
@@ -147,9 +153,9 @@ export async function deployContracts({ artifacts, provider, rpc, network, deplo
 }
 
 // Checked before ethers sees the key: ethers quotes a malformed key in full in its error.
-export function assertDeployerKey(key, network) {
+export function assertPrivateKey(envName, key, network) {
   if (!/^0x[0-9a-fA-F]{64}$/.test(key ?? "")) {
-    throw new Error(`DEPLOYER_KEY must hold the deployer's key on ${network}, as 0x and 64 hex digits`);
+    throw new Error(`${envName} must hold a key on ${network}, as 0x and 64 hex digits`);
   }
 }
 
@@ -174,7 +180,7 @@ async function main() {
   const deployerKey = process.env.DEPLOYER_KEY;
   // No child needs it from the environment: the Stylus build runs third-party build scripts.
   delete process.env.DEPLOYER_KEY;
-  if (network !== "local") assertDeployerKey(deployerKey, network);
+  if (network !== "local") assertPrivateKey("DEPLOYER_KEY", deployerKey, network);
   const deployer = network === "local" ? await provider.getSigner(0) : new Wallet(deployerKey, provider);
   const generation = await deployContracts({
     artifacts: buildContracts(),

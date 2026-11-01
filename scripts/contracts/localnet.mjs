@@ -15,12 +15,12 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { Contract, concat, getBytes, hexlify, keccak256, solidityPacked } from "ethers";
 import { NETWORKS, REPO_ROOT, buildContracts, connect, deployContracts, deploymentFileOf, sendTransaction } from "./deploy.mjs";
-import { prependGeneration, readDeploymentRecord } from "./deployments.mjs";
+import { isEntryPoint, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 
 const NETWORK = "local";
 const CHAIN_ID = NETWORKS[NETWORK].chainId;
 const SEASON_LABEL = "local";
-const CALIBRATION = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "calibration-1.json"), "utf8"));
+export const CALIBRATION = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "calibration-1.json"), "utf8"));
 // README §8.4's proposals and D12's fee; the rake is the contract tests' RAKE_BP.
 const LOCAL_SEASON = {
   runFee: 50_000_000_000_000n,
@@ -42,8 +42,8 @@ const JOURNAL_LEVEL_INDEX_OFFSET = 68;
 const ANVIL_READY_ATTEMPTS = 100;
 const ANVIL_READY_INTERVAL_MS = 100;
 
-function assertEqual(what, actual, expected) {
-  if (String(actual) !== String(expected)) throw new Error(`localnet --check: ${what} is ${actual}, expected ${expected}`);
+export function assertEqual(what, actual, expected) {
+  if (String(actual) !== String(expected)) throw new Error(`${what} is ${actual}, expected ${expected}`);
 }
 
 async function rpcAnswers(rpc) {
@@ -60,7 +60,7 @@ async function rpcAnswers(rpc) {
 }
 
 /** Starts anvil on `port`; detached, it outlives this process. Throws, with anvil's log, if it does not answer. */
-async function startAnvil(port, detached) {
+export async function startAnvil(port, detached) {
   const rpc = `http://127.0.0.1:${port}`;
   if (await rpcAnswers(rpc)) throw new Error(`a node already answers on ${rpc}: stop it, or pass another --port`);
   const logFile = join(tmpdir(), `jiro-localnet-anvil-${port}.log`);
@@ -146,9 +146,9 @@ function playedLevelOf(name, runNonce, levelIndex) {
   };
 }
 
-function eventOf(contract, receipt, name) {
+export function eventOf(contract, receipt, name) {
   const event = receipt.logs.map((log) => contract.interface.parseLog(log)).find((parsed) => parsed?.name === name);
-  if (!event) throw new Error(`localnet: transaction ${receipt.hash} emitted no ${name}`);
+  if (!event) throw new Error(`transaction ${receipt.hash} emitted no ${name}`);
   return event.args;
 }
 
@@ -245,6 +245,8 @@ async function check(port) {
   }
 }
 
-const { values } = parseArgs({ options: { up: { type: "boolean" }, check: { type: "boolean" }, port: { type: "string", default: "8545" } } });
-if (values.up === values.check) throw new Error("usage: node localnet.mjs --up|--check [--port <port>]");
-await (values.up ? up(values.port) : check(values.port));
+if (isEntryPoint(import.meta.url)) {
+  const { values } = parseArgs({ options: { up: { type: "boolean" }, check: { type: "boolean" }, port: { type: "string", default: "8545" } } });
+  if (values.up === values.check) throw new Error("usage: node localnet.mjs --up|--check [--port <port>]");
+  await (values.up ? up(values.port) : check(values.port));
+}
