@@ -41,7 +41,7 @@ const SEASON = {
   runFee: 50_000_000_000_000n,
   rakeBp: 1_000,
   length: 30n,
-  grace: 180n,
+  grace: 120n,
   commitSlack: 30n,
   minClears: 1,
 };
@@ -62,9 +62,9 @@ const RULES_VERSION_OFFSET = 1;
 const LEVEL_ID_OFFSET = 36;
 const EVENT_COUNT_OFFSET = 69;
 const MASK_X = 0x40;
-// README §7.3: Arbitrum's cap of 32M L2 gas per transaction. nitro-devnode's dev account is its
-// chain owner, so the suite raises the node's cap through ArbOwner, so that a settleRun above
-// Arbitrum's runs and its gas is measured; the gas table names every transaction above 32M.
+// README §7.3: Arbitrum's cap of 32M L2 gas per transaction. The suite raises nitro-devnode's cap
+// through ArbOwner, as the node's chain owner, so that a run whose settleRun exceeds Arbitrum's
+// still settles and its gas is measured; the gas table names every transaction above 32M.
 const ARBITRUM_TX_GAS_LIMIT = 32_000_000n;
 const DEVNODE_TX_GAS_LIMIT = 200_000_000n;
 const ARB_OWNER = "0x0000000000000000000000000000000000000070";
@@ -75,8 +75,11 @@ const transactions = [];
 /** sendTransaction, with the transaction's gas and calldata size kept for the gas table. */
 async function record(caseName, label, transaction, contract) {
   const receipt = await sendTransaction(label, transaction, contract);
-  const { data } = await receipt.getTransaction();
-  transactions.push({ caseName, label, calldataBytes: getBytes(data).length, gas: receipt.gasUsed });
+  const calldata = getBytes((await receipt.getTransaction()).data);
+  const zeroBytes = calldata.filter((byte) => byte === 0).length;
+  // EIP-7623: at least 21,000 + 10 gas per calldata token, a zero byte 1 token and any other 4.
+  const calldataFloor = 21_000n + 10n * BigInt(zeroBytes + 4 * (calldata.length - zeroBytes));
+  transactions.push({ caseName, label, calldataBytes: calldata.length, calldataFloor, gas: receipt.gasUsed });
   return receipt;
 }
 
@@ -99,7 +102,7 @@ export async function advanceBlocks(signer, n) {
 function chainClockOf(network, provider, deployer, arbSys) {
   async function fill(caseName, n) {
     const gas = await advanceBlocks(deployer, n);
-    transactions.push({ caseName, label: `advanceBlocks(${n}): ${n} filler transactions, in total`, calldataBytes: 0, gas });
+    transactions.push({ caseName, label: `advanceBlocks(${n}), in total`, calldataBytes: 0, calldataFloor: 21_000n * BigInt(n), gas });
   }
   if (network === "local") {
     return {
@@ -362,9 +365,10 @@ async function runCases(context) {
 }
 
 function gasTable() {
-  const lines = ["| Case | Transaction | Calldata bytes | Gas |", "|---|---|---:|---:|"];
-  for (const { caseName, label, calldataBytes, gas } of transactions) {
-    lines.push(`| ${caseName} | ${label} | ${calldataBytes.toLocaleString("en-US")} | ${gas.toLocaleString("en-US")} |`);
+  const lines = ["| Case | Transaction | Calldata bytes | EIP-7623 floor | Gas |", "|---|---|---:|---:|---:|"];
+  for (const { caseName, label, calldataBytes, calldataFloor, gas } of transactions) {
+    const cells = [calldataBytes, calldataFloor, gas].map((number) => number.toLocaleString("en-US"));
+    lines.push(`| ${caseName} | ${label} | ${cells.join(" | ")} |`);
   }
   const above = transactions.filter(({ gas }) => gas > ARBITRUM_TX_GAS_LIMIT).map(({ caseName, label }) => `${caseName} ${label}`);
   lines.push("", `Above Arbitrum's ${ARBITRUM_TX_GAS_LIMIT.toLocaleString("en-US")} gas per transaction: ${above.length === 0 ? "none" : above.join(", ")}.`);

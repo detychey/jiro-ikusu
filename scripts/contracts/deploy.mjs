@@ -111,6 +111,16 @@ async function deployStylusReferee(provider, rpc, deployerKey) {
     throw new Error(`cargo stylus did not deploy and activate the referee:\n${output}`);
   }
   if ((await provider.getCode(address)) === "0x") throw new Error(`the Stylus referee at ${address} has no code on ${rpc}`);
+  const transactions = {
+    "deploy Referee (Stylus)": output.match(/deployment tx hash:?\s*(0x[0-9a-fA-F]{64})/i)?.[1],
+    "activate Referee (Stylus)": output.match(new RegExp(`successfully activated contract ${address} with tx "?(?:0x)?([0-9a-fA-F]{64})`))?.[1],
+  };
+  for (const [label, hash] of Object.entries(transactions)) {
+    if (!hash) throw new Error(`cargo stylus printed no transaction hash for ${label}:\n${output}`);
+    const receipt = await provider.getTransactionReceipt(hash.startsWith("0x") ? hash : `0x${hash}`);
+    if (receipt?.status !== 1) throw new Error(`${label}: transaction ${hash} is not a successful transaction on ${rpc}`);
+    console.log(`${label}: gas ${receipt.gasUsed}`);
+  }
   console.log(`Referee (Stylus): ${getAddress(address)}`);
   return getAddress(address);
 }
