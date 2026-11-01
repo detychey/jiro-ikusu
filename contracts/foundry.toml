@@ -10,5 +10,10 @@ remappings = [
     "forge-std/=lib/forge-std/src/",
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
-# The tests read the ethers fixtures of the run nonce and run commitment (README §6.4).
-fs_permissions = [{ access = "read", path = "../vectors/derivations.json" }]
+# The tests read the ethers fixtures (README §6.4, §7.2), and settlement tests the calibration
+# season and the Outcomes of its gate-set vectors.
+fs_permissions = [
+    { access = "read", path = "../vectors/derivations.json" },
+    { access = "read", path = "../vectors/levels" },
+    { access = "read", path = "../seasons/calibration-1.json" },
+]
