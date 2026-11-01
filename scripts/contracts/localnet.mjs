@@ -14,11 +14,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { Contract, concat, getBytes, hexlify, keccak256, solidityPacked } from "ethers";
-import { REPO_ROOT, buildContracts, connect, deployContracts, deploymentFileOf, sendTransaction } from "./deploy.mjs";
+import { NETWORKS, REPO_ROOT, buildContracts, connect, deployContracts, deploymentFileOf, sendTransaction } from "./deploy.mjs";
 import { prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 
 const NETWORK = "local";
-const CHAIN_ID = 31337;
+const CHAIN_ID = NETWORKS[NETWORK].chainId;
 const SEASON_LABEL = "local";
 const CALIBRATION = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "calibration-1.json"), "utf8"));
 // README §8.4's proposals and D12's fee; the rake is the contract tests' RAKE_BP.
