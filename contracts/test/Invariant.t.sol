@@ -6,10 +6,11 @@ import {Challenge, Run, Settlement, SettlementStatus} from "../src/Challenge.sol
 import {MockArbSys} from "../src/mocks/MockArbSys.sol";
 import {MockReferee} from "../src/mocks/MockReferee.sol";
 import {Season, BestRun} from "../src/Season.sol";
-import {ChallengeFixture, ChallengeHandler, runOf} from "./Challenge.t.sol";
+import {ChallengeFixture, ChallengeHandler, MAX_PLAY_SECONDS, runOf, sixJournalsOf} from "./Challenge.t.sol";
 import {bestRunOf, settlementEndOf, stateOf} from "./Season.t.sol";
 import {
     PlayedLevel,
+    TICKS_PER_SECOND,
     defaultPlayedLevelOf,
     journalHashesOf,
     journalBytesOf,
@@ -73,6 +74,26 @@ contract SettlementHandler is ChallengeHandler {
             ) return (runId, run);
         }
         return (0, run);
+    }
+
+    /// Commits one of the eight most recent runs that is revealed and not committed, at a seeded
+    /// time within its commit window, so that runs land on both sides of their deadline.
+    function commitRunAt(uint256 runSeed, uint256 delaySeed) external {
+        uint256 runCount = challenge.runCount();
+        uint256 recent = runCount < 8 ? runCount : 8;
+        for (uint256 k; k < recent; ++k) {
+            uint256 runId = runCount - (runSeed % recent + k) % recent;
+            Run memory run = runOf(challenge, runId);
+            uint256 commitWindow = MAX_PLAY_SECONDS + season.commitSlackOf(run.season);
+            if (run.revealedAt == 0 || run.committedAt != 0 || block.timestamp > run.revealedAt + commitWindow) {
+                continue;
+            }
+            uint256 commitAt = run.revealedAt + bound(delaySeed, 0, commitWindow);
+            if (commitAt > block.timestamp) vm.warp(commitAt);
+            vm.prank(run.player);
+            challenge.commitRun(runId, sixJournalsOf(run.runNonce, 3, 30));
+            return;
+        }
     }
 
     function settleRun(uint256 runSeed, uint256 submitterSeed) external {
@@ -185,7 +206,13 @@ contract InvariantTest is ChallengeFixture {
                 if (best.runId == 0) continue;
                 Run memory run = runOf(challenge, best.runId);
                 Settlement memory settlement = settlementOf(challenge, best.runId);
-                assertEq(uint8(settlement.status), uint8(SettlementStatus.Settled), "settled on time");
+                assertEq(uint8(settlement.status), uint8(SettlementStatus.Settled), "settled");
+                assertLe(
+                    run.committedAt,
+                    run.revealedAt + (settlement.ticks + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND
+                        + season.commitSlackOf(number),
+                    "on time"
+                );
                 assertEq(run.player, players[p], "player");
                 assertEq(run.season, number, "season");
                 assertEq(best.score, settlement.score, "score");
