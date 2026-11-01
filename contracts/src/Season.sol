@@ -238,6 +238,10 @@ contract Season {
         return seasons[season].start + paramsBySeason[season].length;
     }
 
+    function commitSlackOf(uint256 season) external view returns (uint64) {
+        return paramsBySeason[season].commitSlack;
+    }
+
     function slotOf(uint256 season, bytes32 levelId) public view returns (uint8) {
         uint8 slotPlusOne = slotPlusOneOf[season][levelId];
         if (slotPlusOne == 0) revert LevelNotInSeason(season, levelId);
