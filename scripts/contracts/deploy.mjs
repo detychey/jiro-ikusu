@@ -13,10 +13,10 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { parseArgs, stripVTControlCharacters } from "node:util";
 import { Contract, ContractFactory, JsonRpcProvider, Wallet, getAddress } from "ethers";
-import { BACKENDS, prependGeneration } from "./deployments.mjs";
+import { BACKENDS, isEntryPoint, prependGeneration } from "./deployments.mjs";
 
 export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 export const NETWORKS = {
@@ -146,6 +146,13 @@ export async function deployContracts({ artifacts, provider, rpc, network, deplo
   };
 }
 
+// Checked before ethers sees the key: ethers quotes a malformed key in full in its error.
+export function assertDeployerKey(key, network) {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(key ?? "")) {
+    throw new Error(`DEPLOYER_KEY must hold the deployer's key on ${network}, as 0x and 64 hex digits`);
+  }
+}
+
 async function main() {
   const { values } = parseArgs({
     options: {
@@ -167,7 +174,7 @@ async function main() {
   const deployerKey = process.env.DEPLOYER_KEY;
   // No child needs it from the environment: the Stylus build runs third-party build scripts.
   delete process.env.DEPLOYER_KEY;
-  if (network !== "local" && !deployerKey) throw new Error(`DEPLOYER_KEY must hold the deployer's key on ${network}`);
+  if (network !== "local") assertDeployerKey(deployerKey, network);
   const deployer = network === "local" ? await provider.getSigner(0) : new Wallet(deployerKey, provider);
   const generation = await deployContracts({
     artifacts: buildContracts(),
@@ -186,4 +193,4 @@ async function main() {
   provider.destroy();
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (isEntryPoint(import.meta.url)) await main();

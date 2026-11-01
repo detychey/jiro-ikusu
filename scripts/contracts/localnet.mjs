@@ -210,13 +210,15 @@ async function checkHappyPath(artifacts, provider, generation) {
 
 async function up(port) {
   const file = deploymentFileOf(NETWORK);
-  // A fresh anvil is a new chain: the previous record's addresses belong to one that no longer exists.
-  rmSync(file, { force: true });
   const artifacts = buildContracts();
   const { anvil, rpc, logFile } = await startAnvil(port, true);
   try {
     const provider = await connect(NETWORK, rpc);
-    prependGeneration(file, NETWORK, CHAIN_ID, await deployLocalnet(artifacts, provider, rpc));
+    const generation = await deployLocalnet(artifacts, provider, rpc);
+    // A fresh anvil is a new chain: the previous record's addresses belong to one that no longer
+    // exists. It is dropped only now, so a run that cannot start or deploy keeps a live chain's record.
+    rmSync(file, { force: true });
+    prependGeneration(file, NETWORK, CHAIN_ID, generation);
     provider.destroy();
   } catch (error) {
     anvil.kill();

@@ -1,9 +1,9 @@
 // The deployment records of deployments/README.md: assertDeploymentRecord checks a record against
 // the schema, and prependGeneration adds a generation in front of a record's earlier ones, which it
 // keeps unchanged. Usage: node deployments.mjs <deployments/<network>.json>...
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { getAddress } from "ethers";
 
 export const BACKENDS = ["mock", "stylus"];
@@ -84,7 +84,12 @@ export function prependGeneration(file, network, chainId, generation) {
   return record;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Node resolves symlinks in a main module's URL but not in argv[1], so both are compared as realpaths.
+export function isEntryPoint(moduleUrl) {
+  return process.argv[1] !== undefined && realpathSync(fileURLToPath(moduleUrl)) === realpathSync(process.argv[1]);
+}
+
+if (isEntryPoint(import.meta.url)) {
   const files = process.argv.slice(2);
   if (files.length === 0) throw new Error("usage: node deployments.mjs <deployments/<network>.json>...");
   for (const file of files) {

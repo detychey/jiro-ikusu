@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, test } from "node:test";
 import { assertDeploymentRecord, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 
@@ -84,4 +86,11 @@ test("a record whose network does not name its file is refused", () => {
   const file = join(dir, "nitro-devnode.json");
   writeFileSync(file, JSON.stringify(recordOf(OLDER)));
   assert.throws(() => readDeploymentRecord(file), /does not name the file/);
+});
+
+test("the CLI started through a symlinked directory still runs", () => {
+  const link = join(dir, "contracts");
+  symlinkSync(dirname(fileURLToPath(import.meta.url)), link);
+  const run = spawnSync(process.execPath, [join(link, "deployments.mjs")], { encoding: "utf8" });
+  assert.match(run.stderr, /usage: node deployments.mjs/);
 });
