@@ -1,0 +1,24 @@
+[workspace]
+resolver = "3"
+members = ["host"]
+exclude = ["guest"]
+
+[profile.dev]
+overflow-checks = true
+
+[profile.test]
+overflow-checks = true
+
+[profile.bench]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.stylus]
+inherits = "release"
+opt-level = "z"
