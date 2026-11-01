@@ -42,7 +42,7 @@
   node scripts/contracts/stylus-gas.mjs --rpc http://127.0.0.1:8547 --referee <deployed address> vectors/ target/difffuzz
   ```
 
-- **CI run:** _to be filled from this PR's `stylus-gas.yml` run (link, commit sha and whether its table equals the one below)._
+- **CI run:** [41335622698](https://github.com/detychey/jiro-ikusu/actions/runs/41335622698), on PR #45 at 7d91876 (the `ci:heavy` label). Its table equals the one below: the same gas on every vector, maximum 11,599,408 on `levels/10-worst`, and 75 vectors and 200 difffuzz cases with 0 mismatches.
 
 ### Reading
 
