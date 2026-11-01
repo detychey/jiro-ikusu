@@ -189,8 +189,10 @@ jobs:
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: bash scripts/check-drift.sh .
 
-  # The web row of plan §3.4: the browser shell, on the wasm build of the core. Its steps skip
-  # when no path of the `web` filter changed, except on workflow_dispatch.
+  # The web row of plan §3.4: the browser shell, on the wasm build of the core, and the chain
+  # bindings that web/scripts/bindings.mjs generates from contracts/abi/, which must not drift
+  # (plan M5.1). Its steps skip when no path of the `web` filter changed, except on
+  # workflow_dispatch.
   web:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -206,6 +208,8 @@ jobs:
           filters: |
             web:
               - 'web/**'
+              - 'contracts/abi/**'
+              - 'deployments/**'
               - 'levels/**'
               - 'seasons/**'
               - 'core/**'
@@ -236,6 +240,12 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      - name: The chain bindings match contracts/abi/ (web)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: |
+          node web/scripts/bindings.mjs
+          bash scripts/check-drift.sh web/src/chain/bindings/
+
       - name: Browser shell builds and passes its tests (web)
         if: ${{ steps.toolchain.outcome == 'success' }}
         run: |
@@ -259,8 +269,9 @@ jobs:
   # The contracts row of plan §3.4: forge builds the contracts and runs their tests, then
   # scripts/contracts/abi.sh regenerates contracts/abi/, which must not drift. The contract
   # scripts' tests run, and `localnet.mjs --check` runs a Challenge run's happy path on anvil,
-  # which foundry-toolchain installs (plan M4.11). Its steps skip when no path of the
-  # `contracts` filter changed, except on workflow_dispatch.
+  # which foundry-toolchain installs (plan M4.11). Then the web app's chain module calls
+  # startRun on a local chain left up by `localnet.mjs --up` (plan M5.1). Its steps skip when no
+  # path of the `contracts` filter changed, except on workflow_dispatch.
   contracts:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -284,6 +295,9 @@ jobs:
               - 'vectors/derivations.json'
               - 'vectors/levels/**'
               - 'seasons/calibration-1.json'
+              - 'web/src/chain/**'
+              - 'web/scripts/chain-smoke.mjs'
+              - 'web/package-lock.json'
               - '.gitmodules'
               - '.github/workflows/ci.yml'
 
@@ -314,7 +328,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: scripts/contracts/package-lock.json
+          cache-dependency-path: |
+            scripts/contracts/package-lock.json
+            web/package-lock.json
 
       - name: Contract scripts pass their tests, and the local chain settles a run (contracts)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
@@ -322,6 +338,13 @@ jobs:
           npm --prefix scripts/contracts ci
           node --test scripts/contracts/*.test.mjs
           node scripts/contracts/localnet.mjs --check
+
+      - name: The web app's chain module starts a run on the local chain (contracts)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
+          npm --prefix web ci
+          node scripts/contracts/localnet.mjs --up
+          node web/scripts/chain-smoke.mjs --rpc http://127.0.0.1:8545
 
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
