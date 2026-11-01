@@ -112,6 +112,7 @@ const runNonces = entropies.flatMap((entropy) =>
 // its deadline and one second after, as long as commitRun still accepts the commit.
 const MAX_PLAY_SECONDS = 1080;
 const ticksUsedOf = (total) => {
+  if (total < 6 || total > 6 * MAX_TICKS) throw new Error(`no six levels use ${total} ticks`);
   const ticksUsed = Array(6).fill(1);
   let rest = total - 6;
   for (let i = 0; i < 6; i++) {
@@ -119,7 +120,6 @@ const ticksUsedOf = (total) => {
     ticksUsed[i] += added;
     rest -= added;
   }
-  if (rest !== 0 || total < 6) throw new Error(`no six levels use ${total} ticks`);
   return ticksUsed;
 };
 const boundaryTotals = [6, ...[1, 2, 362, 1079].flatMap((k) => [TICKS_PER_SECOND * k, TICKS_PER_SECOND * k + 1]), 6 * MAX_TICKS];
