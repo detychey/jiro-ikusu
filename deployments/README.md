@@ -1,6 +1,6 @@
 # Deployment records
 
-`deployments/<network>.json` records the contracts deployed on one network. Contracts are immutable, so a redeploy is a new generation: `scripts/contracts/deploy.mjs` writes it at the front of the record's list of generations, newest first, and keeps every earlier generation as it was, so an earlier address is never overwritten. The web app (plan M5.1) reads the newest generation, `generations[0]`.
+`deployments/<network>.json` records the contracts deployed on one network. Contracts are immutable, so a redeploy is a new generation: `scripts/contracts/deploy.mjs` writes it at the front of the record's list of generations, newest first, and keeps every earlier generation as it was, so an earlier address is never overwritten. The web app (plan M5.1, `web/src/chain/deployments.ts`) reads the newest generation, `generations[0]`, of the records the repository holds when the site is built.
 
 `scripts/contracts/deployments.mjs` checks a record against this schema, and `deploy.mjs` and `localnet.mjs` check every record they write: `node scripts/contracts/deployments.mjs deployments/<network>.json`.
 
