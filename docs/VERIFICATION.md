@@ -26,7 +26,7 @@
 
 ## zkVM trials
 
-Trial records of the zkVM frameworks for the zk path of `IReferee` (README §7.3). Each framework gets one row in the summary and one section below, with the same fields in the same order. M1.16 measured SP1; M1.17 adds RISC Zero in the same shape. M1.12 then compares the frameworks that pass the four tooling checks, on cycles and price, and records the choice in README §13 D2.
+Trial records of the zkVM frameworks for the zk path of `IReferee` (README §7.3). Each framework gets one row in the summary and one section below, with the same fields in the same order. M1.16 measured SP1 and M1.17 RISC Zero, in the same shape, and [SP1 and RISC Zero side by side](#sp1-and-risc-zero-side-by-side) sets their facts next to each other. M1.12 then compares the frameworks that pass the four tooling checks, on cycles and price, and records the choice in README §13 D2.
 
 The four tooling checks of README §7.3:
 
@@ -40,6 +40,7 @@ The four tooling checks of README §7.3:
 | Framework | Version | Install | Execute | Mock | Verifier | Vectors reproduced | Cycles, heaviest level | CPU proof of a small level | Onchain-verifiable wrapping | Prover network, Groth16 proof of a six-level run | Kept branch |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | SP1 | v6.10.0 (circuits v6.1.0) | PASS | PASS | PASS | PASS | 75 of 75 | 31,227,278 (`10-worst`) | core: 92 s, 11.6 GiB; compressed: out of memory at 13.4 GiB | FAIL: out of memory in the container and on Actions | 0.433 PROVE (about 0.00004 ETH) | `zk-trial-sp1` |
+| RISC Zero | 3.0.6 (Groth16 verifier 3.0.0) | PASS | PASS | PASS | PASS | 75 of 75 | 29,588,717 user, 30,932,992 proving (`10-worst`) | composite: 965 s, 9.2 GiB (832 s, 4.6 GiB with 2^19 segments) | PASS in the container (verified on Arbitrum One and Sepolia); @@ACTIONS_SUMMARY@@ | Boundless, about 0.000011 ETH ($0.024) at market averages | `zk-trial-risc0` |
 
 ### SP1
 
@@ -239,3 +240,221 @@ The Succinct Prover Network sells proofs by auction; its docs are [here](https:/
 - **No real proof here.** In this container, an SP1 compressed proof, and so any onchain-verifiable proof, does not fit in the session's 13.36 GiB, nor in a 2-vCPU, 7.7 GiB runner. Real proofs need the prover network (a mainnet PROVE account), a public repository's 16 GB runners (below SP1's stated need once the Groth16 step runs alongside), or a machine with 32 GB or more. This is M1.12's question for the user.
 - **zk tier.** The bootstrap needs `protobuf-compiler`, and the circuit artifacts need 7.9 GB of disk. The zk-exec job of M1.12 needs a build cache: a clean build of the host takes about 16 minutes on a 2-vCPU runner, and `ci.yml`'s `rust` job has a 25-minute budget.
 - **TOOLING.md** says that Docker pulls from `ghcr.io` did not work; on 2026-10-31 the gnark image pulled from `ghcr.io`.
+
+### RISC Zero
+
+Measured on 2026-11-01 in the same container as SP1: 4 CPUs, 15.7 GiB of RAM, no swap, no GPU, and the same 13.36 GiB memory cgroup, which also holds `dockerd`. Another session's play test kept about two of the four CPUs busy throughout, so the build and proving times below are slower than an idle machine's. The code is the kept branch `zk-trial-risc0` at commit `@@CODE_SHA@@`. The core is that of `main` at `a992075` (`RULES_VERSION` 2), whose `core/`, `vectors/game/` and `vectors/levels/` are unchanged since `cd3121d`, the base of SP1's trial.
+
+#### Version and install
+
+- **Version:** the crates `risc0-zkvm` and `risc0-build` pinned to `=3.0.6`, the newest release on crates.io on 2026-11-01 (`3.1.0-rc.1` and `5.0.0-rc.1` are release candidates). They resolve to the `risc0-circuit-rv32im` and `risc0-circuit-recursion` 4.0.5 circuits, `risc0-groth16` 3.0.5 and the `rzup` 0.5.2 library. The host enables `risc0-zkvm`'s `prove` feature, the in-process CPU prover; the guest uses `default-features = false, features = ["std"]`.
+- **Toolchain:** `~/.risc0/toolchains/v1.97.0-rust-x86_64-unknown-linux-gnu/bin/rustc --version` prints `rustc 1.97.0-dev (e638c6cfe 2026-07-15)` (LLVM 22.1.6), the value that M0.2 recorded in [`TOOLING.md`](TOOLING.md). risc0-build 3.0.6 compiles the guest locally with that toolchain, which it finds through `~/.risc0/settings.toml` (its build output reads `Using Rust toolchain version 1.97.0`), for `riscv32im-risc0-zkvm-elf`, which is RV32IM. It did not use Docker, so the `r0.1.88.0` Docker caveat of [`TOOLING.md`](TOOLING.md) does not arise and the core's `rust-version = "1.96"` builds.
+- **Install command:** the direct route of [`TOOLING.md`](TOOLING.md) (zkVM toolchains, RISC Zero), already in place from M0.2; rzup itself is not needed, since risc0-build reads rzup's settings as a library:
+  1. `https://github.com/risc0/rust/releases/download/r0.1.97.0/rust-toolchain-x86_64-unknown-linux-gnu.tar.gz`, sha256 `100b597d605b706bec94e1d32bfaaf5851df8d75173f986d4b56a3e90916be53`, unpacked into `~/.risc0/toolchains/v1.97.0-rust-x86_64-unknown-linux-gnu`; then `~/.risc0/settings.toml` holding `[default_versions]` and `rust = "1.97.0"`. The Actions workflow does exactly this, and the run's toolchain step passed in 21 s.
+  2. M0.2's `~/.risc0/bin/rzup` (0.6.0, sha256 `2cbb8081730ca42acac6818a279c7f218878b571a7f9ff76970f60688f54ddf5`) was not run.
+  3. A C++ compiler: the `prove` feature compiles RISC Zero's circuit kernels with the system `g++` (13.3.0 here, preinstalled on the runner). No apt package was added; protoc is not needed.
+  4. **For the wrapping step only:** the image `risczero/risc0-groth16-prover:v2025-04-03.1`, the tag that `risc0-groth16` 3.0.5 runs, on Docker Hub only: manifest list `sha256:a4f80ce2e0b8e2bb7637a93c37136a6776ac00ec843a3fdf1c67b1d5ffea64ee`, linux/amd64 manifest `sha256:7f173963196570b7a71816ed70565a4579264c5d2e3e0ecb028102538ad0e331`, 2,399,158,367 bytes of layers, 5.2 GB once loaded. `docker pull` failed twice: through the `mirror.gcr.io` mirror (`not found`), then from `registry-1.docker.io` (`429 Too Many Requests`). The trial fetched the manifest and the nine blobs with `curl` from `registry-1.docker.io` with an anonymous token (1 min 37 s), checked each blob's sha256 against its digest, and loaded them with `docker load`.
+- **Other URLs fetched:** `index.crates.io` and `static.crates.io` (453 crates for the host), `git clone` of `github.com/risc0/risc0-ethereum` (tag `v3.0.1`, with its submodules) and `github.com/risc0/risc0-foundry-template`, `binaries.soliditylang.org` (solc 0.8.26), `auth.docker.io` and `registry-1.docker.io`, `dev.risczero.com`, `docs.boundless.network`, `raw.githubusercontent.com` (`BoundlessMarket.sol`), the Boundless indexer `d2mdvlnmyov1e1.cloudfront.net`, the public RPCs `arb1.arbitrum.io/rpc`, `sepolia-rollup.arbitrum.io/rpc` and `mainnet.base.org`, and `api.coingecko.com`.
+- **Build:** `cargo build --release --manifest-path referee/zk/Cargo.toml -p zk-host` builds the guest through risc0-build, then the host. The host took about 64 minutes over two attempts (the first stopped by a 10-minute limit of the trial's own, the second 54 min 13 s), with `-j 3` on the shared CPUs, almost all of it `g++` on the circuit kernels of `risc0-sys`, `risc0-circuit-rv32im-sys` and `risc0-circuit-keccak-sys`. Relinking the host after a change takes 1 min 51 s. @@ACTIONS_BUILD@@ The guest programs are 161,260 bytes (`verify`) and 164,264 bytes (`trace`).
+
+#### The four checks
+
+| Check | Result | Shown by |
+|---|---|---|
+| Install | PASS, through the direct toolchain asset; the Groth16 image only through `curl` and `docker load` | `rustc +risc0 --version`, then `cargo build --release --manifest-path referee/zk/Cargo.toml -p zk-host` |
+| Execute | PASS: 75 of 75 vectors, with cycle counts, on the CPU | `referee/zk/target/release/zk-host execute vectors/game vectors/levels`, one call, 4 min 16 s, ending `75 vectors, 0 failed` |
+| Mock | PASS: a dev-mode Groth16 receipt round-trips in 0.17 s | `cargo test --release --manifest-path referee/zk/Cargo.toml -p zk-host` (test `a_dev_mode_receipt_round_trips_to_the_vector_outcome`) |
+| Verifier | PASS: the verifier router on Arbitrum One and Arbitrum Sepolia routes the 3.0 Groth16 verifier, not stopped; RISC Zero's Foundry tests pass, its mock verifier among them | `cast call` and `forge test`, in [Onchain verifier](#onchain-verifier-1) |
+
+#### Trial code
+
+On the kept branch `zk-trial-risc0`, which is pushed and never merged, in the layout of `zk-trial-sp1`. `referee/zk/` is its own workspace, excluded from the root one. Its root manifest and the guest's manifest carry the plan §3.3 profiles, and `bash scripts/check-profiles.sh` passes on that branch.
+
+- **`guest/`**, built by risc0-build (the host's `[package.metadata.risc0] methods = ["../guest"]`) as its own workspace, with the core as a path dependency. It reads a count, then for each level the level bytes, the journal bytes and `weightBp`, as raw words through `env::read_slice` rather than the serde codec, which spends a 32-bit word per byte. Two programs:
+  - `verify` replays each level with `jiro_core::replay`, and commits each Outcome as the ABI words of `(uint16 weightBp, Outcome)`: 384 bytes per level. It commits only once every level has replayed. A rejected journal makes it panic with replay's code, so the session ends with an error and no receipt: the executor reported `replay rejects: code N` for each of the 4 rejected vectors. Even a halt with a non-zero exit code would not verify onchain, since the verifier checks a claim with exit code `Halted(0)` (README §7.3, "Rejections revert").
+  - `trace`, test only, replays with `replay_observed` and commits, per level, replay's error code (0 when it accepts), `traceKeccak` ([`vectors/README.md`](../vectors/README.md)) and the encoded Outcome, or zeros.
+- **`host/`**, the `zk-host` binary:
+  - `execute <files or directories>` runs every game vector through both programs, with the same checks as SP1's host, and prints the cycle table between `=== BEGIN zk-exec ===` and `=== END zk-exec ===`.
+  - `execute-run <six files>` executes one six-level `verifyRun` input.
+  - `prove <composite|succinct|groth16> <file> [segment po2]` proves one level with the verify program on the CPU, verifies the receipt against the image id, and prints the timings, the cycle statistics and its own peak RSS. Groth16 runs the Docker image above.
+  - `tests/mock_round_trip.rs` is the dev-mode round trip, with dev mode set in `ProverOpts` and `VerifierContext` rather than through `RISC0_DEV_MODE`.
+- **`peak-memory.sh`**, SP1's sampler.
+- **`.github/workflows/zk-trial-risc0.yml`** runs on pushes to the branch: build, one execution, the Groth16 image, then the Groth16 proof of a small vector with segments of 2^19 cycles, with a memory sampler.
+
+#### Executor: cycles per vector
+
+`zk-host execute` reproduced the Outcome, or the error code, and `traceKeccak` of all 75 game vectors: 43 in `vectors/game/` and 32 in `vectors/levels/`. User cycles are the verify program's executed cycles (`SessionInfo::cycles()`). Proving cycles add paging and pad each segment to its power of two (`SessionInfo::segments`, 2^20 cycles at most by default): they are what the prover proves and what Boundless prices, and they equal the prover's `SessionStats::total_cycles` (1,310,720 for `commit-at-tick-0`). Trace-guest cycles include a state hash per tick and are test-only.
+
+- **Fixed cost:** about 1.1 million user cycles before the first tick (`commit-at-tick-0`, which ends at tick 1: 1,122,341), in 2 segments, 1,310,720 proving cycles. The verify program on a rejected journal halts with no session, so it reports no cycles; the trace program rejects `rejected-level-id` in 1,195,363 cycles.
+- **Per level:** the heaviest gate-set level is `10-worst`, at 29,588,717 user cycles and 30,932,992 proving cycles in 30 segments. `worst-case` takes 27,762,031 and 29,360,128. The 32 gate-set vectors average 15,616,118 user cycles and 16,491,520 proving cycles.
+- **Six-level run:** `zk-host execute-run` on the six levels SP1 used (`10-worst`, `16-worst`, `04-worst`, `08-worst`, `03-worst`, `14-synthetic`) took 130,741,601 user cycles and 136,577,024 proving cycles in 131 segments, in 2.0 s, and reproduced the six Outcomes.
+- **Against SP1:** on the 32 gate-set vectors, user cycles are 0.95 to 1.01 times SP1's executed instructions (`10-worst`: 29.6 million against 31.2 million), on RV32IM against SP1's RV64IM. The small vectors take up to 1.2 times, from the larger fixed cost (1.12 million against 0.98 million for `commit-at-tick-0`). The trace program takes 1.1 to 1.8 times SP1's, most likely because the state hash's 64-bit arithmetic costs more on a 32-bit target.
+- **Keccak:** the guest uses the core's software keccak (tiny-keccak 2.0.2). RISC Zero's keccak accelerator was not tried.
+
+##### `vectors/game/`
+
+| Vector | Ticks used or error | User cycles | Proving cycles | Segments | Trace-guest user cycles |
+|---|---:|---:|---:|---:|---:|
+| `boss-bumps-trail` | 57 | 1,162,410 | 1,310,720 | 2 | 10,803,065 |
+| `boss-corridor-b2` | 400 | 1,026,893 | 1,179,648 | 2 | 67,254,307 |
+| `boss-corridor-b8` | 400 | 1,142,714 | 1,310,720 | 2 | 67,391,056 |
+| `capture-around-obstacle` | 17 | 1,652,846 | 2,097,152 | 2 | 4,776,979 |
+| `capture-edge-rectangle` | 17 | 1,653,456 | 2,097,152 | 2 | 4,777,747 |
+| `capture-l-shape` | 36 | 1,642,428 | 2,097,152 | 2 | 7,894,658 |
+| `capture-split-boss-left` | 60 | 1,432,104 | 1,572,864 | 2 | 11,614,893 |
+| `capture-split-boss-right` | 60 | 1,411,094 | 1,572,864 | 2 | 11,589,675 |
+| `clear-and-last-life` | 9 | 1,642,920 | 2,097,152 | 2 | 3,437,364 |
+| `clear-the-level` | 61 | 1,652,981 | 2,097,152 | 2 | 12,028,846 |
+| `commit-at-tick-0` | 1 | 1,122,341 | 1,310,720 | 2 | 1,507,342 |
+| `commit-during-cut` | 6 | 1,121,158 | 1,310,720 | 2 | 2,327,670 |
+| `event-at-last-tick` | 20 | 1,109,949 | 1,310,720 | 2 | 4,616,970 |
+| `fast-cut-close-first-sub-step` | 10 | 1,654,727 | 2,097,152 | 2 | 3,617,306 |
+| `fast-cut` | 7 | 1,121,824 | 1,310,720 | 2 | 2,489,656 |
+| `full-journal` | 2,700 | 3,626,078 | 4,194,304 | 4 | 449,890,537 |
+| `last-life-on-last-tick` | 10 | 1,123,986 | 1,310,720 | 2 | 2,992,395 |
+| `minion-stranded-respawns` | 58 | 1,662,056 | 2,097,152 | 2 | 11,546,728 |
+| `open-field-capture` | 162 | 3,801,297 | 4,194,304 | 4 | 31,246,577 |
+| `open-field-empty` | 2,700 | 2,002,964 | 2,162,688 | 3 | 448,195,877 |
+| `random-all-1` | 617 | 2,458,923 | 2,621,440 | 3 | 104,793,682 |
+| `random-all-2` | 651 | 3,855,620 | 4,194,304 | 4 | 112,032,126 |
+| `random-all-3` | 1,425 | 5,317,064 | 5,767,168 | 6 | 241,539,478 |
+| `random-all-4` | 907 | 3,650,580 | 4,194,304 | 4 | 154,072,012 |
+| `random-dirs-1` | 572 | 2,166,604 | 2,359,296 | 3 | 97,008,126 |
+| `random-dirs-2` | 717 | 3,843,766 | 4,194,304 | 4 | 122,904,843 |
+| `random-dirs-3` | 1,430 | 3,667,849 | 4,194,304 | 4 | 240,430,897 |
+| `random-dirs-4` | 1,166 | 7,482,362 | 7,864,320 | 8 | 201,338,807 |
+| `rejected-event-after-end` | error 14 | rejected |  |  | 1,383,482 |
+| `rejected-event-at-time-limit` | error 13 | rejected |  |  | 1,195,612 |
+| `rejected-level-before-its-id` | error 33 | rejected |  |  | 136,079 |
+| `rejected-level-id` | error 12 | rejected |  |  | 1,195,363 |
+| `respawn-after-bottom-captured` | 166 | 2,216,303 | 2,621,440 | 3 | 30,046,274 |
+| `several-hits-one-life` | 11 | 1,131,135 | 1,310,720 | 2 | 3,167,628 |
+| `several-hits-while-invulnerable` | 11 | 1,131,229 | 1,310,720 | 2 | 3,167,744 |
+| `several-hits-with-shield` | 11 | 1,116,723 | 1,310,720 | 2 | 3,146,019 |
+| `shield-absorbs-a-hit` | 13 | 1,125,151 | 1,310,720 | 2 | 3,493,886 |
+| `slow-shield` | 11 | 1,122,348 | 1,310,720 | 2 | 3,151,904 |
+| `step-onto-boss-from-below` | 19 | 1,135,002 | 1,310,720 | 2 | 4,495,239 |
+| `step-onto-boss-from-right` | 19 | 1,134,926 | 1,310,720 | 2 | 4,495,184 |
+| `stranded-off-rail` | 109 | 1,690,873 | 2,097,152 | 2 | 19,998,852 |
+| `swap-collision` | 11 | 1,138,784 | 1,310,720 | 2 | 3,175,694 |
+| `worst-case` | 2,700 | 27,762,031 | 29,360,128 | 28 | 478,201,144 |
+
+##### `vectors/levels/`
+
+| Vector | Ticks used or error | User cycles | Proving cycles | Segments | Trace-guest user cycles |
+|---|---:|---:|---:|---:|---:|
+| `01-synthetic` | 2,458 | 17,192,157 | 18,087,936 | 18 | 425,956,857 |
+| `01-worst` | 2,700 | 17,456,884 | 18,350,080 | 18 | 466,277,458 |
+| `02-synthetic` | 2,458 | 17,625,909 | 18,874,368 | 18 | 426,436,464 |
+| `02-worst` | 2,700 | 17,884,065 | 18,874,368 | 18 | 466,752,950 |
+| `03-synthetic` | 2,520 | 18,021,074 | 18,874,368 | 18 | 437,097,989 |
+| `03-worst` | 2,700 | 18,343,312 | 19,398,656 | 19 | 467,254,204 |
+| `04-synthetic` | 2,415 | 17,216,385 | 18,087,936 | 18 | 418,847,634 |
+| `04-worst` | 2,700 | 21,026,792 | 22,020,096 | 21 | 470,287,581 |
+| `05-synthetic` | 1,328 | 14,339,392 | 15,204,352 | 15 | 236,056,574 |
+| `05-worst` | 2,700 | 4,374,793 | 4,718,592 | 5 | 450,902,258 |
+| `06-synthetic` | 1,335 | 16,657,852 | 17,825,792 | 17 | 239,931,117 |
+| `06-worst` | 2,700 | 4,871,040 | 5,242,880 | 5 | 451,472,704 |
+| `07-synthetic` | 2,080 | 15,285,707 | 15,990,784 | 16 | 361,273,493 |
+| `07-worst` | 2,700 | 16,362,196 | 17,301,504 | 17 | 464,908,881 |
+| `08-synthetic` | 2,204 | 14,774,530 | 15,728,640 | 15 | 381,047,843 |
+| `08-worst` | 2,700 | 20,082,508 | 20,971,520 | 20 | 469,249,549 |
+| `09-synthetic` | 1,238 | 15,508,836 | 16,252,928 | 16 | 222,535,268 |
+| `09-worst` | 2,700 | 5,568,177 | 6,291,456 | 6 | 452,302,668 |
+| `10-synthetic` | 1,456 | 16,506,110 | 17,301,504 | 17 | 259,531,990 |
+| `10-worst` | 2,700 | 29,588,717 | 30,932,992 | 30 | 480,323,529 |
+| `11-synthetic` | 1,233 | 15,408,096 | 16,252,928 | 16 | 221,575,504 |
+| `11-worst` | 2,700 | 7,914,935 | 8,388,608 | 8 | 454,946,035 |
+| `12-synthetic` | 1,597 | 15,179,454 | 15,990,784 | 16 | 281,321,566 |
+| `12-worst` | 2,700 | 6,714,834 | 7,340,032 | 7 | 453,526,445 |
+| `13-synthetic` | 1,604 | 14,498,151 | 15,204,352 | 15 | 281,730,525 |
+| `13-worst` | 2,221 | 14,996,188 | 15,728,640 | 15 | 384,225,795 |
+| `14-synthetic` | 1,740 | 18,342,944 | 19,398,656 | 19 | 308,676,630 |
+| `14-worst` | 2,700 | 17,059,828 | 17,858,560 | 18 | 465,638,313 |
+| `15-synthetic` | 1,496 | 15,177,858 | 15,990,784 | 16 | 264,675,498 |
+| `15-worst` | 2,700 | 17,682,184 | 18,874,368 | 18 | 466,299,299 |
+| `16-synthetic` | 1,607 | 14,683,581 | 15,728,640 | 15 | 282,359,322 |
+| `16-worst` | 2,700 | 23,371,284 | 24,641,536 | 24 | 473,036,120 |
+
+#### Proving on the CPU
+
+`bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove <mode> vectors/game/commit-at-tick-0.json`, the smallest accepted vector (1,122,341 user cycles, 2 segments):
+
+| Mode | Segment limit | Result | Prove | Peak memory |
+|---|---|---|---|---|
+| composite | 2^20 (default) | PASS, verified; 536,784-byte seal, not onchain-verifiable | 965.2 s, with two of the four CPUs taken by another session | 9,599,912 kB VmHWM (9.2 GiB) |
+| composite | 2^19 | PASS, verified; 3 segments, 791,416-byte seal | 831.5 s | 4,815,260 kB VmHWM (4.6 GiB) |
+| groth16 | 2^20 (default) | PASS, verified; 256-byte Groth16 seal, verified onchain (below) | 1,281.8 s for the whole chain, Docker step included | 9,599,020 kB VmHWM in the host; 7,203 MiB sampled in the Docker container, which runs after the host's STARK steps |
+
+The program's image id is `0xdb9671cb97da76e0ec0789137da5e1497f34687e031d3a5082a316d3b3eab069`. RISC Zero's [local proving](https://dev.risczero.com/api/generating-proofs/local-proving) page advises a smaller segment limit when less than 10 GB is available: memory follows the segment size, not the program's length.
+
+#### Wrapping
+
+The onchain-verifiable receipt compresses the segment receipts into one succinct receipt, then into an `identity_p254` receipt, which `risc0-groth16` 3.0.5 hands to `docker run risczero/risc0-groth16-prover:v2025-04-03.1`, the "shrink-wrap" Groth16 prover. Its `cuda` feature replaces Docker with a native GPU prover; there is no native CPU route.
+
+- **In the container: PASS.** `bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove groth16 vectors/game/commit-at-tick-0.json`, with the default segments, uncapped by Docker, ended `verified: yes` after 1,281.8 s (above). The peak was 9.2 GiB in the host process during the segment proofs, then 7.0 GiB (sampled) in the container `docker run` started, under the session's 13.36 GiB cgroup; `dmesg` shows no out-of-memory kill. The verifier parameters digest is `73c457ba541936f0d907daf0c7253a39a9c5c427c225ba7709e44702d3c6eedc`, whose first four bytes are the 3.0 verifier's selector.
+- **Onchain check of that proof:** `cast call 0x0b144e07a0826182b6b59788c34b32bfa86fb711 "verify(bytes,bytes32,bytes32)" 0x73c457ba<seal> 0xdb9671cb97da76e0ec0789137da5e1497f34687e031d3a5082a316d3b3eab069 0x8394dc2c336cab35dc19c9c489d6afd15f09229a92955d14833bfcb41dcff6ba --rpc-url <rpc>`, with the seal and the sha256 of the journal (the 384-byte encoded Outcome of `commit-at-tick-0`) that `zk-host` printed, returns without reverting on Arbitrum One (block 520,373,707) and Arbitrum Sepolia (block 325,095,246), and `cast estimate` gives 277,009 gas on both. With the journal digest changed to `0x…01`, the call reverts with `VerificationFailed()` (`0x439cc0cd`).
+@@ACTIONS@@
+- **Docker:** needed for the Groth16 step only, on x86. The STARK proofs run in the host process.
+
+#### Onchain verifier
+
+- **Router,** which routes a seal to the verifier its first four bytes select. The same address on Arbitrum One (42161) and Arbitrum Sepolia (421614), `0x0b144e07a0826182b6b59788c34b32bfa86fb711`, from RISC Zero's [verifier contracts](https://dev.risczero.com/api/blockchain-integration/contracts/verifier) page and [`risc0-ethereum`](https://github.com/risc0/risc0-ethereum) `contracts/deployment.toml` at commit `1d19771d` (`main`, 2026-10-22). `owner()` is the timelock `0xDC986a09728F76110FF666eE7b20d99086501d15` on both chains; its delay is 259,200 s (3 days) on Arbitrum One and 1 s on Sepolia.
+- **3.0 Groth16 verifier,** for risc0-zkvm 3.0.x, selector `0x73c457ba`: `0x2a098988600d87650Fb061FfAff08B97149Fa84D` on both chains, behind an emergency-stop wrapper, `0x9F9994Eb4Cb5200198FEfb470f8b50301662e696` on Arbitrum One and `0x724d375B5b622e15f0E64e9Deb76a4cB17877797` on Sepolia. On 2026-11-01 (Arbitrum One block 520,345,747, Sepolia block 325,065,008):
+  - `cast call 0x0b144e07a0826182b6b59788c34b32bfa86fb711 "getVerifier(bytes4)(address)" 0x73c457ba --rpc-url <rpc>` returns the emergency-stop wrapper, with `--rpc-url https://arb1.arbitrum.io/rpc` and `https://sepolia-rollup.arbitrum.io/rpc`;
+  - `paused()` on the wrapper returns `false`, `verifier()` the 3.0 verifier, whose `VERSION()` is `"3.0.0"` and `SELECTOR()` `0x73c457ba`.
+  - The 2.2 verifier (`0xbb001d44`) is also routed and not stopped; the 2.0 one (`0xf536085a`) is stopped (`paused()` returns `true`); the 1.x ones are removed from the router.
+- **Foundry tests,** with forge 1.8.6 in the container:
+  - `risc0-ethereum` at tag `v3.0.1` (`365e7b2d`, the contracts release for risc0-zkvm 3.0): `cd contracts && forge test`, 35 tests passed, 0 failed, in 5 suites. `RiscZeroMockVerifier` (`contracts/src/test/`), which accepts a seal made by its own `mockProve`, backs the 15 router tests, the 6 emergency-stop tests and the 7 set-verifier tests; `testVerifyKnownGoodReceipt` verifies a real 3.0 Groth16 receipt for 252,496 gas.
+  - [`risc0-foundry-template`](https://github.com/risc0/risc0-foundry-template) at `6e6f8cad` (2025-06-16) still pins risc0-zkvm 2.0.2 and risc0-ethereum v2.1.0, and its test imports an `Elf.sol` generated by its own build; it was not run.
+
+#### Prover network
+
+RISC Zero's hosted prover is now [Boundless](https://docs.boundless.network/developers/what), a proof market: [Bonsai](https://docs.boundless.network/developers/tutorials/bonsai), its centralized proving API, "is no longer available" since December 2025, and the risc0-zkvm 3.0 [remote proving](https://dev.risczero.com/api/generating-proofs/remote-proving) page points to Boundless only. Read on 2026-11-01.
+
+- **Chain and token:** it bills in ETH on Base mainnet (8453). A requester deposits ETH into `BoundlessMarket`, `0xfd152dadc5183870710fe54f939eae3ab9f0fe82` on Base ([deployments](https://docs.boundless.network/developers/smart-contracts/deployments)), or sends it with the request, and signs requests with an Ethereum key. Provers, not requesters, lock collateral in ZKC. A request also needs the program at a public URL: the docs suggest IPFS through Pinata, or S3. The proof is delivered on Base by default as a Merkle inclusion in an aggregated set (`SetVerifier`); a raw Groth16 seal, which is what an Arbitrum contract can check through the router above, is a request option that the docs say costs more ([proof types](https://docs.boundless.network/developers/tutorials/proof-types)).
+- **Minimum deposit:** none. `deposit()` in [`BoundlessMarket.sol`](https://github.com/boundless-xyz/boundless/blob/main/contracts/src/BoundlessMarket.sol) (`main`, `3f289f83`) adds `msg.value` to the balance without a floor; each request must be covered by the balance up to its `maxPrice`.
+- **Price:** set per request by a reverse Dutch auction between the requester's `minPrice` and `maxPrice` ([auction](https://docs.boundless.network/developers/tutorials/auction)). The SDK's default `maxPrice` is the market price per cycle times the request's total cycles, plus twice the estimated fulfilment gas; its static fallback is 100,000 wei per cycle (boundless-market 2.0.1). The market's realized prices come from the Boundless indexer that the SDK queries, read at 18:11 UTC: `https://d2mdvlnmyov1e1.cloudfront.net/v1/market/aggregates?aggregation=weekly&limit=2&sort=desc&before=<now>&after=<now − 14 days>`. For the week from 2026-10-26 on Base:
+  - 1,348 requests fulfilled, from 10 requesters, by 2 provers, over 612,544,518,705 total cycles;
+  - fees locked 0.032823 ETH: 0.026401 ETH of variable cost, or 43,101 wei per total cycle, and 0.006422 ETH of fixed (gas) cost, or 0.0000047675 ETH per locked request;
+  - lock price per cycle: p10 25,367 wei, p50 81,480 wei, p90 136,580 wei. The daily figures for 2026-10-30 to 2026-11-01 are alike (p50 79,684 to 84,222 wei).
+- **Expected cost,** at that week's variable cost per cycle plus its mean fixed cost per request, with ETH at $2,262.01 (CoinGecko, 2026-11-01 18:12 UTC). These are the market's averages, mostly for aggregated proofs; a raw Groth16 request would cost more.
+
+  | Proof | Total cycles | Variable + fixed | At the p50 price per cycle |
+  |---|---:|---|---|
+  | One level, the smallest (`commit-at-tick-0`) | 1,310,720 | 0.0000048 ETH ($0.011) | 0.00000011 ETH ($0.0002) |
+  | One level, the heaviest (`10-worst`) | 30,932,992 | 0.0000061 ETH ($0.014) | 0.0000025 ETH ($0.006) |
+  | One six-level run, the heaviest six levels | 136,577,024 | 0.0000107 ETH ($0.024) | 0.0000111 ETH ($0.025) |
+
+  The fixed cost is 45% of the run proof's price. A run proof costs about 21% of the 0.00005 ETH run fee.
+
+#### Findings for M1.12
+
+- **All four checks pass.** The executor reproduces every vector, the dev-mode round trip takes 0.17 s, and the router routes the 3.0 verifier on both Arbitrum chains.
+- **A real onchain-verifiable proof here.** The Groth16 proof of `commit-at-tick-0` took 21 minutes in the container, at 9.2 GiB in the host and 7.0 GiB in Docker, one after the other, and verifies through the router on Arbitrum One and Sepolia (277,009 gas estimated). With segments of 2^19 cycles, the host's STARK proving takes 4.6 GiB. @@ACTIONS_FINDING@@
+- **32-bit only.** RISC Zero 3.0 targets RV32IM; the plan's RV64IM preference (M1.12) cannot hold with it, and README §7.3 allows RV32IM.
+- **Prover network.** Boundless bills in ETH on Base, with no minimum deposit; at the market's averages a run proof costs about 0.000011 ETH. It needs a Base wallet and a public URL for the program, and its default delivery is an aggregated Merkle proof on Base, so a raw Groth16 seal for Arbitrum is a non-default request whose price was not measured. Only 2 provers locked requests in the measured week.
+- **zk tier.** The bootstrap needs a C++ compiler, the rzup settings written by hand, and, for wrapping only, the 2.4 GB Groth16 image, which this container's `docker pull` cannot fetch (mirror `not found`, then `429` from Docker Hub). The host's C++ circuit kernels make clean builds long (about an hour here, @@ACTIONS_BUILD_SHORT@@), so M1.12's zk-exec job needs a build cache.
+- **TOOLING.md:** risc0-build 3.0.6 built the guest locally with the 1.97 toolchain, not in Docker with `r0.1.88.0`, so its MSRV caveat for M1.17 did not arise. It says Docker Hub pulls go through `mirror.gcr.io`; that mirror does not hold `risczero/risc0-groth16-prover`.
+
+### SP1 and RISC Zero side by side
+
+The facts M1.12 compares, from the two sections above; it makes no choice. Times come from the same container, but RISC Zero's ran with two of the four CPUs taken by another session.
+
+| | SP1 | RISC Zero |
+|---|---|---|
+| Version, guest target | v6.10.0, RV64IM | 3.0.6, RV32IM |
+| Four checks | all PASS | all PASS |
+| Vectors reproduced | 75 of 75 | 75 of 75 |
+| Heaviest level (`10-worst`) | 31,227,278 cycles; 27,203,307 PGU | 29,588,717 user cycles; 30,932,992 proving cycles |
+| Six-level run | 136,915,482 cycles; 119,502,086 PGU | 130,741,601 user cycles; 136,577,024 proving cycles |
+| Mock round trip | 7.84 s | 0.17 s |
+| CPU proof of `commit-at-tick-0` | core 92 s at 11.6 GiB; compressed out of memory | composite 965 s at 9.2 GiB (832 s at 4.6 GiB with 2^19 segments) |
+| Onchain-verifiable proof, container | FAIL, out of memory | PASS: Groth16 in 1,282 s, 9.2 GiB then 7.0 GiB in Docker |
+| Onchain-verifiable proof, Actions (2 vCPUs, 7.9 GB) | FAIL, out of memory | @@ACTIONS_CMP@@ |
+| Wrapping needs | Docker image (161 MB, ghcr.io) and 6.2 GB of artifacts | Docker image (2.4 GB, Docker Hub only) |
+| Clean host build | 16 min on a 2-vCPU runner | @@ACTIONS_BUILD_CMP@@ |
+| Arbitrum verifier | gateway `0x397A…dA9B`, v6.1.0 verifier | router `0x0b14…b711`, 3.0.0 verifier |
+| Verification gas, framework fixture | 234,718 (Groth16, `forge test`) | 252,496 (`forge test`); 277,009 estimated on Arbitrum One for this trial's proof |
+| Prover network | Succinct Prover Network: PROVE on Ethereum mainnet, minimum deposit 0.01 PROVE | Boundless: ETH on Base, no minimum deposit |
+| Run proof price | 0.433 PROVE ($0.090), Groth16 | about 0.000011 ETH ($0.024) at market averages, mostly aggregated proofs; raw Groth16 not priced |
