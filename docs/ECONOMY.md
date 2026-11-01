@@ -35,7 +35,7 @@ Gas is the unit; an ETH cost is gas × the Arbitrum base fee at the time.
 | `commitRun` gas, with a typical six-journal blob and a full one (6 × 8,171 bytes) | typical (1,604 bytes of calldata): 99,049; full (49,604 bytes): 864,069, or 1,940,390 under EIP-7623's calldata floor; before the L1 data fee ([`VERIFICATION.md`](VERIFICATION.md#challenge-gas)) | M4.6 |
 | Stylus `verify` gas per level, provisional | TBD (M4.2) | M4.2 |
 | Stylus gas gate over the gate set, and gas per six-level run | TBD (M4.9) | M4.9 |
-| Settlement gas, excluding `verifyRun` | TBD (M4.7) | M4.7 |
+| Settlement gas, excluding `verifyRun` | `settleRun` of a six-level run with 25,636 bytes of calldata: 576,603, of which 353,908 calldata gas; `settleLevel`: 154,050 for a level, 172,905 for the one that records the run; before the L1 data fee ([`VERIFICATION.md`](VERIFICATION.md#settlement-gas)) | M4.7 |
 | zk proof verification gas, per run proof and per level proof | TBD (M4.8) | M4.8 |
 | zk proving cost per run: CPU time and peak RAM, and the prover-network price | TBD (M4.8) | M4.8 |
 | Season aggregation against one proof per run | TBD (M4.8, decided in M4.9) | M4.8, M4.9 |

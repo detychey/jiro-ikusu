@@ -186,7 +186,7 @@ contract Season {
     function closeSeason() external returns (uint256 season) {
         season = lastClosedSeason + 1;
         if (season > currentSeason) revert NoSeasonToClose();
-        uint256 settlementEnd = endOf(season) + paramsBySeason[season].grace;
+        uint256 settlementEnd = settlementEndOf(season);
         // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp <= settlementEnd) revert SettlementOpen(season, settlementEnd);
 
@@ -236,6 +236,16 @@ contract Season {
 
     function endOf(uint256 season) public view returns (uint256) {
         return seasons[season].start + paramsBySeason[season].length;
+    }
+
+    /// @notice The last second at which the season's runs settle (README §7.2): end + grace, inclusive.
+    function settlementEndOf(uint256 season) public view returns (uint256) {
+        return endOf(season) + paramsBySeason[season].grace;
+    }
+
+    function refereeOf(uint256 season) external view returns (IReferee referee, uint16 rulesVersion) {
+        SeasonParams storage params = paramsBySeason[season];
+        return (params.referee, params.rulesVersion);
     }
 
     function commitSlackOf(uint256 season) external view returns (uint64) {

@@ -512,6 +512,30 @@
   },
   {
     "type": "function",
+    "name": "refereeOf",
+    "inputs": [
+      {
+        "name": "season",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "referee",
+        "type": "address",
+        "internalType": "contract IReferee"
+      },
+      {
+        "name": "rulesVersion",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "seasons",
     "inputs": [
       {
@@ -553,6 +577,25 @@
       },
       {
         "name": "totalQualifiedPoints",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "settlementEndOf",
+    "inputs": [
+      {
+        "name": "season",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
       }

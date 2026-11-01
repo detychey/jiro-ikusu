@@ -11,7 +11,7 @@ moved vectors without a version bump (`scripts/check-rules-version.sh`, below).
 | `game/*.json`, `game/*.trace` | Game vectors (README §6.6): a level and a journal, with the Outcome or error that replay returns, and the trace of state hashes v1 | `cargo run -p jiro-tools --locked -- vectors` |
 | `levels/*.json`, `levels/*.trace` | The gate set of the M4 gas gate (plan §4), game vectors with no `covers`: for each season level, `NN-worst`, its longest bot journal, and `NN-synthetic`, the longest run of the worst-case scenario's policy, scored with the level's weight | `cargo run -p jiro-tools --release --locked -- calibrate --check --out seasons/calibration-1.json` |
 | `COVERAGE.md` | The coverage index: every rule tag of README §4 and of the `parity-testing` skill, with the game vectors that cover it and the core tests that name it | `cargo run -p jiro-tools --locked -- vectors` |
-| `derivations.json` | Level seeds and deflection keys, level ids, boss starts, draws and run commitments (README §6.4, §8.2), computed with ethers | `node tools/xcheck/derivations.mjs --write` |
+| `derivations.json` | Level seeds and deflection keys, level ids, boss starts, draws and run commitments (README §6.4, §8.2), and settlement deadlines (README §7.2), computed with ethers | `node tools/xcheck/derivations.mjs --write` |
 
 Kinds and fields:
 
