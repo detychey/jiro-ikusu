@@ -146,7 +146,7 @@ The four tooling checks of README §7.3:
 | Framework | Version | Install | Execute | Mock | Verifier | Vectors reproduced | Cycles, heaviest level | CPU proof of a small level | Onchain-verifiable wrapping | Prover network, Groth16 proof of a six-level run | Kept branch |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | SP1 | v6.10.0 (circuits v6.1.0) | PASS | PASS | PASS | PASS | 75 of 75 | 31,227,278 (`10-worst`) | core: 92 s, 11.6 GiB; compressed: out of memory at 13.4 GiB | FAIL: out of memory in the container and on Actions | 0.433 PROVE (about 0.00004 ETH) | `zk-trial-sp1` |
-| RISC Zero | 3.0.6 (Groth16 verifier 3.0.0) | PASS | PASS | PASS | PASS | 75 of 75 | 29,588,717 user, 30,932,992 proving (`10-worst`) | composite: 965 s, 9.2 GiB (832 s, 4.6 GiB with 2^19 segments) | PASS in the container (verified on Arbitrum One and Sepolia); PASS on Actions | Boundless, about 0.000011 ETH ($0.024) at market averages | `zk-trial-risc0` |
+| RISC Zero | 3.0.6 (Groth16 verifier 3.0.0) | PASS | PASS | PASS | PASS | 75 of 75 | 29,588,717 user, 30,932,992 proving (`10-worst`) | composite: 965 s, 9.2 GiB (832 s, 4.6 GiB with 2^19 segments) | PASS in the container (verified on Arbitrum One and Sepolia); PASS on Actions | Boundless: raw Groth16 not priced; market average about 0.000011 ETH ($0.024), mostly aggregated proofs | `zk-trial-risc0` |
 
 ### SP1
 
@@ -394,7 +394,7 @@ On the kept branch `zk-trial-risc0`, which is pushed and never merged, in the la
 - **Fixed cost:** about 1.1 million user cycles before the first tick (`commit-at-tick-0`, which ends at tick 1: 1,122,341), in 2 segments, 1,310,720 proving cycles. The verify program on a rejected journal halts with no session, so it reports no cycles; the trace program rejects `rejected-level-id` in 1,195,363 cycles.
 - **Per level:** the heaviest gate-set level is `10-worst`, at 29,588,717 user cycles and 30,932,992 proving cycles in 30 segments. `worst-case` takes 27,762,031 and 29,360,128. The 32 gate-set vectors average 15,616,118 user cycles and 16,491,520 proving cycles.
 - **Six-level run:** `zk-host execute-run` on the six levels SP1 used (`10-worst`, `16-worst`, `04-worst`, `08-worst`, `03-worst`, `14-synthetic`) took 130,741,601 user cycles and 136,577,024 proving cycles in 131 segments, in 2.0 s, and reproduced the six Outcomes.
-- **Against SP1:** on the 32 gate-set vectors, user cycles are 0.95 to 1.01 times SP1's executed instructions (`10-worst`: 29.6 million against 31.2 million), on RV32IM against SP1's RV64IM. The small vectors take up to 1.2 times, from the larger fixed cost (1.12 million against 0.98 million for `commit-at-tick-0`). The trace program takes 1.1 to 1.8 times SP1's, most likely because the state hash's 64-bit arithmetic costs more on a 32-bit target.
+- **Against SP1:** on the 32 gate-set vectors, user cycles are 0.95 to 1.01 times SP1's executed instructions (`10-worst`: 29.6 million against 31.2 million), on RV32IM against SP1's RV64IM. The small vectors take up to 1.2 times, from the larger fixed cost (1.12 million against 0.98 million for `commit-at-tick-0`). On the 71 accepted vectors, the trace program takes 1.1 to 1.8 times SP1's, most likely because the state hash's 64-bit arithmetic costs more on a 32-bit target; on the 4 rejected ones, 0.83 to 1.09 times.
 - **Keccak:** the guest uses the core's software keccak (tiny-keccak 2.0.2). RISC Zero's keccak accelerator was not tried.
 
 ##### `vectors/game/`
