@@ -55,7 +55,7 @@ Each row names its mitigation and the item that builds or measures it. M4.12 add
 | Previewing the draw before paying | Pay-then-reveal: the entropy block does not exist when the fee is paid. | M4.3, M4.6 |
 | Re-rolling by letting the reveal lapse | No re-anchor: the run is forfeited and its fee stays in the pot. | M4.6 |
 | Nonce preview: the run nonce can be computed from the entropy block, up to 256 blocks (about a minute) before `revealRun` starts the clock | Accepted residual, inherited from ethblockdigger. Closing it would change README §7.2: refusing reveals made more than a few blocks after the entropy block shrinks the reveal window, and starting the deadline at `startRun` changes the deadline formula. M4.12 may propose either, as a split item that amends §7.2. | M4.12 |
-| Real-time bots | The fee per run, the qualification threshold, and public journals. Fresh entropy per level is the designed upgrade (README §7.4). | M4.13 (optional), M5.6 |
+| Real-time bots | The fee per run, the qualification threshold, and public journals. Fresh entropy per level is the designed upgrade (README §7.4). Measured in §5 (pending its 8 shards). | M4.13 (optional), M5.6 |
 | Parallel attempts: a team or a bot farm plays each revealed level several times at once and commits the best attempt | Accepted residual: the deadline bounds the wall time, not the number of attempts. Fresh entropy per level is the upgrade. | M4.12 |
 | Buying several runs and playing only the best draw | Accepted: each attempt is paid, and only the best run counts (README §8.2). | M4.12 |
 | Sybil wallets | A fee per run only. Best runs are kept per wallet, so a player who uses one wallet per run counts every run, as cumulative scoring would (README §8.2). Accepted residual, decided by the owner on 2026-10-29. | M4.12 |
@@ -94,3 +94,37 @@ Each row names its mitigation and the item that builds or measures it. M4.12 add
 - journal signing with a device key on the RP2350 (README §7.1);
 - season proof aggregation, if M4.9 did not adopt it for testnet and zk becomes the mainnet path;
 - a reactivation policy for the Stylus referee.
+
+## 5. Bot advantage (M4.13)
+
+**Status: pending.** The rules below were committed before any run of the study was played. The results and the two recommendations are filled once the 8 shards of `reports/bot-advantage/` are committed and merged into `reports/bot-advantage.md`, which owns every number this section will quote.
+
+### What is measured
+
+- **The bot.** `search` (`tools/src/bots/search.rs`) reads the game it plays, which holds the boss's state and deflection key from the level seed (README §6.4), so the core, stepped on a copy, predicts every mask exactly. Each decision pads half the ticks the level can spare beyond a reserve, dodging the minions, then searches two captures deep, a setup and a finisher, for the clear that leaves the boss the smallest region.
+- **Its budget.** Compute is counted in deterministic work units, so a shard replays byte for byte on any machine. The bot spends at most `UNITS_PER_TICK` units per tick played, at most 0.75 s of compute per game second at the worst level's measured cost on one idle container core. A search spends only the units accrued since the state it searches from became known, on the level it plays. It uses no `commitSlack`, no nonce preview and no second core, so a real bot can buy more compute than this one: the score ceiling below bounds what more compute could add.
+- **Padding.** README §7.2 lets a run pad every level up to its time limit, since padding costs only the fewer-ticks tiebreak. At 1 s of compute per game second, that buys up to 180 s of compute per level, and pooled over the six levels that one run nonce reveals at once, up to 1,080 s plus `commitSlack` per run, on any number of cores. The measured bot pads only half of each level's spare ticks, on one core, one level at a time.
+- **The runs.** 200 six-level Challenge runs of seed 7: run k has the run nonce `nonce(7, k)`, plays the levels its draw names under Challenge headers, and scores them at the weights of `seasons/calibration-1.json`. The five scripted bots play the same 1,200 games, so every comparison is paired over the runs.
+- **The ceiling.** No play claims more than (claimable − B²) × 10,000 / claimable bp on a level: the boss's B × B body covers only open cells, which no capture claims. The ceiling run score bounds the uplift of any bot, at any budget.
+
+### Pre-registered endpoints and rules
+
+- **Primary endpoint:** the mean paired run-score uplift of `search` over the reference mix (`levels/targets.json`), with its 95 % percentile-bootstrap interval. **Key secondary endpoint:** the same over the scripted portfolio, the best scripted policy on each level, which a nonce-aware bot gets with no search at all. Every other figure of the report is descriptive.
+- **Rule D (D10's `minClears`).** A(m) is the payout ratio per run of `search` over a mix player under pro-rata payout with `minClears` m. Among the m from 1 to 6 at which the reference mix qualifies at least 50 % of its runs, let m\* be the one with the smallest A(m), the smaller m on a tie. Recommend `minClears` = m\* if m\* is 1, or if the upper bound of A(m\*)'s interval is below the lower bound of A(1)'s; otherwise recommend 1, the D10 default. Rule D is also applied with greedy as the human proxy (A(m) over greedy); if it names another m, the recommendation says so. M5.5 applies or declines the recommendation for `testnet-1`.
+- **Rule F (fresh entropy per level).** Let H be the ceiling's mean run score over the mean run score of `search`, minus 1: the most that any bot could add to the measured one, through more compute, pooling across the levels, or anything else. If the upper bound of H's interval is below 5 %, fresh entropy per level is not a bot mitigation: it can remove at most H, so recommend keeping it, if at all, for the parallel-attempt and deadline-gaming rows of §3. Otherwise keep it on the list of bot mitigations, with H as the most it can remove. Rewording README §7.4, which calls fresh entropy the designed upgrade, is the owner's decision, in a follow-up PR.
+- **Pot share.** README §8.2 puts the break-even of a run at about the season's qualified points per paid run over 1 − rake, 1.25 times at the 20 % rake cap. If the lower bound of the interval of the ratio of mean run scores, `search` over the reference mix, is above 1.25, the fee alone does not make a bot run unprofitable in a season of mix-like players; if its upper bound is below 1.25, it does; otherwise the study does not decide.
+
+### Results
+
+Pending the 8 shards.
+
+### Recommendations
+
+- **D10 `minClears`:** pending, by rule D.
+- **Fresh entropy per level:** pending, by rule F.
+
+### Limits
+
+- `search` is a lower bound on what a bot can do; the ceiling is the upper bound.
+- The reference mix and greedy are scripted proxies for players, not humans. The two Training journals of `reports/playtest-human-1.md` are too few for an interval; a few more of the owner's journals would give a human baseline (plan M4.13, "Needs user").
+- One machine calibrated the unit; the study's bytes do not depend on it, but its compute claim does.
