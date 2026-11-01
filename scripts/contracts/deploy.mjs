@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs, stripVTControlCharacters } from "node:util";
 import { Contract, ContractFactory, JsonRpcProvider, Wallet, getAddress } from "ethers";
+import { readProgramVersion } from "./activation.mjs";
 import { BACKENDS, isEntryPoint, prependGeneration } from "./deployments.mjs";
 
 export const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -83,6 +84,21 @@ function gitOutput(args) {
   return execFileSync("git", args, { cwd: REPO_ROOT, encoding: "utf8" }).trim();
 }
 
+/**
+ * The referee's address and transactions in `cargo stylus deploy`'s output. `activateTx` is null
+ * when the wasm's codehash was already activated on the chain: cargo-stylus then deploys the code
+ * and sends no activation, as for any later deployment of an unchanged referee.
+ */
+export function parseStylusDeploy(output) {
+  const address = output.match(/deployed code at address:?\s*(0x[0-9a-fA-F]{40})/i)?.[1];
+  const deployTx = output.match(/deployment tx hash:?\s*(0x[0-9a-fA-F]{64})/i)?.[1];
+  if (!address || !deployTx) throw new Error(`cargo stylus printed no deployed address and deployment tx hash:\n${output}`);
+  const activated = output.match(new RegExp(`successfully activated contract ${address} with tx "?(?:0x)?([0-9a-fA-F]{64})`, "i"))?.[1];
+  if (activated) return { address: getAddress(address), deployTx, activateTx: `0x${activated}` };
+  if (output.includes("wasm already activated!")) return { address: getAddress(address), deployTx, activateTx: null };
+  throw new Error(`cargo stylus did not activate the referee:\n${output}`);
+}
+
 /** Builds referee/ and deploys and activates it through cargo-stylus, as stylus-gas.yml does. */
 async function deployStylusReferee(provider, rpc, deployerKey) {
   const uncommitted = gitOutput(["status", "--porcelain", "--", "referee"]);
@@ -106,23 +122,18 @@ async function deployStylusReferee(provider, rpc, deployerKey) {
   const output = stripVTControlCharacters(deployed.stdout + deployed.stderr);
   console.log(output.trim());
   if (deployed.status !== 0) throw new Error(`cargo stylus deploy exited ${deployed.status ?? deployed.signal}`);
-  const address = output.match(/deployed code at address:?\s*(0x[0-9a-fA-F]{40})/i)?.[1];
-  if (!address || !output.includes(`successfully activated contract ${address}`)) {
-    throw new Error(`cargo stylus did not deploy and activate the referee:\n${output}`);
-  }
+  const { address, deployTx, activateTx } = parseStylusDeploy(output);
   if ((await provider.getCode(address)) === "0x") throw new Error(`the Stylus referee at ${address} has no code on ${rpc}`);
-  const transactions = {
-    "deploy Referee (Stylus)": output.match(/deployment tx hash:?\s*(0x[0-9a-fA-F]{64})/i)?.[1],
-    "activate Referee (Stylus)": output.match(new RegExp(`successfully activated contract ${address} with tx "?(?:0x)?([0-9a-fA-F]{64})`))?.[1],
-  };
-  for (const [label, hash] of Object.entries(transactions)) {
-    if (!hash) throw new Error(`cargo stylus printed no transaction hash for ${label}:\n${output}`);
-    const receipt = await provider.getTransactionReceipt(hash.startsWith("0x") ? hash : `0x${hash}`);
+  if (activateTx === null) console.log("activate Referee (Stylus): its codehash was already activated on this chain, no transaction");
+  const transactions = { "deploy Referee (Stylus)": deployTx, "activate Referee (Stylus)": activateTx };
+  for (const [label, hash] of Object.entries(transactions).filter(([, hash]) => hash !== null)) {
+    const receipt = await provider.getTransactionReceipt(hash);
     if (receipt?.status !== 1) throw new Error(`${label}: transaction ${hash} is not a successful transaction on ${rpc}`);
     console.log(`${label}: gas ${receipt.gasUsed}`);
   }
-  console.log(`Referee (Stylus): ${getAddress(address)}`);
-  return getAddress(address);
+  const version = await readProgramVersion(provider, address);
+  console.log(`Referee (Stylus): ${address}, activated at Stylus version ${version}`);
+  return address;
 }
 
 /**
