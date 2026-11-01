@@ -532,13 +532,13 @@ contract ChallengeGasTest is ChallengeFixture {
 /// Drives Challenge as players and Season as its operator, with every input bounded to a valid
 /// one, so that each call changes state or returns early instead of reverting.
 contract ChallengeHandler is CommonBase, StdCheats, StdUtils {
-    Challenge private immutable challenge;
-    Season private immutable season;
-    MockArbSys private immutable arbSys;
-    ArbBlockhashEntropy private immutable entropy;
-    MockReferee private immutable referee;
-    address private immutable operator;
-    address[] private players;
+    Challenge internal immutable challenge;
+    Season internal immutable season;
+    MockArbSys internal immutable arbSys;
+    ArbBlockhashEntropy internal immutable entropy;
+    MockReferee internal immutable referee;
+    address internal immutable operator;
+    address[] internal players;
     uint256 public feesPaid;
 
     constructor(
@@ -589,7 +589,7 @@ contract ChallengeHandler is CommonBase, StdCheats, StdUtils {
 
     /// One of the last eight runs, which are the ones still likely to be in their reveal window
     /// or before their commit bound.
-    function recentRun(uint256 runSeed, uint256 runCount) private pure returns (uint256) {
+    function recentRun(uint256 runSeed, uint256 runCount) internal pure returns (uint256) {
         return runCount - bound(runSeed, 0, runCount < 8 ? runCount - 1 : 7);
     }
 

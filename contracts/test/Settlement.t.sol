@@ -6,7 +6,7 @@ import {Challenge, Run, Settlement, SettlementStatus} from "../src/Challenge.sol
 import {Outcome} from "../src/interfaces/IReferee.sol";
 import {MockReferee} from "../src/mocks/MockReferee.sol";
 import {Season, SeasonParams, BestRun} from "../src/Season.sol";
-import {ChallengeFixture, runOf, sixJournalsOf} from "./Challenge.t.sol";
+import {ChallengeFixture, journalOf, runOf} from "./Challenge.t.sol";
 import {RULES_VERSION, COMMIT_SLACK, defaultParams, bestRunOf, settlementEndOf} from "./Season.t.sol";
 
 uint8 constant MODE_TRAINING = 0;
@@ -31,6 +31,34 @@ function settlementOf(Challenge challenge, uint256 runId) view returns (Settleme
 /// The level bytes whose id `defaultParams` puts in `slot`.
 function defaultLevelOf(uint256 slot) pure returns (bytes memory) {
     return abi.encodePacked("level", slot);
+}
+
+/// Level `slot` of a `defaultParams` season, played at `levelIndex` of a run, with the Outcome of
+/// the given result, scored at the slot's weight (README §8.4).
+function defaultPlayedLevelOf(
+    bytes32 runNonce,
+    uint8 levelIndex,
+    uint8 slot,
+    uint8 endReason,
+    uint16 claimBp,
+    uint16 ticksUsed
+) pure returns (PlayedLevel memory played) {
+    played.level = defaultLevelOf(slot);
+    played.journal = journalOf(runNonce, levelIndex, 3, 30);
+    played.weightBp = uint16(10_000 + slot);
+    played.outcome = Outcome({
+        journalHash: keccak256(played.journal),
+        levelId: keccak256(played.level),
+        runNonce: runNonce,
+        levelIndex: levelIndex,
+        drawSlot: slot,
+        mode: MODE_CHALLENGE,
+        rulesVersion: RULES_VERSION,
+        endReason: endReason,
+        claimBp: claimBp,
+        ticksUsed: ticksUsed,
+        levelScore: endReason == END_REASON_OUT_OF_LIVES ? 0 : uint32(uint256(claimBp) * played.weightBp / 10_000)
+    });
 }
 
 function levelBytesOf(PlayedLevel[6] memory played) pure returns (bytes[6] memory levels) {
@@ -632,7 +660,7 @@ contract SettlementDeadlineTest is ChallengeFixture {
         return string.concat(".deadlines[", vm.toString(i), "]");
     }
 
-    /// Six different default-season levels, with the Outcomes of `ticksUsed`, all cleared.
+    /// Six different default-season levels, all cleared, with the fixture's ticks used.
     function playedLevelsOf(uint256 runId, uint256[] memory ticksUsed)
         private
         view
@@ -640,25 +668,8 @@ contract SettlementDeadlineTest is ChallengeFixture {
     {
         assertEq(ticksUsed.length, 6, "a run has six levels");
         bytes32 runNonce = runOf(challenge, runId).runNonce;
-        bytes[6] memory journals = sixJournalsOf(runNonce, 3, 30);
         for (uint8 i; i < 6; ++i) {
-            uint8 slot = 2 * i;
-            played[i].level = defaultLevelOf(slot);
-            played[i].journal = journals[i];
-            played[i].weightBp = uint16(10_000 + slot);
-            played[i].outcome = Outcome({
-                journalHash: keccak256(journals[i]),
-                levelId: keccak256(played[i].level),
-                runNonce: runNonce,
-                levelIndex: i,
-                drawSlot: slot,
-                mode: MODE_CHALLENGE,
-                rulesVersion: RULES_VERSION,
-                endReason: END_REASON_CLEARED,
-                claimBp: 7_500,
-                ticksUsed: uint16(ticksUsed[i]),
-                levelScore: 7_500
-            });
+            played[i] = defaultPlayedLevelOf(runNonce, i, 2 * i, END_REASON_CLEARED, 7_500, uint16(ticksUsed[i]));
         }
     }
 
