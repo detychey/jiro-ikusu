@@ -364,7 +364,7 @@ Foundry meters a call from a test as a transaction: its gas includes the 21,000 
 | `commitRun`, full blob: 6 journals of 2,700 events, 8,171 B each | 49,604 B | 864,069, of which 767,756 calldata gas; 1,940,390 under EIP-7623's calldata floor |
 
 - **Typical blob.** 32 events per level is the bots' mean median of 439 ticks per level ([`reports/playtest-449f231636aa.json`](../reports/playtest-449f231636aa.json)) at the 0.073 events per tick of the user's two play-test journals ([`reports/playtest-human-1.md`](../reports/playtest-human-1.md)).
-- **The calldata floor.** EIP-7623 charges at least 21,000 + 10 gas per calldata token (a zero byte is 1 token, any other byte 4). Anvil 1.8.6 applies it to the full blob under every hardfork tried (shanghai, cancun and prague): 21,000 + 10 × 191,939 = 1,940,390. Foundry's test EVM does not. Whether Arbitrum's ArbOS charges the floor is not verified here; M4.16 measures the commit on nitro-devnode.
+- **The calldata floor.** EIP-7623 charges at least 21,000 + 10 gas per calldata token (a zero byte is 1 token, any other byte 4). Anvil 1.8.6 applies it to the full blob under every hardfork tried (shanghai, cancun and prague): 21,000 + 10 × 191,939 = 1,940,390. Foundry's test EVM does not. Whether Arbitrum's ArbOS charges the floor is not verified here; M4.16 measures the commit on nitro-devnode. It does not, on nitro-devnode ([End-to-end gas](#end-to-end-gas)).
 - **`commitSlackOf`.** `commitRun` reads the season's `commitSlack` through `Season.commitSlackOf`. Reading it through `paramsOf`, which copies all the season's parameters, cost 153,571 gas on the typical blob, 54,522 more.
 
 ## Settlement gas
@@ -384,9 +384,61 @@ The run is the one of `SettlementTest`: the calibration season (`seasons/calibra
 | `settleLevel`, level 5, which records the run | 2,212 B | 187,250 | 14,345 (`verify`) | 172,905 | 25,528 | 75,319 |
 
 - **What remains,** without the 21,000 base, the calldata and the referee: 201,695 gas for `settleRun`, 62,450 and 126,377 for the two `settleLevel` calls. It covers hashing the journals and the levels, `Season`'s slot and weight of each level, the Outcome checks, the deadline, the settlement record and `recordRun`'s best-run update. A player's first settled run of the season writes its best run from zero; a run that does not rank above the player's best skips that write.
-- **Calldata dominates.** Each level adds its 472 level bytes and its journal. Under EIP-7623's calldata floor ([Challenge gas](#challenge-gas)), `settleRun` would cost at least 21,000 + 10 × 88,477 tokens = 905,770 gas. As for `commitRun`, M4.16 measures what ArbOS charges, and Arbitrum's L1 data fee comes on top.
+- **Calldata dominates.** Each level adds its 472 level bytes and its journal. Under EIP-7623's calldata floor ([Challenge gas](#challenge-gas)), `settleRun` would cost at least 21,000 + 10 × 88,477 tokens = 905,770 gas. As for `commitRun`, M4.16 measures what ArbOS charges ([End-to-end gas](#end-to-end-gas)), and Arbitrum's L1 data fee comes on top.
 - **Not cross-checked on anvil.** M4.6 matched Foundry's metering against anvil's receipts for `startRun`, `revealRun` and `commitRun`; M4.7 did not repeat that check for settlement.
 - **The other steps moved.** With settlement in `Challenge`, `forge test --match-contract ChallengeGas -vv` now gives `startRun` 131,976, `revealRun` 63,294, and `commitRun` 99,113 (typical blob) and 864,133 (full blob): 10 to 78 gas more than the table above, from the longer function dispatch.
+
+## End-to-end gas
+
+M4.16 ran a Challenge season end to end on nitro-devnode with the real Stylus referee: [`e2e.yml`](../.github/workflows/e2e.yml) starts the node with the vendored [`run-dev-node.sh`](../scripts/contracts/nitro/run-dev-node.sh) (`offchainlabs/nitro-node:v3.12.2-5f02f3f`, digest `sha256:87548501c3ee41cff84e6764cc86f65eb7f0a14e2e50a0d3219d462e5793680d`), and [`scripts/contracts/e2e.mjs`](../scripts/contracts/e2e.mjs) deploys a generation with `deploy.mjs` (forge 1.8.6, solc 0.8.28; the referee through cargo-stylus 0.10.10, wasm sha256 `afb5755f2cd3b24d586ded67d3c9e77c37a4aef00a03e6bcea2a2965339f58db`), opens a season of 30 s with a grace of 120 s and a `commitSlack` of 30 s, and runs its six cases. Every figure is a receipt's `gasUsed`; `run-dev-node.sh` sets the L1 price per unit to 0, so no L1 data component is included.
+
+```bash
+node scripts/contracts/e2e.mjs --network nitro-devnode   # DEPLOYER_KEY: the development key of run-dev-node.sh
+node scripts/contracts/e2e.mjs --network local           # anvil and MockReferee, no Stylus
+```
+
+- **CI run:** [41350044090](https://github.com/detychey/jiro-ikusu/actions/runs/41350044090), on PR #52 at 0c5a9057d6ff50687ed3f78b70f545e2261cf9ec. The first run, [41348621860](https://github.com/detychey/jiro-ikusu/actions/runs/41348621860) at dc4043a, also passed every case, on other drawn levels: its `settleRun` took 19,514,026 gas over 4,181 ticks.
+- **Deployment:** ArbBlockhashEntropy 496,001, the referee's deployment 4,163,379 and its activation 4,039,010, Season 1,736,792, Challenge 1,971,245, `bindChallenge` 45,310.
+- **The drawn levels.** The bots cleared five of the happy path's six levels, and committed the sixth, in 3,332 ticks used; they cleared the six of the fallback run in 4,236.
+
+| Case | Transaction | Calldata bytes | EIP-7623 floor | Gas |
+|---|---|---:|---:|---:|
+| setup | fund the player | 0 | 21,000 | 21,000 |
+| setup | fund the settler | 0 | 21,000 | 21,000 |
+| setup | ArbOwner.setMaxTxGasLimit(200000000) | 36 | 21,570 | 21,228 |
+| setup | Season.open | 1,284 | 51,180 | 961,140 |
+| happy path | Challenge.startRun | 36 | 21,510 | 162,179 |
+| settleLevel fallback | Challenge.startRun | 36 | 21,510 | 127,979 |
+| late commit | Challenge.startRun | 36 | 21,510 | 127,979 |
+| copied journal | Challenge.startRun | 36 | 21,510 | 127,979 |
+| wrong rulesVersion | Challenge.startRun | 36 | 21,510 | 127,979 |
+| setup | advanceBlocks(41), in total | 0 | 861,000 | 861,000 |
+| happy path | Challenge.revealRun | 36 | 21,510 | 59,396 |
+| settleLevel fallback | Challenge.revealRun | 36 | 21,510 | 59,396 |
+| late commit | Challenge.revealRun | 36 | 21,510 | 59,396 |
+| copied journal | Challenge.revealRun | 36 | 21,510 | 59,396 |
+| wrong rulesVersion | Challenge.revealRun | 36 | 21,510 | 59,396 |
+| happy path | Challenge.commitRun | 4,740 | 177,990 | 145,772 |
+| settleLevel fallback | Challenge.commitRun | 5,092 | 192,520 | 151,664 |
+| copied journal | Challenge.commitRun | 4,740 | 177,990 | 145,772 |
+| wrong rulesVersion | Challenge.commitRun | 1,028 | 44,510 | 91,235 |
+| late commit | advanceBlocks(1), in total | 0 | 21,000 | 21,000 |
+| late commit | Challenge.commitRun | 1,028 | 44,540 | 91,247 |
+| happy path | Challenge.settleRun | 8,100 | 216,690 | 29,858,349 |
+| settleLevel fallback | Challenge.settleLevel 0 | 1,476 | 56,100 | 3,328,208 |
+| settleLevel fallback | Challenge.settleLevel 1 | 2,020 | 76,810 | 7,906,986 |
+| settleLevel fallback | Challenge.settleLevel 2 | 1,796 | 69,710 | 5,613,435 |
+| settleLevel fallback | Challenge.settleLevel 3 | 1,828 | 69,280 | 5,573,605 |
+| settleLevel fallback | Challenge.settleLevel 4 | 1,604 | 67,700 | 3,900,911 |
+| settleLevel fallback | Challenge.settleLevel 5 | 1,508 | 56,660 | 4,291,250 |
+| late commit | Challenge.settleRun | 4,388 | 83,510 | 1,678,634 |
+| season close | advanceBlocks(1), in total | 0 | 21,000 | 21,000 |
+| season close | Season.closeSeason | 4 | 21,160 | 126,080 |
+| season close | Season.claim | 36 | 21,510 | 84,198 |
+| season close | Season.withdrawRake | 4 | 21,160 | 57,109 |
+
+- **`settleRun` is close to Arbitrum's cap.** The happy path's `settleRun` took 29,858,349 gas: 93 % of the 32M L2 gas per transaction of README §7.3, whose P16 expects six replays to fit "well within" it. The fallback run's six `settleLevel` calls sum to 30,614,395, so as one `settleRun` it would have been about as close. Gas does not follow ticks: the first run's `settleRun` took 19,514,026 over more ticks, 4,181. A run of longer levels would not fit: `settleLevel` is then its only path, until M4.9's gate and M4.15's optimization lower the replay cost. The suite raises nitro-devnode's per-transaction cap to 200M through `ArbOwner.setMaxTxGasLimit`, so that such a run still settles and is measured; its table names every transaction above 32M (none on these two runs).
+- **ArbOS charges no calldata floor.** `commitRun` with 4,740 bytes of calldata took 145,772 gas on nitro-devnode, below its EIP-7623 floor of 177,990, which anvil 1.8.6 charges ([Challenge gas](#challenge-gas)): the floor is not applied on this node.
 
 ## Run file v1
 
