@@ -50,9 +50,9 @@ fn execute(paths: &[String]) -> Result<(), String> {
         match execute_one(&vector) {
             Ok((verify, trace)) => println!(
                 "| {name} | PASS | {ending} | {} | {} | {} | {} |",
-                verify.map_or_else(|| "rejected".into(), |info| info.cycles().to_string()),
-                verify.map_or_else(String::new, |info| proving_cycles(info).to_string()),
-                verify.map_or_else(String::new, |info| info.segments.len().to_string()),
+                verify.as_ref().map_or_else(|| "rejected".into(), |info| info.cycles().to_string()),
+                verify.as_ref().map_or_else(String::new, |info| proving_cycles(info).to_string()),
+                verify.as_ref().map_or_else(String::new, |info| info.segments.len().to_string()),
                 trace.cycles()
             ),
             Err(error) => {
