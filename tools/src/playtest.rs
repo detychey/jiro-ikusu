@@ -2,9 +2,15 @@
 //! core's Recorder, and `replay()` scores every journal, so a bot cannot score differently from
 //! the referee. Runs are deterministic per integer seed, and parallel across nonces.
 //!
-//! playtest --levels <dir> [--only <n>|<a>-<b>] [--runs <n>] [--seed <n>] [--policy <name>]
+//! playtest [--levels <dir>] [--only <n>|<a>-<b>] [--runs <n>] [--seed <n>] [--policy <name>]
 //!          [--out <dir>] [--check <targets.json>]
-//! playtest --levels <dir> --policy <name> --nonce <hex> --level-index <i> --out <file>
+//! playtest [--levels <dir>] --policy <name> --nonce <hex> --level-index <i> --out <file>
+//! playtest [--levels <dir>] --policy <name> [--runs <n>] [--seed <n>] --shard <i>/<n>
+//!          [--calibration <file>] --out <file.json>
+//! playtest [--levels <dir>] --merge <dir> [--calibration <file>] --out <file.md>
+//!
+//! `--levels` defaults to `levels`. `--shard` and `--merge` are the bot-advantage study of plan
+//! M4.13: see `shard` and `merge`.
 //!
 //! Without `--policy`, the bots are the reference mix of the targets file: the `--check` file,
 //! or `<dir>/targets.json`. Reports go to `reports/` only for the reference report's own
@@ -29,13 +35,18 @@ use crate::json::{hex, parse_hex};
 use crate::levels::level_index;
 use crate::scenarios::play::{header, play};
 
+mod merge;
+mod shard;
 #[cfg(test)]
 mod tests;
 
 const USAGE: &str = concat!(
-    "usage: jiro-tools playtest --levels <dir> [--only <n>|<a>-<b>] [--runs <n>] [--seed <n>] ",
-    "[--policy <name>] [--out <dir>] [--check <targets.json>] | jiro-tools playtest --levels ",
-    "<dir> --policy <name> --nonce <hex> --level-index <i> --out <file>"
+    "usage: jiro-tools playtest [--levels <dir>] [--only <n>|<a>-<b>] [--runs <n>] [--seed <n>] ",
+    "[--policy <name>] [--out <dir>] [--check <targets.json>] | jiro-tools playtest [--levels ",
+    "<dir>] --policy <name> --nonce <hex> --level-index <i> --out <file> | jiro-tools playtest ",
+    "[--levels <dir>] --policy <name> [--runs <n>] [--seed <n>] --shard <i>/<n> [--calibration ",
+    "<file>] --out <file.json> | jiro-tools playtest [--levels <dir>] --merge <dir> ",
+    "[--calibration <file>] --out <file.md>"
 );
 
 /// The run count and seed of the committed reference report.
@@ -55,6 +66,9 @@ struct Args {
     check: Option<PathBuf>,
     nonce: Option<[u8; 32]>,
     level_index: Option<u8>,
+    /// The shard's index and count, from 1.
+    shard: Option<(u32, u32)>,
+    calibration: Option<PathBuf>,
 }
 
 /// A level of the levels directory.
@@ -85,10 +99,16 @@ pub struct Targets {
 }
 
 pub fn run(args: &[&str]) -> Result<(), String> {
+    if args.contains(&"--merge") {
+        return merge::run(args);
+    }
     let args = parse(args)?;
     let levels = load_levels(&args.levels)?;
     if let Some(nonce) = args.nonce {
         return play_one(&args, &levels, nonce);
+    }
+    if let (Some(shard), Some(policy)) = (args.shard, args.policy) {
+        return shard::run(&args, &levels, shard, policy);
     }
     let levels = select(levels, args.only.clone(), &args.levels)?;
     let (policies, targets) = match args.policy {
@@ -119,7 +139,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
 }
 
 fn parse(args: &[&str]) -> Result<Args, String> {
-    let mut levels = None;
+    let mut levels = PathBuf::from("levels");
     let mut only = None;
     let mut runs = REFERENCE_RUNS;
     let mut seed = REFERENCE_SEED;
@@ -128,10 +148,12 @@ fn parse(args: &[&str]) -> Result<Args, String> {
     let mut check = None;
     let mut nonce = None;
     let mut level_index = None;
+    let mut shard = None;
+    let mut calibration = None;
     let mut rest = args;
     while let [flag, value, tail @ ..] = rest {
         match *flag {
-            "--levels" => levels = Some(PathBuf::from(value)),
+            "--levels" => levels = PathBuf::from(value),
             "--only" => only = Some(range(value)?),
             "--runs" => runs = number(flag, value)?,
             "--seed" => seed = number(flag, value)?,
@@ -143,6 +165,8 @@ fn parse(args: &[&str]) -> Result<Args, String> {
                 nonce = Some(<[u8; 32]>::try_from(bytes).map_err(|_| "--nonce: 32 bytes")?);
             }
             "--level-index" => level_index = Some(number::<u8>(flag, value)?),
+            "--shard" => shard = Some(shard::index_of(value)?),
+            "--calibration" => calibration = Some(PathBuf::from(value)),
             _ => return Err(USAGE.to_string()),
         }
         rest = tail;
@@ -165,6 +189,22 @@ fn parse(args: &[&str]) -> Result<Args, String> {
     if check.is_some() && policy.is_some() {
         return Err("--check measures the reference mix of its targets: drop --policy".to_string());
     }
+    if let Some((_, count)) = shard {
+        if policy.is_none() || out.is_none() {
+            return Err("--shard plays the runs of a study: give --policy and --out".to_string());
+        }
+        if only.is_some() || check.is_some() || nonce.is_some() {
+            return Err(
+                "--shard plays six drawn levels a run: drop --only, --check and --nonce".into(),
+            );
+        }
+        if count > runs {
+            return Err(format!("--shard: at most --runs shards, {runs}"));
+        }
+    }
+    if calibration.is_some() && shard.is_none() {
+        return Err("--calibration weighs the levels of a --shard or --merge".to_string());
+    }
     let reference = policy.is_none() && runs == REFERENCE_RUNS && seed == REFERENCE_SEED;
     let out = match out {
         Some(out) => out,
@@ -178,7 +218,7 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         }
     };
     Ok(Args {
-        levels: levels.ok_or(USAGE)?,
+        levels,
         only,
         runs,
         seed,
@@ -187,6 +227,8 @@ fn parse(args: &[&str]) -> Result<Args, String> {
         check,
         nonce,
         level_index,
+        shard,
+        calibration,
     })
 }
 
@@ -395,12 +437,14 @@ pub(crate) fn play_all(
     Ok(samples)
 }
 
-/// Plays the level that the Challenge run `nonce` draws at `--level-index`, from the core's
-/// draw, writes its journal to `--out`, and prints the Outcome (plan M4.16).
-fn play_one(args: &Args, levels: &[LevelFile], nonce: [u8; 32]) -> Result<(), String> {
-    let (Some(policy), Some(level_index)) = (args.policy, args.level_index) else {
-        return Err("--nonce plays one level: give --policy".to_string());
-    };
+/// The level that the Challenge run `nonce` draws at `level_index`, from the core's draw, its
+/// draw slot, and its Challenge header (README §6.3, §8.2).
+pub(crate) fn drawn_level<'a>(
+    levels: &'a [LevelFile],
+    dir: &Path,
+    nonce: [u8; 32],
+    level_index: u8,
+) -> Result<(u8, &'a LevelFile, Header), String> {
     let slot = draw(&nonce)[usize::from(level_index)];
     let level = levels
         .iter()
@@ -409,7 +453,7 @@ fn play_one(args: &Args, levels: &[LevelFile], nonce: [u8; 32]) -> Result<(), St
             format!(
                 "{}: the run draws slot {slot} at level index {level_index}, level {:02}, which \
                  is missing",
-                args.levels.display(),
+                dir.display(),
                 usize::from(slot) + 1
             )
         })?;
@@ -419,6 +463,16 @@ fn play_one(args: &Args, levels: &[LevelFile], nonce: [u8; 32]) -> Result<(), St
         level_id: level_id(&level.bytes),
         level_index,
     };
+    Ok((slot, level, header))
+}
+
+/// Plays the level that the Challenge run `nonce` draws at `--level-index`, writes its journal
+/// to `--out`, and prints the Outcome (plan M4.16).
+fn play_one(args: &Args, levels: &[LevelFile], nonce: [u8; 32]) -> Result<(), String> {
+    let (Some(policy), Some(level_index)) = (args.policy, args.level_index) else {
+        return Err("--nonce plays one level: give --policy".to_string());
+    };
+    let (slot, level, header) = drawn_level(levels, &args.levels, nonce, level_index)?;
     let (journal, sample) = play_level(level, &header, policy)?;
     fs::write(&args.out, &journal).map_err(|e| format!("{}: {e}", args.out.display()))?;
     println!(
@@ -471,6 +525,12 @@ impl Targets {
             .all(|(i, policy)| !mix[..i].contains(policy));
         if mix.is_empty() || !unique {
             return Err(bad("the mix names at least one policy, each once"));
+        }
+        if let Some(policy) = mix.iter().find(|policy| !Policy::ALL.contains(policy)) {
+            return Err(bad(&format!(
+                "the mix holds scripted policies only, not {}",
+                policy.name()
+            )));
         }
         let tolerance_pct = number("tolerance_pct")?;
         if tolerance_pct > 100 {
@@ -549,7 +609,7 @@ impl Stats {
 }
 
 /// The k-th quartile of `sorted`, at index (n − 1) × k / 4.
-fn quartile(sorted: &[u16], k: usize) -> u16 {
+fn quartile<T: Copy>(sorted: &[T], k: usize) -> T {
     sorted[(sorted.len() - 1) * k / 4]
 }
 

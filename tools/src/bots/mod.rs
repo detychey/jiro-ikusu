@@ -3,12 +3,14 @@
 //! Recorder journals.
 
 mod greedy;
+pub mod search;
 
 use jiro_core::game::Game;
 use jiro_core::types::InputMask;
 
 use crate::scenarios::play::{CaptureBot, random_play};
 use greedy::{Caution, Greedy};
+use search::Search;
 
 #[cfg(test)]
 mod tests;
@@ -30,9 +32,13 @@ pub enum Policy {
     Committer,
     /// Random directions, the baseline.
     RandomWalk,
+    /// Searches the level's future with the core, within its compute budget (plan M4.13).
+    Search,
 }
 
 impl Policy {
+    /// The scripted policies: calibrate plays every one, and a reference mix draws from them.
+    /// `Search` is not one, so the reference report and the calibration never play it.
     pub const ALL: [Self; 5] = [
         Self::EdgeNibbler,
         Self::Greedy,
@@ -48,15 +54,17 @@ impl Policy {
             Self::Bold => "bold",
             Self::Committer => "committer",
             Self::RandomWalk => "random-walk",
+            Self::Search => "search",
         }
     }
 
     pub fn parse(name: &str) -> Result<Self, String> {
-        Self::ALL
-            .into_iter()
+        let policies = Self::ALL.into_iter().chain([Self::Search]);
+        policies
+            .clone()
             .find(|policy| policy.name() == name)
             .ok_or_else(|| {
-                let names: Vec<&str> = Self::ALL.iter().map(|policy| policy.name()).collect();
+                let names: Vec<&str> = policies.map(|policy| policy.name()).collect();
                 format!("unknown policy {name:?}: one of {}", names.join(", "))
             })
     }
@@ -89,6 +97,10 @@ impl Policy {
                 })
             }
             Self::RandomWalk => Box::new(random_play(seed, 8, u64::MAX, false)),
+            Self::Search => {
+                let mut bot = Search::new(search::UNITS_PER_TICK);
+                Box::new(move |game| bot.mask(game))
+            }
         }
     }
 }
