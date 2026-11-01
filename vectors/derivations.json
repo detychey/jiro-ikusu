@@ -3717,5 +3717,791 @@
       "runId": 9007199254740991,
       "runNonce": "0x9b664f01c664cf0215e7375e389b25d2228c4dee1b1f716e1d699a1d79efa62a"
     }
+  ],
+  "deadlines": [
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        1,
+        2700,
+        1800,
+        900,
+        15,
+        16
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000483,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        1,
+        2700,
+        1800,
+        900,
+        15,
+        16
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000484,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000002,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000003,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        10,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000002,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        10,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000003,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        11,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000003,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        11,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000004,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        25,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000003,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        25,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000004,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        26,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000004,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        26,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000005,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        27,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000363,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        27,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000364,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        28,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000364,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        28,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 1,
+      "committedAt": 1000365,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2685
+      ],
+      "commitSlack": 1,
+      "committedAt": 1001080,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2685
+      ],
+      "commitSlack": 1,
+      "committedAt": 1001081,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2686
+      ],
+      "commitSlack": 1,
+      "committedAt": 1001081,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2700
+      ],
+      "commitSlack": 1,
+      "committedAt": 1001081,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000121,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000122,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        10,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000121,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        10,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000122,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        11,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000122,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        11,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000123,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        25,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000122,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        25,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000123,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        26,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000123,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        26,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000124,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        27,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000482,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        27,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000483,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        28,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000483,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        28,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 120,
+      "committedAt": 1000484,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2685
+      ],
+      "commitSlack": 120,
+      "committedAt": 1001199,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2685
+      ],
+      "commitSlack": 120,
+      "committedAt": 1001200,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2686
+      ],
+      "commitSlack": 120,
+      "committedAt": 1001200,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1000000,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2700
+      ],
+      "commitSlack": 120,
+      "committedAt": 1001200,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958801,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958802,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        10,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958801,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        10,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958802,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        11,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958802,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        11,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958803,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        25,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958802,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        25,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958803,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        26,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958803,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        26,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761958804,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        2700,
+        2700,
+        27,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761959162,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        2700,
+        2700,
+        27,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761959163,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        2700,
+        2700,
+        28,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761959163,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        2700,
+        2700,
+        28,
+        1,
+        1,
+        1
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761959164,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2685
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761959879,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2685
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761959880,
+      "onTime": false
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2686
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761959880,
+      "onTime": true
+    },
+    {
+      "revealedAt": 1761955200,
+      "ticksUsed": [
+        2700,
+        2700,
+        2700,
+        2700,
+        2700,
+        2700
+      ],
+      "commitSlack": 3600,
+      "committedAt": 1761959880,
+      "onTime": true
+    }
   ]
 }
