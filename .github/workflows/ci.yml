@@ -279,6 +279,7 @@ jobs:
               - 'contracts/**'
               - 'scripts/contracts/**'
               - 'scripts/check-drift.sh'
+              - 'vectors/derivations.json'
               - '.gitmodules'
               - '.github/workflows/ci.yml'
 
