@@ -366,3 +366,59 @@ Foundry meters a call from a test as a transaction: its gas includes the 21,000 
 - **Typical blob.** 32 events per level is the bots' mean median of 439 ticks per level ([`reports/playtest-449f231636aa.json`](../reports/playtest-449f231636aa.json)) at the 0.073 events per tick of the user's two play-test journals ([`reports/playtest-human-1.md`](../reports/playtest-human-1.md)).
 - **The calldata floor.** EIP-7623 charges at least 21,000 + 10 gas per calldata token (a zero byte is 1 token, any other byte 4). Anvil 1.8.6 applies it to the full blob under every hardfork tried (shanghai, cancun and prague): 21,000 + 10 × 191,939 = 1,940,390. Foundry's test EVM does not. Whether Arbitrum's ArbOS charges the floor is not verified here; M4.16 measures the commit on nitro-devnode.
 - **`commitSlackOf`.** `commitRun` reads the season's `commitSlack` through `Season.commitSlackOf`. Reading it through `paramsOf`, which copies all the season's parameters, cost 153,571 gas on the typical blob, 54,522 more.
+
+## Settlement gas
+
+M4.7 measured settlement (README §7.2) at commit 0fee0a072b52204a7c1a53984b8ef83d11d56f15, with forge 1.8.6, solc 0.8.28, the optimizer at 200 runs and `evmVersion` shanghai, as [Challenge gas](#challenge-gas) measures the other steps:
+
+```bash
+cd contracts && forge test --match-contract SettlementGas -vvvv
+```
+
+The run is the one of `SettlementTest`: the calibration season (`seasons/calibration-1.json`), and six levels that replay the gate-set vectors `05-synthetic`, `13-worst`, `10-synthetic`, `08-worst`, `01-synthetic` and `16-worst` of `vectors/levels/`, with journals of 4,055, 3,296, 4,439, 1,250, 7,445 and 1,262 bytes. MockReferee returns their Outcomes. Its own frame, read from the trace, is the part that a real referee replaces, so the settlement gas excluding the referee is the transaction's gas minus that frame.
+
+| Call | Calldata | Gas | MockReferee frame | Excluding the referee | of which calldata gas | of which `Season.recordRun` |
+|---|---:|---:|---:|---:|---:|---:|
+| `settleRun` | 25,636 B | 666,564 | 89,961 (`verifyRun`) | 576,603 | 353,908 | 75,319 |
+| `settleLevel`, level 0 of an unsettled run | 4,996 B | 169,477 | 15,427 (`verify`) | 154,050 | 70,600 | none |
+| `settleLevel`, level 5, which records the run | 2,212 B | 187,250 | 14,345 (`verify`) | 172,905 | 25,528 | 75,319 |
+
+- **What remains,** without the 21,000 base, the calldata and the referee: 201,695 gas for `settleRun`, 62,450 and 126,377 for the two `settleLevel` calls. It covers hashing the journals and the levels, `Season`'s slot and weight of each level, the Outcome checks, the deadline, the settlement record and `recordRun`'s best-run update. A player's first settled run of the season writes its best run from zero; a run that does not rank above the player's best skips that write.
+- **Calldata dominates.** Each level adds its 472 level bytes and its journal. Under EIP-7623's calldata floor ([Challenge gas](#challenge-gas)), `settleRun` would cost at least 21,000 + 10 × 88,477 tokens = 905,770 gas. As for `commitRun`, M4.16 measures what ArbOS charges, and Arbitrum's L1 data fee comes on top.
+- **Not cross-checked on anvil.** M4.6 matched Foundry's metering against anvil's receipts for `startRun`, `revealRun` and `commitRun`; M4.7 did not repeat that check for settlement.
+- **The other steps moved.** With settlement in `Challenge`, `forge test --match-contract ChallengeGas -vv` now gives `startRun` 131,976, `revealRun` 63,294, and `commitRun` 99,113 (typical blob) and 864,133 (full blob): 10 to 78 gas more than the table above, from the longer function dispatch.
+
+## Run file v1
+
+The run file carries everything needed to replay, prove and settle one committed Challenge run, without reading the commit transaction: what the dApp hands to a prover (M4.10), shows and exports (M5.2), and what the season job settles from (M5.5). It is a JSON object:
+
+| Field | JSON type | Content |
+|---|---|---|
+| `version` | number | 1, the run file format version |
+| `chainId` | number | the chain of `Challenge`, such as 421614 for Arbitrum Sepolia |
+| `challenge` | string | the `Challenge` address, 20 bytes in hex |
+| `runId` | string | the run's `uint256` id, in decimal: a run id may exceed JSON's exact integers |
+| `runNonce` | string | the run nonce that `revealRun` recorded (README §6.4), 32 bytes in hex |
+| `levels` | array of 6 strings | the six level bytes (README §5) in `levelIndex` order, in hex |
+| `drawSlots` | array of 6 numbers | the six draw slots of the run nonce (README §8.2): `drawSlots[i]` is the season slot of `levels[i]` |
+| `journals` | array of 6 strings | the six committed journals (README §6.3) in `levelIndex` order, in hex |
+
+Byte strings are lowercase hex with a `0x` prefix, as in `vectors/`.
+
+```json
+{
+  "version": 1,
+  "chainId": 421614,
+  "challenge": "0x…",
+  "runId": "1",
+  "runNonce": "0x…",
+  "levels": ["0x01…", "0x01…", "0x01…", "0x01…", "0x01…", "0x01…"],
+  "drawSlots": [1, 0, 10, 14, 12, 2],
+  "journals": ["0x0100020100…", "0x0100020100…", "0x0100020100…", "0x0100020100…", "0x0100020100…", "0x0100020100…"]
+}
+```
+
+- **Level bytes, not level ids.** The file holds the levels themselves, so it replays and proves with nothing else; each level id is keccak256 of its bytes. The season's 16 level ids are onchain, so a reader can check `keccak256(levels[i])` against `levelIds[drawSlots[i]]` of the run's season without running the draw.
+- **What a reader checks** before it proves or settles, all against the chain named by `chainId` and `challenge`: `runs(runId)` holds this `runNonce` and the commitment keccak256(keccak256(`journals[0]`) ‖ … ‖ keccak256(`journals[5]`)) (README §6.4), and each `keccak256(levels[i])` is the season's level id in `drawSlots[i]`. The rest is checked at settlement, from the Outcomes of the replay: each journal's header carries this `runNonce`, `levelIndex` i, the level's id and mode 1, and each Outcome's draw slot equals `drawSlots[i]` (P17).
+- **Settling from it.** `settleRun(runId, levels, journals, proof)`, or `settleLevel(runId, i, [keccak256 of each journal], levels[i], journals[i], proof)` level by level. The file carries no proof: on Stylus there is none, and on zk the prover produces it from the file.
+- **Not in the file:** the season, which `runs(runId)` gives, and the weights, which the season gives. A score in the file would be trusted by nothing (README §6.4), so there is none.
