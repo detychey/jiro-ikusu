@@ -151,7 +151,8 @@ impl Study {
     }
 }
 
-/// Every `.json` file of `dir`, each a `shard-<i>.json` holding shard i, with its index.
+/// Every `.json` file of `dir`, each a `shard-<i>.json` holding shard i, with its index. The name
+/// is canonical (no `shard-02.json`), so no shard can be counted twice.
 fn shard_files(dir: &Path) -> Result<Vec<(u32, PathBuf, Value)>, String> {
     let mut shards = Vec::new();
     for entry in fs::read_dir(dir).map_err(|e| format!("{}: {e}", dir.display()))? {
@@ -159,9 +160,10 @@ fn shard_files(dir: &Path) -> Result<Vec<(u32, PathBuf, Value)>, String> {
         if path.extension().is_none_or(|ext| ext != "json") {
             continue;
         }
-        let index: u32 = path
-            .file_stem()
-            .and_then(|stem| stem.to_str()?.strip_prefix("shard-")?.parse().ok())
+        let stem = path.file_stem().and_then(|stem| stem.to_str());
+        let index: u32 = stem
+            .and_then(|stem| stem.strip_prefix("shard-")?.parse().ok())
+            .filter(|index| stem == Some(format!("shard-{index}").as_str()))
             .ok_or_else(|| format!("{}: a shard file is shard-<i>.json", path.display()))?;
         let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let shard: Value =

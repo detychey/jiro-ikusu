@@ -73,6 +73,17 @@ fn a_merge_refuses_a_missing_shard() {
 }
 
 #[test]
+fn a_merge_refuses_a_shard_file_name_with_a_leading_zero() {
+    let dir = edited_study("leading-zero", 0, |_| {});
+    fs::copy(dir.join("shard-2.json"), dir.join("shard-02.json")).expect("copy");
+    let error = merge(&dir).expect_err("shard-02.json would count shard 2 twice");
+    assert!(
+        error.contains("shard-02.json: a shard file is shard-<i>.json"),
+        "{error}"
+    );
+}
+
+#[test]
 fn a_merge_refuses_a_journal_that_replays_to_another_score() {
     let dir = edited_study("score", 2, |shard| {
         let score = &mut shard["records"][0]["levels"][0]["studied"]["levelScore"];
