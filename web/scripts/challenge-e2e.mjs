@@ -155,7 +155,11 @@ async function e2e(load, options) {
         const { endLevel } = state.plan ?? {};
         if (endLevel !== undefined && state.lastFrameLevel === endLevel && !state.reloaded) throw new Reload();
         clock.now += ms;
-        if (state.record?.reveal === undefined) await (await arbSys.setBlockNumber((await arbSys.blockNumber()) + BigInt(ms / BLOCK_MS))).wait();
+        if (state.record?.reveal === undefined) {
+          const block = (await arbSys.blockNumber()) + BigInt(ms / BLOCK_MS);
+          await (await arbSys.setBlockNumber(block)).wait();
+          log(`the operator moves MockArbSys to block ${block}`);
+        }
       },
       frame: async ({ levelIndex, ticksRun }) => {
         const { bots } = planOf();

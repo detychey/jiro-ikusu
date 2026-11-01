@@ -289,7 +289,8 @@ jobs:
             echo "=== BEGIN challenge-e2e ${case:-run} ==="
             # $case is a flag and its value, split on purpose.
             # shellcheck disable=SC2086
-            node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 $case
+            timeout 300 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 $case ||
+              { status=$?; tail -n 40 /tmp/jiro-localnet-anvil-8545.log; exit "$status"; }
             echo "=== END challenge-e2e ${case:-run} ==="
           done
           rm deployments/local.json
