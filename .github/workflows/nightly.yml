@@ -4,8 +4,9 @@
 # property, the arbitrary inputs through replay among them, the 100,000-board minion coverage
 # run, and the playtest, the levels build and `calibrate --check`, whose playtest report, levels
 # table, calibration file, calibration report and gate set must match the committed ones (plan
-# M2.6, M2.9). A scheduled run skips its work when main has no commit
-# since the previous scheduled run.
+# M2.6, M2.9). Every run also puts every vector through the zk referee's executor, in its own job
+# that shares ci.yml's zk-exec build cache (plan M1.12). A scheduled run skips its work when main
+# has no commit since the previous scheduled run.
 # Once the toolchain is installed, every check runs even after another check failed. Never a
 # required check.
 name: nightly
@@ -35,6 +36,8 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'ci:heavy' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      run: ${{ steps.work.outputs.run }}
     defaults:
       run:
         shell: bash
@@ -108,3 +111,47 @@ jobs:
           bash scripts/check-drift.sh seasons/ levels/ vectors/ reports/ || status=1
           echo "=== END calibrate ==="
           exit "$status"
+
+  # The full set of the zk-exec row (plan §3.4, M1.12): every vector under vectors/ through the zk
+  # referee's guests, as ci.yml's zk-exec job runs a subset. It runs once `heavy` has decided there
+  # is work, even if a check of `heavy` failed. It restores ci.yml's zk-exec cache, so a cold build
+  # (about 63 minutes) happens only when that cache is missing (ci.yml, zk-exec).
+  zk-exec:
+    needs: heavy
+    if: ${{ !cancelled() && needs.heavy.outputs.run == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 95
+    defaults:
+      run:
+        shell: bash
+    env:
+      RISC0_BUILD_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ~/.risc0
+          key: risc0-r0.1.97.0
+
+      - name: Toolchains
+        run: bash scripts/bootstrap.sh zk
+
+      - uses: Swatinem/rust-cache@v2.9.3
+        id: cache
+        with:
+          shared-key: zk-exec
+          workspaces: |
+            referee/zk -> target
+
+      - name: Build the guests and the host
+        timeout-minutes: ${{ steps.cache.outputs.cache-hit == 'true' && 20 || 80 }}
+        run: |
+          echo "cache hit: ${{ steps.cache.outputs.cache-hit }}"
+          cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host
+
+      - name: Every vector through the executor
+        timeout-minutes: 30
+        run: referee/zk/target/release/zk-host execute vectors/

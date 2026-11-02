@@ -3,7 +3,7 @@
 # tier is already complete, the last line printed is "nothing to install".
 set -euo pipefail
 
-[ "$#" -le 1 ] || { echo "usage: bootstrap.sh [core|web|contracts|firmware]" >&2; exit 1; }
+[ "$#" -le 1 ] || { echo "usage: bootstrap.sh [core|web|contracts|firmware|zk]" >&2; exit 1; }
 readonly TIER="${1-core}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
@@ -17,6 +17,11 @@ readonly FOUNDRY_VERSION=v1.8.6
 readonly FOUNDRY_SHA256=58850106984038f3a7200f38a4182c8cb423d3a4f4c7848eacbc2453e6bc35fc
 readonly NODE_MAJOR=22
 readonly PLAYWRIGHT_CHROMIUM=/opt/pw-browsers/chromium-1243
+readonly RISC0_RUST=1.97.0
+readonly RISC0_RUST_TAG=r0.1.97.0
+readonly RISC0_RUST_SHA256=100b597d605b706bec94e1d32bfaaf5851df8d75173f986d4b56a3e90916be53
+readonly RISC0_HOME_DIR="${RISC0_HOME:-$HOME/.risc0}"
+readonly RISC0_TOOLCHAIN_DIR="$RISC0_HOME_DIR/toolchains/v$RISC0_RUST-rust-x86_64-unknown-linux-gnu"
 
 # Checks must never install a toolchain implicitly: only ensure_rust installs.
 export RUSTUP_AUTO_INSTALL=0
@@ -160,6 +165,38 @@ install_slither() {
   run_logged pip install --quiet "slither-analyzer==$SLITHER_VERSION"
 }
 
+risc0_toolchain_unpacked() {
+  "$RISC0_TOOLCHAIN_DIR/bin/rustc" --version 2>/dev/null | grep "^rustc $RISC0_RUST-dev " >/dev/null
+}
+
+# rzup queries api.github.com, which is refused, so the toolchain comes from its release asset
+# (docs/TOOLING.md, zkVM toolchains).
+install_risc0_toolchain() {
+  download_dir="$(mktemp -d)"
+  local archive="$download_dir/rust-toolchain-x86_64-unknown-linux-gnu.tar.gz"
+  run_logged curl -fsSL -o "$archive" \
+    "https://github.com/risc0/rust/releases/download/$RISC0_RUST_TAG/rust-toolchain-x86_64-unknown-linux-gnu.tar.gz"
+  echo "$RISC0_RUST_SHA256  $archive" | sha256sum -c --quiet - || fail "RISC Zero toolchain archive checksum mismatch"
+  rm -rf "$RISC0_TOOLCHAIN_DIR"
+  mkdir -p "$RISC0_TOOLCHAIN_DIR"
+  run_logged tar -xzf "$archive" --no-same-owner -C "$RISC0_TOOLCHAIN_DIR"
+}
+
+# risc0-build finds the toolchain through rzup's settings, and `cargo +risc0` through rustup.
+risc0_toolchain_registered() {
+  grep -x "rust = \"$RISC0_RUST\"" "$RISC0_HOME_DIR/settings.toml" >/dev/null 2>&1 &&
+    rustc +risc0 --version 2>/dev/null | grep "^rustc $RISC0_RUST-dev " >/dev/null
+}
+
+register_risc0_toolchain() {
+  printf '[default_versions]\nrust = "%s"\n' "$RISC0_RUST" >"$RISC0_HOME_DIR/settings.toml"
+  run_logged rustup toolchain link risc0 "$RISC0_TOOLCHAIN_DIR"
+}
+
+cxx_present() {
+  command -v g++ >/dev/null || command -v c++ >/dev/null
+}
+
 case "$TIER" in
   core)
     ensure_rust
@@ -185,8 +222,14 @@ case "$TIER" in
       libudev-dev pkg-config
     ensure "elf2uf2-rs $ELF2UF2_VERSION" crate_installed install_crate elf2uf2-rs "$ELF2UF2_VERSION"
     ;;
+  zk)
+    ensure_rust
+    cxx_present || fail "a C++ compiler (g++) is missing: risc0-zkvm's prover compiles its circuit kernels with it"
+    ensure "RISC Zero Rust toolchain $RISC0_RUST_TAG" risc0_toolchain_unpacked install_risc0_toolchain
+    ensure "rzup settings and the risc0 rustup toolchain" risc0_toolchain_registered register_risc0_toolchain
+    ;;
   *)
-    fail "unknown tier '$TIER'; expected core, web, contracts or firmware"
+    fail "unknown tier '$TIER'; expected core, web, contracts, firmware or zk"
     ;;
 esac
 

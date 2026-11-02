@@ -382,3 +382,89 @@ jobs:
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: bash scripts/check-drift.sh .
+
+  # The zk-exec row of plan §3.4 (M1.12): the zk referee of referee/zk/, RISC Zero's guests run in
+  # its executor on the CPU. The format vectors and 4 game vectors must give the native core's
+  # recorded codes, Outcomes and trace digests, and a dev-mode receipt of the verify guest must
+  # round-trip to its vector's Outcome. nightly.yml runs every vector. It is its own job, not a
+  # step group of `rust`, so that its build cache and its time limit are its own: a cold build of
+  # the host takes about 63 minutes on this runner, almost all of it g++ on RISC Zero's circuit
+  # kernels, and a warm one minutes (docs/TOOLING.md, Actions minutes). On an exact cache hit the
+  # build gets 20 minutes; on a miss, which happens once per change of referee/zk's lockfiles or
+  # toolchain, and the first time a branch has no cache to restore, it gets 80, and that run seeds
+  # the cache. Its steps skip when no path of the `zk` filter changed, except on
+  # workflow_dispatch.
+  zk-exec:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 95
+    defaults:
+      run:
+        shell: bash
+    env:
+      RISC0_BUILD_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: dorny/paths-filter@v4.0.3
+        id: changes
+        with:
+          filters: |
+            zk:
+              - 'Cargo.toml'
+              - 'core/**'
+              - 'referee/zk/**'
+              - 'vectors/**'
+              - 'scripts/bootstrap.sh'
+              - 'rust-toolchain.toml'
+              - '.github/workflows/ci.yml'
+
+      - uses: actions/cache@v6.1.0
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.changes.outputs.zk == 'true' }}
+        with:
+          path: ~/.risc0
+          key: risc0-r0.1.97.0
+
+      - name: Toolchains
+        id: toolchain
+        if: ${{ github.event_name == 'workflow_dispatch' || steps.changes.outputs.zk == 'true' }}
+        run: bash scripts/bootstrap.sh zk
+
+      - uses: Swatinem/rust-cache@v2.9.3
+        id: cache
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        with:
+          shared-key: zk-exec
+          workspaces: |
+            referee/zk -> target
+
+      - name: Format (zk-exec)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: |
+          status=0
+          cargo fmt --manifest-path referee/zk/Cargo.toml --check || status=1
+          cargo fmt --manifest-path referee/zk/guest/Cargo.toml --check || status=1
+          exit "$status"
+
+      - name: Build the guests and the host
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        timeout-minutes: ${{ steps.cache.outputs.cache-hit == 'true' && 20 || 80 }}
+        run: |
+          echo "cache hit: ${{ steps.cache.outputs.cache-hit }}"
+          cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host
+
+      - name: The format vectors and 4 game vectors through the executor (zk-exec)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          referee/zk/target/release/zk-host execute vectors/format \
+            vectors/game/full-journal.json vectors/game/open-field-capture.json \
+            vectors/game/rejected-level-id.json vectors/game/worst-case.json
+
+      - name: A dev-mode receipt round-trips (zk-exec)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        timeout-minutes: 20
+        run: cargo test --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --test mock_round_trip
+
+      - name: The checks left the tree clean
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: bash scripts/check-drift.sh .
