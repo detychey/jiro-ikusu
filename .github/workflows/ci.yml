@@ -568,19 +568,6 @@ jobs:
           sha256sum wedgie/natmod/glue/jiro_core.mpy
           echo "=== END jiro_core.mpy ==="
 
-      - name: "Scratch: alter one journal byte of game/open-field-capture (reverted next)"
-        if: ${{ steps.toolchain.outcome == 'success' }}
-        run: |
-          python3 -I - <<'EOF'
-          import json
-          path = "vectors/game/open-field-capture.json"
-          vector = json.load(open(path))
-          journal = bytearray.fromhex(vector["journal"][2:])
-          journal[-1] ^= 1
-          vector["journal"] = "0x" + journal.hex()
-          json.dump(vector, open(path, "w"), indent=2)
-          EOF
-
       - name: Every game and gate-set vector through the module on qemu's Cortex-M0 (wedgie)
         if: ${{ steps.toolchain.outcome == 'success' }}
         run: |
