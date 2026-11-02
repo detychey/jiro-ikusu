@@ -8,6 +8,8 @@
 |---|---|---|---|---|---|
 | Arbitrum Sepolia | 421614 | 324,664,851 | 2026-10-31 12:23:24 | 18,446,744,073,709,551,615 (2^64 − 1) | paused |
 | Arbitrum One | 42161 | 519,986,698 | 2026-10-31 12:23:25 | 18,446,744,073,709,551,615 (2^64 − 1) | paused |
+| Arbitrum Sepolia | 421614 | 325,258,195 | 2026-11-02 08:18:56 | 18,446,744,073,709,551,615 (2^64 − 1) | paused |
+| Arbitrum One | 42161 | 520,513,231 | 2026-11-02 08:18:57 | 18,446,744,073,709,551,615 (2^64 − 1) | paused |
 
 - **First readings,** M4.3, with `activation.mjs` at commit e3623c2856a206366ef942e53b60fa3c7d849a8e, Node v22.22.0 and ethers 6.17.0:
 
@@ -20,6 +22,13 @@
   ```text
   chainId 421614, block 324664851 (2026-10-31T12:23:24.000Z): activationGas 18446744073709551615, above 30000000: activations paused
   chainId 42161, block 519986698 (2026-10-31T12:23:25.000Z): activationGas 18446744073709551615, above 30000000: activations paused
+  ```
+
+- **M4.9's readings,** the same commands with `activation.mjs` at `d2e71cc765d5f74da974953ed38d0e028d8c2906`, Node v22.22.0 and ethers 6.17.0, which decided D2 ([D2: the backend](#d2-the-backend)):
+
+  ```text
+  chainId 421614, block 325258195 (2026-11-02T08:18:56.000Z): activationGas 18446744073709551615, above 30000000: activations paused
+  chainId 42161, block 520513231 (2026-11-02T08:18:57.000Z): activationGas 18446744073709551615, above 30000000: activations paused
   ```
 
 - **Reading.** Both chains hold `activationGas` at the uint64 maximum, so the pause of README §7.3 still holds on both.
@@ -863,6 +872,89 @@ node scripts/contracts/e2e.mjs --network local           # anvil and MockReferee
 
 - **`settleRun` is close to Arbitrum's cap.** The happy path's `settleRun` took 29,858,349 gas: 93 % of the 32M L2 gas per transaction of README §7.3, whose P16 expects six replays to fit "well within" it. The fallback run's six `settleLevel` calls sum to 30,614,395, so as one `settleRun` it would have been about as close. Gas does not follow ticks: the first run's `settleRun` took 19,514,026 over more ticks, 4,181. A later run, [41352708191](https://github.com/detychey/jiro-ikusu/actions/runs/41352708191) at d2e71cc, took 31,174,196 over 4,608 ticks, 97 % of the cap. A run of longer levels would not fit: `settleLevel` is then its only path, until M4.9's gate and M4.15's optimization lower the replay cost. The suite raises nitro-devnode's per-transaction cap to 200M through `ArbOwner.setMaxTxGasLimit`, so that such a run still settles and is measured; its table names every transaction above 32M (none on these three runs).
 - **ArbOS charges no calldata floor.** `commitRun` with 4,740 bytes of calldata took 145,772 gas on nitro-devnode, below its EIP-7623 floor of 177,990, which anvil 1.8.6 charges ([Challenge gas](#challenge-gas)): the floor is not applied on this node.
+
+## D2: the backend
+
+Plan M4.9, 2026-11-02: the M4 gas gate, the cycles of the 16 levels, the backend and testnet aggregation.
+
+**D2 = zk for testnet.** The owner approved it on 2026-11-02 ("Approve D2 = zk (Recommended)"), from readings of `activationGas` = 2^64 − 1, activations paused, at Arbitrum Sepolia block 325,114,240 and Arbitrum One block 520,390,941. M4.9's fresh readings, at blocks 325,258,195 and 520,513,231 ([Stylus activation](#stylus-activation)), still read paused. The plan's rule is Stylus whenever activations are open on the target chain, and ZkReferee while they stay paused. The gate below failed while activations were paused, so M4.15, the Stylus gas optimization, is deferred (plan §16), and zk meets README §9's M4 gate through its measured costs.
+
+- **What M4.14 deploys:** `ZkReferee` (M4.10), pinned to the verify program's image id and calling RISC Zero's 3.0 Groth16 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D` directly, never the router ([Verification gas](#verification-gas), `docs/ECONOMY.md`). Each verified run gets one run proof, settled by `settleRun`, with `settleLevel` as the fallback.
+- **Switching backends later** means opening a new season whose referee is the other backend (README §8.4, M0.7): a season's referee is fixed at `open`, and the runs of earlier seasons keep settling through their own.
+
+### Gas gate
+
+The gate of plan §4: the maximum `eth_estimateGas` of `verify` over the 32 gate-set vectors of `vectors/levels/`, on nitro-devnode, at most 1,000,000.
+
+- **Run:** [`stylus-gas.yml` 41412617292](https://github.com/detychey/jiro-ikusu/actions/runs/41412617292), dispatched on this branch at `e7e8366` (`main` after M4.8; `core/`, `referee/` and `vectors/` unchanged since M4.2's run).
+- **Result: FAIL.** The maximum is 11,599,408 gas, on `levels/10-worst`, 11.6 times the gate. All 32 gate-set vectors are above 1,000,000; the lowest is `05-worst`, at 1,599,425.
+- **Same as M4.2.** The run's table equals [the table above](#table) in all 75 rows, from the same module (44,500 bytes raw, sha256 `afb5755f…8db`), on `offchainlabs/nitro-node` digest `sha256:87548501…680d`, with cargo-stylus 0.10.10. Its log ends `Outcomes: 75 vectors and 200 difffuzz cases checked, 0 mismatches.` and `Maximum: 11,599,408 gas (levels/10-worst).`
+- **Billed:** 12 minutes (11 min 44 s), 9 of them building cargo-stylus, since a dispatch on a new branch finds no cache for it ([`TOOLING.md`](TOOLING.md#actions-minutes)).
+
+### Cycles of the 16 levels
+
+**Source.** These cycles are M1.12's executor measurement at `3cc7991` ([`vectors/levels/`](#vectorslevels-1) and [The merged referee](#the-merged-referee)), not a new run: the zk host was not rebuilt for M4.9. M4.8 changed the verify guest (a level-count check). `ci.yml`'s zk-exec job on `main` at `e7e8366` ([run 41411863291](https://github.com/detychey/jiro-ikusu/actions/runs/41411863291), verify image id `0xa3013dc4…02b1`) ran 14 accepted vectors, 11 format vectors and 3 game vectors, none of them in `vectors/levels/`. Each took exactly 4 user cycles fewer than M1.12 measured (`worst-case` 27,762,027 against 27,762,031), with the same proving cycles and segments. So current user cycles are the table's less 4, and the proving cycles, which set the price, are the table's.
+
+| Level | `NN-worst` user cycles | `NN-synthetic` user cycles | Proving cycles, the heavier vector | `NN-worst` gas | `NN-synthetic` gas |
+|---|---:|---:|---:|---:|---:|
+| 01 | 17,456,884 | 17,192,157 | 18,350,080 (`01-worst`) | 6,308,876 | 6,283,665 |
+| 02 | 17,884,065 | 17,625,909 | 18,874,368 (`02-worst`) | 6,424,170 | 6,402,435 |
+| 03 | 18,343,312 | 18,021,074 | 19,398,656 (`03-worst`) | 7,283,863 | 7,186,359 |
+| 04 | 21,026,792 | 17,216,385 | 22,020,096 (`04-worst`) | 7,655,029 | 6,044,284 |
+| 05 | 4,374,793 | 14,339,392 | 15,204,352 (`05-synthetic`) | 1,599,425 | 5,109,935 |
+| 06 | 4,871,040 | 16,657,852 | 17,825,792 (`06-synthetic`) | 1,948,272 | 6,006,621 |
+| 07 | 16,362,196 | 15,285,707 | 17,301,504 (`07-worst`) | 5,883,429 | 5,459,181 |
+| 08 | 20,082,508 | 14,774,530 | 20,971,520 (`08-worst`) | 7,868,570 | 5,517,927 |
+| 09 | 5,568,177 | 15,508,836 | 16,252,928 (`09-synthetic`) | 2,190,902 | 5,660,938 |
+| 10 | 29,588,717 | 16,506,110 | 30,932,992 (`10-worst`) | 11,599,408 | 6,275,699 |
+| 11 | 7,914,935 | 15,408,096 | 16,252,928 (`11-synthetic`) | 3,063,991 | 5,697,751 |
+| 12 | 6,714,834 | 15,179,454 | 15,990,784 (`12-synthetic`) | 2,727,967 | 5,676,793 |
+| 13 | 14,996,188 | 14,498,151 | 15,728,640 (`13-worst`) | 5,298,297 | 5,128,489 |
+| 14 | 17,059,828 | 18,342,944 | 19,398,656 (`14-synthetic`) | 6,773,301 | 7,057,238 |
+| 15 | 17,682,184 | 15,177,858 | 18,874,368 (`15-worst`) | 6,722,971 | 5,566,942 |
+| 16 | 23,371,284 | 14,683,581 | 24,641,536 (`16-worst`) | 9,447,196 | 5,653,844 |
+
+The summary below takes each level's heavier vector. A six-level run plays six different levels of the 16, drawn uniformly (README §8.2), so its median is over all 8,008 draws, and its figure is the sum of its six levels' (for gas, six `verify` transactions). Measured, the heaviest run (`zk-host execute-run`, M1.12) took 130,741,601 user cycles, 13,956 fewer than its levels' sum, and 136,445,952 proving cycles, against 137,363,456 summed.
+
+| | User cycles | Proving cycles | Stylus `verify` gas |
+|---|---:|---:|---:|
+| Per level: maximum | 29,588,717 (`10-worst`) | 30,932,992 (`10-worst`) | 11,599,408 (`10-worst`) |
+| Per level: median of the 16 | 17,569,534 | 18,612,224 | 6,366,523 |
+| Per level: minimum | 14,339,392 (`05-synthetic`) | 15,204,352 (`05-synthetic`) | 5,109,935 (`05-synthetic`) |
+| Six-level run: maximum | 130,755,557 (measured: 130,741,601) | 137,363,456 (measured: 136,445,952) | 50,911,304 |
+| Six-level run: median of the 8,008 draws | 108,992,200 | 114,819,072 | 41,001,984 |
+| Six-level run: minimum | 91,794,162 | 96,731,136 | 33,327,143 |
+
+- **On Stylus, no gate-set run fits one transaction.** Six `verify` figures sum to 33.3 to 50.9 million gas, above Arbitrum's 32 million L2 gas per transaction (README §7.3, P16), so such a run could settle only level by level. The bots' runs of [End-to-end gas](#end-to-end-gas), with shorter journals, took 19.5 to 31.2 million in one `settleRun`.
+- **On zk, cycles barely move the price.** Every level and every run of the gate set takes fewer proving cycles than the 176 to 196 million-cycle requests that price our proofs, and the Boundless price barely follows cycles (R² 0.19, [Prover network price](#prover-network-price)), so a level proof and a run proof cost the same.
+
+### Costs side by side
+
+ETH costs at Arbitrum One's base fee of 0.020036 gwei (block 520,514,288, 2026-11-02 08:23:42 UTC) and ETH at $2,285.67 (Coinbase spot, the same minute), before Arbitrum's L1 data fee, which neither M4.7 nor M4.16 measured.
+
+| | Stylus referee | zk: RISC Zero, one Groth16 proof per run |
+|---|---|---|
+| Deployable now | No: activations paused on both chains | Yes: the 3.0 verifier is live on Arbitrum One and Sepolia |
+| Verification gas, one level | 5.1 to 11.6 million, median 6.4 million (above) | 227,591 for one proof ([Verification gas](#verification-gas)) |
+| Verification gas, one run | 33.3 to 50.9 million over the gate set, beyond the 32 million cap; 19.5 to 31.2 million for the bots' runs | 227,591: one run proof |
+| Cycles, one run | none | about 97 to 137 million proving cycles, median 115 million, as sums of the levels'; the heaviest run measured 136.4 million (above) |
+| Proving cost, one run | none | 0.0000184 ETH ($0.042) on Boundless, p10 to p90 0.0000138 to 0.0000233 ETH; on the CPU, about 16 to 17 hours on 4 CPUs for the heaviest run ([Proving](#proving)) |
+| Settlement overhead (M4.7), the same for both | `settleRun` 576,603 gas; `settleLevel` 154,050, or 172,905 for the level that records the run ([Settlement gas](#settlement-gas)) | the same |
+| One verified run, against its 0.00005 ETH fee | a bots' run's `settleRun` (29,858,349 gas, M4.16), with nothing to prove: 0.00060 ETH ($1.37), 12 times the fee | 804,194 gas (verification and settlement), 0.0000161 ETH, plus 0.0000184 ETH of proving: 0.0000345 ETH ($0.079), 69% of the fee |
+| Aggregation option (M4.8) | does not apply | about 278,653 gas per batch, plus about 8,400 per run, against 227,591 per run; the proving price per run does not fall ([Season aggregation](#season-aggregation)) |
+
+Verification is by exception (README §7.3): a season verifies each player's best run, not every run.
+
+### Aggregation on testnet
+
+**Recommended: testnet-1 does not aggregate.** Each verified run is proven and settled on its own, through `ZkReferee` and the Groth16 verifier. The owner confirms this in M4.9's review.
+
+- **It saves little.** Aggregation saves verification gas, at most about 219,000 gas per run at large batches: 0.0000044 ETH ($0.010) at the base fee above, 13% of a verified run's cost. The proving price, more than half of that cost, does not fall: each run still needs its own proof, then the batch its set-builder proof.
+- **It adds a pipeline.** RISC Zero's set builder is another zkVM build the size of the host's, whose proving time is not measured. Boundless delivers its aggregated proofs to its own set verifier on Base, and `risc0-ethereum` `v3.0.1` lists no set verifier on Arbitrum, so a season would deploy one, pin the set builder's image id, and submit each batch's root before any of its runs settles.
+- **It delays settlement.** Runs settle only once their batch is proven, after the season's end and within its grace, and a player who proves their own run (`docs/ECONOMY.md`, threats) would need it in a batch.
+- **Testnet scale.** A testnet season verifies a few best runs, on Arbitrum Sepolia's free ETH.
+
+Aggregation stays a pre-mainnet prerequisite if zk becomes the mainnet path (plan §16), where the number of verified runs per season is known.
 
 ## Run file v1
 

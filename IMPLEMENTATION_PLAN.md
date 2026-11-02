@@ -1665,7 +1665,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 |---|---|---|---|---|
 | M4.1 | Stylus referee crate, TestVM parity, size gate | M0.7, M1.9, M1.10 | M | none |
 | M4.2 | Stylus gas on nitro-devnode (provisional) | M0.3, M4.1, M4.3 | M | none |
-| M4.15 | Stylus gas optimization (only if M4.9's gate run fails while activations are open) | M4.2, M2.9 | M | none |
+| M4.15 | Stylus gas optimization (only if M4.9's gate run fails while activations are open): **deferred** by M4.9 (§16) | M4.2, M2.9 | M | none |
 | M4.3 | Contracts project, ported base, ABIs, activation reading | M0.2, M0.3, M0.7 | M | none |
 | M4.4 | IReferee, MockReferee and run-nonce fixtures | M4.3, M1.2 | S | none |
 | M4.5 | Season contract with onchain best-run points | M4.3, M4.4 | M | none |
@@ -1737,6 +1737,8 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 - **Skills:** `onchain-referee`, `gas`, `l2s`; tier `contracts`. **README:** §7.3, §9 M4. **Needs user:** none.
 
 #### M4.15 Stylus gas optimization (only if M4.9's gate run fails while activations are open)
+
+**Deferred** (§16) by M4.9 on 2026-11-02: the gate failed, at 11,599,408 gas on `levels/10-worst`, while activations were paused on Arbitrum Sepolia and Arbitrum One, so D2 = zk ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#d2-the-backend)). The hot paths and levers below are the plan's, not measured by M4.9.
 
 - **Goal:** bring the gate set (§4) within 1M gas without changing any outcome.
 - **When.** M4.9 files this item when its gate run fails and activations are open, and fills in the hot paths and levers it measured: an incremental rail bitmap; no full-grid scan per tick; keccak once per level; no per-tick hashing in `verify`. If the gate fails while activations are paused, M4.9 marks this item "deferred" (§16).
@@ -2316,7 +2318,7 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 |---|---|---|---|---|
 | D1 | Firmware shell language | Owner, 2026-10-28; confirmed by M0.2's blinky | M3.1 | Decided: Rust embassy-rp, as its own Cargo workspace, with a UF2 from elf2uf2-rs. It needs no `arm-none-eabi-gcc`. If the blinky fails, the owner chooses between rp2040-hal and C++ on the Pico SDK, and M0.2 rewrites M3.1-M3.5 for that choice. |
 | D2, part 1 | zkVM framework | M1.12, from M1.16 and M1.17 | M1.13, M4.8 | README §7.3's four tooling checks first, then measured cycles and price. Trial SP1 and RISC Zero. |
-| D2, part 2 | Verification backend, and testnet aggregation | M4.9 | M4.10 (unless it starts early), M4.12, M4.14, M5.3 | Stylus whenever activations are open on the target chain; ZkReferee while they stay paused. The gas gate is defined in §4. If it fails with activations open, M4.15 runs, and if it still fails the user chooses from both cost tables. Both backends sit behind `IReferee`. |
+| D2, part 2 | Verification backend, and testnet aggregation | M4.9 | M4.10 (unless it starts early), M4.12, M4.14, M5.3 | Stylus whenever activations are open on the target chain; ZkReferee while they stay paused. The gas gate is defined in §4. If it fails with activations open, M4.15 runs, and if it still fails the user chooses from both cost tables. Both backends sit behind `IReferee`. Decided in M4.9 (owner, 2026-11-02): zk for testnet, activations being paused and the gate failed; M4.14 deploys ZkReferee; no aggregation on testnet; M4.15 deferred. |
 | D3 | Movement on claimed cells | Owner, 2026-10-28; pinned in M0.5 | M1.6 | Decided: rail only |
 | D4 | Trail rules | Owner, 2026-10-28; pinned in M0.5 | M1.6 | Decided: the own trail blocks movement; no fuse |
 | D5 | Level defaults; running out of lives | Owner, 2026-10-28; pinned in M0.5 | M1.8 | Decided: 3 lives, 2,700 ticks, 7,500 bp, adjustable per level; running out of lives scores zero |
@@ -2572,7 +2574,7 @@ Each question has a default in this plan, and the item that settles it unless th
 
 - **Superchallenge** (M6, D11). It stays in [`TODO.md`](TODO.md), which keeps its analysis and the bounty-rounds proposal. It needs its own design pass and a legal read before any work starts. Until then, v1 decoders reject journal mode 2 (M0.5). When it comes back, it reuses the level format and validity check (M1.3), the level tool and editor (M2.4, M2.5), and ethblockdigger's `MapNFT` and map renderer.
 - **Proving service** (a later version): a third-party service that proves runs through an API and settles them for the player, with gasless claims, which need a new `Season` generation with signed claims and a relay-fee cap. Its design is in README §7.5.
-- **Stylus gas optimization while activations are paused.** If M4.9's gate fails while activations are paused, M4.15 is marked "deferred" and runs when activations reopen, before any Stylus season.
+- **Stylus gas optimization while activations are paused.** If M4.9's gate fails while activations are paused, M4.15 is marked "deferred" and runs when activations reopen, before any Stylus season. M4.9 deferred it on 2026-11-02 (gate maximum 11,599,408 gas, activations paused).
 - **Pre-mainnet prerequisites** (not scheduled; listed in `docs/ECONOMY.md` from M0.7):
   - a professional audit of the contracts;
   - a legal read of the paid prize pool, with geo-gating as the fallback if the read requires it;
