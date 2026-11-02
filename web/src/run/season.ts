@@ -40,15 +40,25 @@ export interface SeasonFacts {
   rollover: bigint;
 }
 
-/** The season view's entries, as label and text. The players' pot is what closing the season
- *  now would give: the fees, less the rake rounded down, plus the rollover. */
+/** The rollover a season's pot takes when it closes: Season.pendingRollover goes only to the
+ *  season that closes next, the oldest one not yet closed (README §8.4). */
+export function rolloverOf(closesNext: boolean, pendingRollover: bigint): bigint {
+  return closesNext ? pendingRollover : 0n;
+}
+
+/** The players' pot that closing the season now would give (README §8.4): the fees, less the
+ *  rake rounded down, plus the rollover. */
+export function projectedPlayersPot(facts: Pick<SeasonFacts, "fees" | "rakeBp" | "rollover">): bigint {
+  return facts.fees - (facts.fees * facts.rakeBp) / 10_000n + facts.rollover;
+}
+
+/** The season view's entries, as label and text, with the players' pot of `projectedPlayersPot`. */
 export function seasonEntries(facts: SeasonFacts, formatEth: (wei: bigint) => string): [string, string][] {
-  const rake = (facts.fees * facts.rakeBp) / 10_000n;
   const rollover = facts.rollover === 0n ? "" : `, with ${formatEth(facts.rollover)} rolled over`;
   return [
     ["Season", String(facts.number)],
     ["Run fee", formatEth(facts.runFee)],
-    ["Players' pot", `${formatEth(facts.fees - rake + facts.rollover)}: ${formatEth(facts.fees)} of fees less the ${Number(facts.rakeBp) / 100} % rake${rollover}`],
+    ["Players' pot", `${formatEth(projectedPlayersPot(facts))}: ${formatEth(facts.fees)} of fees less the ${Number(facts.rakeBp) / 100} % rake${rollover}`],
     ["Ends", new Date(Number(facts.end) * 1000).toISOString()],
     ["Settlement", `until ${Number(facts.grace) / 3600} h after the end`],
     ["Commit slack", `${facts.commitSlack} s`],

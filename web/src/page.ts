@@ -1,5 +1,6 @@
 // What the pages of the site share: their elements by id, the engine, the field's size, the HUD,
-// a gate for actions that must not overlap, error messages, and claims in percent.
+// a gate for actions that must not overlap, a button's pending action, error messages, claims in
+// percent, and downloads.
 
 import { Core, type Snapshot } from "./core";
 import type { Renderer } from "./render";
@@ -49,10 +50,34 @@ export function exclusive(): (action: () => Promise<void>) => Promise<boolean> {
   };
 }
 
+/** Runs `action` with `button` disabled until it settles, showing its error in the element `errorId`. */
+export async function pending(button: HTMLButtonElement, action: () => Promise<void>, errorId: string): Promise<void> {
+  button.disabled = true;
+  const shown = element(errorId);
+  shown.textContent = "";
+  try {
+    await action();
+  } catch (error) {
+    shown.textContent = messageOf(error);
+    shown.hidden = false;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 export function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 export function percent(bp: number): string {
   return `${(bp / 100).toFixed(2)} %`;
+}
+
+/** Offers `value` as a JSON file named `name`. */
+export function downloadJson(name: string, value: unknown): void {
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }));
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }

@@ -1,6 +1,6 @@
-// The deployed contracts, through the generated bindings: the season accepting runs, and the
-// run's `startRun`, reveal and `commitRun` (README §7.2, §8.4). Errors are decoded with the
-// contracts' custom errors.
+// The deployed contracts, through the generated bindings: the season accepting runs, the run's
+// `startRun`, reveal and `commitRun`, and the season's close and claims (README §7.2, §8.4).
+// Errors are decoded with the contracts' custom errors.
 
 import {
   type BaseContract,
@@ -13,7 +13,7 @@ import {
 import { type ArbBlockhashEntropy, connectArbBlockhashEntropy } from "./bindings/ArbBlockhashEntropy";
 import { type Challenge, type ChallengeEvents, connectChallenge } from "./bindings/Challenge";
 import { connectIArbSys, type IArbSys } from "./bindings/IArbSys";
-import { connectSeason, type Season, type SeasonParams } from "./bindings/Season";
+import { connectSeason, type Season, type SeasonEvents, type SeasonParams } from "./bindings/Season";
 import type { Deployment } from "./deployments";
 
 export interface Contracts {
@@ -69,13 +69,15 @@ export function chainErrorMessage(error: unknown, contracts: BaseContract[]): st
       const reason = contract.interface.parseError(error.data);
       if (reason) return `reverts with ${reason.name}(${reason.args.join(", ")})`;
     }
+    // A Stylus referee reverts with replay's error code as raw bytes, which ethers gives no reason for.
+    if (error.reason === null) return `reverts with the error data ${error.data}`;
   }
   const { shortMessage } = (error ?? {}) as { shortMessage?: unknown };
   if (typeof shortMessage === "string") return shortMessage;
   return error instanceof Error ? error.message : String(error);
 }
 
-async function confirmed(
+export async function confirmed(
   label: string,
   sent: Promise<ContractTransactionResponse>,
   contracts: BaseContract[],
@@ -90,7 +92,7 @@ async function confirmed(
   return receipt;
 }
 
-function eventOf<Events, Name extends keyof Events & string>(
+export function eventOf<Events, Name extends keyof Events & string>(
   contract: BaseContract,
   receipt: ContractTransactionReceipt,
   name: Name,
@@ -156,4 +158,17 @@ export async function commitRun({ challenge, season }: Contracts, runId: bigint,
   const receipt = await confirmed(`commitRun(${runId})`, challenge.commitRun(runId, [...journals]), [challenge, season]);
   const { commitment, committedAt } = eventOf<ChallengeEvents, "RunCommitted">(challenge, receipt, "RunCommitted");
   return { commitment, committedAt, transaction: receipt.hash };
+}
+
+/** Closes the oldest season not yet closed, which anyone may do once its settlement has ended
+ *  (README §8.4); returns what `SeasonClosed` names. */
+export async function closeSeason({ season }: Contracts): Promise<SeasonEvents["SeasonClosed"]> {
+  const receipt = await confirmed("closeSeason()", season.closeSeason(), [season]);
+  return eventOf<SeasonEvents, "SeasonClosed">(season, receipt, "SeasonClosed");
+}
+
+/** Claims the caller's share of a closed season's players' pot; returns the amount paid. */
+export async function claim({ season }: Contracts, number: bigint): Promise<bigint> {
+  const receipt = await confirmed(`claim(${number})`, season.claim(number), [season]);
+  return eventOf<SeasonEvents, "Claimed">(season, receipt, "Claimed").amount;
 }

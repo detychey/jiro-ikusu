@@ -45,7 +45,8 @@ const RUN_LEVELS: usize = 6;
 const MODE_CHALLENGE: u64 = 1;
 const LEVEL_ID_FIELD: usize = 1;
 
-const VECTOR_KINDS: [&str; 3] = ["game", "journal", "level"];
+/// The kinds of vectors/, and M1.10's random cases, which are game vectors without a trace file.
+const VECTOR_KINDS: [&str; 4] = ["game", "journal", "level", "difffuzz"];
 /// The journal header's levelId offset (README §6.3).
 const JOURNAL_LEVEL_ID_AT: usize = 36;
 /// The journal decoder's codes (README §6.3): a valid journal never gets one.

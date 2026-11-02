@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Jiro-ikusu season</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Jiro-ikusu season</h1>
+      <p>A Challenge season: its parameters and pot, its leaderboard, read from the chain's events, its close and its claims, and the settlement of your best run. <a href="challenge.html">Challenge</a> · <a href="replay.html">Replay viewer</a> · <a href="index.html">Training</a></p>
+    </header>
+    <main>
+      <aside class="side">
+        <section class="wallet" aria-label="Season">
+          <dl id="season-facts" class="hud"></dl>
+          <p id="season-phase" role="status"></p>
+          <button id="close" type="button" hidden>Close the season</button>
+          <p id="season-error" class="error" role="alert"></p>
+        </section>
+        <section class="wallet" aria-label="Wallet">
+          <p id="wallet-status">Connect a wallet to settle your best run, close the season or claim your share.</p>
+          <button id="connect" type="button">Connect wallet</button>
+          <button id="claim" type="button" hidden></button>
+          <p id="wallet-error" class="error" role="alert"></p>
+        </section>
+        <section id="settle-section" class="wallet" aria-label="Settlement" hidden>
+          <p id="settle-status" role="status"></p>
+          <button id="settle" type="button" hidden>Settle this run</button>
+          <button id="settle-file" type="button" hidden>Download the run file</button>
+          <p id="settle-error" class="error" role="alert"></p>
+        </section>
+      </aside>
+      <section class="wallet" aria-label="Leaderboard">
+        <table id="leaderboard" class="outcome"></table>
+      </section>
+    </main>
+    <footer id="footer"></footer>
+    <script type="module">
+      import { mount } from "/src/pages/season.ts";
+      mount();
+    </script>
+  </body>
+</html>

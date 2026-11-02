@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use risc0_zkvm::sha::Digest;
 use risc0_zkvm::{ExitCode, SessionInfo, default_executor};
@@ -13,6 +13,7 @@ mod prove;
 const USAGE: &str = "usage: zk-host execute <vector file or directory>...
        zk-host execute-run <six game vector files>
        zk-host image-id
+       zk-host difffuzz <cases directory>
        zk-host prove --level <game vector file> [--segment-po2 <n>]
        zk-host prove --run <six game vector files> [--segment-po2 <n>]
        zk-host prove --run <run file> --season <season file> [--segment-po2 <n>]";
@@ -25,6 +26,7 @@ fn main() {
     let result = match args.split_first() {
         Some((command, rest)) if command == "execute" => execute(rest),
         Some((command, rest)) if command == "execute-run" => execute_run(rest),
+        Some((command, rest)) if command == "difffuzz" => difffuzz(rest),
         Some((command, rest)) if command == "prove" => prove::prove(rest),
         Some((command, [])) if command == "image-id" => {
             println!("0x{}", Digest::from(VERIFY_ID));
@@ -70,7 +72,7 @@ fn execute(paths: &[String]) -> Result<(), String> {
             .file_stem()
             .map_or_else(String::new, |stem| stem.to_string_lossy().into_owned());
         let row = match vector["kind"].as_str() {
-            Some("game") => execute_game(vector),
+            Some("game" | "difffuzz") => execute_game(vector),
             _ => fixtures
                 .as_ref()
                 .map_err(Clone::clone)
@@ -181,6 +183,50 @@ fn execute_run(paths: &[String]) -> Result<(), String> {
     println!("segments: {}", info.segments.len());
     println!("=== END zk-run ===");
     Ok(())
+}
+
+/// M1.10's random cases, as `jiro-tools difffuzz` writes them to `dir`, through both guests as
+/// `execute` runs a game vector (plan M1.13). A case that disagrees with the native core's
+/// results is copied to `dir/mismatch/`, named after the case, and its path printed.
+fn difffuzz(args: &[String]) -> Result<(), String> {
+    let [dir] = args else {
+        return Err(USAGE.into());
+    };
+    let dir = Path::new(dir);
+    let mismatch_dir = dir.join("mismatch");
+    let cases: Vec<PathBuf> = vector_files(args)?
+        .into_iter()
+        .filter(|file| file.parent() == Some(dir))
+        .collect();
+    if cases.is_empty() {
+        return Err(format!("{}: no cases", dir.display()));
+    }
+    let mut mismatches = 0;
+    for file in &cases {
+        let vector = read_vector(file)?;
+        if let Err(error) = execute_game(&vector) {
+            mismatches += 1;
+            let name = vector["name"]
+                .as_str()
+                .ok_or(format!("{}: no name", file.display()))?;
+            let saved = mismatch_dir.join(format!("{name}.json"));
+            std::fs::create_dir_all(&mismatch_dir)
+                .and_then(|()| std::fs::copy(file, &saved))
+                .map_err(|error| format!("{}: {error}", saved.display()))?;
+            println!("mismatch: {}: {error}", saved.display());
+        }
+    }
+    println!(
+        "zk executor: {} difffuzz cases, {mismatches} mismatches",
+        cases.len()
+    );
+    match mismatches {
+        0 => Ok(()),
+        _ => Err(format!(
+            "{mismatches} of {} cases disagree with native",
+            cases.len()
+        )),
+    }
 }
 
 /// Executes a guest and requires it to halt with exit code 0.

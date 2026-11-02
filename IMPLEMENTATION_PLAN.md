@@ -1,6 +1,6 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
 [`README.md`](README.md) is the normative specification, and this plan turns it into 66 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
@@ -2099,7 +2099,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 |---|---|---|---|---|
 | M5.1 | Wallet and chain plumbing | M2.10, M4.11 | M | none |
 | M5.2 | Challenge run flow in the browser | M5.1 | L | none |
-| M5.3 | Settlement, season pages, replay of committed runs | M2.3, M4.9, M5.2 | M | none |
+| M5.3 | Settlement, season pages, replay of committed runs | M2.3, M4.9, M5.2 | L | none |
 | M5.4 | Web Serial bridge for Challenge runs | M3.4, M4.14, M5.7 | M | Fund your wallet; a six-level Pico run on Sepolia |
 | M5.5 | Season operations, testnet-1 parameters, testnet-0 close | M4.14, M5.3, M5.4 | M | Approve the parameters, the schedule, its secrets and the feedback channel |
 | M5.6 | Testnet season 1 | M5.3, M5.5 | M | Testers, play, approvals |
@@ -2167,6 +2167,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 #### M5.3 Settlement, season pages, replay of committed runs
 
 - **Goal:** verify-by-exception settlement from the dApp, a leaderboard without an indexer, and every committed run replayable from chain data.
+- **Size:** built, this item came out at L, about 1,940 changed lines, within L's 2,000: the settlement's fallback and retries, the trace path of the calldata loader, and the end-to-end season of two players, with its close and claims, are most of it.
 - **Deliverables:**
   - `web/src/pages/settle.ts`, for the backend in `deployments/<network>.json`:
     - Stylus: settles the player's best run with one `settleRun` transaction, falling back to six `settleLevel` transactions if it fails for gas, with progress, retries and decoded revert reasons;

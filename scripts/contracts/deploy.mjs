@@ -50,7 +50,7 @@ export function buildContracts() {
     return { abi, bytecode: bytecode.object };
   };
   return Object.fromEntries(
-    ["MockArbSys", "ArbBlockhashEntropy", "MockReferee", "RiscZeroMockVerifier", "ZkReferee", "Season", "Challenge"].map((name) => [
+    ["MockArbSys", "ArbBlockhashEntropy", "MockReferee", "MockForwarder", "RiscZeroMockVerifier", "ZkReferee", "Season", "Challenge"].map((name) => [
       name,
       artifactOf(name),
     ]),

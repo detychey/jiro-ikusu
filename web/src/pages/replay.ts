@@ -2,7 +2,13 @@
 // replays the level and the journal as the referee does, and gives the Outcome and the state hash
 // of every tick. The view then plays the journal's masks through the engine one tick at a time,
 // to show each tick, and a seek plays them again from tick 0. Nothing here decides an outcome.
+// A committed Challenge run's journals load from its commit transaction (plan M5.3), through the
+// public RPC of the network `?network=<name>` names, Arbitrum Sepolia by default: no wallet.
 
+import { type CommittedRun, committedRun } from "../chain/calldata";
+import { connectContracts } from "../chain/contracts";
+import { bundledDeployment } from "../chain/deployments";
+import { networkOfPage, readOnlyProvider } from "../chain/networks";
 import { type Core, CoreError, fromHex, HASH_LEN, hex, type Outcome } from "../core";
 import { describeError } from "../errors";
 import { controlsOf } from "../input";
@@ -10,6 +16,7 @@ import { type JournalEvent, journalEvents } from "../journal";
 import { createLoop, type Loop } from "../loop";
 import { element, fitField, loadCore, messageOf, percent } from "../page";
 import { Renderer } from "../render";
+import { shippedLevels } from "../shipped";
 
 /** The bytes a replay takes (README §7.3). */
 export interface Recording {
@@ -145,6 +152,10 @@ export function mount(): void {
   const playPause = element<HTMLButtonElement>("play-pause");
   const vectorFiles = element<HTMLInputElement>("vector-files");
   const weightField = element<HTMLInputElement>("weight");
+  const runIdField = element<HTMLInputElement>("run-id");
+  const runLevel = element<HTMLSelectElement>("run-level");
+  const runSource = element<HTMLParagraphElement>("run-source");
+  const committedRuns = new Map<string, CommittedRun>();
   const part = (name: "level" | "journal") => ({
     name,
     file: element<HTMLInputElement>(`${name}-file`),
@@ -159,28 +170,62 @@ export function mount(): void {
   let expected: Uint8Array | undefined;
   let loop: Loop<true> | undefined;
 
-  /** One source at a time: choosing a vector clears the level and the journal, and choosing a
-   *  file or typing hex for one of them clears the vector and that part's other input. */
+  /** One source at a time: choosing a vector clears the level, the journal and the run id;
+   *  choosing a file or typing hex for one of them clears the vector, the run id and that part's
+   *  other input; typing a run id clears the vector, the level and the journal. */
   function keepOneSource(): void {
-    vectorFiles.addEventListener("change", () => {
+    const clearParts = () => {
       for (const part of parts) {
         part.file.value = "";
         part.hex.value = "";
       }
+    };
+    vectorFiles.addEventListener("change", () => {
+      clearParts();
+      runIdField.value = "";
     });
     for (const part of parts) {
       part.file.addEventListener("change", () => {
         vectorFiles.value = "";
         part.hex.value = "";
+        runIdField.value = "";
       });
       part.hex.addEventListener("input", () => {
         vectorFiles.value = "";
         part.file.value = "";
+        runIdField.value = "";
       });
     }
     weightField.addEventListener("input", () => {
       vectorFiles.value = "";
+      runIdField.value = "";
     });
+    runIdField.addEventListener("input", () => {
+      vectorFiles.value = "";
+      clearParts();
+    });
+  }
+
+  /** Run `runId`, read from the chain once, and kept for the page. */
+  async function committed(runId: string): Promise<CommittedRun> {
+    if (!/^[1-9][0-9]*$/.test(runId)) throw new Error("a run id is a whole number from 1");
+    const kept = committedRuns.get(runId);
+    if (kept !== undefined) return kept;
+    const deployment = bundledDeployment(networkOfPage(window.location.search));
+    const provider = readOnlyProvider(deployment.network);
+    const levels = (await shippedLevels()).map(([, level]) => level);
+    const run = await committedRun(connectContracts(deployment, provider), provider, core, levels, BigInt(runId));
+    committedRuns.set(runId, run);
+    return run;
+  }
+
+  /** The chosen level of a committed run, with its season's weight. */
+  async function committedRecording(runId: string): Promise<Recording> {
+    const { file, weightsBp, source, transaction } = await committed(runId);
+    const i = Number(runLevel.value) - 1;
+    const slot = file.drawSlots[i] as number;
+    runSource.textContent = `Level ${i + 1} of run ${runId}, slot ${slot}: its journal is read from ${source}, transaction ${transaction}.`;
+    return { level: fromHex(file.levels[i] as string), journal: fromHex(file.journals[i] as string), weightBp: weight(weightsBp[slot], "the season") };
   }
 
   async function bytesOf({ name, file, hex: hexField }: ReturnType<typeof part>): Promise<Uint8Array> {
@@ -191,8 +236,8 @@ export function mount(): void {
     return fromHex(text);
   }
 
-  /** The recording and the trace to compare with: a game vector and its .trace file, or else a
-   *  level and a journal, each from its file or its hex field. */
+  /** The recording and the trace to compare with: a game vector and its .trace file, a committed
+   *  run's level, or else a level and a journal, each from its file or its hex field. */
   async function chosen(): Promise<[Recording, Uint8Array | undefined]> {
     const files = Array.from(vectorFiles.files ?? []);
     if (files.length > 0) {
@@ -204,6 +249,8 @@ export function mount(): void {
       const trace = traceFile === undefined ? undefined : new Uint8Array(await traceFile.arrayBuffer());
       return [vectorRecording(await vectorFile.text(), vectorFile.name), trace];
     }
+    const runId = runIdField.value.trim();
+    if (runId !== "") return [await committedRecording(runId), undefined];
     const recording = {
       level: await bytesOf(levelPart),
       journal: await bytesOf(journalPart),
@@ -215,6 +262,7 @@ export function mount(): void {
   async function load(): Promise<void> {
     pause();
     loadError.textContent = "";
+    runSource.textContent = "";
     fieldView.hidden = true;
     player.hidden = true;
     view = undefined;

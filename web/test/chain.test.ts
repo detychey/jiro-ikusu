@@ -368,6 +368,18 @@ describe("chain errors", () => {
     expect(chainErrorMessage(error, contracts())).toBe("reverts with WrongFee(1, 50000000000000)");
   });
 
+  it("show the data of a revert no contract decodes, as the Stylus referee's error code", () => {
+    const error = makeError("execution reverted", "CALL_EXCEPTION", {
+      action: "estimateGas",
+      data: "0xdeadbeef07",
+      reason: null,
+      transaction: { to: null, data: "0x" },
+      invocation: null,
+      revert: null,
+    });
+    expect(chainErrorMessage(error, contracts())).toBe("reverts with the error data 0xdeadbeef07");
+  });
+
   it("say when the user rejected the transaction", () => {
     const error = makeError("user rejected action", "ACTION_REJECTED", { action: "sendTransaction", reason: "rejected" });
     expect(chainErrorMessage(error, contracts())).toBe("the transaction was rejected in the wallet");
