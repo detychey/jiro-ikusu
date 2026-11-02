@@ -119,9 +119,27 @@ pub fn read_vector(path: &Path) -> Result<Value, String> {
     }
 }
 
+/// The game vectors at `paths`, and their levels' inputs, in order.
+pub fn read_games(paths: &[String]) -> Result<(Vec<Value>, Vec<Input>), String> {
+    let vectors = paths
+        .iter()
+        .map(|path| read_vector(Path::new(path)))
+        .collect::<Result<Vec<_>, _>>()?;
+    let inputs = vectors
+        .iter()
+        .map(Input::of_game)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok((vectors, inputs))
+}
+
 /// The guests' input stream, as raw little-endian u32 words: the number of levels, then each
-/// level's bytes and journal bytes, each after its length, and weightBp.
-pub fn env(inputs: &[Input]) -> Result<ExecutorEnv<'static>, String> {
+/// level's bytes and journal bytes, each after its length, and weightBp. Segments hold at most
+/// 2^`segment_limit_po2` cycles, RISC Zero's default 2^20 when `None`; proving memory follows
+/// the segment size.
+pub fn env(
+    inputs: &[Input],
+    segment_limit_po2: Option<u32>,
+) -> Result<ExecutorEnv<'static>, String> {
     let mut builder = ExecutorEnv::builder();
     builder.write_slice(&[word(inputs.len())?]);
     for input in inputs {
@@ -130,6 +148,9 @@ pub fn env(inputs: &[Input]) -> Result<ExecutorEnv<'static>, String> {
             builder.write_slice(bytes);
         }
         builder.write_slice(&[u32::from(input.weight_bp)]);
+    }
+    if let Some(po2) = segment_limit_po2 {
+        builder.segment_limit_po2(po2);
     }
     builder.build().map_err(|error| error.to_string())
 }
@@ -185,6 +206,24 @@ pub fn check_outcome(vector: &Value, words: &[u8]) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Checks the verify guest's public values against the vectors it replayed: one
+/// `(uint16 weightBp, Outcome)` per level, in order (referee/zk/README.md).
+pub fn check_outcomes(vectors: &[Value], public_values: &[u8]) -> Result<(), String> {
+    if public_values.len() != vectors.len() * OUTCOME_LEN {
+        return Err(format!(
+            "verify guest committed {} bytes for {} levels",
+            public_values.len(),
+            vectors.len()
+        ));
+    }
+    vectors
+        .iter()
+        .zip(public_values.chunks(OUTCOME_LEN))
+        .try_for_each(|(vector, words)| {
+            check_outcome(vector, words).map_err(|error| format!("{}: {error}", vector["name"]))
+        })
 }
 
 /// Checks the verify guest's result on a format vector: the recorded code, or, for a valid level,

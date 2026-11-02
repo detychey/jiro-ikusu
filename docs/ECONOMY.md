@@ -36,9 +36,9 @@ Gas is the unit; an ETH cost is gas × the Arbitrum base fee at the time.
 | Stylus `verify` gas per level, provisional | TBD (M4.2) | M4.2 |
 | Stylus gas gate over the gate set, and gas per six-level run | TBD (M4.9) | M4.9 |
 | Settlement gas, excluding `verifyRun` | `settleRun` of a six-level run with 25,636 bytes of calldata: 576,603, of which 353,908 calldata gas; `settleLevel`: 154,050 for a level, 172,905 for the one that records the run; before the L1 data fee ([`VERIFICATION.md`](VERIFICATION.md#settlement-gas)) | M4.7 |
-| zk proof verification gas, per run proof and per level proof | TBD (M4.8) | M4.8 |
-| zk proving cost per run: CPU time and peak RAM, and the prover-network price | TBD (M4.8) | M4.8 |
-| Season aggregation against one proof per run | TBD (M4.8, decided in M4.9) | M4.8, M4.9 |
+| zk proof verification gas, per run proof and per level proof | 227,591 for one `verify` on RISC Zero's 3.0 Groth16 verifier, the same for a run proof and a level proof; 256,471 estimated on Arbitrum One and Sepolia with the transaction's intrinsic and calldata gas. A run settled as six level proofs costs six verifications ([`VERIFICATION.md`](VERIFICATION.md#verification-gas)) | M4.8 |
+| zk proving cost per run: CPU time and peak RAM, and the prover-network price | CPU, Groth16 wrapping included: a run of the six smallest game vectors (7.3 million proving cycles) took 3,297 s on 4 CPUs at 9.2 GiB, then 7.0 GiB in Docker, and 10,168 s on a 2-vCPU runner with 2^19-cycle segments, at 4.6 GiB; the `worst-case` level 13,177 s on 4 CPUs; the heaviest run of the gate set would take about 16 to 17 hours on 4 CPUs. Boundless: about 0.0000184 ETH ($0.042) per raw Groth16 proof, a level's or a run's alike (p10 to p90: 0.0000138 to 0.0000233 ETH), 37% of the run fee ([`VERIFICATION.md`](VERIFICATION.md#prover-network-price)) | M4.8 |
+| Season aggregation against one proof per run | One Groth16 proof of the season's Merkle root, about 278,653 gas to submit, then 7,147 to 8,418 gas per run, against 227,591 per run proof: cheaper from two runs, 1.1 million against 22.8 million gas for 100. Each run still needs its own proof, so the proving price does not fall, and runs settle only once the batch is proven. RISC Zero's set builder and `RiscZeroSetVerifier`; decided in M4.9 ([`VERIFICATION.md`](VERIFICATION.md#season-aggregation)) | M4.8, M4.9 |
 | Cost of one verified run, against its run fee | TBD (M4.9) | M4.9 |
 
 ## 3. Threats

@@ -1,0 +1,138 @@
+# Real zk proofs (plan M4.8, README §7.3), private CI profile (plan §1.3, P14): when the
+# `ci:heavy` label is added to a PR, and on workflow_dispatch. In the public profile it would run
+# on PRs that touch this file or referee/zk/host/src/prove.rs. Two jobs, one per mode of the
+# verify guest (referee/zk/README.md): level mode proves one game vector, run mode six. Each
+# proves on the CPU, wraps the proof into a Groth16 seal in RISC Zero's Docker prover, and prints
+# the timings, peak memory, seal size and the proof fixture between `=== BEGIN zk-prove ===` and
+# `=== END zk-prove ===`, and `=== BEGIN zk-fixture ===` and `=== END zk-fixture ===`; the
+# runner's size, peak memory and any out-of-memory kill between their own markers.
+# contracts/test/fixtures/zk-proofs.json is copied from such a log. The checkout path is the fixed
+# build path that makes image ids reproducible (referee/zk/README.md). The host build restores
+# ci.yml's zk-exec cache without saving it. Never a required check.
+name: zk-prove
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      level:
+        description: Game vector proven in level mode
+        required: true
+        default: vectors/game/worst-case.json
+      run:
+        description: Six game vectors proven in run mode, separated by spaces
+        required: true
+        default: >-
+          vectors/game/commit-at-tick-0.json vectors/game/commit-during-cut.json
+          vectors/game/fast-cut.json vectors/game/event-at-last-tick.json
+          vectors/game/slow-shield.json vectors/game/last-life-on-last-tick.json
+      segment_po2:
+        description: Segment size, as a power of two of cycles (RISC Zero's default is 20)
+        required: true
+        default: '19'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  GROTH16_PROVER_IMAGE: risczero/risc0-groth16-prover:v2025-04-03.1
+  # A pull_request run proves a reduced level. worst-case, the dispatch default, took 3.7 hours on
+  # 4 CPUs, as on the public profile's runners, and would take about 10 on this repository's
+  # 2-vCPU runners, beyond the job's 6 hours (docs/VERIFICATION.md, zk costs).
+  PR_LEVEL: vectors/game/commit-at-tick-0.json
+  PR_RUN: >-
+    vectors/game/commit-at-tick-0.json vectors/game/commit-during-cut.json
+    vectors/game/fast-cut.json vectors/game/event-at-last-tick.json
+    vectors/game/slow-shield.json vectors/game/last-life-on-last-tick.json
+  # Segments of 2^19 cycles keep the host's proving under 5 GiB on a 7.9 GB runner.
+  PR_SEGMENT_PO2: '19'
+
+jobs:
+  prove:
+    if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'ci:heavy' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [level, run]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash
+    env:
+      RISC0_BUILD_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Runner size
+        run: |
+          echo "=== BEGIN runner ==="
+          pwd
+          nproc
+          free -m
+          df -h /
+          docker --version
+          echo "=== END runner ==="
+
+      - name: Inputs
+        env:
+          LEVEL: ${{ github.event_name == 'workflow_dispatch' && inputs.level || env.PR_LEVEL }}
+          RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.run || env.PR_RUN }}
+          SEGMENT_PO2: ${{ github.event_name == 'workflow_dispatch' && inputs.segment_po2 || env.PR_SEGMENT_PO2 }}
+        run: |
+          case "${{ matrix.mode }}" in
+            level) echo "VECTORS=$LEVEL" >> "$GITHUB_ENV" ;;
+            run) echo "VECTORS=$RUN" >> "$GITHUB_ENV" ;;
+          esac
+          echo "SEGMENT_PO2=$SEGMENT_PO2" >> "$GITHUB_ENV"
+
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ~/.risc0
+          key: risc0-r0.1.97.0
+
+      - name: Toolchains
+        run: bash scripts/bootstrap.sh zk
+
+      - uses: Swatinem/rust-cache@v2.9.3
+        id: cache
+        with:
+          shared-key: zk-exec
+          save-if: false
+          workspaces: |
+            referee/zk -> target
+
+      - name: Build the guests and the host
+        timeout-minutes: ${{ steps.cache.outputs.cache-hit == 'true' && 20 || 80 }}
+        run: |
+          echo "cache hit: ${{ steps.cache.outputs.cache-hit }}"
+          cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host
+
+      - name: Groth16 prover image
+        run: |
+          docker pull "$GROTH16_PROVER_IMAGE"
+          docker image inspect --format '{{.Id}} {{.Size}}' "$GROTH16_PROVER_IMAGE"
+
+      # The sampler prints memory every 30 s, so the log keeps the last reading if the runner dies.
+      - name: Prove (${{ matrix.mode }} mode)
+        run: |
+          (while true; do echo "memory $(date -u +%T) $(free -m | awk '/^Mem:/ {printf "used %s MiB, ", $3} /^Swap:/ {printf "swap used %s MiB", $3}')"; sleep 30; done) &
+          # VECTORS holds one path, or six separated by spaces.
+          # shellcheck disable=SC2086
+          bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove \
+            --${{ matrix.mode }} $VECTORS --segment-po2 "$SEGMENT_PO2"
+
+      - name: Out-of-memory kills
+        if: always()
+        run: |
+          echo "=== BEGIN oom ==="
+          sudo dmesg | grep -i -E 'out of memory|oom-kill|killed process' || echo "no OOM kill in dmesg"
+          free -m
+          echo "=== END oom ==="

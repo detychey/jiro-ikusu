@@ -13,12 +13,20 @@ pub struct LevelInput {
     pub weight_bp: u16,
 }
 
+/// The levels of one proof: one in level mode, for `verify`, or six in run mode, for
+/// `verifyRun` (README §7.3).
+const MODE_LEVEL_COUNTS: [u32; 2] = [1, 6];
+
 /// A count, then that many (level bytes, journal bytes, weightBp): one level for `verify`, six
 /// for `verifyRun`. Each value is a little-endian u32 word, and each byte string is its length
 /// word followed by its bytes, read raw rather than through the serde codec, which spends a
 /// word per byte.
 pub fn read_inputs() -> Vec<LevelInput> {
     let count = read_word();
+    assert!(
+        MODE_LEVEL_COUNTS.contains(&count),
+        "{count} levels: a proof covers one level or a run of six"
+    );
     (0..count)
         .map(|_| LevelInput {
             level: read_bytes(),

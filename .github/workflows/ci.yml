@@ -314,7 +314,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          # forge-std and OpenZeppelin, pinned as submodules under contracts/lib.
+          # forge-std, OpenZeppelin and risc0-ethereum, pinned as submodules under contracts/lib.
           submodules: true
 
       - uses: dorny/paths-filter@v4.0.3
@@ -326,6 +326,7 @@ jobs:
               - 'scripts/contracts/**'
               - 'scripts/check-drift.sh'
               - 'vectors/derivations.json'
+              - 'vectors/game/**'
               - 'vectors/levels/**'
               - 'seasons/calibration-1.json'
               - 'web/src/chain/**'
