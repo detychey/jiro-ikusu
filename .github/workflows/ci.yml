@@ -191,8 +191,11 @@ jobs:
 
   # The web row of plan §3.4: the browser shell, on the wasm build of the core, and the chain
   # bindings that web/scripts/bindings.mjs generates from contracts/abi/, which must not drift
-  # (plan M5.1). Its steps skip when no path of the `web` filter changed, except on
-  # workflow_dispatch.
+  # (plan M5.1). Then the Challenge run flow runs end to end on a local chain left up by
+  # `localnet.mjs --up`, which needs Foundry and the contracts' submodules, with the playtest bots
+  # of jiro-tools choosing the inputs: a run, a reload in the third level, reloads right after a
+  # level ends by lives out and by a clear, a reload while startRun confirms, and a stale season,
+  # last as it opens a new one (plan M5.2). Its steps skip when no path of the `web` filter changed, except on workflow_dispatch.
   web:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -201,6 +204,9 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          # forge-std and OpenZeppelin, pinned as submodules under contracts/lib, for the local chain.
+          submodules: true
 
       - uses: dorny/paths-filter@v4.0.3
         id: changes
@@ -208,7 +214,9 @@ jobs:
           filters: |
             web:
               - 'web/**'
-              - 'contracts/abi/**'
+              - 'contracts/**'
+              - 'scripts/contracts/**'
+              - '.gitmodules'
               - 'deployments/**'
               - 'levels/**'
               - 'seasons/**'
@@ -238,7 +246,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            scripts/contracts/package-lock.json
 
       - name: The chain bindings match contracts/abi/ (web)
         if: ${{ steps.toolchain.outcome == 'success' }}
@@ -261,6 +271,29 @@ jobs:
           cargo run -p jiro-tools --locked -- replay --vector vectors/game/open-field-empty.json \
             --journal web/test/out/scripted.jrn | tee target/scripted-replay.txt
           grep -qF "$(cat web/test/out/scripted.hash)" target/scripted-replay.txt
+
+      - uses: foundry-rs/foundry-toolchain@v1.9.2
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        with:
+          version: v1.8.6
+          # Its cache holds RPC responses for fork tests, which this job has none of.
+          cache: false
+
+      - name: A Challenge run from purchase to commit on a local chain, with reloads (web)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: |
+          cargo build -p jiro-tools --locked
+          npm --prefix scripts/contracts ci
+          node scripts/contracts/localnet.mjs --up
+          for case in "" "--reload-at 3" "--reload-after-end out-of-lives" "--reload-after-end cleared" "--reload-during-buy" "--stale-season"; do
+            echo "=== BEGIN challenge-e2e ${case:-run} ==="
+            # $case is a flag and its value, split on purpose.
+            # shellcheck disable=SC2086
+            timeout 300 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 $case ||
+              { status=$?; tail -n 40 /tmp/jiro-localnet-anvil-8545.log; exit "$status"; }
+            echo "=== END challenge-e2e ${case:-run} ==="
+          done
+          rm deployments/local.json
 
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}

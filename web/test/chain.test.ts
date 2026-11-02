@@ -315,7 +315,13 @@ describe("the season accepting runs", () => {
 
   it("gives the newest season's number and fee", async () => {
     const { season, provider } = await seasonOn(seasonCalls(2n, 50_000_000_000_000n, 2_000n), 1_000);
-    expect(await acceptingSeason(season, provider)).toEqual({ number: 2n, runFee: 50_000_000_000_000n, end: 2_000n });
+    expect(await acceptingSeason(season, provider)).toMatchObject({ number: 2n, runFee: 50_000_000_000_000n, end: 2_000n });
+  });
+
+  it("gives the newest season's parameters, for the season check", async () => {
+    const { season, provider } = await seasonOn(seasonCalls(2n, 50_000_000_000_000n, 2_000n), 1_000);
+    const { params } = await acceptingSeason(season, provider);
+    expect([params.rulesVersion, params.levelIds.length]).toEqual([3n, 16]);
   });
 
   it("refuses when no season has opened", async () => {

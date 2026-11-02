@@ -1,5 +1,6 @@
-// The deployed contracts, through the generated bindings: the season accepting runs, and
-// `startRun` (README §7.2, §8.4). Errors are decoded with the contracts' custom errors.
+// The deployed contracts, through the generated bindings: the season accepting runs, and the
+// run's `startRun`, reveal and `commitRun` (README §7.2, §8.4). Errors are decoded with the
+// contracts' custom errors.
 
 import {
   type BaseContract,
@@ -9,13 +10,17 @@ import {
   isError,
   type Provider,
 } from "ethers";
+import { type ArbBlockhashEntropy, connectArbBlockhashEntropy } from "./bindings/ArbBlockhashEntropy";
 import { type Challenge, type ChallengeEvents, connectChallenge } from "./bindings/Challenge";
-import { connectSeason, type Season } from "./bindings/Season";
+import { connectIArbSys, type IArbSys } from "./bindings/IArbSys";
+import { connectSeason, type Season, type SeasonParams } from "./bindings/Season";
 import type { Deployment } from "./deployments";
 
 export interface Contracts {
   season: Season;
   challenge: Challenge;
+  entropy: ArbBlockhashEntropy;
+  arbSys: IArbSys;
 }
 
 export interface AcceptingSeason {
@@ -23,6 +28,7 @@ export interface AcceptingSeason {
   runFee: bigint;
   /** The season stops accepting runs at this block timestamp. */
   end: bigint;
+  params: SeasonParams;
 }
 
 export interface StartedRun {
@@ -35,6 +41,8 @@ export function connectContracts(deployment: Deployment, runner: ContractRunner)
   return {
     season: connectSeason(deployment.addresses.Season, runner),
     challenge: connectChallenge(deployment.addresses.Challenge, runner),
+    entropy: connectArbBlockhashEntropy(deployment.addresses.ArbBlockhashEntropy, runner),
+    arbSys: connectIArbSys(deployment.addresses.ArbSys, runner),
   };
 }
 
@@ -50,7 +58,7 @@ export async function acceptingSeason(season: Season, provider: Provider): Promi
   if (BigInt(latest.timestamp) >= end) {
     throw new Error(`season ${number} ended at ${end}, and no later season has opened: no season accepts runs`);
   }
-  return { number, runFee: params.runFee, end };
+  return { number, runFee: params.runFee, end, params };
 }
 
 /** A human-readable reason for a failed call or transaction, decoded with `contracts`' custom errors. */
@@ -104,4 +112,48 @@ export async function startRun({ challenge, season }: Contracts, accepting: Acce
   );
   const { runId, entropyId } = eventOf<ChallengeEvents, "RunStarted">(challenge, receipt, "RunStarted");
   return { runId, entropyId, transaction: receipt.hash };
+}
+
+/** Where a run's entropy block stands (README §7.2): not yet readable, readable, or past its
+ *  read window, which forfeits the run. */
+export type EntropyState = "waiting" | "revealable" | "lapsed";
+
+export async function entropyState({ challenge, entropy, arbSys }: Contracts, runId: bigint): Promise<EntropyState> {
+  const owner = await challenge.getAddress();
+  const id = await challenge.entropyIdOf(runId);
+  const [revealable, target, current, window] = await Promise.all([
+    entropy.isRevealable(owner, id),
+    entropy.targetBlock(owner, id),
+    arbSys.arbBlockNumber(),
+    entropy.READ_WINDOW(),
+  ]);
+  if (revealable) return "revealable";
+  if (target === 0n) throw new Error(`run ${runId} committed to no entropy block`);
+  return current > target + window ? "lapsed" : "waiting";
+}
+
+export interface RevealedRun {
+  runNonce: string;
+  revealedAt: bigint;
+  transaction: string;
+}
+
+/** Reveals the run, which derives its run nonce onchain and starts its deadline clock. */
+export async function revealRun({ challenge, season }: Contracts, runId: bigint): Promise<RevealedRun> {
+  const receipt = await confirmed(`revealRun(${runId})`, challenge.revealRun(runId), [challenge, season]);
+  const { runNonce, revealedAt } = eventOf<ChallengeEvents, "RunRevealed">(challenge, receipt, "RunRevealed");
+  return { runNonce, revealedAt, transaction: receipt.hash };
+}
+
+export interface CommittedRun {
+  commitment: string;
+  committedAt: bigint;
+  transaction: string;
+}
+
+/** Commits the run's six journals, in levelIndex order (README §7.2, P5). */
+export async function commitRun({ challenge, season }: Contracts, runId: bigint, journals: readonly string[]): Promise<CommittedRun> {
+  const receipt = await confirmed(`commitRun(${runId})`, challenge.commitRun(runId, [...journals]), [challenge, season]);
+  const { commitment, committedAt } = eventOf<ChallengeEvents, "RunCommitted">(challenge, receipt, "RunCommitted");
+  return { commitment, committedAt, transaction: receipt.hash };
 }
