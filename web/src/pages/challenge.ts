@@ -250,7 +250,7 @@ export function mount(): void {
         document.title = "Jiro-ikusu Challenge";
       }
     });
-    if (!locked) show("run-error", `Run ${record.runId} is open in another tab: it plays there.`);
+    if (!locked) show("season-error", `Run ${record.runId} is open in another tab: it plays there.`);
     return !failed;
   }
 
