@@ -947,7 +947,7 @@ Verification is by exception (README §7.3): a season verifies each player's bes
 
 ### Aggregation on testnet
 
-**Recommended: testnet-1 does not aggregate.** Each verified run is proven and settled on its own, through `ZkReferee` and the Groth16 verifier. The owner confirms this in M4.9's review.
+**Decided: testnet-1 does not aggregate** (owner, 2026-11-02, "No aggregation (Recommended)"). Each verified run is proven and settled on its own, through `ZkReferee` and the Groth16 verifier.
 
 - **It saves little.** Aggregation saves verification gas, at most about 219,000 gas per run at large batches: 0.0000044 ETH ($0.010) at the base fee above, 13% of a verified run's cost. The proving price, more than half of that cost, does not fall: each run still needs its own proof, then the batch its set-builder proof.
 - **It adds a pipeline.** RISC Zero's set builder is another zkVM build the size of the host's, whose proving time is not measured. Boundless delivers its aggregated proofs to its own set verifier on Base, and `risc0-ethereum` `v3.0.1` lists no set verifier on Arbitrum, so a season would deploy one, pin the set builder's image id, and submit each batch's root before any of its runs settles.
