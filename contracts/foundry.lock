@@ -10,5 +10,11 @@
       "name": "v5.7.0",
       "rev": "cab19933c33c2ad1d4c7a84864a3601dddfd16f3"
     }
+  },
+  "lib/risc0-ethereum": {
+    "tag": {
+      "name": "v3.0.1",
+      "rev": "365e7b2db4f620fa256580c27558d2623362b9ae"
+    }
   }
 }

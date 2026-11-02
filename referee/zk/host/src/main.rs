@@ -1,15 +1,19 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use risc0_zkvm::sha::Digest;
 use risc0_zkvm::{ExitCode, SessionInfo, default_executor};
 use serde_json::Value;
 use zk_host::{
-    FormatFixtures, Input, OUTCOME_LEN, TRACE_ELF, TRACE_ID, TRACED_LEN, VERIFY_ELF, VERIFY_ID,
-    check_format, check_outcome, check_traced, env, read_vector, rejection_code,
+    FormatFixtures, Input, TRACE_ELF, TRACE_ID, TRACED_LEN, VERIFY_ELF, VERIFY_ID, check_format,
+    check_outcome, check_outcomes, check_traced, env, read_games, read_vector, rejection_code,
 };
 
+mod prove;
+
 const USAGE: &str = "usage: zk-host execute <vector file or directory>...
-       zk-host execute-run <six game vector files>";
+       zk-host execute-run <six game vector files>
+       zk-host prove --level <game vector file> [--segment-po2 <n>]
+       zk-host prove --run <six game vector files> [--segment-po2 <n>]";
 
 /// The one JSON file under vectors/ that is not a vector (vectors/README.md).
 const NOT_A_VECTOR: &str = "derivations.json";
@@ -19,6 +23,7 @@ fn main() {
     let result = match args.split_first() {
         Some((command, rest)) if command == "execute" => execute(rest),
         Some((command, rest)) if command == "execute-run" => execute_run(rest),
+        Some((command, rest)) if command == "prove" => prove::prove(rest),
         _ => Err(USAGE.into()),
     };
     if let Err(error) = result {
@@ -160,28 +165,9 @@ fn execute_run(paths: &[String]) -> Result<(), String> {
     if paths.len() != 6 {
         return Err(USAGE.into());
     }
-    let vectors = paths
-        .iter()
-        .map(|path| read_vector(Path::new(path)))
-        .collect::<Result<Vec<_>, _>>()?;
-    let inputs = vectors
-        .iter()
-        .map(Input::of_game)
-        .collect::<Result<Vec<_>, _>>()?;
+    let (vectors, inputs) = read_games(paths)?;
     let info = run(VERIFY_ELF, &inputs)?;
-    if info.journal.bytes.len() != 6 * OUTCOME_LEN {
-        return Err(format!(
-            "verify guest committed {} bytes",
-            info.journal.bytes.len()
-        ));
-    }
-    for ((path, vector), words) in paths
-        .iter()
-        .zip(&vectors)
-        .zip(info.journal.bytes.chunks(OUTCOME_LEN))
-    {
-        check_outcome(vector, words).map_err(|error| format!("{path}: {error}"))?;
-    }
+    check_outcomes(&vectors, &info.journal.bytes)?;
     println!("=== BEGIN zk-run ===");
     println!("levels: {}", paths.join(" "));
     println!("user cycles: {}", info.cycles());
@@ -194,7 +180,7 @@ fn execute_run(paths: &[String]) -> Result<(), String> {
 /// Executes a guest and requires it to halt with exit code 0.
 fn run(elf: &[u8], inputs: &[Input]) -> Result<SessionInfo, String> {
     let info = default_executor()
-        .execute(env(inputs)?, elf)
+        .execute(env(inputs, None)?, elf)
         .map_err(|error| format!("execution failed: {error:#}"))?;
     match info.exit_code {
         ExitCode::Halted(0) => Ok(info),

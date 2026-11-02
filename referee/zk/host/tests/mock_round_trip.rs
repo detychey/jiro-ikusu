@@ -13,7 +13,7 @@ fn a_dev_mode_receipt_round_trips_to_the_vector_outcome() {
     let vector = read_vector(&path).unwrap();
     let info = default_prover()
         .prove_with_opts(
-            env(&[Input::of_game(&vector).unwrap()]).unwrap(),
+            env(&[Input::of_game(&vector).unwrap()], None).unwrap(),
             VERIFY_ELF,
             &ProverOpts::groth16().with_dev_mode(true),
         )
