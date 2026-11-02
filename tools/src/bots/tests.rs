@@ -67,3 +67,14 @@ fn every_policy_parses_from_its_name() {
         assert_eq!(Policy::parse(policy.name()), Ok(policy));
     }
 }
+
+#[test]
+fn search_parses_from_its_name() {
+    assert_eq!(Policy::parse("search"), Ok(Policy::Search));
+}
+
+/// Calibrate and the reference report play `Policy::ALL`, so `Search` must stay out of it.
+#[test]
+fn search_is_not_a_scripted_policy() {
+    assert!(!Policy::ALL.contains(&Policy::Search));
+}

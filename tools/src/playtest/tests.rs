@@ -3,7 +3,7 @@ use jiro_core::types::Pos;
 
 use super::*;
 
-fn levels_dir() -> PathBuf {
+pub(super) fn levels_dir() -> PathBuf {
     crate::repo_root().join("levels")
 }
 
@@ -25,7 +25,7 @@ fn level_file(level: Level) -> LevelFile {
 }
 
 /// A fresh directory for one test.
-fn scratch(test: &str) -> PathBuf {
+pub(super) fn scratch(test: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("jiro-playtest-{}-{test}", std::process::id()));
     if dir.exists() {
         fs::remove_dir_all(&dir).expect("clear the scratch directory");
@@ -404,8 +404,9 @@ fn targets_refuse_malformed_files() {
     let dir = scratch("targets");
     let mut increasing = vec![50; SEASON_LEVELS];
     increasing[15] = 60;
-    let cases: [(&str, &[&str], u16, Vec<u16>); 4] = [
+    let cases: [(&str, &[&str], u16, Vec<u16>); 5] = [
         ("increasing rates", &["greedy"], 5, increasing),
+        ("search in the mix", &["bold", "search"], 5, vec![50; 16]),
         ("15 rates", &["greedy"], 5, vec![50; 15]),
         ("a policy twice", &["greedy", "greedy"], 5, vec![50; 16]),
         ("tolerance above 100", &["greedy"], 101, vec![50; 16]),
@@ -419,7 +420,7 @@ fn targets_refuse_malformed_files() {
 /// Command lines that are refused before any run is played.
 #[test]
 fn parse_refuses_inconsistent_flags() {
-    let cases: [(&str, &[&str]); 9] = [
+    let cases: [(&str, &[&str]); 19] = [
         ("no runs", &["--levels", "l", "--runs", "0", "--out", "o"]),
         (
             "too many runs",
@@ -462,10 +463,83 @@ fn parse_refuses_inconsistent_flags() {
             "another seed without --out",
             &["--levels", "l", "--seed", "2"],
         ),
+        (
+            "a shard without --policy",
+            &["--runs", "200", "--shard", "1/8", "--out", "o"],
+        ),
+        (
+            "a shard without --out",
+            &["--policy", "search", "--runs", "200", "--shard", "1/8"],
+        ),
+        (
+            "shard 0",
+            &[
+                "--policy", "search", "--runs", "200", "--shard", "0/8", "--out", "o",
+            ],
+        ),
+        (
+            "shard 9 of 8",
+            &[
+                "--policy", "search", "--runs", "200", "--shard", "9/8", "--out", "o",
+            ],
+        ),
+        (
+            "a shard that is not i/n",
+            &[
+                "--policy", "search", "--runs", "200", "--shard", "1-8", "--out", "o",
+            ],
+        ),
+        (
+            "more shards than runs",
+            &[
+                "--policy", "search", "--runs", "4", "--shard", "1/8", "--out", "o",
+            ],
+        ),
+        (
+            "a shard with --check",
+            &[
+                "--policy", "search", "--runs", "200", "--shard", "1/8", "--out", "o", "--check",
+                "t",
+            ],
+        ),
+        (
+            "a shard with --only",
+            &[
+                "--policy", "search", "--runs", "200", "--shard", "1/8", "--out", "o", "--only",
+                "1",
+            ],
+        ),
+        (
+            "a shard with --nonce",
+            &[
+                "--policy",
+                "search",
+                "--runs",
+                "200",
+                "--shard",
+                "1/8",
+                "--out",
+                "o",
+                "--nonce",
+                "0x00",
+                "--level-index",
+                "0",
+            ],
+        ),
+        (
+            "a calibration without --shard",
+            &["--policy", "search", "--calibration", "c", "--out", "o"],
+        ),
     ];
     for (name, args) in cases {
         assert!(parse(args).is_err(), "{name}");
     }
+}
+
+#[test]
+fn levels_default_to_the_levels_directory() {
+    let args = parse(&["--policy", "greedy", "--out", "o"]).expect("parse");
+    assert_eq!(args.levels, PathBuf::from("levels"));
 }
 
 #[test]
