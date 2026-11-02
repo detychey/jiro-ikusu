@@ -371,6 +371,21 @@ contract SettlementTest is SettlementFixture {
         assertRecorded(runId, played);
     }
 
+    function test_SettleLevel_CanBeSubmittedAgainAfterARejection() public {
+        (uint256 runId, PlayedLevel[6] memory played) = committedRun();
+        bytes memory level = played[2].level;
+        played[2].level = openFieldLevel();
+        expectSettleLevelRevert(
+            runId,
+            played,
+            2,
+            abi.encodeWithSelector(Season.LevelNotInSeason.selector, number, keccak256(played[2].level))
+        );
+        played[2].level = level;
+        settleLevel(runId, played, 2);
+        assertEq(settlementOf(challenge, runId).settledLevels, 1 << 2);
+    }
+
     // settleRun rejections, in the order of README §7.2.
 
     function test_SettleRun_RevertsBeforeTheCommit() public {

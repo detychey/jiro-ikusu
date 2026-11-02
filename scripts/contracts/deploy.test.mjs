@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { assertPrivateKey, deployContracts, parseStylusDeploy } from "./deploy.mjs";
+import { assertPrivateKey, deployContracts, parseStylusDeploy, riscZeroVerifierOf } from "./deploy.mjs";
 
 const ADDRESS = "0xA6E41fFD769491a42A6e5Ce453259b93983a22EF";
 const DEPLOY_TX = `0x${"11".repeat(32)}`;
@@ -31,4 +31,8 @@ test("a deployment that neither activated nor found the wasm activated is refuse
 
 test("the zk backend is refused without the verify program's image id", async () => {
   await assert.rejects(deployContracts({ network: "local", backend: "zk", rulesVersion: 2 }), /needs the verify program's image id/);
+});
+
+test("a chain with no pinned RISC Zero verifier is refused", () => {
+  assert.throws(() => riscZeroVerifierOf(412346), /no RISC Zero verifier is pinned for chain 412346/);
 });
