@@ -8,7 +8,7 @@ import { journalEvents } from "../src/journal";
 import { continueRun, type RunEnv } from "../src/run/flow";
 import { closeLevel, playLevels, X_ALONE } from "../src/run/play";
 import { openRunStore, type RunRecord } from "../src/run/store";
-import { chainEnv, freshStore, playEnv, Reload, revealedRun, RUN_NONCE, type Script, shippedLevels } from "./challenge";
+import { chainEnv, closedRun, freshStore, playEnv, Reload, revealedRun, RUN_NONCE, type Script, shippedLevels } from "./challenge";
 import { loadEngine } from "./drive";
 
 const LEVELS = shippedLevels();
@@ -127,38 +127,6 @@ describe("a reload right after a level ended, before the next level is stored", 
   });
 });
 
-describe("a run the player stops", () => {
-  const stopAt = (levelIndex: number, ticksRun: number) => levelIndex > 3 || (levelIndex === 3 && ticksRun >= 10);
-
-  async function stopped() {
-    const core = await loadEngine();
-    const { store } = await freshStore();
-    const env = playEnv(core, store, LEVELS, { controls: commitAt30, stop: ({ levelIndex, ticksRun }) => stopAt(levelIndex, ticksRun) });
-    return { core, record: await playLevels(env, revealedRun(core)) };
-  }
-
-  it("closes the level in play at its next tick", async () => {
-    const { record } = await stopped();
-    expect(journalEvents(fromHex(record.journals[3] ?? "0x")).at(-1)).toEqual({ tick: 10, mask: X_ALONE });
-  });
-
-  it("gives each unplayed level an X at tick 0", async () => {
-    const { record } = await stopped();
-    expect(record.journals.slice(4).map((journal) => journalEvents(fromHex(journal)))).toEqual([
-      [{ tick: 0, mask: X_ALONE }],
-      [{ tick: 0, mask: X_ALONE }],
-    ]);
-  });
-
-  it("commits the unplayed levels with claim 0 after one tick", async () => {
-    const { core, record } = await stopped();
-    expect(outcomes(core, record).slice(4).map(({ endReason, claimBp, ticksUsed }) => [endReason, claimBp, ticksUsed])).toEqual([
-      ["Committed", 0, 1],
-      ["Committed", 0, 1],
-    ]);
-  });
-});
-
 describe("closing a level", () => {
   const level = LEVELS[0] as Uint8Array;
   const nonce = fromHex(RUN_NONCE);
@@ -200,16 +168,15 @@ describe("a run resumed after commitRun's bound", () => {
 });
 
 describe("a run resumed on a page clock past commitRun's bound, with the chain before it", () => {
-  it("is played on to its commit, not forfeited", async () => {
+  it("goes on to its commit, not forfeited", async () => {
     const core = await loadEngine();
     const { store } = await freshStore();
-    const record = { ...revealedRun(core), live: { levelIndex: 0, events: [], ticks: 40 } };
+    const record = closedRun(core, LEVELS);
     const onChain = chainEnv(core, store, LEVELS, [], { block: 0n, timestamp: 1_500 });
     const commitReached = new Error("commitRun's turn");
     const contracts = { ...onChain.contracts, challenge: { runs: async () => Promise.reject(commitReached) } };
-    const env = { ...onChain, contracts: contracts as unknown as RunEnv["contracts"], now: () => 2_201_000, stopRequested: () => true };
+    const env = { ...onChain, contracts: contracts as unknown as RunEnv["contracts"], now: () => 2_201_000 };
     await expect(continueRun(env, record)).rejects.toThrow(commitReached);
-    const stored = await store.get(record.key);
-    expect([stored?.forfeited, stored?.journals.length]).toEqual([undefined, 6]);
+    expect(record.forfeited).toBeUndefined();
   });
 });

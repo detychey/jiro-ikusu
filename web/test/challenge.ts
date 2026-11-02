@@ -5,10 +5,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { IDBFactory } from "fake-indexeddb";
 import type { Contracts } from "../src/chain/contracts";
-import { type Core, hex } from "../src/core";
+import { type Core, fromHex, hex } from "../src/core";
 import { type Control, DEFAULT_BINDINGS, HeldKeys } from "../src/input";
 import type { RunEnv } from "../src/run/flow";
-import type { PlayEnv, PlayState } from "../src/run/play";
+import { closeLevel, type PlayEnv, type PlayState, runLevels } from "../src/run/play";
 import { openRunStore, type RunRecord, type RunStore } from "../src/run/store";
 import { repo } from "./drive";
 
@@ -41,6 +41,13 @@ export function revealedRun(core: Core): RunRecord {
   };
 }
 
+/** `revealedRun` with six journals of an X alone at tick 0, ready for its commit. */
+export function closedRun(core: Core, levels: Uint8Array[]): RunRecord {
+  const record = revealedRun(core);
+  const closed = (level: Uint8Array, levelIndex: number) => closeLevel(core, level, fromHex(RUN_NONCE), { levelIndex, events: [], ticks: 0 });
+  return { ...record, journals: runLevels(record, levels).map((level, levelIndex) => hex(closed(level, levelIndex))) };
+}
+
 export async function freshStore(): Promise<{ factory: IDBFactory; store: RunStore }> {
   const factory = new IDBFactory();
   return { factory, store: await openRunStore(factory) };
@@ -53,7 +60,6 @@ export interface Script {
   beforeFrame?(state: PlayState): void;
   /** Called on each wait between levels; may throw Reload. */
   onSleep?(): void;
-  stop?(state: PlayState): boolean;
 }
 
 export function playEnv(core: Core, store: RunStore, levels: Uint8Array[], script: Script): PlayEnv {
@@ -80,8 +86,7 @@ export function playEnv(core: Core, store: RunStore, levels: Uint8Array[], scrip
       }
       time += FRAME_MS;
     },
-    stopRequested: () => script.stop?.(state) ?? false,
-    view: { levelStarted: () => {}, ticked: () => {}, levelEnded: () => {}, margin: () => {} },
+    view: { levelStarted: () => {}, ticked: () => {}, levelEnded: () => {} },
   };
 }
 
@@ -93,7 +98,7 @@ export function runEnv(core: Core, store: RunStore, levels: Uint8Array[], contra
     provider: {} as RunEnv["provider"],
     chainId: 31337,
     levelIds: [],
-    view: { status: () => {}, levelStarted: () => {}, ticked: () => {}, levelEnded: () => {}, margin: () => {} },
+    view: { status: () => {}, levelStarted: () => {}, ticked: () => {}, levelEnded: () => {} },
   };
 }
 

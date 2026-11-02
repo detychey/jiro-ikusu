@@ -23,36 +23,3 @@ export function checkSeason(rulesVersion: number, shippedLevelIds: readonly stri
   const slot = season.levelIds.findIndex((levelId, i) => levelId.toLowerCase() !== shippedLevelIds[i]?.toLowerCase());
   if (slot >= 0) refuse(`its level in slot ${slot} is ${season.levelIds[slot]}, and the page ships ${shippedLevelIds[slot]}`);
 }
-
-/** What the season view shows (README §8.4): the season's price, pot and parameters. */
-export interface SeasonFacts {
-  number: bigint;
-  runFee: bigint;
-  end: bigint;
-  rulesVersion: bigint;
-  rakeBp: bigint;
-  grace: bigint;
-  commitSlack: bigint;
-  minClears: bigint;
-  /** The season's run fees so far. */
-  fees: bigint;
-  /** The players' pots of earlier seasons that had no qualified points (Season.pendingRollover). */
-  rollover: bigint;
-}
-
-/** The season view's entries, as label and text. The players' pot is what closing the season
- *  now would give: the fees, less the rake rounded down, plus the rollover. */
-export function seasonEntries(facts: SeasonFacts, formatEth: (wei: bigint) => string): [string, string][] {
-  const rake = (facts.fees * facts.rakeBp) / 10_000n;
-  const rollover = facts.rollover === 0n ? "" : `, with ${formatEth(facts.rollover)} rolled over`;
-  return [
-    ["Season", String(facts.number)],
-    ["Run fee", formatEth(facts.runFee)],
-    ["Players' pot", `${formatEth(facts.fees - rake + facts.rollover)}: ${formatEth(facts.fees)} of fees less the ${Number(facts.rakeBp) / 100} % rake${rollover}`],
-    ["Ends", new Date(Number(facts.end) * 1000).toISOString()],
-    ["Settlement", `until ${Number(facts.grace) / 3600} h after the end`],
-    ["Commit slack", `${facts.commitSlack} s`],
-    ["Qualifies with", `${facts.minClears} cleared level${facts.minClears === 1n ? "" : "s"}`],
-    ["Rules version", String(facts.rulesVersion)],
-  ];
-}

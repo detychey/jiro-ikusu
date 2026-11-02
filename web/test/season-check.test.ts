@@ -7,7 +7,7 @@ import type { AcceptingSeason } from "../src/chain/contracts";
 import type { SeasonParams } from "../src/chain/bindings/Season";
 import { hex } from "../src/core";
 import { buyRun, type RunEnv, SeasonChanged } from "../src/run/flow";
-import { checkSeason, seasonEntries } from "../src/run/season";
+import { checkSeason } from "../src/run/season";
 import { freshStore, runEnv, shippedLevels } from "./challenge";
 import { loadEngine, repo } from "./drive";
 
@@ -89,40 +89,5 @@ describe("buying a run in the season shown", () => {
     };
     await expect(buyRun(changed, accepting, "0x0000000000000000000000000000000000000002")).rejects.toThrow(SeasonChanged);
     expect(startRun).not.toHaveBeenCalled();
-  });
-});
-
-describe("the season view", () => {
-  const facts = {
-    number: 1n,
-    runFee: 50_000_000_000_000n,
-    end: 1_800_000_000n,
-    rulesVersion: 2n,
-    rakeBp: 1_000n,
-    grace: 172_800n,
-    commitSlack: 120n,
-    minClears: 1n,
-    fees: 150_000_000_000_000n,
-    rollover: 0n,
-  };
-  const formatEth = (wei: bigint) => `${wei} wei`;
-
-  it("shows the price", () => {
-    expect(seasonEntries(facts, formatEth)).toContainEqual(["Run fee", "50000000000000 wei"]);
-  });
-
-  it("shows the players' pot: the fees less the rake, plus the rollover", () => {
-    expect(seasonEntries({ ...facts, rollover: 7n }, formatEth)).toContainEqual([
-      "Players' pot",
-      "135000000000007 wei: 150000000000000 wei of fees less the 10 % rake, with 7 wei rolled over",
-    ]);
-  });
-
-  it("shows the commit slack and the qualification", () => {
-    const entries = seasonEntries(facts, formatEth);
-    expect([entries.find(([label]) => label === "Commit slack"), entries.find(([label]) => label === "Qualifies with")]).toEqual([
-      ["Commit slack", "120 s"],
-      ["Qualifies with", "1 cleared level"],
-    ]);
   });
 });
