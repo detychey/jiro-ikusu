@@ -2,12 +2,14 @@
 // mock backend, MockReferee returning the rules version of seasons/calibration-1.json, and a season
 // opened with that file's 16 level ids and weights. Anvil has no ArbSys precompile, so MockArbSys
 // stands in for it, and MockArbSys.setBlockNumber advances the reveal.
-//   --up     leaves anvil running in the background and writes deployments/local.json.
+//   --up     leaves anvil running in the background and writes deployments/local.json. With
+//            --backend zk, the record names the zk backend, which the web app settles through the
+//            operator (plan M5.3), and MockReferee stands in for ZkReferee: it ignores the proof.
 //   --check  runs a Challenge run's happy path on a fresh anvil, then stops it: start, reveal,
 //            commit with six gate-set vectors' journals, settleRun against MockReferee, with each
 //            result checked against the vectors. It writes its record to a temporary file and
 //            checks it against the schema of deployments/README.md.
-// Usage: node localnet.mjs --up|--check [--port <port>]
+// Usage: node localnet.mjs --up|--check [--port <port>] [--backend mock|zk, with --up]
 import { spawn } from "node:child_process";
 import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -20,6 +22,7 @@ import { isEntryPoint, prependGeneration, readDeploymentRecord } from "./deploym
 const NETWORK = "local";
 const CHAIN_ID = NETWORKS[NETWORK].chainId;
 const SEASON_LABEL = "local";
+const LOCAL_BACKENDS = ["mock", "zk"];
 export const CALIBRATION = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "calibration-1.json"), "utf8"));
 // README §8.4's proposals and D12's fee; the rake is the contract tests' RAKE_BP.
 const LOCAL_SEASON = {
@@ -208,13 +211,13 @@ async function checkHappyPath(artifacts, provider, generation) {
   console.log(`localnet --check: run ${runId} settled, score ${score}, ticks ${ticks}, clears ${clears}: every result matches the vectors`);
 }
 
-async function up(port) {
+async function up(port, backend) {
   const file = deploymentFileOf(NETWORK);
   const artifacts = buildContracts();
   const { anvil, rpc, logFile } = await startAnvil(port, true);
   try {
     const provider = await connect(NETWORK, rpc);
-    const generation = await deployLocalnet(artifacts, provider, rpc);
+    const generation = { ...(await deployLocalnet(artifacts, provider, rpc)), backend };
     // A fresh anvil is a new chain: the previous record's addresses belong to one that no longer
     // exists. It is dropped only now, so a run that cannot start or deploy keeps a live chain's record.
     rmSync(file, { force: true });
@@ -246,7 +249,10 @@ async function check(port) {
 }
 
 if (isEntryPoint(import.meta.url)) {
-  const { values } = parseArgs({ options: { up: { type: "boolean" }, check: { type: "boolean" }, port: { type: "string", default: "8545" } } });
-  if (values.up === values.check) throw new Error("usage: node localnet.mjs --up|--check [--port <port>]");
-  await (values.up ? up(values.port) : check(values.port));
+  const { values } = parseArgs({
+    options: { up: { type: "boolean" }, check: { type: "boolean" }, port: { type: "string", default: "8545" }, backend: { type: "string", default: "mock" } },
+  });
+  const usage = "usage: node localnet.mjs --up|--check [--port <port>] [--backend mock|zk, with --up]";
+  if (values.up === values.check || !LOCAL_BACKENDS.includes(values.backend) || (values.check && values.backend !== "mock")) throw new Error(usage);
+  await (values.up ? up(values.port, values.backend) : check(values.port));
 }

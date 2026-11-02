@@ -58,6 +58,16 @@ pause and step move through the ticks, and the slider seeks, which plays the jou
 tick 0. Each tick shows its state hash and the inputs held, and a vector's trace is compared tick
 for tick, with the first tick that differs.
 
+A committed Challenge run loads by its run id (plan M5.3): the viewer reads the run's journals
+from its commit transaction (README §7.2, P5) through the public RPC of the network
+`?network=<name>` names, Arbitrum Sepolia by default, with no wallet (`src/chain/calldata.ts`).
+The transaction is the one whose `RunCommitted` log names the run, among the blocks of its
+`committedAt`. A direct call's input is the `commitRun` call; a smart-account wallet embeds the
+call in its own, where the viewer finds it by its selector and run id; otherwise it looks in the
+transaction's `debug_traceTransaction` trace, or says the run needs an RPC that serves traces.
+The journals are kept only if their run commitment is the one `Challenge` stored. The run's
+levels come from its draw, and its weights from its season; the viewer replays the level chosen.
+
 ## Level editor
 
 `editor.html` (plan M2.5) edits a level: paint obstacles, place up to 3 minion spawns, which take
@@ -107,7 +117,8 @@ level. The chain's latest block, not the page's clock, decides that `commitRun`'
 passed; a commit onchain of other journals forfeits the run in this browser. One run plays at a
 time in a tab, and a Web Lock per run keeps a second tab from playing it: that tab says the run
 is open in another tab. After the commit the page shows the six Outcomes, as the core replays
-them with the season's weights, and offers the run file of `docs/VERIFICATION.md`.
+them with the season's weights, and offers the run file of `docs/VERIFICATION.md`. The season page settles
+the player's best run, below.
 
 The page plays on Arbitrum Sepolia, or on the network `?network=<name>` names: `local` is the
 anvil chain of `scripts/contracts/localnet.mjs --up`, on port 8545, where nothing advances
@@ -117,7 +128,41 @@ generation of `deployments/<network>.json` (deployments/README.md), as the repos
 when the site was built; without that record it says so and does not connect.
 
 Training, the replay viewer and the level editor stay wallet-free (README §8.1): a test follows
-their imports and fails if they reach `src/chain/` or ethers.
+their imports and fails if Training or the editor reach `src/chain/` or ethers, or if the replay
+viewer, which reads the chain through a public RPC, reaches the wallet.
+
+## Season
+
+`season.html` (plan M5.3) shows a season (README §8.4), the newest by default or the one
+`?season=<n>` names, on the network `?network=<name>` names: its parameters and players' pot, its
+end with a countdown, then the countdown to the end of its settlement, its leaderboard, and each
+player's claim. Reads go through the network's public RPC, so the page needs no wallet to show
+the season; closing, claiming and settling go through the player's wallet, switched to the
+network if needed.
+
+- **Leaderboard,** without an indexer (`src/chain/leaderboard.ts`): `Season`'s `BestRunRecorded`,
+  which it emits each time a player's best settled run changes, `Challenge`'s `RunStarted`, for the
+  runs each player bought, and `Season`'s `Claimed`, read with `eth_getLogs` in chunks of 10,000
+  blocks from the season's first block, found by binary search on block timestamps
+  (`src/chain/logs.ts`). Players rank in D10's order. The qualified players' scores must add up to
+  `Season`'s `totalQualifiedPoints`, or the page says the RPC left out logs. A 14-day season on
+  Arbitrum, at 0.25 s per block, is about 484 calls per event: enough for testnet seasons, read in
+  the browser; a mainnet season needs an indexer.
+- **Claims:** each qualified player's best score's share of the players' pot, rounded down, as
+  `claim` pays it: the contract's pot once the season has closed, and before that the pot closing
+  it now would give.
+- **Close:** once the settlement of the oldest season not yet closed has ended (end + grace), the
+  page offers `closeSeason`, which anyone may call.
+- **Settlement** (`src/pages/settle.ts`): the player's best run of the season among the committed
+  runs this browser holds, replayed by the core, on time by the contract's deadline and first in
+  D10's order. The deployment's backend decides who settles it. On Stylus, and on the local
+  chain's MockReferee, the page does: one `settleRun`, or `settleLevel` for each level not yet
+  settled when `settleRun` does not fit in one transaction (its gas estimate fails without revert
+  data, or exceeds Arbitrum's 32M gas per transaction), with its progress, up to three tries when
+  the network fails, and reverts decoded. On zk the operator settles (README §7.5, D2), because
+  proving needs credentials that cannot live in a browser: the page offers the run file and shows
+  the cutoff, the season's end plus grace from `Season.settlementEndOf`. `Challenge` still takes a
+  settlement from anyone.
 
 ## Chain
 
@@ -145,7 +190,20 @@ carries them, that each journal is its bot's or the closed one of README §7.2, 
 reproduces the six Outcomes, and that `settleRun`, against MockReferee set to them, finds the run
 on time. `--reload-during-buy` reloads once the wallet sent `startRun`, before the page sees its
 hash; `--stale-season` lets the season end and the next open after the page showed it, which
-`buyRun` refuses, and a `startRun` for it sent anyway reverts:
+`buyRun` refuses, and a `startRun` for it sent anyway reverts. `--players <n>` plays a run from
+each of n accounts, from account 2 on.
+
+`--settle` (plan M5.3) settles each player's best run through `src/pages/settle.ts` instead, the
+second player's level by level, with `settleRun` held to a gas cap of 1: on the mock backend the
+player settles it, and on the zk backend (`localnet.mjs --up --backend zk`, with `--backend zk`
+here) the e2e checks the cutoff shown and that the exported run file reloads to the six Outcomes,
+then settles it as the operator. Each settled run then replays from its commit calldata to the
+Outcomes the referee returned at its settlement's block. A run that MockForwarder, standing in for
+a smart account, buys, reveals and commits loads from the call embedded in its transaction and
+from the transaction's trace, and replays to the Outcomes of the journals it committed. The
+leaderboard must equal `Season.bestRunOf`; then the season's settlement ends, account 9 closes it,
+and each player's claim shown must equal what `claim` pays. The season is then closed, so start a
+new chain for further runs:
 
 ```bash
 cargo build -p jiro-tools --locked                    # the bots, target/debug/jiro-tools (--tools)
@@ -156,6 +214,11 @@ node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --reload-after-en
 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --reload-after-end cleared
 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --reload-during-buy
 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --stale-season   # last: it opens a season
+
+node scripts/contracts/localnet.mjs --up                                       # a fresh chain
+node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --players 2 --settle
+node scripts/contracts/localnet.mjs --up --backend zk                          # after stopping it
+node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --players 2 --settle --backend zk
 ```
 
 ## Controls
@@ -186,6 +249,8 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/level.ts` | The editor's model of a level, its cells and fields, which the core encodes and decodes |
 | `src/page.ts` | What the pages share: elements by id, loading the engine, the field's size, the HUD, error messages, claims in percent |
 | `src/journal.ts` | The events of a journal the core has accepted |
+| `src/pages/season.ts` | The season page: parameters, pot, countdown, leaderboard with claims, close, claim |
+| `src/pages/settle.ts` | The player's best run, and its settlement: in the browser, or by the operator on zk |
 | `src/pages/challenge.ts` | The Challenge page: wallet, network switch, balance and faucet link, season view, the run with its field, countdown and Outcomes, run file, footer |
 | `src/run/season.ts` | The season check before `startRun`, and the season view's entries |
 | `src/run/flow.ts` | A run from `startRun` to `commitRun`, resumable from the run store |
@@ -193,14 +258,17 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/run/deadline.ts` | The commit deadline, with the contract's formula |
 | `src/run/store.ts` | The runs in IndexedDB |
 | `src/run/runfile.ts` | The run file v1 of `docs/VERIFICATION.md`: writing, reading and replaying it |
-| `src/chain/networks.ts` | The networks the app plays on, with what a wallet needs to add them, and the page's network |
+| `src/chain/networks.ts` | The networks the app plays on, with what a wallet needs to add them, the page's network, and a read-only provider |
 | `src/chain/deployments.ts` | The newest generation of a deployment record, and the records the site was built with |
 | `src/chain/wallet.ts` | The injected wallet: connecting, the network check and switch, the signer, ETH amounts |
-| `src/chain/contracts.ts` | The contracts through the bindings: the season accepting runs, `startRun`, the entropy block's state, `revealRun`, `commitRun`, decoded errors |
+| `src/chain/contracts.ts` | The contracts through the bindings: the season accepting runs, `startRun`, the entropy block's state, `revealRun`, `commitRun`, `closeSeason`, `claim`, decoded errors |
+| `src/chain/logs.ts` | `eth_getLogs` in chunks of blocks, and the first block at a timestamp |
+| `src/chain/leaderboard.ts` | A season's leaderboard from its events, and the claims |
+| `src/chain/calldata.ts` | A committed run's journals from its commit transaction, and its run file |
 | `src/chain/footer.ts` | The footer's contract addresses and build sha |
 | `src/chain/bindings/` | Generated by `scripts/bindings.mjs` from `contracts/abi/`: never edit by hand |
 | `src/errors.ts` | The core's error codes by name, with their meaning |
-| `test/*.test.ts` | vitest: the clock, the bindings, play, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, what a reload resumes, the run store and its lock, the run file, and the gate that plays one run at a time in a tab |
+| `test/*.test.ts` | vitest: the clock, the bindings, play, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, what a reload resumes, the run store and its lock, the run file, and the gate that plays one run at a time in a tab; the leaderboard and chunked logs, the season page's phases, close and pot, the best run and its settlement, and a committed run's journals from calldata or a trace |
 | `test/challenge.ts` | Plays a revealed run's levels without a chain, on a fake clock, with scripted keys and reloads |
 | `test/drive.ts` | Plays a level through the page's session on a fake clock, with the controls of a journal or a script |
 | `test/vectors.mjs` | The wasm parity runner of M1.11 (plain Node) |
@@ -208,4 +276,4 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `test/wasm.mjs` | The jiro-wasm loader of the two Node runners |
 | `scripts/bindings.mjs` | Generates `src/chain/bindings/` from `contracts/abi/` |
 | `scripts/chain-smoke.mjs` | `startRun` through `src/chain/` on a local chain |
-| `scripts/challenge-e2e.mjs` | A Challenge run from purchase to commit through `src/run/` on a local chain, with reloads |
+| `scripts/challenge-e2e.mjs` | Challenge runs from purchase to commit through `src/run/` on a local chain, with reloads, and with `--settle` their settlement, replay from calldata, leaderboard, close and claims |

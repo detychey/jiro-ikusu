@@ -1,6 +1,7 @@
-// Training is free and needs no wallet (README §8.1): the pages other than Challenge must not
-// load the chain code, nor ethers. The test follows every import, static or dynamic, from each
-// page's entry script.
+// Training is free and needs no wallet (README §8.1): Training and the level editor must not load
+// the chain code, nor ethers. The replay viewer reads committed runs from the chain (plan M5.3),
+// through a public RPC, and stays wallet-free: it never loads the wallet module. The test follows
+// every import, static or dynamic, from each page's entry script.
 
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -10,7 +11,8 @@ import { describe, expect, it } from "vitest";
 
 const WEB = fileURLToPath(new URL("../", import.meta.url));
 const CHAIN = join(WEB, "src", "chain");
-const WALLET_FREE_PAGES = ["index.html", "replay.html", "editor.html"];
+const CHAIN_FREE_PAGES = ["index.html", "editor.html"];
+const WALLET = join(CHAIN, "wallet.ts");
 
 /** The modules a page's inline script imports, as files. */
 function entriesOf(page: string): string[] {
@@ -48,17 +50,21 @@ function chainFilesOf(page: string): string[] {
   return [...importGraph(page).files].filter((file) => file.startsWith(CHAIN)).map((file) => relative(WEB, file));
 }
 
-describe("the wallet-free pages", () => {
-  it.each(WALLET_FREE_PAGES)("%s imports nothing from src/chain", (page) => {
+describe("the chain-free pages", () => {
+  it.each(CHAIN_FREE_PAGES)("%s imports nothing from src/chain", (page) => {
     expect(chainFilesOf(page)).toEqual([]);
   });
 
-  it.each(WALLET_FREE_PAGES)("%s does not import ethers", (page) => {
+  it.each(CHAIN_FREE_PAGES)("%s does not import ethers", (page) => {
     const ethers = [...importGraph(page).packages].filter((name) => name === "ethers" || name.startsWith("ethers/"));
     expect(ethers).toEqual([]);
   });
 
-  it("the import graph reaches src/chain from the Challenge page", () => {
+  it("the replay viewer does not import the wallet", () => {
+    expect([...importGraph("replay.html").files]).not.toContain(WALLET);
+  });
+
+  it("the import graph reaches the wallet from the Challenge page", () => {
     expect(chainFilesOf("challenge.html")).toContain("src/chain/wallet.ts");
   });
 });

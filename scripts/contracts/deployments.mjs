@@ -6,7 +6,7 @@ import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAddress } from "ethers";
 
-export const BACKENDS = ["mock", "stylus"];
+export const BACKENDS = ["mock", "stylus", "zk"];
 export const CONTRACT_KEYS = ["ArbSys", "ArbBlockhashEntropy", "Referee", "Season", "Challenge"];
 const ACCOUNT_KEYS = ["operator", "treasury"];
 const GENERATION_KEYS = ["deployedAt", "sourceCommit", "backend", ...ACCOUNT_KEYS, ...CONTRACT_KEYS, "seasons"];

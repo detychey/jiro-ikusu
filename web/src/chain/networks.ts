@@ -1,5 +1,8 @@
 // The networks the web app plays on, each with the parameters a wallet needs to add it
-// (EIP-3085), by the name of its record in deployments/ (deployments/README.md).
+// (EIP-3085), by the name of its record in deployments/ (deployments/README.md), and a provider
+// for the pages that only read the chain, through the network's public RPC.
+
+import { JsonRpcProvider } from "ethers";
 
 export interface Network {
   name: string;
@@ -43,4 +46,11 @@ export function networkNamed(name: string): Network {
 /** The page's network: `?network=<name>`, Arbitrum Sepolia by default. */
 export function networkOfPage(search: string): Network {
   return networkNamed(new URLSearchParams(search).get("network") ?? ARBITRUM_SEPOLIA.name);
+}
+
+/** A provider that reads `network` through its public RPC, with no wallet. */
+export function readOnlyProvider(network: Network): JsonRpcProvider {
+  const [rpc] = network.rpcUrls;
+  if (rpc === undefined) throw new Error(`${network.chainName} has no public RPC`);
+  return new JsonRpcProvider(rpc, network.chainId, { staticNetwork: true, cacheTimeout: -1 });
 }

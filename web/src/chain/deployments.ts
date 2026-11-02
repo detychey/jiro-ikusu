@@ -7,7 +7,7 @@ import type { Network } from "./networks";
 
 export const CONTRACT_KEYS = ["ArbSys", "ArbBlockhashEntropy", "Referee", "Season", "Challenge"] as const;
 export type ContractKey = (typeof CONTRACT_KEYS)[number];
-const BACKENDS = ["mock", "stylus"] as const;
+const BACKENDS = ["mock", "stylus", "zk"] as const;
 
 export interface Deployment {
   network: Network;

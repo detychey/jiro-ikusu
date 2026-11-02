@@ -43,7 +43,7 @@ export function buildContracts() {
     return { abi, bytecode: bytecode.object };
   };
   return Object.fromEntries(
-    ["MockArbSys", "ArbBlockhashEntropy", "MockReferee", "Season", "Challenge"].map((name) => [name, artifactOf(name)]),
+    ["MockArbSys", "ArbBlockhashEntropy", "MockReferee", "MockForwarder", "Season", "Challenge"].map((name) => [name, artifactOf(name)]),
   );
 }
 
@@ -143,6 +143,7 @@ async function deployStylusReferee(provider, rpc, deployerKey) {
 export async function deployContracts({ artifacts, provider, rpc, network, deployer, deployerKey, backend, treasury, rulesVersion }) {
   if (!BACKENDS.includes(backend)) throw new Error(`unknown backend ${backend}: expected one of ${BACKENDS.join(", ")}`);
   if (backend === "stylus" && network === "local") throw new Error("anvil runs no Stylus program: deploy the stylus backend on nitro-devnode");
+  if (backend === "zk") throw new Error("deploy.mjs has no ZkReferee branch yet (plan M4.10)");
   if (backend === "mock" && !Number.isInteger(rulesVersion)) throw new Error("the mock backend needs the rules version MockReferee returns");
   const operator = getAddress(await deployer.getAddress());
   console.log(`network ${network}, backend ${backend}, operator ${operator}, treasury ${getAddress(treasury)}`);

@@ -65,6 +65,10 @@ test("an unknown backend is refused", () => {
   assert.throws(() => assertDeploymentRecord(recordOf({ ...NEWER, backend: "zkvm" })), /backend/);
 });
 
+test("a zk generation is accepted", () => {
+  assert.doesNotThrow(() => assertDeploymentRecord(recordOf({ ...NEWER, backend: "zk" })));
+});
+
 test("a season number below 1 is refused", () => {
   assert.throws(() => assertDeploymentRecord(recordOf({ ...NEWER, seasons: { local: 0 } })), /not a season number/);
 });

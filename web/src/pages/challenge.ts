@@ -23,7 +23,7 @@ import {
 } from "../chain/wallet";
 import { type Core, hex } from "../core";
 import { CONTROLS, HeldKeys, loadBindings } from "../input";
-import { element, exclusive, fitField, loadCore, messageOf, percent, showHud } from "../page";
+import { downloadJson, element, exclusive, fitField, loadCore, messageOf, pending, percent, showHud } from "../page";
 import { Renderer } from "../render";
 import { buyRun, continueRun, playUnfinished, type RunEnv, SeasonChanged } from "../run/flow";
 import type { Margin } from "../run/play";
@@ -32,6 +32,8 @@ import { checkSeason, seasonEntries } from "../run/season";
 import { openRunStore, type RunRecord, type RunStore, withRunLock } from "../run/store";
 import { shippedLevels } from "../shipped";
 import { browserStorage } from "../storage";
+
+const WALLET_ERROR = "wallet-error";
 
 function show(id: string, text: string): void {
   const shown = element(id);
@@ -70,19 +72,6 @@ function showDisconnected(): void {
   element<HTMLAnchorElement>("faucet").hidden = true;
   element<HTMLButtonElement>("connect").hidden = false;
   element("season").hidden = true;
-}
-
-/** Runs `action` with `button` disabled until it settles, showing its error in `errorId`. */
-async function pending(button: HTMLButtonElement, action: () => Promise<void>, errorId = "wallet-error"): Promise<void> {
-  button.disabled = true;
-  show(errorId, "");
-  try {
-    await action();
-  } catch (error) {
-    element(errorId).textContent = messageOf(error);
-  } finally {
-    button.disabled = false;
-  }
 }
 
 /** The newest deployment on the page's network, or undefined, with the reason shown. */
@@ -271,13 +260,7 @@ export function mount(): void {
     table.hidden = false;
     const download = element<HTMLButtonElement>("run-file");
     download.hidden = false;
-    download.onclick = () => {
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(new Blob([JSON.stringify(file, null, 2)], { type: "application/json" }));
-      link.download = `jiro-run-${file.chainId}-${file.runId}.json`;
-      link.click();
-      URL.revokeObjectURL(link.href);
-    };
+    download.onclick = () => downloadJson(`jiro-run-${file.chainId}-${file.runId}.json`, file);
   }
 
   /** Shows the season, and resumes the runs this browser holds and has not committed, unless a
@@ -316,18 +299,18 @@ export function mount(): void {
       if (wallet === undefined) {
         wallet = injected;
         // A wallet event never prompts: a locked or disconnected wallet shows Connect again.
-        const onChange = (): void => void pending(connectButton, () => refreshShared(injected));
+        const onChange = (): void => void pending(connectButton, () => refreshShared(injected), WALLET_ERROR);
         for (const event of WALLET_EVENTS) injected.on?.(event, onChange);
       }
       if (onPageNetwork) await onConnected(connection);
-    });
+    }, WALLET_ERROR);
   });
   switchButton.addEventListener("click", () => {
     void pending(switchButton, async () => {
       if (wallet === undefined) throw new Error("connect the wallet first");
       await switchNetwork(wallet, deployment.network);
       await refreshShared(wallet);
-    });
+    }, WALLET_ERROR);
   });
   buyButton.addEventListener("click", () => {
     void pending(

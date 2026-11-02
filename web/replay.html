@@ -29,6 +29,12 @@
             <label>Journal hex <textarea id="journal-hex" rows="2" spellcheck="false"></textarea></label>
             <label>Weight (bp) <input id="weight" type="number" min="0" max="65535" value="10000" /></label>
           </fieldset>
+          <fieldset>
+            <legend>Or a committed Challenge run, read from its commit transaction</legend>
+            <label>Run id <input id="run-id" type="text" inputmode="numeric" spellcheck="false" /></label>
+            <label>Level <select id="run-level"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+            <p id="run-source"></p>
+          </fieldset>
           <button type="submit">Replay</button>
           <p id="load-error" class="error" role="alert"></p>
         </form>
