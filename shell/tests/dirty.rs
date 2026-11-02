@@ -3,7 +3,7 @@
 use jiro_core::grid::Grid;
 use jiro_core::level::{Level, Rect};
 use jiro_core::types::{Cell, CellIndex, Pos};
-use jiro_shell::dirty::DirtyCells;
+use jiro_shell::dirty::{DirtyCells, Shadow};
 
 fn grid() -> Grid {
     Grid::level_start(&Level {
@@ -48,4 +48,15 @@ fn update_without_changes_reports_nothing() {
     let mut dirty = DirtyCells::new();
     dirty.update(&grid);
     assert!(dirty.update(&grid).is_empty());
+}
+
+#[test]
+fn shadow_reports_the_state_of_each_changed_cell() {
+    let mut grid = grid();
+    let mut shadow = Shadow::new();
+    shadow.update(&grid, |_, _| {});
+    grid.set(CellIndex::new(Pos { x: 30, y: 58 }).unwrap(), Cell::Trail);
+    let mut reported = Vec::new();
+    shadow.update(&grid, |index, state| reported.push((index, state)));
+    assert_eq!(reported, [(58 * 60 + 30, Cell::Trail)]);
 }

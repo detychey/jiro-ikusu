@@ -20,7 +20,15 @@ name = "jiro-natmod"
 version = "0.1.0"
 dependencies = [
  "jiro-core",
+ "jiro-shell",
  "tiny-keccak",
+]
+
+[[package]]
+name = "jiro-shell"
+version = "0.1.0"
+dependencies = [
+ "jiro-core",
 ]
 
 [[package]]

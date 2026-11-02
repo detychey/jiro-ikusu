@@ -1,14 +1,47 @@
-//! DirtyCells: the cells whose state changed since the last redraw, found by comparing the
-//! core grid with a shadow copy, in row-major order.
+//! The dirty-cell diff: the cells whose state changed since the last redraw, found by comparing
+//! the core grid with a shadow copy, in row-major order. `Shadow` is the diff itself, which the
+//! wedgie's native module runs with its own drawing; `DirtyCells` keeps the changed indices for
+//! the browser.
 
 use jiro_core::consts::CELLS;
 use jiro_core::grid::Grid;
-use jiro_core::types::CellIndex;
+use jiro_core::types::{Cell, CellIndex};
+
+pub struct Shadow {
+    /// Each cell's state plus one, as last reported; 0 for a cell never reported. All zero at
+    /// first, so a static `Shadow` needs no initialized data, and any byte value is a valid
+    /// shadow: a value that matches no state only makes its cell reported again.
+    cells: [u8; CELLS],
+}
+
+impl Default for Shadow {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Shadow {
+    /// A shadow that matches no grid, so the first `update` reports every cell.
+    pub const fn new() -> Self {
+        Self { cells: [0; CELLS] }
+    }
+
+    /// Compares `grid` with the shadow, calls `changed` with the index and the state of each
+    /// cell that differs, in row-major order, and copies those states into the shadow.
+    pub fn update(&mut self, grid: &Grid, mut changed: impl FnMut(u16, Cell)) {
+        for ((cell, shadow), index) in CellIndex::all().zip(self.cells.iter_mut()).zip(0_u16..) {
+            let state = grid.get(cell);
+            let reported = (state as u8).saturating_add(1);
+            if *shadow != reported {
+                *shadow = reported;
+                changed(index, state);
+            }
+        }
+    }
+}
 
 pub struct DirtyCells {
-    /// Each cell's state plus one, as last reported; 0 for a cell never reported. All zero at
-    /// first, so a static `DirtyCells` needs no initialized data.
-    shadow: [u8; CELLS],
+    shadow: Shadow,
     changed: [u16; CELLS],
     count: u16,
 }
@@ -23,7 +56,7 @@ impl DirtyCells {
     /// A shadow that matches no grid, so the first `update` reports every cell.
     pub const fn new() -> Self {
         Self {
-            shadow: [0; CELLS],
+            shadow: Shadow::new(),
             changed: [0; CELLS],
             count: 0,
         }
@@ -32,17 +65,18 @@ impl DirtyCells {
     /// Compares `grid` with the shadow, records the indices of the cells that differ, and
     /// copies them into the shadow. Returns their indices, in row-major order.
     pub fn update(&mut self, grid: &Grid) -> &[u16] {
-        self.count = 0;
-        for ((cell, shadow), index) in CellIndex::all().zip(self.shadow.iter_mut()).zip(0_u16..) {
-            let state = (grid.get(cell) as u8).saturating_add(1);
-            if *shadow != state {
-                *shadow = state;
-                if let Some(slot) = self.changed.get_mut(usize::from(self.count)) {
-                    *slot = index;
-                    self.count = self.count.saturating_add(1);
-                }
+        let Self {
+            shadow,
+            changed,
+            count,
+        } = self;
+        *count = 0;
+        shadow.update(grid, |index, _| {
+            if let Some(slot) = changed.get_mut(usize::from(*count)) {
+                *slot = index;
+                *count = count.saturating_add(1);
             }
-        }
+        });
         self.changed()
     }
 

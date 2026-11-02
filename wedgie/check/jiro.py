@@ -6,7 +6,7 @@
 import gc
 
 STACK_BYTES = 65536  # the core needs up to 63 KB of stack; the rp2 C stack is 8 KB
-RECORDER_BYTES = 18564  # jiro_core.recorder_size(), which jiro_check checks
+RECORDER_BYTES = 18568  # jiro_core.recorder_size(), which jiro_check checks
 
 
 def run():

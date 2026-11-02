@@ -10,6 +10,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 jiro-core = { path = "../../../core" }
+jiro-shell = { path = "../../../shell" }
 # The trace keccak uses the core's own keccak crate, at the version of the root Cargo.lock.
 tiny-keccak = { version = "=2.0.2", features = ["keccak"] }
 
