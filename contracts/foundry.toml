@@ -9,11 +9,17 @@ auto_detect_remappings = false
 remappings = [
     "forge-std/=lib/forge-std/src/",
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "risc0/=lib/risc0-ethereum/contracts/src/",
+    # risc0-ethereum's own import path for OpenZeppelin, served by our OpenZeppelin submodule.
+    "openzeppelin/=lib/openzeppelin-contracts/",
 ]
-# The tests read the ethers fixtures (README §6.4, §7.2), and settlement tests the calibration
-# season and the Outcomes of its gate-set vectors.
+# The tests read the ethers fixtures (README §6.4, §7.2), settlement tests the calibration
+# season and the Outcomes of its gate-set vectors, and ZkVerify the zk proof fixture and the game
+# vectors it proves.
 fs_permissions = [
     { access = "read", path = "../vectors/derivations.json" },
     { access = "read", path = "../vectors/levels" },
+    { access = "read", path = "../vectors/game" },
     { access = "read", path = "../seasons/calibration-1.json" },
+    { access = "read", path = "./test/fixtures" },
 ]

@@ -41,9 +41,9 @@ permissions:
 
 env:
   GROTH16_PROVER_IMAGE: risczero/risc0-groth16-prover:v2025-04-03.1
-  # A pull_request run proves a reduced level. worst-case, the dispatch default, takes about 3.5
-  # hours on 4 CPUs, as on the public profile's runners, and would take about twice that on this
-  # repository's 2-vCPU runners, beyond the job's 6 hours (docs/VERIFICATION.md, zk costs).
+  # A pull_request run proves a reduced level. worst-case, the dispatch default, took 3.7 hours on
+  # 4 CPUs, as on the public profile's runners, and would take about 10 on this repository's
+  # 2-vCPU runners, beyond the job's 6 hours (docs/VERIFICATION.md, zk costs).
   PR_LEVEL: vectors/game/commit-at-tick-0.json
   PR_RUN: >-
     vectors/game/commit-at-tick-0.json vectors/game/commit-during-cut.json

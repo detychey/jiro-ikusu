@@ -614,7 +614,7 @@ So the verifier runs the Rust core itself, in one of two ways:
 | Path | How it works | Cost | Status |
 |---|---|---|---|
 | **Stylus referee** | The core, compiled to wasm, is deployed as an Arbitrum Stylus contract that replays the journal. | Measured by ethblockdigger on Arbitrum Sepolia: 0.84M–3.25M gas per full replay of its heavier game, with games of up to 6 minutes ([`docs/DEPLOYMENT.md`](https://github.com/detychey/ethblockdigger/blob/main/docs/DEPLOYMENT.md) B2). A 3-minute Jiro level should land around or below the draft's 1M target. | New Stylus activations on Arbitrum One, Nova and Sepolia [are paused since 2026-10-02](https://cryptobriefing.com/arbitrum-pauses-new-stylus-activations/), with no reopening date announced |
-| **zkVM proof** | The core, compiled to RISC-V, runs as the guest of a RISC-V zkVM (RISC Zero, SP1 or another), and a proof of the replay is verified onchain. | About 300k gas per verification, on any chain, and many proofs can be aggregated into one. Proving cost and latency are still to be measured. | Available |
+| **zkVM proof** | The core, compiled to RISC-V, runs as the guest of a RISC-V zkVM (RISC Zero, SP1 or another), and a proof of the replay is verified onchain. | About 300k gas per verification, on any chain, and many proofs can be aggregated into one. Measured in M4.8 with RISC Zero: 227,591 gas per Groth16 verification, and about 0.000018 ETH per proof on its Boundless market, a level's or a run's alike; CPU proving takes about an hour on 4 CPUs for six small levels ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#zk-costs)). | Available |
 
 **zkVM target: standard RISC-V.**
 
@@ -670,7 +670,7 @@ interface IReferee {
   - A revert records nothing. A settlement that failed on what the settler submitted, such as wrong level bytes or a bad proof, can therefore be submitted again.
   - Replay is deterministic, so a run whose committed journal replay rejects can never settle, and its fee stays in the pot.
 - **Independent replays.** `verifyRun` replays its six levels in order, each as `verify` would, with no check across them. Binding the six to one run is the contract's job ([§7.2](#72-run-flow)).
-- **`proof`** is empty on Stylus, where a non-empty proof reverts. On zk it carries the proof, whose public values bind keccak256 of each level and journal, each weight and each Outcome. M4.8 of the [plan](IMPLEMENTATION_PLAN.md) fixes their byte encoding.
+- **`proof`** is empty on Stylus, where a non-empty proof reverts. On zk it carries the proof, whose public values bind keccak256 of each level and journal, each weight and each Outcome. Their byte encoding, fixed in M4.8 ([`referee/zk/README.md`](referee/zk/README.md#public-values)), is `abi.encode(uint16 weightBp, Outcome)` per level, in order, whose `journalHash` and `levelId` are the two hashes.
 - **`rulesVersion()`** is the core's `RULES_VERSION`. A season accepts only a referee that reports the season's rules version ([§8.4](#84-season-scoring)).
 
 **Settlement shape** *(P16)*. A run settles in one transaction, `settleRun`, which calls `verifyRun` once.

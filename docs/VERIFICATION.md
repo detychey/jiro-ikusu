@@ -658,6 +658,118 @@ The format vectors, through the verify guest (a rejected journal or level halts 
 
 **Left for M4.8 and M4.10:** a reproducible guest build (above), the public values' byte encoding (README §7.3), the price of a raw Groth16 seal on Boundless, and the Groth16 image, which only Docker Hub serves.
 
+## zk costs
+
+Plan M4.8: real proofs of the verify guest in both modes, their onchain verification, and their costs, measured on 2026-11-02. RISC Zero 3.0.6 (`risc0-zkvm`, `risc0-build`), toolchain `r0.1.97.0`, the Groth16 prover image `risczero/risc0-groth16-prover:v2025-04-03.1` (digest `sha256:a4f80ce2…a64ee`, 5,209,789,112 bytes once loaded; `docker pull` worked in the container this time, in 1 min 42 s), RISC Zero's verifier contracts from `risc0-ethereum` `v3.0.1` (`365e7b2d`), forge 1.8.6 and solc 0.8.28. The code is this PR's: [`referee/zk/README.md`](../referee/zk/README.md) describes the two modes, the public values' encoding and the build path.
+
+- **Container:** 4 CPUs, 15.7 GiB of RAM, no swap, no GPU, in a 13.36 GiB memory cgroup that also holds `dockerd`; no other session ran. Each proof ran alone, with `bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove …`, from the build at the fixed path.
+- **Runner:** `ubuntu-24.04`, 2 vCPUs, 7,932 MiB of RAM and 3,071 MiB of swap, Docker 28.0.4, in `zk-prove.yml`'s PR run [41386918742](https://github.com/detychey/jiro-ikusu/actions/runs/41386918742), on the `ci:heavy` label.
+
+### Reproducible image ids
+
+A zk referee pins the verify program's image id (M4.10), so its build must not depend on the machine. M1.12 took the source paths out of the ELF (`-Zlocation-detail=none`), but the verify program's id still differed between the container and the runner, through Cargo's `-C metadata` hash of `jiro-core`'s absolute path ([The merged referee](#the-merged-referee)). M4.8 fixes the build path instead of the hash: **every build runs with the repository at `/home/runner/work/jiro-ikusu/jiro-ikusu`**, `actions/checkout`'s path on GitHub's runners, and a bind mount at that path elsewhere ([`referee/zk/README.md`](../referee/zk/README.md#reproducible-image-ids)).
+
+| Build | Path | verify image id | trace image id |
+|---|---|---|---|
+| `main` at `3d081f9` (M1.12's guests), container | `/home/user/wt/m1.12`, M1.12's record | `0x7e6e7a83…6bcb` | `0x85bd44e3…8342` |
+| the same, runner, M1.12's zk-exec runs [41368126873](https://github.com/detychey/jiro-ikusu/actions/runs/41368126873) and [41374389802](https://github.com/detychey/jiro-ikusu/actions/runs/41374389802) | `/home/runner/work/jiro-ikusu/jiro-ikusu` | `0x1e72b2e22a97adf71a3fde993f810d0f51f2bd0b5a1ab707c3c196cfe38a448f` | `0x85bd44e3f94ab7402e9e64c0528b746ed3a0f4b7392cc3ae586093a28c418342` |
+| the same, container, M4.8 | bind mount at `/home/runner/work/jiro-ikusu/jiro-ikusu` | `0x1e72b2e2…448f`, equal to the runner's | `0x85bd44e3…8342`, equal |
+| this PR's guests, container | bind mount at `/home/runner/work/jiro-ikusu/jiro-ikusu` | `0xa3013dc48ccd9e8e28c6625a8362a1fde513e1c51ae1e50286445c0eae3702b1` | `0x16dc16aa81d061849365ab4fe6e0bda97fe3ef177bbc8eb1d9b742221cd6d4ee` |
+| this PR's guests, runner, ci.yml's zk-exec job in run [41386734191](https://github.com/detychey/jiro-ikusu/actions/runs/41386734191) and the zk-prove run | `/home/runner/work/jiro-ikusu/jiro-ikusu` | `0xa3013dc4…02b1`, equal to the container's | `0x16dc16aa…d4ee`, equal |
+
+So both programs' image ids match between the container and the runner when both build at the same path, from the same commit and toolchain; `CARGO_TARGET_DIR` (the container built into `/home/user/wt/zk-trial-risc0/referee/zk/target`), `CARGO_HOME` (`/root/.cargo` against `/home/runner/.cargo`) and the toolchain's directory differ and do not matter. The proofs below verify under one image id whichever environment made them.
+
+RISC Zero's Docker build was not used. risc0-build 3.0.6 builds at `/src` inside `risczero/risc0-guest-builder` when given `use_docker`, and Docker Hub has its `r0.1.97.0` tag (3.0.6 defaults to `r0.1.88.0`, whose rustc 1.88 is older than the core's `rust-version` 1.96). In the container, Docker Hub answered that image's manifest with `429 Too Many Requests` (`ratelimit-remaining: 0`, at 03:08 UTC), and the build's `cargo fetch` step would run in a build container, which cannot reach the container's network proxy at `127.0.0.1` ([`TOOLING.md`](TOOLING.md), Docker). On Actions it would add the image's pull and a guest build from scratch to every zk-exec run. The fixed path needs neither, and CI already builds there.
+
+### Proving
+
+`zk-host prove` proves the verify program in three steps: the segment proofs (composite receipt), their recursion into one succinct receipt, both in the host process on the CPU, then the Groth16 wrapping in Docker. Every proof below verified against the image id `0xa3013dc4…02b1` and its public values matched the vectors' Outcomes (`verified: yes`). Times are wall times; "host" is the process's `VmHWM`, "Docker" the sampled resident memory of the Groth16 container, which runs after the host's peak.
+
+| Environment | Mode | Vectors | Segment limit | Segments | Proving cycles (user) | Segment proofs | Recursion | Groth16 | Total | Peak host | Peak Docker | Seal |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| container | run | six small (below) | 2^20 | 7 | 7,340,032 (6,707,648) | 2,772.9 s | 357.0 s | 167.3 s | 3,297.2 s | 9,601,376 kB (9.2 GiB) | 7,205 MiB | 260 bytes |
+| container | level | `worst-case` | 2^20 | 28 | 29,360,128 (27,762,027) | 11,428.3 s | 1,576.2 s | 172.3 s | 13,176.8 s | 9,616,060 kB (9.2 GiB) | 7,206 MiB | 260 bytes |
+| runner | level | `commit-at-tick-0` | 2^19 | 3 | 1,310,720 (1,122,337) | 1,237.9 s | 430.7 s | 459.8 s | 2,128.4 s | 4,815,444 kB (4.6 GiB) | 6,551 MiB | 260 bytes |
+| runner | run | six small (below) | 2^19 | 15 | 7,602,176 (6,707,648) | 6,812.1 s | 2,883.4 s | 472.4 s | 10,167.9 s | 4,818,616 kB (4.6 GiB) | 7,015 MiB | 260 bytes |
+
+The run mode's six vectors are the six smallest accepted game vectors, `commit-at-tick-0`, `commit-during-cut`, `fast-cut`, `event-at-last-tick`, `slow-shield` and `last-life-on-last-tick` (6.7 million user cycles in all); `zk-host execute-run` checks them in 0.19 s. Replays are independent (README §7.3), so a run-mode proof need not come from one Challenge run.
+
+- **The seal is 260 bytes in both modes**, the router's encoding: the selector `0x73c457ba`, then the 256-byte Groth16 seal. The public values are 384 bytes for a level and 2,304 for a run.
+- **Memory follows the segment size,** not the mode or the program's length: 9.2 GiB in the host with 2^20-cycle segments in both container proofs, 4.6 GiB with 2^19 on the runner. The Groth16 container takes about 7.0 GiB in the container and 6.4 to 6.9 GiB on the runner, where the sampler saw at most 7,760 MiB used with 366 MiB of swap (run mode) and 7,364 MiB with 787 MiB of swap (level mode), and `dmesg` no out-of-memory kill.
+- **Time follows the proving cycles.** In the container, a 2^20-cycle segment takes about 400 s on 4 CPUs (396 s each for the run's 7, 408 s for `worst-case`'s 28), and the recursion 51 to 56 s per segment. At that rate, the heaviest six-level run of the gate set (136,445,952 proving cycles in 131 segments, M1.12) would take about 16 to 17 hours on 4 CPUs, and on a 2-vCPU runner more than twice that. On the runner, a 2^19-cycle segment takes about 413 to 454 s on 2 vCPUs (1,237.9 s for 3, 6,812.1 s for 15), so about 2.1 to 2.3 times the container's time per cycle, and the recursion 144 to 192 s per segment.
+- **`worst-case` on a runner** was not proven: it would need about 10 hours there (some 56 segments of 2^19 cycles at about 450 s each, then about 3 hours of recursion), beyond the job's 6-hour limit and the minutes budget. `zk-prove.yml` proves it on `workflow_dispatch` (its default level), which fits a public repository's 4-vCPU runners at the container's rate; this PR's run proves `commit-at-tick-0` in level mode instead.
+- **Which environment succeeded:** both, in both modes. The container is the faster (4 CPUs); the runner needs 2^19-cycle segments to stay within its RAM.
+
+The fixture [`contracts/test/fixtures/zk-proofs.json`](../contracts/test/fixtures/zk-proofs.json) holds the runner's level and run proofs, copied from the log between `=== BEGIN zk-fixture ===` and `=== END zk-fixture ===`, and the container's `worst-case` proof (`zk-host prove --level vectors/game/worst-case.json`'s output; each entry names its source).
+
+### Verification gas
+
+RISC Zero's 3.0 Groth16 verifier (`RiscZeroGroth16Verifier`, selector `0x73c457ba`), from the `risc0-ethereum` submodule at `v3.0.1`, called directly as a zk referee calls it (`docs/ECONOMY.md`, zk prover trust). [`contracts/test/ZkVerify.t.sol`](../contracts/test/ZkVerify.t.sol) rebuilds each proof's public values from its game vectors, as `abi.encode(uint16 weightBp, Outcome)` per level with `journalHash` and `levelId` computed from the journal and level bytes, and checks them against the fixture, then verifies the seal against `sha256` of them. A changed `levelScore`, and a level proof given a run's public values, revert with `VerificationFailed()`.
+
+`cd contracts && forge test --match-contract ZkVerify --gas-report`:
+
+```text
+[PASS] test_aLevelProofDoesNotVerifyARun() (gas: 1969643)
+[PASS] test_aLevelProofOfAnotherScoreReverts() (gas: 1590074)
+[PASS] test_aLevelProofVerifies() (gas: 1028993)
+[PASS] test_aRunProofVerifies() (gas: 1405409)
+[PASS] test_theLevelProofCommitsTheVectorsEncoding() (gas: 742855)
+[PASS] test_theRunProofCommitsTheVectorsEncoding() (gas: 1126772)
+[PASS] test_theWorstCaseLevelProofVerifies() (gas: 1506289)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 18.59ms (49.38ms CPU time)
+| lib/risc0-ethereum/contracts/src/groth16/RiscZeroGroth16Verifier.sol:RiscZeroGroth16Verifier Contract |                 |        |        |        |         |
++==============================================================================================================================================================+
+| Deployment Cost                                                                                       | Deployment Size |        |        |        |         |
+|-------------------------------------------------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+|                                                                                               1185417 |            9387 |        |        |        |         |
+|-------------------------------------------------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+|                                                                                                       |                 |        |        |        |         |
+|-------------------------------------------------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+| Function Name                                                                                         | Min             | Avg    | Median | Max    | # Calls |
+|-------------------------------------------------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+| verify                                                                                                |          225095 | 226592 | 227591 | 227591 |       5 |
+|-------------------------------------------------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+| verifyProof                                                                                           |          215599 | 215599 | 215599 | 215599 |       5 |
+╰-------------------------------------------------------------------------------------------------------+-----------------+--------+--------+--------+---------╯
+```
+
+- **Per proof: 227,591 gas for `verify`,** in both modes and for every proof: Groth16 verification costs the same whatever it proves, and the public values reach it only as a 32-byte digest. The caller adds the digest: the `SHA256` precompile costs 60 + 12 per word, 204 gas for a level's 384 bytes and 924 for a run's 2,304, plus the cost of encoding them.
+- **On the chains:** `cast estimate` on the deployed 3.0 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D` gives 256,471 gas for the fixture's level and run proofs and 256,483 for `worst-case` on Arbitrum One (block 520,506,667) and Arbitrum Sepolia (block 325,250,777), the transaction's intrinsic and calldata gas included, so each proof verifies on both chains; through the router `0x0b14…b711`, the container's run proof takes 276,995 on both, as M1.17 measured. With the digest changed to `0x…01`, the router reverts with `VerificationFailed()` (`0x439cc0cd`) on both.
+- **Per run:** one run proof costs one verification, 227,591 gas; settling the six levels with six level proofs (`settleLevel`) costs six.
+
+### Prover network price
+
+Boundless, RISC Zero's proof market on Base (M1.17, [Prover network](#prover-network-1)). Its indexer lists every request with its proof type: `GET https://d2mdvlnmyov1e1.cloudfront.net/v1/market/requests?limit=500`, paged by cursor, which `openapi.json` at the same host documents. Read on 2026-11-02 at 03:14 UTC; the requests created in the 7 days before, from 2026-10-26 03:19 to 2026-11-02 03:05 UTC, on Base (chain 8453):
+
+- **1,411 requests: 1,376 fulfilled, 34 expired, 1 locked.** Of the fulfilled, 1,370 ask for selector `73c457ba`, a raw 3.0 Groth16 seal, the 260-byte seal that `ZkVerify.t.sol` verifies, and 6 for selector `00000000`, a Merkle inclusion into an aggregated set (196-byte seals starting `0x242f9d5b`). Over the 14 days read, 2,942 fulfilled requests delivered a 260-byte seal starting `0x73c457ba`. **This corrects M1.17:** the market's prices are mostly raw Groth16 prices, not aggregated ones, so a raw Groth16 seal is priced.
+- **Two requesters and two provers** account for all the raw Groth16 requests: `0x7276fa3c…19c9` (1,307 requests, all `ClaimDigestMatch`, 176 million to 4.6 billion total cycles) and `0x68f4482f…7483` (63, `DigestMatch`, from 5.2 million cycles); provers `0x8252c632…2ec8` (1,235) and `0xa6c2cc7c…a024` (135).
+- **The price barely depends on the cycles.** A least-squares fit of lock price on total cycles over the 1,307 fulfilled `ClaimDigestMatch` Groth16 requests gives 0.0000153 ETH + 17,383 wei per cycle, with R² 0.19; over the 63 `DigestMatch` ones, R² 0.00. The fixed part, the prover's Groth16 wrapping and its fulfilment gas on Base, dominates at these sizes.
+
+| Fulfilled raw Groth16 requests | Requests | Predicate | Total cycles, median | Lock price p10 | p50 | p90 |
+|---|---:|---|---:|---:|---:|---:|
+| 5.2 to 45 million cycles | 39 | `DigestMatch` (journal delivered onchain) | 45,088,768 | 0.0000265 ETH | 0.0000550 ETH | 0.0000557 ETH |
+| 176 to 196 million cycles | 788 | `ClaimDigestMatch` | 187,957,248 | 0.0000138 ETH | 0.0000184 ETH | 0.0000233 ETH |
+| any size | 1,370 | both | 193,986,560 | 0.0000139 ETH | 0.0000188 ETH | 0.0000350 ETH |
+
+The lowest price of the week was 0.0000134 ETH. A settler needs the seal, not the journal, onchain on Base: it computes the public values itself. So `ClaimDigestMatch` is the request a referee's prover would make, and its 176 to 196 million-cycle bucket, above the heaviest run's 136.6 million proving cycles, prices our proofs: since the price does not fall with fewer cycles, it serves for both modes. With ETH at $2,295.05 (CoinGecko `simple/price`, 2026-11-02 03:15 UTC):
+
+| Proof | Proving cycles | Expected price (p50) | p10 to p90 | Against the 0.00005 ETH run fee |
+|---|---:|---|---|---:|
+| One level, `commit-at-tick-0` to `10-worst` | 1,310,720 to 30,932,992 | 0.0000184 ETH ($0.042) | 0.0000138 to 0.0000233 ETH | 37% |
+| One six-level run, the six small vectors to the heaviest six | 7,340,032 to 136,445,952 | 0.0000184 ETH ($0.042) | 0.0000138 to 0.0000233 ETH | 37% |
+| One run as six level proofs | | 0.000110 ETH ($0.25) | | 220% |
+
+These are a thin market's prices (two requesters, two provers), and the `ClaimDigestMatch` requests all come from one requester whose programs are larger than ours; the `DigestMatch` requests near our sizes paid three times as much (p50 0.000055 ETH), with the journal delivered onchain. No request was made: it needs a funded Base wallet and a public program URL (round F0).
+
+### Season aggregation
+
+RISC Zero's aggregation tooling is in `risc0-ethereum` `v3.0.1`: the `risc0-aggregation` 0.9.0 crate and its set-builder guest, which verifies a batch of receipts' claims inside the zkVM and commits the Merkle root of their claim digests, and `RiscZeroSetVerifier.sol`, which checks one Groth16 proof of that root (`submitMerkleRoot`, which caches it) and then each claim by its Merkle path (`verify` with a set-inclusion seal). Boundless's default delivery is this, on Base. `contracts/deployment.toml` at `v3.0.1` lists no set verifier on Arbitrum, so a season would deploy its own, pinned to the set builder's image id.
+
+- **Onchain, measured with the framework's tests:** `cd contracts/lib/risc0-ethereum/contracts && forge test --match-contract RiscZeroSetVerifier --gas-report` (7 tests passed, fuzzed over random sets, with the mock verifier for the root): `verify` of one claim against a cached root takes 7,147 to 8,418 gas (median 8,358); `submitMerkleRoot` takes 54,438 gas with the mock root verifier, whose `verify` takes 3,376, so about 51,062 plus one real Groth16 verification (227,591) with the real one.
+- **Against one proof per run,** for N verified runs in a season: N × 227,591 gas, against about 278,653 + N × 8,400 for one root and N inclusions. Aggregation is cheaper from N = 2, and for 100 runs takes about 1,118,653 gas against 22,759,100.
+- **Proving side:** each run still needs its succinct receipt (segment proofs and recursion, without its own Groth16 wrapping), then one set-builder proof and one Groth16 wrapping per batch. Not run here: the set builder, its host and its Groth16 step are another build of the size of this host's, and their proving time is not measured. On Boundless, aggregation is the default delivery and is not priced separately: its 6 default requests of the week paid a median of 0.0000216 ETH, for 1.3 to 4.1 billion cycles each.
+- **For M4.9:** aggregation saves verification gas, not proving cost, and needs a batch: runs settle only once the season's batch is proven, after the season's end and within its grace.
+
 ## Challenge gas
 
 M4.6 measured the gas of each step of a Challenge run (README §7.2) with forge 1.8.6, solc 0.8.28, the optimizer at 200 runs and `evmVersion` shanghai:
