@@ -12,12 +12,8 @@
 // Usage: node web/test/vectors.mjs <vectors dir> [jiro_wasm.wasm]
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { HASH_LEN, WASM_DEFAULT, be, bytes, hex, loadWasm } from "./wasm.mjs";
 
-const WASM_DEFAULT = join(
-  process.env.CARGO_TARGET_DIR ?? new URL("../../target", import.meta.url).pathname,
-  "wasm32-unknown-unknown/release/jiro_wasm.wasm",
-);
-const HASH_LEN = 32;
 const LEVEL_ID_AT = 36;
 
 const [vectorsDir, wasmPath = WASM_DEFAULT] = process.argv.slice(2);
@@ -26,24 +22,7 @@ if (!vectorsDir) {
   process.exit(2);
 }
 
-const { instance } = await WebAssembly.instantiate(readFileSync(wasmPath), {});
-const wasm = instance.exports;
-const memory = (ptr, len) => new Uint8Array(wasm.memory.buffer, ptr, len);
-const hex = (bytes) => "0x" + Buffer.from(bytes).toString("hex");
-const bytes = (text) => Uint8Array.from(Buffer.from(text.replace(/^0x/, ""), "hex"));
-const be = (bytes) => bytes.reduce((value, byte) => value * 256 + byte, 0);
-
-/** Writes the byte strings side by side into the input buffer and returns their lengths. */
-function input(...parts) {
-  const total = parts.reduce((sum, part) => sum + part.length, 0);
-  if (total > wasm.input_capacity()) throw new Error(`input of ${total} bytes exceeds the buffer`);
-  let at = 0;
-  for (const part of parts) {
-    memory(wasm.input_ptr() + at, part.length).set(part);
-    at += part.length;
-  }
-  return parts.map((part) => part.length);
-}
+const { wasm, memory, input, outcome, trace } = await loadWasm(wasmPath);
 
 function readVectors(kind) {
   const dir = join(vectorsDir, kind);
@@ -95,24 +74,6 @@ for (const { file, vector } of formats) {
   } else {
     fail(file, `unknown kind ${vector.kind}`);
   }
-}
-
-/** The Outcome of README §7.3 from the 110 bytes of outcome_ptr. */
-function outcome() {
-  const at = memory(wasm.outcome_ptr(), 110);
-  return {
-    journalHash: hex(at.subarray(0, 32)),
-    levelId: hex(at.subarray(32, 64)),
-    runNonce: hex(at.subarray(64, 96)),
-    levelIndex: at[96],
-    drawSlot: at[97],
-    mode: at[98],
-    rulesVersion: be(at.subarray(99, 101)),
-    endReason: at[101],
-    claimBp: be(at.subarray(102, 104)),
-    ticksUsed: be(at.subarray(104, 106)),
-    levelScore: be(at.subarray(106, 110)),
-  };
 }
 
 function firstDifferingTick(computed, recorded) {
@@ -186,7 +147,7 @@ for (const { file, vector } of games) {
       if (replayed[key] !== value) fail(file, `field outcome.${key}: wasm ${replayed[key]}, vector ${value}`);
     }
   }
-  const computed = memory(wasm.trace_ptr(), wasm.trace_ticks() * HASH_LEN).slice();
+  const computed = trace().slice();
   const tick = firstDifferingTick(computed, recorded);
   if (tick !== -1) reportTrace(file, tick, level, journal, vector.weightBp);
   else if (!("error" in vector)) playLive(file, vector, level, journal, recorded);

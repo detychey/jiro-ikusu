@@ -8,6 +8,7 @@ The zk path of `IReferee` (README §7.3): the core replays journals as the guest
 - `host/`, the `zk-host` binary:
   - `execute <files or directories>` runs vectors through both programs in the executor and checks them against the native core's records, with a cycle table;
   - `execute-run <six files>` executes one run-mode input;
+  - `difffuzz <directory>` runs the random cases that `jiro-tools difffuzz` wrote there through both programs, as `execute` runs a game vector, and copies each case that disagrees with the native core to `<directory>/mismatch/` (plan M1.13);
   - `prove --level <file>` and `prove --run <six files>`, each with an optional `--segment-po2 <n>`, prove the verify program on the CPU and wrap the proof into a Groth16 seal (Docker);
   - `tests/mock_round_trip.rs`, a dev-mode receipt round trip.
 - `peak-memory.sh <command>` prints a command's wall time and peak memory, its process tree's and Docker's.

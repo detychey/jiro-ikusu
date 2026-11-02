@@ -1,8 +1,10 @@
 # Private CI profile (plan §1.3, P14): the rust, rust-release, targets, determinism,
-# vectors-drift, levels-drift, wasm-parity and stylus rows of plan §3.4 run as step groups of
-# one `rust` job; vectors-drift also runs the version gate, scripts/check-rules-version.sh. The
-# stylus row generates M1.10's 200 fixed difffuzz cases before the tests, whose TestVM replay
-# of jiro-referee-stylus needs them, and size-gates the Stylus wasm after them. The job always
+# vectors-drift, levels-drift, wasm-parity, difffuzz and stylus rows of plan §3.4 run as step
+# groups of one `rust` job; vectors-drift also runs the version gate,
+# scripts/check-rules-version.sh. The stylus row generates M1.10's 200 fixed difffuzz cases
+# before the tests, whose TestVM replay of jiro-referee-stylus needs them, and size-gates the
+# Stylus wasm after them; the difffuzz row replays the same cases through jiro-wasm, and the
+# zk-exec job runs 20 of them through the executor (plan M1.13). The job always
 # starts and reports a status; its steps skip when no path of the `rust` filter changed (Rust
 # sources, scripts, tools/xcheck, vectors, levels, the playtest reports that levels/README.md
 # reads, the wasm builds and the wasm runner, this workflow), except on workflow_dispatch, where every step runs. Once the toolchain is
@@ -54,6 +56,9 @@ jobs:
               - 'reports/playtest-*.json'
               - 'web/wasm/**'
               - 'web/test/vectors.mjs'
+              - 'web/test/difffuzz.mjs'
+              - 'web/test/wasm.mjs'
+              - 'web/package-lock.json'
               - 'referee/**'
               - '.github/workflows/ci.yml'
             rules:
@@ -145,7 +150,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: tools/xcheck/package-lock.json
+          cache-dependency-path: |
+            tools/xcheck/package-lock.json
+            web/package-lock.json
 
       - name: Vectors match their generators (vectors-drift)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
@@ -172,6 +179,12 @@ jobs:
         run: |
           bash web/wasm/build-wasm.sh
           node web/test/vectors.mjs vectors/
+
+      - name: jiro-wasm agrees with native on the 200 fixed difffuzz cases (difffuzz)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
+          npm --prefix web ci
+          node web/test/difffuzz.mjs target/difffuzz
 
       - name: The Stylus referee fits the contract size limit (stylus)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
@@ -387,7 +400,9 @@ jobs:
   # The zk-exec row of plan §3.4 (M1.12): the zk referee of referee/zk/, RISC Zero's guests run in
   # its executor on the CPU. The format vectors and 4 game vectors must give the native core's
   # recorded codes, Outcomes and trace digests, and a dev-mode receipt of the verify guest must
-  # round-trip to its vector's Outcome. nightly.yml runs every vector. It is its own job, not a
+  # round-trip to its vector's Outcome, and the first 20 of M1.10's 200 fixed difffuzz cases must
+# give native's Outcomes and trace digests (plan M1.13); a debug build of jiro-tools writes them,
+# in seconds. nightly.yml runs every vector. It is its own job, not a
   # step group of `rust`, so that its build cache and its time limit are its own: a cold build of
   # the host takes about 63 minutes on this runner, almost all of it g++ on RISC Zero's circuit
   # kernels, and a warm one minutes (docs/TOOLING.md, Actions minutes). On an exact cache hit the
@@ -460,6 +475,13 @@ jobs:
           referee/zk/target/release/zk-host execute vectors/format \
             vectors/game/full-journal.json vectors/game/open-field-capture.json \
             vectors/game/rejected-level-id.json vectors/game/worst-case.json
+
+      - name: 20 of the fixed difffuzz cases through the executor (difffuzz)
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        timeout-minutes: 10
+        run: |
+          cargo run -p jiro-tools --locked -- difffuzz --seed 1 --cases 20 --out target/difffuzz
+          referee/zk/target/release/zk-host difffuzz target/difffuzz
 
       - name: A dev-mode receipt round-trips (zk-exec)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}

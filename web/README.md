@@ -204,6 +204,8 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `test/challenge.ts` | Plays a revealed run's levels without a chain, on a fake clock, with scripted keys and reloads |
 | `test/drive.ts` | Plays a level through the page's session on a fake clock, with the controls of a journal or a script |
 | `test/vectors.mjs` | The wasm parity runner of M1.11 (plain Node) |
+| `test/difffuzz.mjs` | The wasm side of M1.13's differential fuzzing: M1.10's random cases against native's Outcomes and trace digests (Node, with `ethers` for keccak256) |
+| `test/wasm.mjs` | The jiro-wasm loader of the two Node runners |
 | `scripts/bindings.mjs` | Generates `src/chain/bindings/` from `contracts/abi/` |
 | `scripts/chain-smoke.mjs` | `startRun` through `src/chain/` on a local chain |
 | `scripts/challenge-e2e.mjs` | A Challenge run from purchase to commit through `src/run/` on a local chain, with reloads |
