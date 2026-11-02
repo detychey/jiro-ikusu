@@ -3,19 +3,27 @@
 // that the wallet stamps on each transaction. jiro-tools' playtest bots choose each level's
 // inputs, fed as keys through input.ts; a reload rebuilds the page's objects on the same
 // in-memory IndexedDB, and a reload while startRun confirms leaves the page's wallet unanswered. Account 2 plays, account 0 advances MockArbSys (0.25 s per block) and
-// account 3 settles against MockReferee.
-// Usage: node scripts/contracts/localnet.mjs --up, then
+// account 3 settles against MockReferee. With --players n, accounts 2 to n + 1 each play a run.
+// With --settle (plan M5.3), the players' best runs settle through src/pages/settle.ts instead:
+// each player settles their own on the mock backend, and the operator settles the exported run
+// file on the zk backend, as M5.5's operator will. Then the runs replay from their commit
+// calldata, a run committed through MockForwarder (account 8's stand-in for a smart account)
+// replays from its embedded call and its trace, the leaderboard is checked against Season, and
+// account 9 closes the season once its settlement has ended, which leaves no season accepting runs.
+// Usage: node scripts/contracts/localnet.mjs --up [--backend zk], then
 //        node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545
 //          [--reload-at <level 1-6> | --reload-after-end out-of-lives|cleared | --reload-during-buy | --stale-season]
-//          [--tools <jiro-tools binary>] [--network local] [--account 2]
+//          [--players <n>] [--settle] [--backend mock|zk] [--tools <jiro-tools binary>] [--network local] [--account 2]
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { ContractFactory, JsonRpcProvider } from "ethers";
 import { IDBFactory } from "fake-indexeddb";
 import { createServer } from "vite";
+import { buildContracts } from "../../scripts/contracts/deploy.mjs";
 import { nodeWallet, rpcClient } from "./node-wallet.mjs";
 
 const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -30,6 +38,8 @@ const BLOCK_MS = 250;
 const RELOAD_GAP_MS = 5_000;
 const OPERATOR = 0;
 const SETTLER = 3;
+const FORWARDER_OWNER = 8;
+const CLOSER = 9;
 /** The bot of each level index: a mix of the playtest policies, for a mix of end reasons. */
 const POLICIES = ["greedy", "random-walk", "committer", "bold", "edge-nibbler", "greedy"];
 /** For --reload-after-end: the end reason wanted, and the policies to try for it, in order. */
@@ -89,7 +99,7 @@ async function e2e(load, options) {
   const { networkNamed } = await load("/src/chain/networks.ts");
   const { bundledDeployment } = await load("/src/chain/deployments.ts");
   const { connect, formatEth, onNetwork, signerOf } = await load("/src/chain/wallet.ts");
-  const { acceptingSeason, connectContracts } = await load("/src/chain/contracts.ts");
+  const { acceptingSeason, claim, closeSeason, connectContracts } = await load("/src/chain/contracts.ts");
   const { connectMockArbSys } = await load("/src/chain/bindings/MockArbSys.ts");
   const { connectMockReferee } = await load("/src/chain/bindings/MockReferee.ts");
   const { connectSeason } = await load("/src/chain/bindings/Season.ts");
@@ -100,6 +110,11 @@ async function e2e(load, options) {
   const { X_ALONE } = await load("/src/run/play.ts");
   const { openRunStore, runKey } = await load("/src/run/store.ts");
   const { parseRunFile, replayRunFile, runFileOf } = await load("/src/run/runfile.ts");
+  const { committedRun, tracedCommitRunCalls } = await load("/src/chain/calldata.ts");
+  const { eventLogs } = await load("/src/chain/logs.ts");
+  const { connectMockForwarder } = await load("/src/chain/bindings/MockForwarder.ts");
+  const { bestRun, operatorHandoff, settleOnchain, settlementCutoff, settlesInBrowser } = await load("/src/pages/settle.ts");
+  const { readSeason } = await load("/src/pages/season.ts");
 
   const network = networkNamed(options.network);
   const deployment = bundledDeployment(network);
@@ -137,14 +152,18 @@ async function e2e(load, options) {
   };
   const operator = (await signerOfAccount(OPERATOR)).signer;
   const arbSys = connectMockArbSys(deployment.addresses.ArbSys, operator);
+  const referee = connectMockReferee(deployment.addresses.Referee, operator);
+  if (deployment.backend !== options.backend) {
+    fail(`deployments/${network.name}.json names the ${deployment.backend} backend, not ${options.backend}: start the chain with localnet.mjs --up --backend ${options.backend}`);
+  }
 
   /** What the page builds on load: a new engine, keys, store connection, signer and contracts. */
-  const state = { status: undefined, lastFrameLevel: undefined, reloaded: false, plan: undefined, record: undefined, margin: undefined };
+  let state;
   async function pageEnv() {
     const core = await Core.load(wasm);
     const keys = new HeldKeys(DEFAULT_BINDINGS);
     const store = await openRunStore(factory);
-    const { connection, signer } = await signerOfAccount(options.account, options.reloadDuringBuy && !state.reloaded);
+    const { connection, signer } = await signerOfAccount(state.account, options.reloadDuringBuy && !state.reloaded);
     const contracts = connectContracts(deployment, signer);
     const planOf = () => {
       const reveal = state.record?.reveal;
@@ -198,39 +217,54 @@ async function e2e(load, options) {
     return { env, connection, contracts };
   }
 
-  let { env, connection, contracts } = await pageEnv();
-  const player = connection.account;
-  const accepting = await acceptingSeason(contracts.season, env.provider);
-  log(`season ${accepting.number}: fee ${formatEth(accepting.runFee)}, rules version ${accepting.params.rulesVersion}, commit slack ${accepting.params.commitSlack} s`);
-
-  if (options.staleSeason) {
-    await staleSeason();
-    return;
+  let env, connection, contracts;
+  const runs = [];
+  for (let player = 0; player < options.players; player += 1) {
+    const run = await playRun(options.account + player);
+    if (run === undefined) break;
+    runs.push(run);
   }
-
-  if (options.reloadDuringBuy) {
-    const hash = await Promise.race([buyRun(env, accepting, player).then(() => fail("the page saw startRun's receipt")), sentUnseen]);
-    const runId = await contracts.challenge.runCount();
-    const key = runKey(network.chainId, await contracts.challenge.getAddress(), runId);
-    check(`the stored run ${runId}`, await (await openRunStore(factory)).get(key), undefined);
-    log(`reload while startRun ${hash} confirms: the node mined run ${runId}, and the store holds nothing of it`);
-    state.record = await reload(key);
-    state.record = await continueRun(env, state.record);
-  } else {
-    state.record = await buyRun(env, accepting, player);
-    log(`bought run ${state.record.runId} in season ${state.record.season}`);
-    try {
-      state.record = await continueRun(env, state.record);
-    } catch (error) {
-      if (!(error instanceof Reload)) throw error;
-      await checkInterrupted();
-      state.record = await continueRun(env, (state.interrupted = await reload(state.record.key)));
-    }
-  }
-  await checkCommitted();
-  env.provider.destroy();
+  if (options.settle) await settleSeason(runs);
+  for (const run of runs) run.env.provider.destroy();
   operator.provider.destroy();
   rmSync(scratch, { recursive: true, force: true });
+
+  /** Account `account` buys, plays and commits a run, as the page does; returns it, with the core's
+   *  Outcomes of its journals, or undefined after --stale-season, which buys none. */
+  async function playRun(account) {
+    state = { account, status: undefined, lastFrameLevel: undefined, reloaded: false, plan: undefined, record: undefined, margin: undefined };
+    ({ env, connection, contracts } = await pageEnv());
+    const player = connection.account;
+    const accepting = await acceptingSeason(contracts.season, env.provider);
+    log(`account ${account}, ${player}: season ${accepting.number}, fee ${formatEth(accepting.runFee)}, rules version ${accepting.params.rulesVersion}, commit slack ${accepting.params.commitSlack} s`);
+
+    if (options.staleSeason) {
+      await staleSeason(accepting, player);
+      return undefined;
+    }
+
+    if (options.reloadDuringBuy) {
+      const hash = await Promise.race([buyRun(env, accepting, player).then(() => fail("the page saw startRun's receipt")), sentUnseen]);
+      const runId = await contracts.challenge.runCount();
+      const key = runKey(network.chainId, await contracts.challenge.getAddress(), runId);
+      check(`the stored run ${runId}`, await (await openRunStore(factory)).get(key), undefined);
+      log(`reload while startRun ${hash} confirms: the node mined run ${runId}, and the store holds nothing of it`);
+      state.record = await reload(key);
+      state.record = await continueRun(env, state.record);
+    } else {
+      state.record = await buyRun(env, accepting, player);
+      log(`bought run ${state.record.runId} in season ${state.record.season}`);
+      try {
+        state.record = await continueRun(env, state.record);
+      } catch (error) {
+        if (!(error instanceof Reload)) throw error;
+        await checkInterrupted();
+        state.record = await continueRun(env, (state.interrupted = await reload(state.record.key)));
+      }
+    }
+    const outcomes = await checkCommitted();
+    return { player, record: state.record, outcomes, env, contracts, plan: state.plan };
+  }
 
   /** Rebuilds the page's objects, which must find run `key` alone unfinished. */
   async function reload(key) {
@@ -304,18 +338,25 @@ async function e2e(load, options) {
     const committedAt = BigInt(record.commit.committedAt);
     if (committedAt > deadline) fail(`committed at ${committedAt}, after the deadline ${deadline}`);
     log(`revealed at ${record.reveal.revealedAt}, committed at ${committedAt}: ${deadline - committedAt} s before the deadline ${deadline}`);
-    await settle(record, outcomes);
+    if (!options.settle) await settle(record, outcomes);
+    return outcomes;
   }
 
-  /** settleRun against MockReferee, set to the core's Outcomes: the contract's own deadline check. */
-  async function settle(record, outcomes) {
-    const referee = connectMockReferee(deployment.addresses.Referee, operator);
+  /** Sets MockReferee to return the core's Outcomes for the run's levels and journals, as the
+   *  referee's replay would. */
+  async function setRefereeOutcomes(record, outcomes) {
     const runLevels = record.reveal.drawSlots.map((slot) => hex(levels[slot]));
     for (const [i, outcome] of outcomes.entries()) {
       const weightBp = record.weightsBp[record.reveal.drawSlots[i]];
       const tuple = { ...outcome, endReason: END_REASONS.indexOf(outcome.endReason) + 1 };
       await (await referee.setOutcome(runLevels[i], record.journals[i], weightBp, tuple)).wait();
     }
+    return runLevels;
+  }
+
+  /** settleRun against MockReferee, set to the core's Outcomes: the contract's own deadline check. */
+  async function settle(record, outcomes) {
+    const runLevels = await setRefereeOutcomes(record, outcomes);
     const { signer } = await signerOfAccount(SETTLER);
     const challenge = connectContracts(deployment, signer).challenge;
     const receipt = await (await challenge.settleRun(BigInt(record.runId), runLevels, record.journals, "0x")).wait();
@@ -328,8 +369,146 @@ async function e2e(load, options) {
     signer.provider.destroy();
   }
 
+  /** The players' best runs settle through settle.ts, replay from their commit calldata to the
+   *  referee's Outcomes, the leaderboard matches Season, and the season closes and pays out. */
+  async function settleSeason(played) {
+    const reader = new JsonRpcProvider(options.rpc, network.chainId, { staticNetwork: true, cacheTimeout: -1 });
+    const readContracts = connectContracts(deployment, reader);
+    const { season, challenge } = readContracts;
+    const number = BigInt(played[0].record.season);
+    const minClears = Number((await season.paramsOf(number)).minClears);
+    const challengeAddress = await challenge.getAddress();
+    for (const [index, run] of played.entries()) {
+      const best = bestRun(checker, levels, await run.env.store.runsOf(network.chainId, challengeAddress, run.player), number, minClears);
+      if (best === undefined) fail(`settle.ts finds no best run of ${run.player}`);
+      check(`${run.player}'s best run`, best.record.runId, run.record.runId);
+      await setRefereeOutcomes(best.record, run.outcomes);
+      // The second player's settleRun is refused for gas, so that it settles level by level.
+      const gasCap = index === 1 ? 1n : undefined;
+      const progress = (text) => log(`  ${text}`);
+      const firstBlock = await reader.getBlockNumber();
+      if (settlesInBrowser(deployment)) {
+        log(`${run.player} settles run ${best.record.runId} through settle.ts${gasCap === undefined ? "" : ", with a gas cap of 1 for settleRun"}:`);
+        await settleOnchain(run.contracts, best.file, progress, gasCap);
+      } else {
+        const cutoff = await settlementCutoff(run.contracts, number);
+        check("the cutoff settle.ts shows", cutoff, await season.settlementEndOf(number));
+        const handoff = operatorHandoff(network.chainName, cutoff);
+        if (!handoff.includes(`block time ${cutoff}`)) fail(`settle.ts does not show the cutoff ${cutoff}: ${handoff}`);
+        log(`settle.ts, on the zk backend: ${handoff}`);
+        const file = parseRunFile(JSON.stringify(best.file, null, 2));
+        const reloaded = replayRunFile(checker, file, run.record.weightsBp);
+        check("the exported run file's Outcomes", JSON.stringify(reloaded), JSON.stringify(run.outcomes));
+        log(`the run file settle.ts exports reloads to the six Outcomes; the operator settles it${gasCap === undefined ? "" : ", with a gas cap of 1 for settleRun"}:`);
+        await settleOnchain(connectContracts(deployment, operator), file, progress, gasCap);
+      }
+      const settlement = await challenge.settlements(BigInt(best.record.runId));
+      check(`run ${best.record.runId}'s settlement status`, settlement.status, 1n);
+      check(`run ${best.record.runId}'s settled score`, settlement.score, best.score);
+      const [settled] = await eventLogs(reader, challenge, "RunSettled", [BigInt(best.record.runId)], firstBlock, await reader.getBlockNumber());
+      await checkReplayFromCalldata(readContracts, reader, best, settled.log.blockNumber);
+    }
+    await forwarderRun(readContracts, reader, number);
+
+    const open = await readSeason(readContracts, reader, number);
+    check("the leaderboard's players", open.rows.length, played.length);
+    for (const run of played) {
+      const best = await season.bestRunOf(number, run.player);
+      const row = open.rows.find(({ player }) => player.toLowerCase() === run.player.toLowerCase());
+      if (row === undefined) fail(`the leaderboard has no row of ${run.player}`);
+      check(`${run.player}'s row`, JSON.stringify([row.runId, row.score, row.ticks, row.qualified].map(String)), JSON.stringify([best.runId, best.score, best.ticks, best.qualified].map(String)));
+      log(`leaderboard ${row.rank}. ${row.player}: run ${row.runId}, score ${row.score}, ${row.ticks} ticks, qualified ${row.qualified}, ${row.runs} run(s): Season.bestRunOf's`);
+    }
+
+    const closeAt = Number(open.settlementEnd) + 1;
+    clock.now = closeAt * 1000;
+    // Calls estimate on the latest block, so the end of the settlement is mined first.
+    await send("evm_setNextBlockTimestamp", [closeAt]);
+    await send("evm_mine");
+    const closer = await signerOfAccount(CLOSER);
+    const closed = await closeSeason(connectContracts(deployment, closer.signer));
+    closer.signer.provider.destroy();
+    log(`account ${CLOSER} closes season ${closed.season}: rake ${formatEth(closed.rake)}, players' pot ${formatEth(closed.playersPot)}`);
+    const shown = await readSeason(readContracts, reader, number);
+    for (const run of played) {
+      const row = shown.rows.find(({ player }) => player.toLowerCase() === run.player.toLowerCase());
+      const contractClaim = await run.contracts.season.claim.staticCall(number);
+      check(`${run.player}'s claim shown`, row.claim, contractClaim);
+      const paid = await claim(run.contracts, number);
+      check(`${run.player}'s claim paid`, paid, row.claim);
+      log(`${run.player} claims ${formatEth(paid)}, the claim the page shows`);
+    }
+    check("Season.isSolvent()", await season.isSolvent(), true);
+    reader.destroy();
+  }
+
+  /** A run committed from its commit calldata replays to the Outcomes the referee returned when
+   *  it settled, at the settlement's block. */
+  async function checkReplayFromCalldata(readContracts, reader, best, block) {
+    const loaded = await committedRun(readContracts, reader, checker, levels, BigInt(best.record.runId));
+    check(`run ${best.record.runId}'s journals' source`, loaded.source, "its commitRun call");
+    const replayed = replayRunFile(checker, loaded.file, loaded.weightsBp);
+    const weights = loaded.file.drawSlots.map((slot) => loaded.weightsBp[slot]);
+    const returned = await referee.verifyRun(loaded.file.levels, loaded.file.journals, weights, "0x", { blockTag: block });
+    const asCore = returned.map((outcome) => ({
+      ...outcome.toObject(),
+      levelIndex: Number(outcome.levelIndex),
+      drawSlot: Number(outcome.drawSlot),
+      mode: Number(outcome.mode),
+      rulesVersion: Number(outcome.rulesVersion),
+      endReason: END_REASONS[Number(outcome.endReason) - 1],
+      claimBp: Number(outcome.claimBp),
+      ticksUsed: Number(outcome.ticksUsed),
+      levelScore: Number(outcome.levelScore),
+    }));
+    check(`run ${best.record.runId} replayed from its commit calldata`, JSON.stringify(replayed), JSON.stringify(asCore));
+    log(`run ${best.record.runId}, replayed from its commit transaction ${loaded.transaction}, gives the Outcomes the referee returned at its settlement, block ${block}`);
+  }
+
+  /** A run that MockForwarder buys, reveals and commits for account FORWARDER_OWNER, as a smart
+   *  account would: its journals load from the call embedded in the commit transaction, and from
+   *  the transaction's trace, and replay to the Outcomes of the journals it committed. */
+  async function forwarderRun(readContracts, reader, number) {
+    const { signer } = await signerOfAccount(FORWARDER_OWNER);
+    const artifact = buildContracts().MockForwarder;
+    const deployed = await new ContractFactory(artifact.abi, artifact.bytecode, signer).deploy(await signer.getAddress());
+    await deployed.waitForDeployment();
+    const forwarder = connectMockForwarder(await deployed.getAddress(), signer);
+    const { challenge, season } = readContracts;
+    const target = await challenge.getAddress();
+    const execute = async (data, value = 0n) => (await (await forwarder.execute(target, value, data, { value })).wait()).hash;
+    const runFee = (await season.paramsOf(number)).runFee;
+    const runId = (await challenge.runCount()) + 1n;
+    await execute(challenge.interface.encodeFunctionData("startRun", [number]), runFee);
+    check(`run ${runId}'s player`, (await challenge.runs(runId)).player, await forwarder.getAddress());
+    const entropyTarget = await readContracts.entropy.targetBlock(target, await challenge.entropyIdOf(runId));
+    await (await arbSys.setBlockNumber(entropyTarget + 1n)).wait();
+    await execute(challenge.interface.encodeFunctionData("revealRun", [runId]));
+    const { runNonce } = await challenge.runs(runId);
+    const drawSlots = checker.draw(fromHex(runNonce));
+    const { bots } = botPlan(options.tools, checker, journalEvents, levels, runNonce, drawSlots, undefined, scratch);
+    const journals = bots.map(({ journal }) => hex(journal));
+    const commit = await execute(challenge.interface.encodeFunctionData("commitRun", [runId, journals]));
+    log(`MockForwarder ${await forwarder.getAddress()} buys, reveals and commits run ${runId} for account ${FORWARDER_OWNER}, in transaction ${commit}`);
+
+    const loaded = await committedRun(readContracts, reader, checker, levels, runId);
+    check(`run ${runId}'s journals' source`, loaded.source, "a commitRun call embedded in it");
+    check(`run ${runId}'s loaded journals`, JSON.stringify(loaded.file.journals), JSON.stringify(journals));
+    const trace = await reader.send("debug_traceTransaction", [commit, { tracer: "callTracer" }]);
+    const traced = tracedCommitRunCalls(readContracts, target, trace, runId);
+    check(`run ${runId}'s journals in the commit's trace`, JSON.stringify(traced), JSON.stringify([journals]));
+    const replayed = replayRunFile(checker, loaded.file, loaded.weightsBp);
+    const committed = journals.map((journal, i) => checker.replay(levels[drawSlots[i]], fromHex(journal), loaded.weightsBp[drawSlots[i]]).outcome);
+    check(`run ${runId} replayed from the forwarder's commit`, JSON.stringify(replayed), JSON.stringify(committed));
+    for (const [i, { endReason, claimBp, ticksUsed, levelScore }] of replayed.entries()) {
+      log(`  level ${i + 1}: slot ${drawSlots[i]}, ${endReason}, claim ${claimBp} bp, ${ticksUsed} ticks, score ${levelScore}`);
+    }
+    log(`run ${runId} loads from the commitRun call embedded in MockForwarder's call, and from the trace, and replays to the Outcomes of the journals it committed`);
+    signer.provider.destroy();
+  }
+
   /** The season accepting runs changes after the season check and before startRun. */
-  async function staleSeason() {
+  async function staleSeason(accepting, player) {
     const season = connectSeason(deployment.addresses.Season, operator);
     const end = await season.endOf(accepting.number);
     clock.now = Number(end) * 1000;
@@ -353,7 +532,6 @@ async function e2e(load, options) {
     check(`a startRun(${accepting.number}) sent anyway: its receipt status`, failure.receipt?.status, 0);
     log(`a startRun(${accepting.number}) sent anyway, with a fixed gas limit, is mined and reverts (status 0, transaction ${sent.hash})`);
     env.provider.destroy();
-    operator.provider.destroy();
   }
 }
 
@@ -366,17 +544,26 @@ const { values } = parseArgs({
     "reload-after-end": { type: "string" },
     "reload-during-buy": { type: "boolean", default: false },
     "stale-season": { type: "boolean", default: false },
+    players: { type: "string", default: "1" },
+    settle: { type: "boolean", default: false },
+    backend: { type: "string", default: "mock" },
     tools: { type: "string", default: join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "debug", "jiro-tools") },
   },
 });
 const usage =
-  "usage: node web/scripts/challenge-e2e.mjs --rpc <url> [--reload-at <level 1-6> | --reload-after-end out-of-lives|cleared | --reload-during-buy | --stale-season] [--tools <jiro-tools>] [--network local] [--account <index>]";
+  "usage: node web/scripts/challenge-e2e.mjs --rpc <url> [--reload-at <level 1-6> | --reload-after-end out-of-lives|cleared | --reload-during-buy | --stale-season] [--players <n>] [--settle] [--backend mock|zk] [--tools <jiro-tools>] [--network local] [--account <index>]";
 if (values.rpc === undefined) throw new Error(usage);
 const reloadAt = values["reload-at"] === undefined ? undefined : Number(values["reload-at"]);
 if (reloadAt !== undefined && !(Number.isInteger(reloadAt) && reloadAt >= 1 && reloadAt <= 6)) throw new Error(usage);
 const wantedEnd = values["reload-after-end"] === undefined ? undefined : ENDS[values["reload-after-end"]];
 if (values["reload-after-end"] !== undefined && wantedEnd === undefined) throw new Error(usage);
 if ([reloadAt, wantedEnd, values["reload-during-buy"] || undefined, values["stale-season"] || undefined].filter((option) => option !== undefined).length > 1) throw new Error(usage);
+const players = Number(values.players);
+// One player's run each, before FORWARDER_OWNER's account.
+if (!(Number.isInteger(players) && players >= 1 && Number(values.account) + players <= FORWARDER_OWNER)) throw new Error(usage);
+if (players > 1 && (values["reload-during-buy"] || values["stale-season"])) throw new Error(usage);
+if (values.settle && values["stale-season"]) throw new Error(usage);
+if (!["mock", "zk"].includes(values.backend)) throw new Error(usage);
 
 const server = await createServer({ root: WEB_ROOT, logLevel: "error", server: { middlewareMode: true, hmr: false }, appType: "custom" });
 try {
@@ -388,6 +575,9 @@ try {
     wantedEnd,
     reloadDuringBuy: values["reload-during-buy"],
     staleSeason: values["stale-season"],
+    players,
+    settle: values.settle,
+    backend: values.backend,
     tools: values.tools,
   });
 } finally {
