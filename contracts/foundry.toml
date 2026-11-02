@@ -1,0 +1,19 @@
+[profile.default]
+solc_version = "0.8.28"
+# ethblockdigger's evmVersion, from its scripts/contracts/compile.ts, with its optimizer settings.
+evm_version = "shanghai"
+optimizer = true
+optimizer_runs = 200
+# Only these remappings, whether or not OpenZeppelin's own submodules are checked out.
+auto_detect_remappings = false
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+]
+# The tests read the ethers fixtures (README §6.4, §7.2), and settlement tests the calibration
+# season and the Outcomes of its gate-set vectors.
+fs_permissions = [
+    { access = "read", path = "../vectors/derivations.json" },
+    { access = "read", path = "../vectors/levels" },
+    { access = "read", path = "../seasons/calibration-1.json" },
+]

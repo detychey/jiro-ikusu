@@ -299,3 +299,4 @@ export const openField = {
 export const blockedStart = { ...openField, obstacles: [{ x: 29, y: 58 }, { x: 30, y: 58 }, { x: 31, y: 58 }] };
 export const wideSpawn = { ...openField, spawnRect: [20, 20, 34, 25] };
 export const exampleRunNonce = getBytes(keccak256(toUtf8Bytes("jiro.example.9")));
+export const exampleEntropy = getBytes(keccak256(toUtf8Bytes("jiro.example.entropy")));

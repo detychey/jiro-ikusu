@@ -1,0 +1,729 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "entropy_",
+        "type": "address",
+        "internalType": "contract IEntropySource"
+      },
+      {
+        "name": "seasons_",
+        "type": "address",
+        "internalType": "contract Season"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "MAX_PLAY_SECONDS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "commitRun",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "journals",
+        "type": "bytes[6]",
+        "internalType": "bytes[6]"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "entropy",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IEntropySource"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "entropyIdOf",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "revealRun",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "runCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "runs",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "revealedAt",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "committedAt",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "season",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "runNonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "commitment",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "seasons",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract Season"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "settleLevel",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "i",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "journalHashes",
+        "type": "bytes32[6]",
+        "internalType": "bytes32[6]"
+      },
+      {
+        "name": "level",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "journal",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "proof",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "settleRun",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "levels",
+        "type": "bytes[6]",
+        "internalType": "bytes[6]"
+      },
+      {
+        "name": "journals",
+        "type": "bytes[6]",
+        "internalType": "bytes[6]"
+      },
+      {
+        "name": "proof",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "settlements",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "status",
+        "type": "uint8",
+        "internalType": "enum SettlementStatus"
+      },
+      {
+        "name": "settledLevels",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "clears",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "score",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "ticks",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "startRun",
+    "inputs": [
+      {
+        "name": "season",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "event",
+    "name": "LevelSettled",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RunCommitted",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "commitment",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "committedAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RunLate",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "committedAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RunRevealed",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "runNonce",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "revealedAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RunSettled",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "score",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "ticks",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
+      },
+      {
+        "name": "clears",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "RunStarted",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "season",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "entropyId",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AlreadyCommitted",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AlreadyRevealed",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AlreadySettled",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CommitTooLate",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "latestCommit",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "JournalNotInCommitment",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "LevelAlreadySettled",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "LevelIndexOutOfRange",
+    "inputs": [
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotCommitted",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotPlayer",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotRevealed",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OutcomeDrawSlotMismatch",
+    "inputs": [
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "drawSlot",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "slot",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OutcomeJournalHashMismatch",
+    "inputs": [
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "journalHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OutcomeLevelIdMismatch",
+    "inputs": [
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "levelId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OutcomeLevelIndexMismatch",
+    "inputs": [
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "outcomeLevelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OutcomeModeMismatch",
+    "inputs": [
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "mode",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OutcomeRulesVersionMismatch",
+    "inputs": [
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "rulesVersion",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OutcomeRunNonceMismatch",
+    "inputs": [
+      {
+        "name": "levelIndex",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "runNonce",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SettlementClosed",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "settlementEnd",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "WrongCommitment",
+    "inputs": [
+      {
+        "name": "runId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]

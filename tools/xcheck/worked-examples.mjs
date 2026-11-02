@@ -2,7 +2,7 @@
 // the Rust core. With --check <README>, exits 1 unless each printed line's label starts
 // exactly one README line, and that line equals the printed one.
 import { readFileSync } from "node:fs";
-import { keccak256, toUtf8Bytes, getBytes } from "ethers";
+import { keccak256, getBytes } from "ethers";
 import {
   PLAYER_START,
   LEVEL,
@@ -29,6 +29,7 @@ import {
   blockedStart,
   wideSpawn,
   exampleRunNonce,
+  exampleEntropy,
 } from "./lib.mjs";
 
 const runNonce = exampleRunNonce;
@@ -70,7 +71,6 @@ const preimage = statePreimage({
   nextEvent: 0,
 });
 const journal = encodeJournal({ mode: 0, runNonce, levelId, levelIndex: 0, events: [] });
-const entropy = getBytes(keccak256(toUtf8Bytes("jiro.example.entropy")));
 const deadlineExample = { revealedAt: 1_000_000, ticksUsed: [1, 2700, 1800, 900, 15, 16], commitSlack: 120 };
 const number = (value) => value.toLocaleString("en-US");
 const sign = (value) => (value > 0 ? "+1" : "-1");
@@ -105,8 +105,8 @@ const lines = [
   `open-field-empty first deflection: ${describeDeflection(deflections[0])}`,
   `open-field-empty second deflection: ${describeDeflection(deflections[1])}`,
   `open-field-empty boss after tick ${openField.timeLimit - 1}: ${describeBoss(bossAtEnd)}, after ${deflections.length} deflections`,
-  `run nonce entropy: ${hex(entropy)}`,
-  `run nonce (runId 1): ${hex(runNonceOf(entropy, 1))}`,
+  `run nonce entropy: ${hex(exampleEntropy)}`,
+  `run nonce (runId 1): ${hex(runNonceOf(exampleEntropy, 1))}`,
   `deadline (revealedAt ${number(deadlineExample.revealedAt)}, ticks used ${deadlineExample.ticksUsed.map(number).join(" + ")}, commitSlack ${deadlineExample.commitSlack}): ${number(deadline(deadlineExample.revealedAt, deadlineExample.ticksUsed, deadlineExample.commitSlack))}`,
 ];
 

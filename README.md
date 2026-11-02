@@ -543,7 +543,7 @@ Golden vectors live in `vectors/`, one JSON file per vector, and every target mu
 
   Integers, inside `outcome` and out, are JSON numbers.
 
-A **trace** (`.trace`, binary) holds the 32-byte state hash of every processed tick, in tick order. A vector that replay rejects before play has an empty trace; one rejected after play (14) holds the hashes of the ticks it played. Derivation fixtures (level seeds, level ids, boss starts, draws, run commitments, and later run nonces and deadline cases) live in `vectors/derivations.json`, a single fixture file without a `kind` key.
+A **trace** (`.trace`, binary) holds the 32-byte state hash of every processed tick, in tick order. A vector that replay rejects before play has an empty trace; one rejected after play (14) holds the hashes of the ticks it played. Derivation fixtures (level seeds, level ids, boss starts, draws, run commitments, run nonces, and later deadline cases) live in `vectors/derivations.json`, a single fixture file without a `kind` key.
 
 **Diagnosis.** A target that disagrees with a vector reports the first tick whose hash differs. A target that can expose its state (native, wasm, the emulator) also prints its state-hash preimage at that tick. `jiro-tools replay --dump-tick <t> --diff <hex>` decodes that preimage, compares it with the native one, and names the fields that differ.
 

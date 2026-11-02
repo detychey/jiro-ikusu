@@ -14,6 +14,8 @@ on:
       - 'shell/**'
       - 'levels/**'
       - 'vectors/**'
+      - 'contracts/abi/**'
+      - 'deployments/**'
       - 'scripts/deploy/**'
       - '.github/workflows/pages.yml'
   push:

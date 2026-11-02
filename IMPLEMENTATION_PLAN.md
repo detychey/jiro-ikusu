@@ -1,6 +1,6 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1, M0.2 and M0.4-M0.7 have merged, and M0.3 has not started. M2, the browser, closed with M2.10 on 2026-10-31.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
 [`README.md`](README.md) is the normative specification, and this plan turns it into 65 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
@@ -618,7 +618,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     - `level`: input hex; the expected `level_id` and re-encoded hex, or the expected error code.
     - `game`: `name`, `covers` (README sections and tags), `rulesVersion`, `level` (hex), `runNonce`, `levelIndex`, `mode`, `weightBp`, `journal` (hex), the expected outcome or error code, the `.trace` file name and its keccak256 digest. M0.7 adds the outcome keys.
 
-    Derivation fixtures (seeds, boss starts, draws, commitments; later run nonces and deadline cases) live in `vectors/derivations.json` (M1.2). A `.trace` file holds 32 bytes per processed tick.
+    Derivation fixtures (seeds, boss starts, draws, commitments, run nonces; later deadline cases) live in `vectors/derivations.json` (M1.2). A `.trace` file holds 32 bytes per processed tick.
   - **Diagnosis.** A runner reports the first differing tick. A target that can expose its state (native, wasm, the emulator) also prints its state-hash preimage at that tick. `jiro-tools replay --dump-tick <t> --diff <hex>` decodes that preimage, compares it with native's, and names the differing fields.
 - **Worked examples**, computed by `tools/xcheck/worked-examples.mjs` with ethers' keccak, committed with `tools/xcheck/{package.json, package-lock.json}` so anyone can rerun them:
   - the open-field level's bytes and `level_id`, and one validity failure, which become format vectors in M1.4;
@@ -679,7 +679,7 @@ Each milestone's README §9 "done when" closes when these items merge:
     - a run belongs to the season of its `startRun`, settles through that season's referee, and can settle until season end plus grace (proposed: 48 h). A new rules version or a new backend therefore means a new season; runs of the previous season keep settling under their own rules.
     - after the season end plus grace, `closeSeason` is permissionless. Qualified players need it called before they can claim, which gives them the reason to call it. An empty season's rollover goes to the season open at its close, or, if none is open, to the next season opened.
   - **Journal publication (P5)**, put to the user in round A4:
-    - **(a), recommended, keeps README §7.3 point 2, §7.4 and §8.4 as written:** `commitRun(runId, commitment, bytes journals)` carries the six journals as calldata. The contract stores only the commitment and never reads the blob. Anyone can check the blob against the commitment offchain at no gas cost, and replay it. M4.6 measures the commit's gas with a typical and a full blob.
+    - **(a), recommended, keeps README §7.3 point 2, §7.4 and §8.4 as written:** `commitRun(runId, bytes[6] journals)` carries the six journals as calldata. The contract computes the run commitment from them (README §6.4), stores only the commitment and never parses the journals. Anyone can check them against the commitment offchain at no gas cost, and replay them. M4.6 measures the commit's gas with a typical and a full blob.
     - **(b) an offchain public store:** at commit, the dApp uploads the six journals, for example to a Cloudflare R2 bucket behind a Worker, keyed by run id; readers check them against the commitment. No gas, but new infrastructure, and an operator who can drop files.
     - **(c) settled runs only:** journals become public through settlement calldata; README §7.3, §7.4 and §8.4 are amended (the inspect lever covers settled runs, and later seasons' weights come from settled journals plus bot data).
 
