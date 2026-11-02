@@ -526,6 +526,7 @@ jobs:
               - 'wedgie/**'
               - 'vectors/**'
               - 'scripts/bootstrap.sh'
+              - 'Cargo.toml'
               - 'rust-toolchain.toml'
               - '.github/workflows/ci.yml'
 

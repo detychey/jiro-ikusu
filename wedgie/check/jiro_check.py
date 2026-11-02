@@ -9,6 +9,7 @@ import time
 MAGIC = b"JV01"
 VECTORS = "jiro_vectors.bin"
 PAGE_LINES = 8
+NAME_CHARS = 20  # "FAIL 75 " and the name's end fill a line of ui.COLS_SMALL (28)
 
 
 def read_case(f):
@@ -54,15 +55,16 @@ def recorder_failures(jc, stack, recorder, ticks, end_reason, last, level, journ
     failures = []
     if end != end_reason:
         failures.append("recorder end %d" % end)
-    if jc.journal(recorder) != journal:
+    if not jc.journal_equals(recorder, journal):
         failures.append("recorder journal")
     if jc.state_hash(recorder, stack) != last:
         failures.append("recorder hash")
     return failures
 
 
-def check_all(stack, recorder, free_before):
+def check_all(stack, recorder, free_before, screen):
     import jiro_core as jc
+    import ui
     if jc.recorder_size() > len(recorder):
         raise ValueError("jiro_core needs a %d B Recorder" % jc.recorder_size())
     gc.collect()
@@ -74,13 +76,16 @@ def check_all(stack, recorder, free_before):
             raise ValueError(VECTORS + " is not a JV01 vector file")
         count = struct.unpack(">H", f.read(2))[0]
         for index in range(count):
+            # A screen that stays on the boot logo for minutes looks like a frozen wedgie.
+            ui.page(screen, "Jiro check", [("vector %d of %d" % (index + 1, count), ui.INK),
+                                           ("about 4 min in all", ui.MUTED)], "")
             # One case in RAM at a time.
             case = read_case(f)
             failures, replay_us = check(jc, stack, recorder, case)
             failed += bool(failures)
             verdict = "FAIL" if failures else "ok"
             print(verdict, "%d/%d" % (index + 1, count), case[0], "ticks", case[4], "replay", replay_us, "us", failures)
-            lines.append((verdict, case[0]))
+            lines.append("%s %d %s" % (verdict, index + 1, case[0].split("/")[1][-NAME_CHARS:]))
             del case
             gc.collect()
     print("jiro core check:", "PASS" if failed == 0 else "FAIL %d of %d" % (failed, count),
@@ -88,17 +93,16 @@ def check_all(stack, recorder, free_before):
     return lines, failed
 
 
-def show(lines, failed):
+def show(lines, failed, screen):
     import lcd
     import ui
     title = "Jiro PASS" if failed == 0 else "Jiro FAIL %d" % failed
     pages = (len(lines) + PAGE_LINES - 1) // PAGE_LINES
-    screen, keys, page = lcd.LCD(), lcd.Keys(), 0
+    keys, page = lcd.Keys(), 0
     while True:
         shown = lines[page * PAGE_LINES:(page + 1) * PAGE_LINES]
         ui.page(screen, "%s %d/%d" % (title, page + 1, pages),
-                [("%s %s" % (verdict, name[:24]), ui.GREEN_D if verdict == "ok" else ui.RED) for verdict, name in shown],
-                "{g} next")
+                [(line, ui.GREEN_D if line.startswith("ok") else ui.RED) for line in shown], "{g} next")
         while "A" not in keys.pressed():
             time.sleep_ms(50)
         page = (page + 1) % pages

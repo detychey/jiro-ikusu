@@ -13,8 +13,10 @@ def run():
     gc.collect()
     free_before = gc.mem_free()
     stack, recorder = bytearray(STACK_BYTES), bytearray(RECORDER_BYTES)
-    import jiro_core  # its 15.7 KB of code next, then jiro_check's small objects fill the holes it leaves
+    import jiro_core  # its 15.9 KB of code next, then jiro_check's small objects fill the holes it leaves
     import jiro_check
-    lines, failed = jiro_check.check_all(stack, recorder, free_before)
+    import lcd
+    screen = lcd.LCD()  # wraps the firmware's framebuffer, which the free RAM above already excludes
+    lines, failed = jiro_check.check_all(stack, recorder, free_before, screen)
     del stack, recorder
-    jiro_check.show(lines, failed)
+    jiro_check.show(lines, failed, screen)

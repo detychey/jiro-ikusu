@@ -1,6 +1,8 @@
 """Checks ARM object files against the rules of MicroPython v1.29.0's tools/mpy_ld.py for
 ARCH=armv6m, without running it (load_object_file, link_objects, do_relocation_text,
-do_relocation_data, populate_got). Reads ELF32 with its own parser.
+do_relocation_data, populate_got, generate_entry_point_jump). Reads ELF32 with its own parser.
+Give the objects in the order mpy_ld links them: the entry trampoline is only right when
+mpy_init's section is the first section mpy_ld lays out.
 
 Usage: python3 -I check_mpy_ld_rules.py <obj.o>...
 Exit status 0 when every rule holds; prints the expected native text size and the relocations
@@ -69,6 +71,8 @@ def main(paths):
     objs = [Obj(p) for p in paths]
     loaded = {}  # (obj index, shndx) -> section name
     known = {}  # global name -> (obj index, section name)
+    first_laid_out = None  # (obj index, shndx) of the section at text offset 0
+    mpy_init_at = None
     text_size = bss_size = 0
     kinds = collections.Counter()
     for oi, obj in enumerate(objs):
@@ -77,6 +81,8 @@ def main(paths):
                 continue
             if sec["name"].startswith(LOADED):
                 loaded[(oi, idx)] = sec["name"]
+                if first_laid_out is None and not sec["name"].startswith((".bss", ".literal")):
+                    first_laid_out = (oi, idx)
                 if sec["name"].startswith(".bss"):
                     bss_size = -(-bss_size // sec["align"]) * sec["align"] + sec["size"]
                 else:
@@ -88,6 +94,8 @@ def main(paths):
                 if sym["name"] in known:
                     errors.append(f"duplicate symbol: {sym['name']}")
                 known[sym["name"]] = (oi, loaded[(oi, sym["shndx"])])
+                if sym["name"] == "mpy_init":
+                    mpy_init_at = (oi, sym["shndx"])
     unresolved = set()
     for oi, obj in enumerate(objs):
         for sym in obj.symbols:
@@ -99,6 +107,12 @@ def main(paths):
     errors += [f"undefined symbol: {n}" for n in sorted(unresolved)]
     if "mpy_init" not in known:
         errors.append("no mpy_init")
+    elif mpy_init_at != first_laid_out:
+        # v1.29.0 builds the armv6m trampoline before it assigns addresses, from mpy_init's offset in
+        # its own section, so it jumps there from text offset 0: the order that froze a wedgie.
+        first = f"{objs[first_laid_out[0]].path}:{loaded[first_laid_out]}" if first_laid_out else "nothing"
+        errors.append(f"mpy_init is in {objs[mpy_init_at[0]].path}:{known['mpy_init'][1]}, but mpy_ld lays out "
+                      f"{first} first; link the object defining mpy_init first")
 
     def target(oi, sym):
         """The section name a relocation's symbol resolves to, as mpy_ld sees it."""

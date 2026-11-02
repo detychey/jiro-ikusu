@@ -19,6 +19,9 @@ from pathlib import Path
 
 MAGIC = b"JV01"
 KINDS = ("game", "levels")
+# The vectors committed at M3.8. Vectors are only ever added (CLAUDE.md), so fewer means a broken
+# path or checkout, which must not pass as an empty check.
+MIN_VECTORS = 75
 OUTCOME_LEN = 110
 HASH_LEN = 32
 OUTCOME_INTS = [("levelIndex", 1), ("drawSlot", 1), ("mode", 1), ("rulesVersion", 2), ("endReason", 1),
@@ -26,7 +29,10 @@ OUTCOME_INTS = [("levelIndex", 1), ("drawSlot", 1), ("mode", 1), ("rulesVersion"
 
 
 def vector_names(repo):
-    return [f"{kind}/{path.stem}" for kind in KINDS for path in sorted((Path(repo) / "vectors" / kind).glob("*.json"))]
+    names = [f"{kind}/{path.stem}" for kind in KINDS for path in sorted((Path(repo) / "vectors" / kind).glob("*.json"))]
+    if len(names) < MIN_VECTORS:
+        raise SystemExit(f"{len(names)} vectors in {repo}/vectors/game and levels, expected at least {MIN_VECTORS}")
+    return names
 
 
 def hex_bytes(text):

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Builds MicroPython v1.29.0's mpy-cross and its qemu port for the MICROBIT board (nRF51,
 # Cortex-M0, armv6m) in the clone that `scripts/bootstrap.sh wedgie` makes: native .mpy loading
-# enabled (MICROPY_EMIT_THUMB=1) as on the rp2 port, an 8 KB C stack as the rp2 port's
-# PICO_STACK_SIZE=0x2000, a 200 KB heap, and no frozen manifest, which would need the
-# micropython-lib submodule. The board's QEMU_ARGS give the machine 256 KB of RAM. Prints the
+# enabled (MICROPY_EMIT_THUMB=1) as on the rp2 port, the VM's stack limit at 8 KB as the rp2
+# port's PICO_STACK_SIZE=0x2000 (a soft limit the VM checks, not a physical stack; the core never
+# runs on the C stack, since call_on_stack moves it to the app's 64 KB buffer, and the wedgie run
+# is the real check), a 200 KB heap, and no frozen manifest, which would need the micropython-lib
+# submodule. The board's QEMU_ARGS give the machine 256 KB of RAM. Prints the
 # firmware's path.
 set -euo pipefail
 

@@ -2,13 +2,15 @@
 // build/jiro_rust.o) behind a Python API. The caller owns all memory: a stack buffer of at least
 // 64 KB (the rp2 port's C stack is 8 KB; starting a level needs about 63 KB) and the Recorder
 // buffer, both bytearrays made once, first, while the heap is whole. Every call into the core
-// but `journal` runs on that stack.
+// but `journal` and `journal_equals`, which only read the Recorder, runs on that stack.
 //
 //   rules_version() -> int
 //   recorder_size() -> int
 //   start(recorder, level, mode, run_nonce, level_index, stack) -> code (0 or README §5/§6.3)
 //   step(recorder, mask, stack) -> 0 running, 1-4 end reason, 0x100 + code on error
 //   journal(recorder) -> bytes, the journal so far
+//   journal_equals(recorder, buffer) -> bool, whether the journal so far equals the buffer,
+//                                       without copying it
 //   state_hash(recorder, stack) -> bytes (32)
 //   replay(level, journal, weight_bp, stack[, trace]) -> (code, outcome, ticks, trace_keccak,
 //                                                        last_hash)
@@ -87,6 +89,20 @@ static mp_obj_t journal(mp_obj_t recorder_obj) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(journal_obj, journal);
 
+static mp_obj_t journal_equals(mp_obj_t recorder_obj, mp_obj_t buffer_obj) {
+    mp_buffer_info_t buffer;
+    mp_get_buffer_raise(buffer_obj, &buffer, MP_BUFFER_READ);
+    jiro_view_args_t view = {.recorder = recorder_buf(recorder_obj), .state_hash = NULL};
+    jiro_recorder_view(&view);
+    const uint8_t *expected = buffer.buf;
+    bool equal = view.journal_len == buffer.len;
+    for (size_t i = 0; equal && i < buffer.len; i++) {
+        equal = view.journal[i] == expected[i];
+    }
+    return mp_obj_new_bool(equal);
+}
+static MP_DEFINE_CONST_FUN_OBJ_2(journal_equals_obj, journal_equals);
+
 static mp_obj_t state_hash(mp_obj_t recorder_obj, mp_obj_t stack_obj) {
     uint8_t hash[JIRO_HASH_LEN];
     jiro_view_args_t view = {.recorder = recorder_buf(recorder_obj), .state_hash = hash};
@@ -135,6 +151,7 @@ mp_obj_t mpy_init(mp_obj_fun_bc_t *self, size_t n_args, size_t n_kw, mp_obj_t *a
     mp_store_global(MP_QSTR_start, MP_OBJ_FROM_PTR(&start_obj));
     mp_store_global(MP_QSTR_step, MP_OBJ_FROM_PTR(&step_obj));
     mp_store_global(MP_QSTR_journal, MP_OBJ_FROM_PTR(&journal_obj));
+    mp_store_global(MP_QSTR_journal_equals, MP_OBJ_FROM_PTR(&journal_equals_obj));
     mp_store_global(MP_QSTR_state_hash, MP_OBJ_FROM_PTR(&state_hash_obj));
     mp_store_global(MP_QSTR_replay, MP_OBJ_FROM_PTR(&replay_obj));
 

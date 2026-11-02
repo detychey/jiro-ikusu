@@ -1,5 +1,5 @@
-"""Loads jiro_core.mpy into MicroPython v1.29.0's qemu MICROBIT port (Cortex-M0, an 8 KB C stack;
-scripts/build-qemu.sh builds it) and checks game vectors in one MicroPython session, with the
+"""Loads jiro_core.mpy into MicroPython v1.29.0's qemu MICROBIT port (Cortex-M0, an 8 KB VM stack
+limit; scripts/build-qemu.sh builds it) and checks game vectors in one MicroPython session, with the
 check app's own code (wedgie/check/jiro_check.py) on records of the app's own encoder
 (make_check_vectors.py): replay's code, the Outcome, the tick count, traceKeccak and the last
 state hash, then, for a vector replay accepts, the Recorder's end reason, journal and final state
@@ -52,7 +52,7 @@ vfs.mount(_FS(), '/ram'); sys.path.insert(0, '/ram')
 
 # Stands in for the module in check(): it fills the stack with a pattern before a call and
 # finds afterwards the lowest byte the call changed. check() calls start, then step once per
-# tick, then journal, so the steps' peak is read at journal, after start's peak was read and the
+# tick, then journal_equals, so the steps' peak is read there, after start's peak was read and the
 # stack filled again. replay_us times replay alone, without the fill.
 PROBE = f"""\
 import io, time
@@ -74,8 +74,8 @@ class _Probe:
     _fill(); r = jc.start(*a); _note('start'); _fill(); return r
   def step(s, *a):
     return jc.step(*a)
-  def journal(s, r):
-    _note('step'); return jc.journal(r)
+  def journal_equals(s, *a):
+    _note('step'); return jc.journal_equals(*a)
   def state_hash(s, *a):
     return jc.state_hash(*a)
 probe = _Probe()
@@ -147,7 +147,7 @@ def main(firmware, mpy, repo, names):
                         f"f0 - gc.mem_free() - {STACK_BYTES} - len(rec))"), end="")
         repl.exec((Path(repo) / "wedgie" / "check" / "jiro_check.py").read_text())
         repl.exec(PROBE)
-        failed = 0
+        failed = accepted = 0
         for name in names:
             repl.upload("R", make_check_vectors.record(repo, name))
             out = repl.exec("case = read_case(io.BytesIO(R)); failures, _ = check(probe, stack, rec, case); "
@@ -155,6 +155,7 @@ def main(firmware, mpy, repo, names):
             code, ticks, us, failures = out.split(" ", 3)
             bad = failures.strip() != "[]"
             failed += bad
+            accepted += code == "0"
             print(("FAIL " if bad else "ok   ") + f"{name}: code {code}, ticks {ticks}, replay {us} us (icount)"
                   + (f" {failures.strip()}" if bad else ""))
             if bad:
@@ -164,8 +165,12 @@ def main(firmware, mpy, repo, names):
         over = [call for call, peak in peaks.items() if peak >= STACK_BYTES]
         if over:
             print(f"FAIL: {', '.join(over)} reached the end of the stack")
+        # A peak of 0 means the probe saw no call: the run checked nothing.
+        unmeasured = [call for call, peak in peaks.items() if peak == 0 and (call == "replay" or accepted)]
+        if unmeasured:
+            print(f"FAIL: no stack use measured for {', '.join(unmeasured)}")
         print(f"vectors: {len(names)}, failed: {failed}")
-        return 1 if failed or over else 0
+        return 1 if failed or over or unmeasured else 0
     finally:
         repl.p.kill()
 
