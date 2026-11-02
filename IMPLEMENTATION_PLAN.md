@@ -2,7 +2,7 @@
 
 **Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
-[`README.md`](README.md) is the normative specification, and this plan turns it into 65 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
+[`README.md`](README.md) is the normative specification, and this plan turns it into 66 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
 The order:
 
@@ -12,7 +12,7 @@ The order:
 4. **Parallel tracks.** Device bring-up starts during M1 (M3.1), the contracts after M0 (M4.3), and the level tool after the format vectors (M2.4). Bots and levels follow replay (M1.8). Stylus gas and the zk trials follow the gameplay vectors (M1.9), and the zk proving pipeline follows the zk choice (M1.12). The browser follows the wasm build (M1.11). Measurements feed back into the work; they never block rule work.
 5. **dApp and a testnet season** (M5).
 
-Item count: M0 7, M1 18, M2 11, M3 7, M4 16, M5 6. Review findings split out of M4.12 add items from M4.17 on.
+Item count: M0 7, M1 18, M2 11, M3 7, M4 16, M5 7. Review findings split out of M4.12 add items from M4.17 on.
 
 ## Contents
 
@@ -2096,11 +2096,12 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | ID | Title | Depends on | Size | Needs user |
 |---|---|---|---|---|
 | M5.1 | Wallet and chain plumbing | M2.10, M4.11 | M | none |
-| M5.2 | Challenge run flow in the browser | M5.1 | M | none |
+| M5.2 | Challenge run flow in the browser | M5.1 | L | none |
 | M5.3 | Settlement, season pages, replay of committed runs | M2.3, M4.9, M5.2 | M | none |
-| M5.4 | Web Serial bridge for Challenge runs | M3.4, M4.14, M5.2 | M | Fund your wallet; a six-level Pico run on Sepolia |
+| M5.4 | Web Serial bridge for Challenge runs | M3.4, M4.14, M5.7 | M | Fund your wallet; a six-level Pico run on Sepolia |
 | M5.5 | Season operations, testnet-1 parameters, testnet-0 close | M4.14, M5.3, M5.4 | M | Approve the parameters, the schedule, its secrets and the feedback channel |
 | M5.6 | Testnet season 1 | M5.3, M5.5 | M | Testers, play, approvals |
+| M5.7 | Challenge page wiring | M5.2 | M | none |
 
 Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4.11) with MockReferee, `e2e.yml` on nitro-devnode with the real referee, or Arbitrum Sepolia.
 
@@ -2131,24 +2132,24 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 #### M5.2 Challenge run flow in the browser
 
 - **Goal:** a full Challenge run in the browser, committed within its deadline, on the rules the season accepts, and robust to a page reload.
-- **Deliverables:** `web/src/pages/challenge.ts` and `web/src/run/`:
+- **Split:** built, this item came out above L's 2,000 lines, so its PR split the page wiring out into M5.7. M5.2 keeps the run flow of `web/src/run/`, which its headless e2e and unit tests drive without the page, so every done-when line below stays here; M5.7 wires the flow into `challenge.html`. M5.2's size is L, as built.
+- **Deliverables:** `web/src/run/`:
   - Run start:
-    - a season view: price, pot, parameters;
-    - a season check: the page refuses to call `startRun` unless the wasm core's `RULES_VERSION` equals the season's `rulesVersion` and the 16 shipped level ids equal the season's ids;
+    - the season view's entries: price, pot, parameters;
+    - a season check: the flow refuses to call `startRun` unless the wasm core's `RULES_VERSION` equals the season's `rulesVersion` and the 16 shipped level ids equal the season's ids;
     - `startRun(s)`, where s is the season number whose `rulesVersion` and level ids the season check passed, sending that season's fee;
     - a wait that polls the entropy source's `isRevealable` until the entropy block exists (usually 10 to 20 s, README §7.2), then `revealRun` at once.
   - Play:
     - the six drawn levels, from the wasm core's draw;
     - back-to-back play with mode-1 journals, and no pause;
-    - a live deadline countdown using the contract's formula, tested against the deadline fixtures of `vectors/derivations.json` (M4.7).
+    - a live deadline margin using the contract's formula, tested against the deadline fixtures of `vectors/derivations.json` (M4.7).
   - Interruption:
     - the run state (nonce, drawn levels, current level) and the live events and current tick are written to IndexedDB every second;
-    - after a reload, the page closes the interrupted level's journal as README §7.2 specifies. It replays the stored journal through tick c − 1, where c = max(n, e + 1), n is the stored tick count and e the last event's tick. If the level ended by then, it keeps the journal as it is; otherwise it appends an X at tick c. It then resumes the run at the next level.
+    - after a reload, the flow closes the interrupted level's journal as README §7.2 specifies. It replays the stored journal through tick c − 1, where c = max(n, e + 1), n is the stored tick count and e the last event's tick. If the level ended by then, it keeps the journal as it is; otherwise it appends an X at tick c. It then resumes the run at the next level.
   - Commit:
-    - one `commitRun` transaction as soon as the run ends, carrying the six journals (P5), showing the margin left before the deadline;
+    - one `commitRun` transaction as soon as the run ends, carrying the six journals (P5), with the margin left before the deadline;
     - X-at-tick-0 journals for unplayed levels;
-    - the journals kept in IndexedDB, and downloadable as a run file (M4.7).
-  - A warning when the tab is hidden, since browsers throttle background timers.
+    - the journals kept in IndexedDB, and written as a run file (M4.7).
   - `web/scripts/challenge-e2e.mjs`.
 - **Done when:**
   - a headless e2e on the local chain goes from buy to commit, with bot inputs fed through `input.ts`;
@@ -2287,6 +2288,28 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - Arbiscan links for the close and claim transactions, in the report.
 - **Skills:** `onchain-referee`, `qa`. **README:** §8.2, §9 M5. **Needs user:** recruit testers, approve opening the season, play (at least one Pico run), keep the tester key funded, commit or pass on handed-off run files if D2 = zk, and check the report after the close (round G3).
 
+#### M5.7 Challenge page wiring
+
+- **Goal:** the Challenge page plays a run through the flow of M5.2, so that a player with a browser wallet buys, plays and commits a run on the PR's preview.
+- **Why:** split out of M5.2, whose PR came out above L. The page is UI over `web/src/run/`, which M5.2's headless e2e and unit tests already check without it.
+- **Deliverables:** `web/src/pages/challenge.ts` and `web/challenge.html`:
+  - the season view: price, pot and parameters, from `src/run/season.ts`, and Buy, which runs the season check before `startRun`;
+  - the run: the field and the HUD of the level in play, its status, the live deadline countdown and the time left before `commitRun`'s bound, and a control that ends the run and commits it at once;
+  - after a reload, the account's unfinished run resumed when the wallet connects;
+  - after the commit, the six Outcomes and the run file download;
+  - a warning when the tab is hidden, since browsers throttle background timers;
+  - the shipped levels (`web/src/shipped.ts`) and the HUD (`showHud` in `web/src/page.ts`), moved out of Training to be shared with it.
+- **Done when:**
+  - on the local chain, in headless Chromium with a wallet forwarded to anvil, the page shows the season, buys, reveals, plays and commits a run, and offers its run file;
+  - a real page reload in a level resumes the run at the next level, with the interrupted level closed as README §7.2 specifies;
+  - ending the run early gives every unplayed level an X at tick 0 and commits;
+  - hiding the tab during a run shows the warning;
+  - Training still imports nothing from `web/src/chain`, and its tests pass.
+- **Verify with:**
+  - `npm --prefix web test`, `typecheck`, `lint` and `build`
+  - local chain: `node scripts/contracts/localnet.mjs --up`, then `challenge.html?network=local` in headless Chromium with a forwarded wallet
+- **Skills:** `frontend-ux`, `wallets`; tiers `web`, `contracts`. **README:** §7.2, §8.2. **Needs user:** none.
+
 ## 11. Decision schedule
 
 Each decision, or each part of one, is closed by the owner or by exactly one item, before its first use. Where the owner answered on 2026-10-28, the items named pin the details and propose what the answer left open. A decision item is approved by merging it.
@@ -2372,11 +2395,11 @@ Contracts (start after M0)
   M4.9 + M4.11 + M4.12 + M4.16 (+ M4.10 if zk, + M4.17+) -> M4.14
 
 dApp and season
-  M2.10 + M4.11 -> M5.1 -> M5.2 ; M5.2 + M2.3 + M4.9 -> M5.3
-  M5.2 + M3.4 + M4.14 -> M5.4 ; M4.14 + M5.3 + M5.4 -> M5.5 ; M5.3 + M5.5 -> M5.6
+  M2.10 + M4.11 -> M5.1 -> M5.2 -> M5.7 ; M5.2 + M2.3 + M4.9 -> M5.3
+  M5.7 + M3.4 + M4.14 -> M5.4 ; M4.14 + M5.3 + M5.4 -> M5.5 ; M5.3 + M5.5 -> M5.6
 ```
 
-**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40. M2.11, a follow-up of M2.6 on the levels chain, adds one more and breaks the ties below: M2.6 > M2.11 > M2.7 > M2.8 > M4.11 becomes the only longest chain, ending at 41, and M1.9 > M4.7 and the browser chain move to slack 1.
+**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40. M2.11, a follow-up of M2.6 on the levels chain, adds one more and breaks the ties below: M2.6 > M2.11 > M2.7 > M2.8 > M4.11 becomes the only longest chain, ending at 41, and M1.9 > M4.7 and the browser chain move to slack 1. M5.2 came out L, and split its page wiring out into M5.7 (M), which M5.4 waits for. The browser chain then becomes the only longest chain, ending at 43: M1.8 19 > M1.9 22 > M1.11 24 > M2.1 26 > M2.2 27 > M2.9 29 > M2.10 30 > M5.1 32 > M5.2 35 > M5.7 37 > M5.4 39 > M5.5 41 > M5.6 43. The levels chain moves to slack 1, into M2.9, and M4.11 > M4.16 > M4.10 > M4.12 > M4.14 to slack 2.
 
 ```text
 M0.1 1 > M0.5 3 > M0.6 5 > M1.1 7 > M1.3 9 > M1.5 11 > M1.7 13 > M1.8 16 > M1.15 18
@@ -2502,7 +2525,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 | Levels or rules change after costs were measured or a season opened | The level freeze at M2.9; the `CLAUDE.md` calibration rule; the runbook's freeze while a season is open (M5.5) | M2.9, M5.5 |
 | A client or device on other rules than the season's takes a paid run that cannot settle | The season check before `startRun` (M5.2) and the device's Hello check (M5.4); a season-bound referee (M0.7, M4.5) | M5.4 |
 | A USB disconnect or a page reload mid-level makes the whole run late | The level's journal is closed as README §7.2 specifies, so its ticks used follow the wall time (M0.7); a TickStats heartbeat (M3.2); IndexedDB persistence every second (M5.2); tested with a cut transcript and a simulated reload (M5.2, M5.4) | M5.4 |
-| Browser timer lateness or background-tab throttling eats the commit slack | The absolute-deadline loop (M2.1); a hidden-tab warning (M5.2); the slack as a season parameter, sized from measurements (M5.5) | M5.5 |
+| Browser timer lateness or background-tab throttling eats the commit slack | The absolute-deadline loop (M2.1); a hidden-tab warning (M5.7); the slack as a season parameter, sized from measurements (M5.5) | M5.5 |
 | The commit slack is too tight for Pico players | Transition overhead measured in the emulator rehearsal and on a real Pico run (M5.4, round G1); the slack set before the season opens (M5.5) | M5.5 |
 | Season deadlines pass while no agent session is running | `season-ops.yml` on a daily schedule, never cancelled mid-run, failing on insolvency; `send_later` reminders for the season checkpoints (M5.5, M5.6) | M5.6 |
 | The settlement grace is too short for zk proving | Grace sized from M4.8's proving time per run and the expected settled runs (M5.5) | M5.5 |
