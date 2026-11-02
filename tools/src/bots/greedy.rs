@@ -14,7 +14,7 @@ use crate::scenarios::play::{Plan, Rng, distance, mask, reverse, walk_rail};
 mod tests;
 
 /// The depths and widths Greedy weighs, in cells.
-const LEGS: [u8; 12] = [1, 2, 3, 5, 8, 12, 17, 23, 30, 38, 47, 57];
+pub(super) const LEGS: [u8; 12] = [1, 2, 3, 5, 8, 12, 17, 23, 30, 38, 47, 57];
 
 /// How far Greedy keeps the boss from a rectangle: `reach_pct` percent of the cells the boss can
 /// move while the cut is open, plus `cells`.
