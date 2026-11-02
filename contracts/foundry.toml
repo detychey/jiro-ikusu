@@ -23,3 +23,7 @@ fs_permissions = [
     { access = "read", path = "../seasons/calibration-1.json" },
     { access = "read", path = "./test/fixtures" },
 ]
+
+[lint]
+# An import-only file has no AST of its own for the linter.
+ignore = ["src/mocks/RiscZeroMocks.sol"]

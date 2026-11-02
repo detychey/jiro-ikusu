@@ -8,7 +8,8 @@ The zk path of `IReferee` (README §7.3): the core replays journals as the guest
 - `host/`, the `zk-host` binary:
   - `execute <files or directories>` runs vectors through both programs in the executor and checks them against the native core's records, with a cycle table;
   - `execute-run <six files>` executes one run-mode input;
-  - `prove --level <file>` and `prove --run <six files>`, each with an optional `--segment-po2 <n>`, prove the verify program on the CPU and wrap the proof into a Groth16 seal (Docker);
+  - `image-id` prints the verify program's image id, which `ZkReferee` pins;
+  - `prove --level <file>`, `prove --run <six files>` and `prove --run <run file> --season <season file>`, each with an optional `--segment-po2 <n>`, prove the verify program on the CPU and wrap the proof into a Groth16 seal (Docker), or a dev-mode seal with `RISC0_DEV_MODE=1`;
   - `tests/mock_round_trip.rs`, a dev-mode receipt round trip.
 - `peak-memory.sh <command>` prints a command's wall time and peak memory, its process tree's and Docker's.
 
@@ -44,7 +45,7 @@ The journal of a receipt, which RISC Zero calls the journal and this repository 
 
 Each word is 32 bytes, big-endian, a number left-padded with zeros. So the public values bind keccak256 of each level and of each journal, each weight and each Outcome, with each value once: the Outcome's `journalHash` and `levelId` are the two hashes.
 
-**Onchain.** The verifier contract checks `verify(seal, imageId, sha256(publicValues))`. A zk referee never decodes the public values: it rebuilds them, from the levels, journals and weights that settlement submits and the Outcomes the proof claims, and the proof verifies only if they are the ones the guest committed. For level `i`, it sets `journalHash = keccak256(journals[i])` and `levelId = keccak256(levels[i])` itself, and appends `abi.encode(weightsBp[i], outcome)`. A run's public values cannot pass as a level's, or the reverse: their lengths, so their digests, differ. [`contracts/test/ZkVerify.t.sol`](../../contracts/test/ZkVerify.t.sol) builds them this way.
+**Onchain.** The verifier contract checks `verify(seal, imageId, sha256(publicValues))`. [`contracts/src/ZkReferee.sol`](../../contracts/src/ZkReferee.sol) (plan M4.10) takes `proof = abi.encode(bytes seal, bytes publicValues)`. It requires 384 bytes of public values in `verify` and 2,304 in `verifyRun`, so a run's public values cannot pass as a level's, or the reverse. It checks the seal against its pinned image id, decodes the public values as `(uint16 weightBp, Outcome)` per level, and requires, for level `i`, the submitted weight, `journalHash = keccak256(journals[i])` and `levelId = keccak256(levels[i])`. The Outcomes it returns are the decoded ones, which settlement then binds to the run (README §7.2). [`contracts/test/ZkVerify.t.sol`](../../contracts/test/ZkVerify.t.sol) rebuilds the public values from the game vectors the same way.
 
 ## Reproducible image ids
 
@@ -66,6 +67,20 @@ cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host
 
 RISC Zero's own route, risc0-build's Docker build (`use_docker`, which builds at `/src` in `risczero/risc0-guest-builder`, with its tag set to `r0.1.97.0`, since 3.0.6 defaults to `r0.1.88.0`, older than the core's `rust-version`), was not used: in the agent's container, its `cargo fetch` step would run in a build container, which cannot reach the container's network proxy at `127.0.0.1` ([`docs/TOOLING.md`](../../docs/TOOLING.md), Docker), and Docker Hub answered the builder image's manifest with `429 Too Many Requests`; on Actions it would add the builder image's pull and a guest build from scratch to every zk-exec run ([`docs/VERIFICATION.md`](../../docs/VERIFICATION.md#reproducible-image-ids)).
 
+## Proving a run for settlement
+
+A committed Challenge run settles with one run proof (README §7.3, D2), made from its run file ([`docs/VERIFICATION.md`](../../docs/VERIFICATION.md#run-file-v1)) and the file of its season, whose `weightsBp` give each level's weight by its draw slot:
+
+```bash
+referee/zk/target/release/zk-host prove --run <run file> --season seasons/<season>.json [--segment-po2 19]
+```
+
+1. Build the host at the fixed path below, so that its image id is the one the season's `ZkReferee` pins: `zk-host image-id` prints it, and `cast call <ZkReferee> 'imageId()(bytes32)'` reads the pinned one.
+2. The host first executes the run, in seconds, and requires each level's public values to carry the season's weight, the season's level id and rules version for its draw slot, the run nonce, the level index, the draw slot and mode 1. It stops on a journal that replay rejects, with replay's code: no proof of that run can exist. Then it proves, which takes about an hour on 4 CPUs for six short levels and up to 17 hours for the heaviest run ([`docs/VERIFICATION.md`](../../docs/VERIFICATION.md#proving)).
+3. Settle with the seal and the public values between the `zk-fixture` markers: `settleRun(runId, levels, journals, proof)` with `proof = $(cast abi-encode 'f(bytes,bytes)' <seal> <publicValues>)`, from any account.
+
+With `RISC0_DEV_MODE=1`, the receipt is fake and its seal is `0xffffffff` followed by the claim's digest, which only RISC Zero's mock verifier, `RiscZeroMockVerifier`, deployed with that selector, accepts: the zk mode of `scripts/contracts/e2e.mjs` settles with such proofs on a local chain.
+
 ## Proving
 
 ```bash
@@ -73,4 +88,4 @@ cargo run --release --manifest-path referee/zk/Cargo.toml -p zk-host -- prove --
 bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove --run <six game vector files> --segment-po2 19
 ```
 
-The segment proofs and their recursion into one succinct receipt run in the process, on the CPU. The Groth16 step runs `risczero/risc0-groth16-prover:v2025-04-03.1` through `docker run`, on x86 only; the image is on Docker Hub only. Memory follows the segment size: about 9.2 GiB with RISC Zero's default 2^20 cycles, 4.6 GiB with 2^19, so a 7.9 GB runner proves with `--segment-po2 19`. The output, between `=== BEGIN zk-prove ===` and `=== END zk-prove ===`, gives the image id, the cycles, each step's time, the peak memory and the seal's size, and between `=== BEGIN zk-fixture ===` and `=== END zk-fixture ===` the proof as JSON: `mode`, `vectors`, `imageId`, `seal` (the router's encoding: the verifier selector, then the 256-byte Groth16 seal) and `publicValues`. `.github/workflows/zk-prove.yml` runs it; `contracts/test/fixtures/zk-proofs.json` holds a level proof and a run proof from its log, and the container's proof of `worst-case`.
+The segment proofs and their recursion into one succinct receipt run in the process, on the CPU. The Groth16 step runs `risczero/risc0-groth16-prover:v2025-04-03.1` through `docker run`, on x86 only; the image is on Docker Hub only. Memory follows the segment size: about 9.2 GiB with RISC Zero's default 2^20 cycles, 4.6 GiB with 2^19, so a 7.9 GB runner proves with `--segment-po2 19`. The output, between `=== BEGIN zk-prove ===` and `=== END zk-prove ===`, gives the image id, the cycles, each step's time, the peak memory and the seal's size, and between `=== BEGIN zk-fixture ===` and `=== END zk-fixture ===` the proof as JSON: `mode`, `vectors` (or `runFile` and `season`), `imageId`, `seal` (the router's encoding: the verifier selector, then the 256-byte Groth16 seal) and `publicValues`. `.github/workflows/zk-prove.yml` runs it; `contracts/test/fixtures/zk-proofs.json` holds a level proof and a run proof from its log, the container's proof of `worst-case`, and the container's proof of the run file `contracts/test/fixtures/zk-run.json` (`challengeRun`, plan M4.10).

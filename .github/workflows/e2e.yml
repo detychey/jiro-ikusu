@@ -5,7 +5,9 @@
 # fresh generation with the real Stylus referee through cargo-stylus, with nitro-devnode's public
 # prefunded development key, which is not a secret. The six cases then call the referee's
 # verifyRun and verify for real, and the gas of every transaction goes between
-# `=== BEGIN e2e-gas ===` and `=== END e2e-gas ===`. Never a required check.
+# `=== BEGIN e2e-gas ===` and `=== END e2e-gas ===`. The e2e-zk job runs the same cases in the zk
+# mode (plan M4.10) on anvil: ZkReferee over RISC Zero's mock verifier, settled with the dev-mode
+# proofs of the zk host, built with ci.yml's zk-exec cache. Never a required check.
 name: e2e
 
 on:
@@ -92,3 +94,57 @@ jobs:
           npm --prefix scripts/contracts ci
           DEPLOYER_KEY="$(sed -n 's/^PRIVATE_KEY=//p' scripts/contracts/nitro/run-dev-node.sh)" \
             node scripts/contracts/e2e.mjs --network nitro-devnode --rpc "$RPC"
+
+  e2e-zk:
+    if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'ci:heavy' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    defaults:
+      run:
+        shell: bash
+    env:
+      RISC0_BUILD_LOCKED: "1"
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+          submodules: true
+
+      - uses: foundry-rs/foundry-toolchain@v1.9.2
+        with:
+          version: v1.8.6
+          cache: false
+
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ~/.risc0
+          key: risc0-r0.1.97.0
+
+      - name: Toolchains
+        run: bash scripts/bootstrap.sh zk
+
+      - uses: Swatinem/rust-cache@v2.9.3
+        id: cache
+        with:
+          shared-key: zk-exec
+          save-if: false
+          workspaces: |
+            referee/zk -> target
+
+      - name: Build jiro-tools, the guests and the host
+        timeout-minutes: ${{ steps.cache.outputs.cache-hit == 'true' && 20 || 80 }}
+        run: |
+          echo "cache hit: ${{ steps.cache.outputs.cache-hit }}"
+          cargo build -p jiro-tools --release --locked
+          cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/contracts/package-lock.json
+
+      - name: End-to-end suite, zk mode (e2e.mjs --zk)
+        run: |
+          npm --prefix scripts/contracts ci
+          node scripts/contracts/e2e.mjs --network local --zk

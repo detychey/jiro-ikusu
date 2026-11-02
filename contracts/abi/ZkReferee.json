@@ -1,0 +1,333 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "verifier_",
+        "type": "address",
+        "internalType": "contract IRiscZeroVerifier"
+      },
+      {
+        "name": "imageId_",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "rulesVersion_",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "imageId",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "rulesVersion",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "verifier",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IRiscZeroVerifier"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "verify",
+    "inputs": [
+      {
+        "name": "level",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "journal",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "weightBp",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "proof",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct Outcome",
+        "components": [
+          {
+            "name": "journalHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "levelId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "runNonce",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "levelIndex",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "drawSlot",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "rulesVersion",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "endReason",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "claimBp",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "ticksUsed",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "levelScore",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "verifyRun",
+    "inputs": [
+      {
+        "name": "levels",
+        "type": "bytes[6]",
+        "internalType": "bytes[6]"
+      },
+      {
+        "name": "journals",
+        "type": "bytes[6]",
+        "internalType": "bytes[6]"
+      },
+      {
+        "name": "weightsBp",
+        "type": "uint16[6]",
+        "internalType": "uint16[6]"
+      },
+      {
+        "name": "proof",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "outcomes",
+        "type": "tuple[6]",
+        "internalType": "struct Outcome[6]",
+        "components": [
+          {
+            "name": "journalHash",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "levelId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "runNonce",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "levelIndex",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "drawSlot",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "mode",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "rulesVersion",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "endReason",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "claimBp",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "ticksUsed",
+            "type": "uint16",
+            "internalType": "uint16"
+          },
+          {
+            "name": "levelScore",
+            "type": "uint32",
+            "internalType": "uint32"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "error",
+    "name": "JournalHashMismatch",
+    "inputs": [
+      {
+        "name": "position",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "provenJournalHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "journalHash",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "LevelIdMismatch",
+    "inputs": [
+      {
+        "name": "position",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "provenLevelId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "levelId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PublicValuesLengthMismatch",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expected",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "WeightMismatch",
+    "inputs": [
+      {
+        "name": "position",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "provenWeightBp",
+        "type": "uint16",
+        "internalType": "uint16"
+      },
+      {
+        "name": "weightBp",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroImageId",
+    "inputs": []
+  }
+]

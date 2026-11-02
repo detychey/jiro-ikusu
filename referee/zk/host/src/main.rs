@@ -12,8 +12,10 @@ mod prove;
 
 const USAGE: &str = "usage: zk-host execute <vector file or directory>...
        zk-host execute-run <six game vector files>
+       zk-host image-id
        zk-host prove --level <game vector file> [--segment-po2 <n>]
-       zk-host prove --run <six game vector files> [--segment-po2 <n>]";
+       zk-host prove --run <six game vector files> [--segment-po2 <n>]
+       zk-host prove --run <run file> --season <season file> [--segment-po2 <n>]";
 
 /// The one JSON file under vectors/ that is not a vector (vectors/README.md).
 const NOT_A_VECTOR: &str = "derivations.json";
@@ -24,6 +26,10 @@ fn main() {
         Some((command, rest)) if command == "execute" => execute(rest),
         Some((command, rest)) if command == "execute-run" => execute_run(rest),
         Some((command, rest)) if command == "prove" => prove::prove(rest),
+        Some((command, [])) if command == "image-id" => {
+            println!("0x{}", Digest::from(VERIFY_ID));
+            Ok(())
+        }
         _ => Err(USAGE.into()),
     };
     if let Err(error) = result {
