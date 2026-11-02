@@ -1,16 +1,20 @@
 """The Training app's play test (plan M3.9): runs wedgie/app/jiro.py's run(), unmodified, on
 MicroPython v1.29.0's qemu MICROBIT port (scripts/build-qemu.sh builds it), with the wedgie's
-lcd, ui, save and wedgie modules stubbed and the app's files served from a RAM filesystem. A
+lcd, ui, save, wedgie and time modules stubbed and the app's files served from a RAM filesystem. A
 ballast fills the heap down to the given free bytes, the free RAM a wedgie reports with no app,
 before run() starts. The scripted inputs pick level 1, play it with two captures and commit, up
-to the summary screen. Then it checks:
+to the summary screen. The app's clock is a stub over the port's: its ticks_us starts shortly
+before its 2^30 µs wrap, so the wrap falls in play, and on tick LATE_TICK it jumps LATE_US ahead,
+more than ticks_diff's 2^29 µs range, as a wedgie whose ticks fell that far behind would see it:
+the remaining ticks must run at once, late, instead of sleeping for minutes. Then it checks:
 
 - the journal the app printed: its header (Training, the stub's run nonce, level 1's id from
   seasons/calibration-1.json, levelIndex 0) and its events, which must be the changes of the
   README §6.1 mask that the scripted keys give under D8, Y and the joystick press never in it;
 - the app's end reason, claim, ticks and score against native replay of that journal
   (`jiro-tools replay` with level 1's weight), and that it captured something;
-- the best score it stored, the free heap and largest free block it printed, and no overrun.
+- the best score it stored, the free heap and largest free block it printed, the summary screen,
+  and no overrun before the clock's jump and one on every tick from it on.
 
 It prints the app's step, render and tick maxima in qemu microseconds and in instructions. qemu
 runs with -icount shift=3, 8 ns of virtual time per instruction, and the port's ticks assume a
@@ -44,6 +48,9 @@ ROW_PUSH_US = 45  # a show_rect row on a wedgie (wedgie.dev/code.md)
 RUN_NONCE = bytes.fromhex("277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd")
 LEVEL = "levels/01-open.bin"
 HEADER_LEN = 71
+WRAP_AFTER_US = 3_500_000  # from the clock stub's import to its wrap: about tick 24, play starting 1.9 s after it
+LATE_TICK = 70
+LATE_US = 600_000_000
 
 # README §6.1 bits of the wedgie's key names (D8); Y and press are not controls.
 BITS = {"up": 1, "down": 2, "left": 4, "right": 8, "A": 16, "B": 32, "X": 64}
@@ -66,7 +73,7 @@ MENU = [["A"]]
 
 STUBS = {
     "lcd.py": """\
-import framebuf
+import clock, framebuf
 _BUF = bytearray(28800)
 _PALETTE = ((0, 0, 0), (255, 255, 255), (40, 100, 230), (255, 42, 42), (255, 220, 0), (60, 255, 120),
             (154, 154, 154), (34, 196, 82), (90, 90, 90))
@@ -87,7 +94,7 @@ class LCD(framebuf.FrameBuffer):
     s.text(t, (240 - 8 * len(t)) // 2, y, c)
 class ScriptDone(Exception):
   pass
-_menu, _script, _tick, _play = MENU, SCRIPT, [0], [False]
+_menu, _script, _tick, _play, _wrap = MENU, SCRIPT, [0], [False], [0]
 class Keys:
   def held(s, name):
     _play[0] = True
@@ -95,6 +102,12 @@ class Keys:
   def pressed(s):
     if not _play[0]:
       return _menu.pop(0) if _menu else []
+    if _tick[0] == 0:
+      _wrap[0] = clock.ticks_us()
+    if _tick[0] == LATE_TICK:
+      if clock.ticks_us() >= _wrap[0]:
+        raise ValueError('the clock did not wrap between tick 0 and tick %d' % LATE_TICK)
+      clock.jump(LATE_US)
     if _tick[0] >= len(_script):
       raise ScriptDone('scripted inputs done; most rows pushed in a tick: %d' % _rows[1])
     if _tick[0]:
@@ -102,6 +115,16 @@ class Keys:
     _rows[0] = 0
     _tick[0] += 1
     return list(_script[_tick[0] - 1][1])
+""",
+    # Python's ints stay below 2^30 here, small ints on the port: ticks_us is (port's - _back) mod 2^30.
+    "clock.py": """\
+import time as _time
+_back = [(_time.ticks_us() - (0x3fffffff - WRAP_AFTER_US)) & 0x3fffffff]
+def ticks_us():
+  return (_time.ticks_us() - _back[0]) & 0x3fffffff
+def jump(us):
+  _back[0] = (_back[0] - us) & 0x3fffffff
+ticks_add, ticks_diff, ticks_ms, sleep_ms = _time.ticks_add, _time.ticks_diff, _time.ticks_ms, _time.sleep_ms
 """,
     "ui.py": """\
 WHITE, INK, MUTED, GREEN, GREEN_D, GREY, RED = 1, 0, 6, 7, 7, 8, 3
@@ -253,8 +276,9 @@ def check(out, err, repo):
     if not any(line.startswith("ui.page") and "'{g} next'" in line for line in lines):
         problems.append("the app showed no summary screen")
     step_us, render_us, tick_us, overruns = map(int, re.findall(r"\d+", timing[0]))
-    if overruns:
-        problems.append(f"{overruns} overruns")
+    if overruns != ticks - LATE_TICK:
+        problems.append(f"{overruns} overruns, expected {ticks - LATE_TICK}: none before the clock's jump on tick "
+                        f"{LATE_TICK}, then every tick")
     print(f"level 1: end {end}, claim {claim} bp, ticks {ticks}, score {score}; native replay agrees" if not problems
           else f"level 1: end {end}, claim {claim} bp, ticks {ticks}, score {score}")
     for name, us in (("step", step_us), ("render", render_us), ("tick", tick_us)):
@@ -269,7 +293,8 @@ def main(firmware, app, free_bytes):
     names = json.loads((app / "wedgie.json").read_text())["apps"][0]["files"]
     files = {name: (app / name).read_bytes() for name in names}
     stubs = dict(STUBS)
-    stubs["lcd.py"] = f"MENU = {MENU!r}\nSCRIPT = {[(held, tapped) for ticks, held, tapped in SCRIPT for _ in range(ticks)]!r}\n" + stubs["lcd.py"]
+    stubs["clock.py"] = f"WRAP_AFTER_US = {WRAP_AFTER_US}\n" + stubs["clock.py"]
+    stubs["lcd.py"] = f"LATE_TICK = {LATE_TICK}\nLATE_US = {LATE_US}\nMENU = {MENU!r}\nSCRIPT = {[(held, tapped) for ticks, held, tapped in SCRIPT for _ in range(ticks)]!r}\n" + stubs["lcd.py"]
     stubs["wedgie.py"] = f"NONCE = {RUN_NONCE!r}\n" + stubs["wedgie.py"]
     files.update({name: text.encode() for name, text in stubs.items()})
     qemu = qemu_natmod_vectors.QEMU
@@ -281,6 +306,7 @@ def main(firmware, app, free_bytes):
         # in flash, and the free RAM it reports already excludes the firmware's modules.
         repl.exec("_FILES = {}\n" + VFS)
         upload_files(repl, files)
+        repl.exec("import sys, clock; sys.modules['time'] = clock")
         repl.exec("import lcd, ui, save, wedgie")
         print(repl.exec(BALLAST.format(free=free_bytes)), end="")
         out, err = run_app(repl)

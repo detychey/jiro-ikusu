@@ -22,7 +22,9 @@ TRAINING_INDEX = 0  # Training plays at levelIndex 0, as in the browser
 # Tick k is due at t0 + floor(k × 10^6 / 15) µs: 66,666 µs and two thirds, on an absolute schedule.
 TICK_US = 66666
 OVERLAY_MS = 1500
+SUMMARY_GUARD_MS = 500
 CELL_PX = 4
+FIELD_PX = 240
 
 # The controls of README §2 (D8) and their bits of the README §6.1 mask. Y and the joystick press
 # are not controls, so they never reach the mask.
@@ -36,6 +38,11 @@ BOSS = lcd.color(255, 220, 0)
 MINION = lcd.color(60, 255, 120)
 PLAYER = lcd.color(255, 255, 255)
 PLAYER_PROTECTED = lcd.color(154, 154, 154)
+# A cell is 4 pixels wide, as thin as the trail it cuts: the player is drawn 1 pixel larger on
+# each side, in a dark ring 1 pixel wider, so it stands out on the trail, the claimed area and
+# the borders. The ring reaches into the neighbouring cells, which the next tick restores.
+PLAYER_RING = lcd.color(0, 0, 0)
+PLAYER_MARGIN_PX = 2
 
 # The fields of jc.status (jiro_status in natmod/rust/src/lib.rs), in its order.
 END, TICKS, TIME_LIMIT, LIVES, SHIELD, INVULNERABLE, CUTTING, CLAIM, TARGET = range(9)
@@ -101,11 +108,18 @@ def sample(keys):
     return mask
 
 
-def wait_until(due):
+def left_until(due):
+    """The µs left until `due`, or -1 once it has passed. A due time is never more than one tick
+    ahead, so one further ahead is more than 2^29 µs late, past ticks_diff's range: it has passed."""
     left = time.ticks_diff(due, time.ticks_us())
+    return left if left <= TICK_US + 1 else -1
+
+
+def wait_until(due):
+    left = left_until(due)
     if left > 2000:
         time.sleep_ms(left // 1000 - 1)  # the firmware answers USB in here
-    while time.ticks_diff(due, time.ticks_us()) > 0:
+    while left_until(due) > 0:
         pass
 
 
@@ -113,10 +127,19 @@ def ms(us):
     return "%d.%d ms" % (us // 1000, us % 1000 // 100)
 
 
-def push_box(show_rect, old_x, old_y, new_x, new_y, size):
-    """Pushes the cells an entity of `size` × `size` cells left and entered."""
-    x, y = min(old_x, new_x), min(old_y, new_y)
-    show_rect(x * CELL_PX, y * CELL_PX, (max(old_x, new_x) - x + size) * CELL_PX, (max(old_y, new_y) - y + size) * CELL_PX)
+def push_box(show_rect, old_x, old_y, new_x, new_y, size, margin=0):
+    """Pushes the cells an entity of `size` × `size` cells left and entered, and `margin` pixels
+    around them, within the screen."""
+    x, y = max(min(old_x, new_x) * CELL_PX - margin, 0), max(min(old_y, new_y) * CELL_PX - margin, 0)
+    show_rect(x, y, min((max(old_x, new_x) + size) * CELL_PX + margin, FIELD_PX) - x,
+              min((max(old_y, new_y) + size) * CELL_PX + margin, FIELD_PX) - y)
+
+
+def fill_around(fill_rect, x, y, margin, color):
+    """Fills cell (x, y) and `margin` pixels around it, within the screen."""
+    left, top = max(x * CELL_PX - margin, 0), max(y * CELL_PX - margin, 0)
+    fill_rect(left, top, min((x + 1) * CELL_PX + margin, FIELD_PX) - left,
+              min((y + 1) * CELL_PX + margin, FIELD_PX) - top, color)
 
 
 class Training:
@@ -124,6 +147,7 @@ class Training:
         self.stack, self.recorder, self.shadow = stack, recorder, shadow
         self.screen, self.keys = lcd.LCD(), lcd.Keys()
         self.frame = self.screen.buffer
+        self.show_rect, self.fill_rect = self.screen.show_rect, self.screen.fill_rect  # bound once, not per tick
         self.level = bytearray(LEVEL_BYTES)
         self.status, self.previous = array("H", [0] * STATUS_LEN), array("H", [0] * STATUS_LEN)
         self.rect = array("H", [0] * 4)
@@ -217,21 +241,24 @@ class Training:
         recorder, stack, keys, step = self.recorder, self.stack, self.keys, jc.step
         status, previous = self.status, self.previous
         step_max = render_max = tick_max = overruns = 0
-        t0 = time.ticks_us()
+        due = time.ticks_us()
         tick = 0
         while True:
-            wait_until(time.ticks_add(t0, tick * TICK_US + tick * 2 // 3))
+            wait_until(due)
             started = time.ticks_us()
             end = step(recorder, sample(keys), stack)
             stepped = time.ticks_us()
             status, previous = previous, status
             self.render(status, previous)
             done = time.ticks_us()
+            # Tick k + 1 is due floor((k + 1) × 10^6 / 15) - floor(k × 10^6 / 15) µs after tick k:
+            # 66,666, 66,667, 66,667, repeating. A running due time keeps ticks_add's delta small.
+            due = time.ticks_add(due, TICK_US + (1 if tick % 3 else 0))
             tick += 1
             step_max = max(step_max, time.ticks_diff(stepped, started))
             render_max = max(render_max, time.ticks_diff(done, stepped))
             tick_max = max(tick_max, time.ticks_diff(done, started))
-            if time.ticks_diff(done, time.ticks_add(t0, tick * TICK_US + tick * 2 // 3)) > 0:
+            if left_until(due) < 0:
                 overruns += 1
             if end >= STEP_ERROR:
                 raise RuntimeError("jiro-core error %d on tick %d" % (end - STEP_ERROR, tick - 1))
@@ -249,10 +276,10 @@ class Training:
         for slot in MINIONS:
             if previous[slot] == LIVE:
                 restore(recorder, frame, CELL_COLORS, previous[slot + 1], previous[slot + 2], 1, 1)
-        restore(recorder, frame, CELL_COLORS, previous[PLAYER_X], previous[PLAYER_Y], 1, 1)
+        restore(recorder, frame, CELL_COLORS, max(previous[PLAYER_X] - 1, 0), max(previous[PLAYER_Y] - 1, 0), 3, 3)
         changed = jc.paint(recorder, self.shadow, frame, CELL_COLORS, self.rect)
         self.draw(status)
-        show_rect, rect = self.screen.show_rect, self.rect
+        show_rect, rect = self.show_rect, self.rect
         if changed:
             show_rect(rect[0], rect[1], rect[2], rect[3])
         push_box(show_rect, previous[BOSS_X], previous[BOSS_Y], status[BOSS_X], status[BOSS_Y], status[BOSS_SIZE])
@@ -261,36 +288,29 @@ class Training:
             if was or now:
                 old, new = previous if was else status, status if now else previous
                 push_box(show_rect, old[slot + 1], old[slot + 2], new[slot + 1], new[slot + 2], 1)
-        push_box(show_rect, previous[PLAYER_X], previous[PLAYER_Y], status[PLAYER_X], status[PLAYER_Y], 1)
+        push_box(show_rect, previous[PLAYER_X], previous[PLAYER_Y], status[PLAYER_X], status[PLAYER_Y], 1,
+                 PLAYER_MARGIN_PX)
 
     def draw(self, status):
-        fill = self.screen.fill_rect
+        fill = self.fill_rect
         size = status[BOSS_SIZE] * CELL_PX
         fill(status[BOSS_X] * CELL_PX, status[BOSS_Y] * CELL_PX, size, size, BOSS)
         for slot in MINIONS:
             if status[slot] == LIVE:
                 fill(status[slot + 1] * CELL_PX, status[slot + 2] * CELL_PX, CELL_PX, CELL_PX, MINION)
-        color = PLAYER_PROTECTED if status[INVULNERABLE] else PLAYER
-        fill(status[PLAYER_X] * CELL_PX, status[PLAYER_Y] * CELL_PX, CELL_PX, CELL_PX, color)
+        x, y = status[PLAYER_X], status[PLAYER_Y]
+        fill_around(fill, x, y, PLAYER_MARGIN_PX, PLAYER_RING)
+        fill_around(fill, x, y, PLAYER_MARGIN_PX - 1, PLAYER_PROTECTED if status[INVULNERABLE] else PLAYER)
 
     def finish(self, index, end, timing):
         """The between-level screen: the claim, the score and the lives, the best, and the
-        timing. The score is the core's, with the calibration's weight."""
+        timing. The score is the core's, with the calibration's weight. The screen comes before
+        the USB output: a print can block for 500 ms when a host holds the port open unread."""
         name, weight, _, _ = self.levels[index]
         status, recorder = self.status, self.recorder
         score = jc.score(recorder, weight)
         step_max, render_max, tick_max, overruns = timing
         claim = "%d.%02d %%" % (status[CLAIM] // 100, status[CLAIM] % 100)
-        print("jiro: level %d %s end %d claim_bp %d ticks %d lives %d score %d" % (
-            index + 1, name, end, status[CLAIM], status[TICKS], status[LIVES], score))
-        print("jiro: step max %d us, render max %d us, worst tick %d us, overruns %d" % timing)
-        start = 0
-        while True:
-            chunk = jc.journal(recorder, start, start + 48)
-            if not chunk:
-                break
-            print("jiro: journal", hexlify(chunk).decode())
-            start += 48
         key = self.best_key(index)
         best = self.bests.get(key)
         if best is None or score > best:
@@ -309,5 +329,17 @@ class Training:
                  ("step %s, draw %s" % (ms(step_max), ms(render_max)), ui.MUTED),
                  ("worst tick " + ms(tick_max), ui.MUTED),
                  ("overruns %d" % overruns, ui.GREEN_D if overruns == 0 else ui.RED)], "{g} next")
+        print("jiro: level %d %s end %d claim_bp %d ticks %d lives %d score %d" % (
+            index + 1, name, end, status[CLAIM], status[TICKS], status[LIVES], score))
+        print("jiro: step max %d us, render max %d us, worst tick %d us, overruns %d" % timing)
+        start = 0
+        while True:
+            chunk = jc.journal(recorder, start, start + 48)
+            if not chunk:
+                break
+            print("jiro: journal", hexlify(chunk).decode())
+            start += 48
+        time.sleep_ms(SUMMARY_GUARD_MS)
+        self.keys.pressed()  # presses made before the summary's first 0.5 s do not skip it
         while "A" not in self.keys.pressed():
             time.sleep_ms(30)

@@ -1543,7 +1543,7 @@ On 2026-11-02 the device became a wedgie app that plays Training only (README §
 
 #### M3.10 In-place constructors for a smaller core stack (only if M3.9's RAM check fails)
 
-**Not built.** M3.9's qemu play test passed with the heap filled down to 137,760 bytes free, with about 20 KB still free after the app starts, and passed down to 129,250 (`reports/wedgie-2026-11-02.md`). A MemoryError in round E1 would reopen it.
+**Not built.** M3.9's qemu play test passed with the heap filled down to 137,760 bytes free, with about 20 KB still free after the app starts, and passed down to 127,500 (`reports/wedgie-2026-11-02.md`). A MemoryError in round E1 would reopen it.
 
 - **When.** The core needs about 63 KB of stack because `start` builds its large structs on the stack (`start` peaks at 62,784 bytes, PR #42), so the app gives up 64 KB of its about 137 KB. M3.9's draft PR files this item, with the shortfall it measured, if its qemu play test fails at the free RAM a wedgie reports with no app, or if a wedgie reports a MemoryError in round E1; M3.9 then waits for it. Otherwise M3.9 marks it "not built".
 - **Goal:** the core runs within a stack small enough for the app to fit, without changing any outcome.
