@@ -1,11 +1,12 @@
 """Loads jiro_core.mpy into MicroPython's qemu MICROBIT port (Cortex-M0) and checks game vectors:
 replay's code, Outcome, tick count, traceKeccak and last state hash, then the Recorder path
-(start, one step per tick, journal and final state hash). NOT RUN in the spike: building the
-MicroPython firmware was denied. Usage:
+(start, one step per tick, journal and final state hash), on the firmware scripts/build-qemu.sh
+builds. Usage:
 
   python3 -I qemu_natmod_vectors.py <firmware.elf> <jiro_core.mpy> <repo> <vector name>...
 
 e.g. game/open-field-empty game/open-field-capture game/worst-case game/rejected-level-id
+It stops qemu when it ends, but hangs if the module hard-faults: run it under a timeout.
 """
 
 import base64
@@ -86,7 +87,8 @@ def main(firmware, mpy, repo, names):
     repl.upload("_MPY", Path(mpy).read_bytes())
     repl.exec(VFS)
     print(repl.exec("import gc; gc.collect(); f0 = gc.mem_free(); import jiro_core as jc; gc.collect(); "
-                    "stack = bytearray(65536); print('rules', jc.rules_version(), 'module bytes', f0 - gc.mem_free() - 65536)"))
+                    "stack = bytearray(65536); rec = bytearray(jc.recorder_size()); "
+                    "print('rules', jc.rules_version(), 'module bytes', f0 - gc.mem_free() - 65536 - len(rec))"))
     failed = 0
     for name in names:
         kind, stem = name.split("/")
@@ -111,8 +113,7 @@ def main(firmware, mpy, repo, names):
             if outcome != "".join(fields):
                 bad.append("outcome")
             repl.upload("M", masks(journal, ticks))
-            rec = repl.exec("rec = bytearray(jc.recorder_size()); "
-                            f"c = jc.start(rec, L, {journal[3]}, J[4:36], {journal[68]}, stack); e = 0\n"
+            rec = repl.exec(f"c = jc.start(rec, L, {journal[3]}, J[4:36], {journal[68]}, stack); e = 0\n"
                             "for m in M:\n  e = jc.step(rec, m)\n  if e: break\n"
                             "print(c, e, jc.journal(rec) == J, jc.state_hash(rec, stack).hex())").split()
             if rec[0] != "0" or int(rec[1]) != o["endReason"] or rec[2] != "True" or bytes.fromhex(rec[3]) != trace[-32:]:
@@ -120,6 +121,7 @@ def main(firmware, mpy, repo, names):
         failed += bool(bad)
         print(("FAIL " if bad else "ok   ") + f"{name}: code {code}, ticks {ticks}, {us} us (icount) {bad or ''}")
     print(f"vectors: {len(names)}, failed: {failed}")
+    repl.p.kill()
     return 1 if failed else 0
 
 

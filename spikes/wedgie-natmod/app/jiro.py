@@ -11,7 +11,7 @@ import ui
 STACK_BYTES = 65536  # the core needs up to 63 KB of stack; the rp2 C stack is 8 KB
 
 
-def check(jc, case, stack):
+def check(jc, case, stack, recorder):
     level, journal = unhexlify(case["level"]), unhexlify(case["journal"])
     start = time.ticks_us()
     code, outcome, ticks, keccak, last = jc.replay(level, journal, case["weight"], stack)
@@ -25,12 +25,11 @@ def check(jc, case, stack):
     if "outcome" in case:
         if outcome.hex() != case["outcome"]:
             failures.append("outcome")
-        failures += recorder_failures(jc, case, level, journal, stack)
+        failures += recorder_failures(jc, case, level, journal, stack, recorder)
     return failures, ticks, replay_us
 
 
-def recorder_failures(jc, case, level, journal, stack):
-    recorder = bytearray(jc.recorder_size())
+def recorder_failures(jc, case, level, journal, stack, recorder):
     started = jc.start(recorder, level, journal[3], journal[4:36], journal[68], stack)
     if started != 0:
         return ["recorder start %d" % started]
@@ -53,15 +52,17 @@ def run():
     screen = lcd.LCD()
     gc.collect()
     free_before = gc.mem_free()
-    import jiro_core as jc
+    # The large buffers come first, while the heap is least fragmented: the stack needs 64 KB in one block.
     stack = bytearray(STACK_BYTES)
+    import jiro_core as jc
+    recorder = bytearray(jc.recorder_size())
     gc.collect()
     print("jiro_core rules version", jc.rules_version(), "free before", free_before, "after", gc.mem_free())
     with open("jiro_vectors.json") as f:
         cases = json.load(f)
     lines, failed = [], 0
     for case in cases:
-        failures, ticks, replay_us = check(jc, case, stack)
+        failures, ticks, replay_us = check(jc, case, stack, recorder)
         failed += bool(failures)
         verdict = "FAIL" if failures else "ok"
         print(verdict, case["name"], "ticks", ticks, "replay", replay_us, "us", failures)
