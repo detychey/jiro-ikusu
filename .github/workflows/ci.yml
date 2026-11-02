@@ -377,6 +377,7 @@ jobs:
         with:
           filters: |
             zk:
+              - 'Cargo.toml'
               - 'core/**'
               - 'referee/zk/**'
               - 'vectors/**'
