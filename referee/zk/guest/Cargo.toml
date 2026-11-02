@@ -1,0 +1,36 @@
+[workspace]
+
+[package]
+name = "zk-guest"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Panic locations would embed absolute source paths, which differ between machines, in the ELF
+# and so in its image id.
+[package.metadata.risc0]
+rustc-flags = ["-Zlocation-detail=none"]
+
+[dependencies]
+jiro-core = { path = "../../../core" }
+risc0-zkvm = { version = "=3.0.6", default-features = false, features = ["std"] }
+
+[profile.dev]
+overflow-checks = true
+
+[profile.test]
+overflow-checks = true
+
+[profile.bench]
+overflow-checks = true
+
+[profile.release]
+overflow-checks = true
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.stylus]
+inherits = "release"
+opt-level = "z"
