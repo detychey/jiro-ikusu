@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+import {Vm} from "forge-std/Vm.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {ControlID} from "risc0/groth16/ControlID.sol";
 import {RiscZeroGroth16Verifier} from "risc0/groth16/RiscZeroGroth16Verifier.sol";
 import {IRiscZeroVerifier, VerificationFailed} from "risc0/IRiscZeroVerifier.sol";
+import {RiscZeroVerifierEmergencyStop} from "risc0/RiscZeroVerifierEmergencyStop.sol";
 import {Challenge, SettlementStatus} from "../src/Challenge.sol";
 import {Outcome} from "../src/interfaces/IReferee.sol";
 import {ZkReferee} from "../src/ZkReferee.sol";
 import {runOf} from "./Challenge.t.sol";
+import {stateOf} from "./Season.t.sol";
 import {SettlementFixture, settlementOf} from "./Settlement.t.sol";
 import {ZkFixtures} from "./ZkVerify.t.sol";
 
@@ -20,6 +24,7 @@ contract ZkRefereeTest is SettlementFixture, ZkFixtures {
 
     RiscZeroGroth16Verifier private verifier;
     ZkReferee private zkReferee;
+    address private guardian = makeAddr("guardian");
 
     /// SettlementFixture's calibration season settles through MockReferee; the next one, opened
     /// at its end, through ZkReferee.
@@ -83,6 +88,13 @@ contract ZkRefereeTest is SettlementFixture, ZkFixtures {
 
     function nativeTotal(string memory field) private view returns (uint256) {
         return vm.parseJsonUint(zkFixtures(), string.concat(RUN, ".nativeReplay.", field));
+    }
+
+    /// RISC Zero's version-specific emergency stop over the Groth16 verifier, as deployed on
+    /// Arbitrum One and Sepolia, and a ZkReferee over it.
+    function emergencyStopReferee() private returns (RiscZeroVerifierEmergencyStop emergencyStop, ZkReferee referee) {
+        emergencyStop = new RiscZeroVerifierEmergencyStop(verifier, guardian);
+        referee = new ZkReferee(emergencyStop, imageIdOf(RUN), calibrationRulesVersion);
     }
 
     // Settlement through Challenge.
@@ -151,6 +163,27 @@ contract ZkRefereeTest is SettlementFixture, ZkFixtures {
         zkReferee.verifyRun(levels, runJournals(), runWeights(), proof);
     }
 
+    function test_Gas_VerifyRunThroughTheEmergencyStop() public {
+        (, ZkReferee referee) = emergencyStopReferee();
+        Outcome[6] memory outcomes = referee.verifyRun(runLevels(), runJournals(), runWeights(), runProof());
+        Vm.Gas memory gas = vm.lastCallGas();
+        emit log_named_uint("verifyRun through the emergency stop gas", gas.gasTotalUsed);
+        uint256 score;
+        for (uint256 i; i < 6; ++i) {
+            score += outcomes[i].levelScore;
+        }
+        assertEq(score, nativeTotal("score"));
+    }
+
+    function test_VerifyRun_RevertsOnceTheEmergencyStopIsStopped() public {
+        (RiscZeroVerifierEmergencyStop emergencyStop, ZkReferee referee) = emergencyStopReferee();
+        vm.prank(guardian);
+        emergencyStop.estop();
+        bytes memory proof = runProof();
+        vm.expectRevert(Pausable.EnforcedPause.selector);
+        referee.verifyRun(runLevels(), runJournals(), runWeights(), proof);
+    }
+
     function test_VerifyRun_RevertsOnALevelProof() public {
         bytes memory proof = proofOf(".level", provenPublicValues(".level"));
         vm.expectRevert(abi.encodeWithSelector(ZkReferee.PublicValuesLengthMismatch.selector, 384, 2_304));
@@ -185,6 +218,14 @@ contract ZkRefereeTest is SettlementFixture, ZkFixtures {
 
     function test_RulesVersion_IsTheProgramsVersion() public view {
         assertEq(zkReferee.rulesVersion(), calibrationRulesVersion);
+    }
+
+    function test_Open_RecordsDifferentCodehashesForZkRefereesOfDifferentImageIds() public {
+        ZkReferee otherReferee = new ZkReferee(verifier, bytes32(uint256(imageIdOf(RUN)) ^ 1), calibrationRulesVersion);
+        uint256 first = number;
+        vm.warp(season.endOf(first));
+        uint256 second = openSeason(calibrationParams(otherReferee));
+        assertNotEq(stateOf(season, first).refereeCodehash, stateOf(season, second).refereeCodehash);
     }
 
     function test_Constructor_RevertsOnNoVerifier() public {

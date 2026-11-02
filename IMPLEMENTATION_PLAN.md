@@ -2580,7 +2580,7 @@ Each question has a default in this plan, and the item that settles it unless th
   - a professional audit of the contracts;
   - a legal read of the paid prize pool, with geo-gating as the fallback if the read requires it;
   - custody of the operator key behind `Season.open` and of the treasury address, for example a multisig;
-  - a procedure for a consensus bug found in a live season's referee, which is immutable and has no pause;
+  - a procedure for a consensus bug found in a live season's referee, which is immutable and has no pause of its own; it also covers a stopped verifier under a zk referee, whose next season opens with a new `ZkReferee` (M4.12);
   - an Arbitrum One deployment in native ETH, with seasons of likely 14 days, whose first season takes its weights from bot data (M0.7);
   - weights for later seasons from the previous season's public journals plus bot data (README §8.4), through a `calibrate --from-season <season>` mode;
   - fresh entropy per level (README §7.4);

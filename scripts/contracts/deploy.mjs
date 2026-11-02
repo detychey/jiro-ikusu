@@ -30,9 +30,14 @@ const ARB_SYS_PRECOMPILE = "0x0000000000000000000000000000000000000064";
 const STYLUS_WASM = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "jiro_referee_stylus.opt.wasm");
 // nitro-devnode seals a block per transaction within milliseconds; ethers polls receipts every 4 s by default.
 const RECEIPT_POLLING_MS = 100;
-// RISC Zero's 3.0 Groth16 verifier on Arbitrum One and Arbitrum Sepolia, which ZkReferee holds and
-// calls directly, never through RISC Zero's upgradeable router (README §7.3, docs/ECONOMY.md).
-export const RISC_ZERO_GROTH16_VERIFIER = "0x2a098988600d87650Fb061FfAff08B97149Fa84D";
+// RISC Zero's emergency stop over its 3.0 Groth16 verifier, by chain id, from
+// contracts/lib/risc0-ethereum/contracts/deployment.toml. ZkReferee holds it and calls it directly,
+// never RISC Zero's upgradeable router: the stop's owner can only pause it for good, never add a
+// route (README §7.3, docs/ECONOMY.md).
+const RISC_ZERO_VERIFIER_ESTOPS = {
+  42161: "0x9F9994Eb4Cb5200198FEfb470f8b50301662e696",
+  421614: "0x724d375B5b622e15f0E64e9Deb76a4cB17877797",
+};
 // The selector of the dev-mode seals of `RISC0_DEV_MODE=1 zk-host prove`, followed by the claim's
 // digest, which RISC Zero's mock verifier accepts when deployed with it.
 const MOCK_VERIFIER_SELECTOR = "0xffffffff";
@@ -146,6 +151,12 @@ async function deployStylusReferee(provider, rpc, deployerKey) {
   return address;
 }
 
+export function riscZeroVerifierOf(chainId) {
+  const verifier = RISC_ZERO_VERIFIER_ESTOPS[chainId];
+  if (!verifier) throw new Error(`no RISC Zero verifier is pinned for chain ${chainId}`);
+  return verifier;
+}
+
 /**
  * ZkReferee for the verify program `imageId`. The local chains have no RISC Zero verifier: there it
  * calls RISC Zero's mock verifier, which accepts the dev-mode seals of `RISC0_DEV_MODE=1 zk-host prove`.
@@ -154,7 +165,7 @@ async function deployZkReferee({ artifacts, provider, network, deployer, imageId
   const verifier =
     network === "local" || network === "nitro-devnode"
       ? await (await deployContract(artifacts.RiscZeroMockVerifier, "RiscZeroMockVerifier", deployer, [MOCK_VERIFIER_SELECTOR])).getAddress()
-      : RISC_ZERO_GROTH16_VERIFIER;
+      : riscZeroVerifierOf(Number((await provider.getNetwork()).chainId));
   if ((await provider.getCode(verifier)) === "0x") throw new Error(`the RISC Zero verifier at ${verifier} has no code on ${network}`);
   return (await deployContract(artifacts.ZkReferee, "ZkReferee", deployer, [verifier, imageId, rulesVersion])).getAddress();
 }

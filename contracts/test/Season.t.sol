@@ -779,6 +779,22 @@ contract SeasonTest is Test {
         assertEq(address(claimer).balance, (4 * RUN_FEE - rakeOf(4 * RUN_FEE, RAKE_BP)) / 2);
     }
 
+    function test_Claim_RevertsAndKeepsTheShareWhenTheClaimantRejectsEth() public {
+        address rejectingClaimant = address(new RejectingTreasury());
+        uint256 number = openDefaultSeason();
+        payFees(number, 4);
+        recordRun(number, rejectingClaimant, 1_000, 900, 1);
+        closeAfterSettlement(number);
+        uint256 share = 4 * RUN_FEE - rakeOf(4 * RUN_FEE, RAKE_BP);
+
+        vm.prank(rejectingClaimant);
+        vm.expectRevert(abi.encodeWithSelector(Season.TransferFailed.selector, rejectingClaimant, share));
+        season.claim(number);
+        assertFalse(season.claimed(number, rejectingClaimant), "claimed");
+        assertEq(stateOf(season, number).totalClaimed, 0, "total claimed");
+        assertEq(address(season).balance, 4 * RUN_FEE, "balance");
+    }
+
     // Solvency.
 
     function test_IsSolvent_IsFalseWhenTheBalanceDoesNotCoverTheFees() public {

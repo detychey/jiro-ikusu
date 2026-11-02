@@ -713,7 +713,7 @@ The fixture [`contracts/test/fixtures/zk-proofs.json`](../contracts/test/fixture
 
 ### Verification gas
 
-RISC Zero's 3.0 Groth16 verifier (`RiscZeroGroth16Verifier`, selector `0x73c457ba`), from the `risc0-ethereum` submodule at `v3.0.1`, called directly as a zk referee calls it (`docs/ECONOMY.md`, zk prover trust). [`contracts/test/ZkVerify.t.sol`](../contracts/test/ZkVerify.t.sol) rebuilds each proof's public values from its game vectors, as `abi.encode(uint16 weightBp, Outcome)` per level with `journalHash` and `levelId` computed from the journal and level bytes, and checks them against the fixture, then verifies the seal against `sha256` of them. A changed `levelScore`, and a level proof given a run's public values, revert with `VerificationFailed()`.
+RISC Zero's 3.0 Groth16 verifier (`RiscZeroGroth16Verifier`, selector `0x73c457ba`), from the `risc0-ethereum` submodule at `v3.0.1`, which a zk referee reaches through RISC Zero's emergency stop for that version (`docs/ECONOMY.md`, zk prover trust; M4.12). [`contracts/test/ZkVerify.t.sol`](../contracts/test/ZkVerify.t.sol) rebuilds each proof's public values from its game vectors, as `abi.encode(uint16 weightBp, Outcome)` per level with `journalHash` and `levelId` computed from the journal and level bytes, and checks them against the fixture, then verifies the seal against `sha256` of them. A changed `levelScore`, and a level proof given a run's public values, revert with `VerificationFailed()`.
 
 `cd contracts && forge test --match-contract ZkVerify --gas-report`:
 
@@ -879,7 +879,7 @@ Plan M4.9, 2026-11-02: the M4 gas gate, the cycles of the 16 levels, the backend
 
 **D2 = zk for testnet.** The owner approved it on 2026-11-02 ("Approve D2 = zk (Recommended)"), from readings of `activationGas` = 2^64 − 1, activations paused, at Arbitrum Sepolia block 325,114,240 and Arbitrum One block 520,390,941. M4.9's fresh readings, at blocks 325,258,195 and 520,513,231 ([Stylus activation](#stylus-activation)), still read paused. The plan's rule is Stylus whenever activations are open on the target chain, and ZkReferee while they stay paused. The gate below failed while activations were paused, so M4.15, the Stylus gas optimization, is deferred (plan §16), and zk meets README §9's M4 gate through its measured costs.
 
-- **What M4.14 deploys:** `ZkReferee` (M4.10), pinned to the verify program's image id and calling RISC Zero's 3.0 Groth16 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D` directly, never the router ([Verification gas](#verification-gas), `docs/ECONOMY.md`). Each verified run gets one run proof, settled by `settleRun`, with `settleLevel` as the fallback.
+- **What M4.14 deploys:** `ZkReferee` (M4.10), pinned to the verify program's image id and calling RISC Zero's emergency stop over its 3.0 Groth16 verifier directly, never the router ([ZkReferee](#zkreferee), `docs/ECONOMY.md`). Each verified run gets one run proof, settled by `settleRun`, with `settleLevel` as the fallback.
 - **Switching backends later** means opening a new season whose referee is the other backend (README §8.4, M0.7): a season's referee is fixed at `open`, and the runs of earlier seasons keep settling through their own.
 
 ### Gas gate
@@ -958,11 +958,11 @@ Aggregation stays a pre-mainnet prerequisite if zk becomes the mainnet path (pla
 
 ## ZkReferee
 
-Plan M4.10, 2026-11-02: the zk backend behind `IReferee`, which M4.14 deploys (D2 = zk). [`contracts/src/ZkReferee.sol`](../contracts/src/ZkReferee.sol) holds three immutables: RISC Zero's verifier, the verify program's image id and its rules version. The verifier is the 3.0 Groth16 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D` on Arbitrum One and Sepolia, called directly, never the router ([Verification gas](#verification-gas), `docs/ECONOMY.md`). `Challenge` and `Season` are unchanged.
+Plan M4.10, 2026-11-02: the zk backend behind `IReferee`, which M4.14 deploys (D2 = zk). [`contracts/src/ZkReferee.sol`](../contracts/src/ZkReferee.sol) holds three immutables: RISC Zero's verifier, the verify program's image id and its rules version. The verifier is RISC Zero's emergency stop over its 3.0 Groth16 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D`: `0x9F9994Eb4Cb5200198FEfb470f8b50301662e696` on Arbitrum One and `0x724d375B5b622e15f0E64e9Deb76a4cB17877797` on Sepolia ([Onchain verifier](#onchain-verifier-1), from `risc0-ethereum`'s `deployment.toml`), called directly, never the router. M4.10 pinned the Groth16 verifier itself; M4.12's review moved the pin to the stop, which holds that verifier immutably and whose owner can only pause it, for good (`docs/ECONOMY.md` §6). `Challenge` and `Season` are unchanged.
 
 - **The proof** is `abi.encode(bytes seal, bytes publicValues)`, the two values `zk-host prove` prints between its `zk-fixture` markers. `verify` requires 384 bytes of public values and `verifyRun` 2,304, so a level proof and a run proof cannot stand in for each other. `ZkReferee` verifies the seal against `sha256(publicValues)` and its image id, decodes the public values as `(uint16 weightBp, Outcome)` per level ([`referee/zk/README.md`](../referee/zk/README.md#public-values)), and requires each level's weight, `journalHash` and `levelId` to be the submitted ones. `Challenge` then binds the Outcomes to the run (README §7.2).
 - **Proving a run:** `zk-host prove --run <run file> --season <season file>` ([Run file v1](#run-file-v1)); the season file gives each level's weight by its draw slot. The host executes the run first and checks each level's weight, level id, run nonce, level index, draw slot, mode and rules version before it proves.
-- **Deployment:** `deploy.mjs --backend zk --image-id <zk-host image-id> --rules-version <n>`, over RISC Zero's mock verifier `RiscZeroMockVerifier` on the local chains and the Groth16 verifier elsewhere ([`deployments/README.md`](../deployments/README.md)).
+- **Deployment:** `deploy.mjs --backend zk --image-id <zk-host image-id> --rules-version <n>`, over RISC Zero's mock verifier `RiscZeroMockVerifier` on the local chains and the emergency stop on Arbitrum One and Sepolia; it refuses a chain with no pinned address ([`deployments/README.md`](../deployments/README.md)).
 
 ### The fixture set
 
@@ -992,7 +992,7 @@ Measured with `bash referee/zk/peak-memory.sh <zk-host> prove --run contracts/te
 
 ### Tests and gas
 
-`cd contracts && forge test --match-contract ZkReferee -vv --gas-report`, with forge 1.8.6 and solc 0.8.28. All 12 tests pass, each one scenario:
+`cd contracts && forge test --match-contract ZkReferee -vv --gas-report`, with forge 1.8.6 and solc 0.8.28. All 12 tests of M4.10 pass, each one scenario:
 
 - The run settles through `Challenge` with the real proof, and `RunSettled` carries the native replay's score, ticks and clears.
 - `verifyRun` reverts in four cases: on tampered public values (`VerificationFailed`, from the verifier), under another image id (`VerificationFailed`), with another weight (`WeightMismatch`), and with another level (`LevelIdMismatch`).
@@ -1008,7 +1008,9 @@ Gas from the traces (`-vvvv`), each a call's own frame, without the transaction'
 | `ZkReferee.verifyRun`, the fixture run | 262,251 | 225,091 | 37,160 |
 | `ZkReferee.verify`, M4.8's level proof of `commit-at-tick-0` | 235,730 | 225,091 | 10,639 |
 | `Challenge.settleRun`, the fixture run, `verifyRun` and `Season.recordRun` (75,319) included | 525,983 | 225,091 | |
+| `ZkReferee.verifyRun`, the fixture run, through the emergency stop (M4.12) | 268,036 | 225,091 | 37,160 |
 
+- **The emergency stop** (M4.12): `forge test --match-test test_Gas_VerifyRunThroughTheEmergencyStop -vvvv` puts `RiscZeroVerifierEmergencyStop` between `ZkReferee` and the same Groth16 verifier. Its frame takes 230,876, so it adds 5,785 gas per verification: its cold read of the pause flag, its cold call to the verifier and the copy of the seal. `test_VerifyRun_RevertsOnceTheEmergencyStopIsStopped` shows that once the stop's owner calls `estop()`, `verifyRun` reverts with `EnforcedPause`. M4.12 adds three tests to `ZkReferee.t.sol`, 15 in all. The onchain estimates of [Verification gas](#verification-gas) were made on the verifier itself, not through the stop.
 - **ZkReferee's own gas** covers decoding the proof, the `sha256` of the public values, decoding the Outcomes, and hashing each level and journal, which `Challenge` also hashes.
 - **Calldata:** this run's `settleRun` carries 7,524 bytes (5,713 of them zero), of which the proof is 2,720: 51,828 gas at EIP-2028's prices. EIP-7623's floor for it, 150,570 with the 21,000 included, is below the transaction's gas, so it does not apply. Settlement gas grows with the journals' calldata ([Settlement gas](#settlement-gas)); the verification stays near 262,000 per run, plus ZkReferee's hashing of longer journals.
 - **Against M4.9's estimate,** which put a verified run at 804,194 gas (227,591 for the proof and M4.7's 576,603 of settlement): this run's `settleRun` takes 525,983 plus 51,828 of calldata and the 21,000 base, 598,811 in all, with short journals.
