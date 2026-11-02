@@ -401,15 +401,15 @@ jobs:
   # its executor on the CPU. The format vectors and 4 game vectors must give the native core's
   # recorded codes, Outcomes and trace digests, and a dev-mode receipt of the verify guest must
   # round-trip to its vector's Outcome, and the first 20 of M1.10's 200 fixed difffuzz cases must
-# give native's Outcomes and trace digests (plan M1.13); a debug build of jiro-tools writes them,
-# in seconds. nightly.yml runs every vector. It is its own job, not a
+  # give native's Outcomes and trace digests (plan M1.13); a debug build of jiro-tools writes them,
+  # in seconds. nightly.yml runs every vector. It is its own job, not a
   # step group of `rust`, so that its build cache and its time limit are its own: a cold build of
   # the host takes about 63 minutes on this runner, almost all of it g++ on RISC Zero's circuit
   # kernels, and a warm one minutes (docs/TOOLING.md, Actions minutes). On an exact cache hit the
   # build gets 20 minutes; on a miss, which happens once per change of referee/zk's lockfiles or
   # toolchain, and the first time a branch has no cache to restore, it gets 80, and that run seeds
   # the cache. Its steps skip when no path of the `zk` filter changed, except on
-  # workflow_dispatch.
+  # workflow_dispatch; the filter includes the jiro-tools sources that write the difffuzz cases.
   zk-exec:
     runs-on: ubuntu-24.04
     timeout-minutes: 95
@@ -430,6 +430,12 @@ jobs:
               - 'core/**'
               - 'referee/zk/**'
               - 'vectors/**'
+              - 'tools/Cargo.toml'
+              - 'tools/src/difffuzz.rs'
+              - 'tools/src/cases.rs'
+              - 'tools/src/random.rs'
+              - 'tools/src/vectors.rs'
+              - 'tools/src/json.rs'
               - 'scripts/bootstrap.sh'
               - 'rust-toolchain.toml'
               - '.github/workflows/ci.yml'

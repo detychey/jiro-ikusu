@@ -329,7 +329,7 @@ Monthly budget: 1,500 minutes for this repository (see Decisions, P14). The `get
 - `ci.yml` [41414509413](https://github.com/detychey/jiro-ikusu/actions/runs/41414509413): `rust` 6, `zk-exec` 6, `contracts` 4, `web` 2. 18 in all.
 - `pages.yml` [41414509189](https://github.com/detychey/jiro-ikusu/actions/runs/41414509189), which `web/**` starts: `build` 2, `deploy` 1. 3 in all.
 - `nightly.yml` [41414506340](https://github.com/detychey/jiro-ikusu/actions/runs/41414506340), dispatched on the branch: 19 (above).
-- The push that commits this record changes only `docs/`, so `ci.yml`'s jobs skip their steps and bill about 1 each. M1.13 thus used about 44 billed minutes.
+- `ci.yml` [41416737122](https://github.com/detychey/jiro-ikusu/actions/runs/41416737122) and `pages.yml` [41416737007](https://github.com/detychey/jiro-ikusu/actions/runs/41416737007), on the push that changes only `docs/TOOLING.md`: `rust` 8, `zk-exec` 5, `contracts` 4, `web` 3, and `pages.yml` 3. 23 in all: the path filters compare the whole PR with `main`, not the push with the previous one, so a docs-only push to a PR re-runs every step its earlier commits started. M1.13 thus used about 63 billed minutes before its review fix, whose push runs `ci.yml` once more.
 
 ## CI runners and access (M0.4)
 
