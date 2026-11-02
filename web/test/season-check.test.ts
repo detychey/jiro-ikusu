@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AcceptingSeason } from "../src/chain/contracts";
 import type { SeasonParams } from "../src/chain/bindings/Season";
 import { hex } from "../src/core";
-import { buyRun } from "../src/run/flow";
+import { buyRun, type RunEnv, SeasonChanged } from "../src/run/flow";
 import { checkSeason, seasonEntries } from "../src/run/season";
 import { freshStore, runEnv, shippedLevels } from "./challenge";
 import { loadEngine, repo } from "./drive";
@@ -69,6 +69,25 @@ describe("buying a run", () => {
     await expect(buyRun(env, seasonWith(core.rulesVersion, withOtherLevel(0)), "0x0000000000000000000000000000000000000002")).rejects.toThrow(
       "this page cannot play the season",
     );
+    expect(startRun).not.toHaveBeenCalled();
+  });
+});
+
+describe("buying a run in the season shown", () => {
+  it("never calls startRun once another season accepts runs", async () => {
+    const { env, startRun } = await envWithStartRun();
+    const accepting = seasonWith(CALIBRATION.rulesVersion, CALIBRATION.levelIds);
+    const season = {
+      currentSeason: async () => 2n,
+      paramsOf: async () => ({ ...accepting.params, runFee: accepting.runFee }),
+      endOf: async () => accepting.end,
+    };
+    const changed = {
+      ...env,
+      contracts: { ...env.contracts, season } as unknown as RunEnv["contracts"],
+      provider: { getBlock: async () => ({ timestamp: 1_000 }) } as unknown as RunEnv["provider"],
+    };
+    await expect(buyRun(changed, accepting, "0x0000000000000000000000000000000000000002")).rejects.toThrow(SeasonChanged);
     expect(startRun).not.toHaveBeenCalled();
   });
 });

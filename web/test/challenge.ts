@@ -5,7 +5,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { IDBFactory } from "fake-indexeddb";
 import type { Contracts } from "../src/chain/contracts";
-import type { Core } from "../src/core";
+import { type Core, hex } from "../src/core";
 import { type Control, DEFAULT_BINDINGS, HeldKeys } from "../src/input";
 import type { RunEnv } from "../src/run/flow";
 import type { PlayEnv, PlayState } from "../src/run/play";
@@ -95,4 +95,51 @@ export function runEnv(core: Core, store: RunStore, levels: Uint8Array[], contra
     levelIds: [],
     view: { status: () => {}, levelStarted: () => {}, ticked: () => {}, levelEnded: () => {}, margin: () => {} },
   };
+}
+
+/** A run onchain, for `chainEnv`: its player, its entropy block, and its reveal and commit. */
+export interface OnchainRun {
+  player: string;
+  target: bigint;
+  revealedAt?: bigint;
+  committedAt?: bigint;
+  commitment?: string;
+}
+
+/** What `chainEnv`'s node reads: MockArbSys's block, and the latest block's timestamp in seconds. */
+export interface ChainState {
+  block: bigint;
+  timestamp: number;
+}
+
+/** A run env on a stand-in chain of season 1, whose levels are the shipped ones: `runs` are runs
+ *  1, 2 and on, the latest block is `state`'s, and every other call is refused. */
+export function chainEnv(core: Core, store: RunStore, levels: Uint8Array[], runs: OnchainRun[], state: ChainState): RunEnv {
+  const runAt = (runId: bigint): OnchainRun => {
+    const run = runs[Number(runId) - 1];
+    if (run === undefined) throw new Error(`no run ${runId} onchain`);
+    return run;
+  };
+  const levelIds = levels.map((level) => hex(core.levelId(level)));
+  const params = { rulesVersion: BigInt(core.rulesVersion), levelIds, weightsBp: Array(16).fill(10_000n), commitSlack: 120n };
+  const contracts = {
+    challenge: {
+      getAddress: async () => "0x0000000000000000000000000000000000000001",
+      runCount: async () => BigInt(runs.length),
+      entropyIdOf: async (runId: bigint) => runId,
+      runs: async (runId: bigint) => {
+        const { player, revealedAt = 0n, committedAt = 0n, commitment = `0x${"00".repeat(32)}` } = runAt(runId);
+        return { player, revealedAt, committedAt, commitment, season: 1n, runNonce: RUN_NONCE };
+      },
+    },
+    entropy: {
+      READ_WINDOW: async () => 256n,
+      targetBlock: async (_owner: string, runId: bigint) => runAt(runId).target,
+      isRevealable: async (_owner: string, runId: bigint) => state.block > runAt(runId).target && state.block <= runAt(runId).target + 256n,
+    },
+    arbSys: { arbBlockNumber: async () => state.block },
+    season: { paramsOf: async () => params },
+  };
+  const provider = { getBlock: async () => ({ timestamp: state.timestamp }) };
+  return { ...runEnv(core, store, levels, contracts), provider: provider as unknown as RunEnv["provider"], levelIds };
 }

@@ -2,11 +2,11 @@
 // loaded through Vite as the page loads them, buy, reveal, play and commit a run on a fake clock
 // that the wallet stamps on each transaction. jiro-tools' playtest bots choose each level's
 // inputs, fed as keys through input.ts; a reload rebuilds the page's objects on the same
-// in-memory IndexedDB. Account 2 plays, account 0 advances MockArbSys (0.25 s per block) and
+// in-memory IndexedDB, and a reload while startRun confirms leaves the page's wallet unanswered. Account 2 plays, account 0 advances MockArbSys (0.25 s per block) and
 // account 3 settles against MockReferee.
 // Usage: node scripts/contracts/localnet.mjs --up, then
 //        node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545
-//          [--reload-at <level 1-6> | --reload-after-end out-of-lives|cleared | --stale-season]
+//          [--reload-at <level 1-6> | --reload-after-end out-of-lives|cleared | --reload-during-buy | --stale-season]
 //          [--tools <jiro-tools binary>] [--network local] [--account 2]
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -96,9 +96,9 @@ async function e2e(load, options) {
   const { Core, END_REASONS, fromHex, hex } = await load("/src/core.ts");
   const { DEFAULT_BINDINGS, HeldKeys, controlsOf } = await load("/src/input.ts");
   const { journalEvents } = await load("/src/journal.ts");
-  const { buyRun, continueRun, runDeadline, unfinishedRun } = await load("/src/run/flow.ts");
+  const { buyRun, continueRun, runDeadline, unfinishedRuns } = await load("/src/run/flow.ts");
   const { X_ALONE } = await load("/src/run/play.ts");
-  const { openRunStore } = await load("/src/run/store.ts");
+  const { openRunStore, runKey } = await load("/src/run/store.ts");
   const { parseRunFile, replayRunFile, runFileOf } = await load("/src/run/runfile.ts");
 
   const network = networkNamed(options.network);
@@ -118,8 +118,19 @@ async function e2e(load, options) {
   const factory = new IDBFactory();
   const log = (line) => console.log(`challenge-e2e: ${line}`);
 
-  const signerOfAccount = async (index) => {
-    const wallet = nodeWallet(send, accounts[index], stampWith(send, clock));
+  /** Resolves with the startRun transaction of --reload-during-buy, once the node has mined it. */
+  let boughtUnseen;
+  const sentUnseen = new Promise((resolve) => (boughtUnseen = resolve));
+  const signerOfAccount = async (index, goneAfterSend = false) => {
+    const node = nodeWallet(send, accounts[index], stampWith(send, clock));
+    // The page is gone once the wallet sent the transaction: it never sees the hash.
+    const gone = async (request) => {
+      const result = await node.request(request);
+      if (request.method !== "eth_sendTransaction") return result;
+      boughtUnseen(result);
+      return new Promise(() => {});
+    };
+    const wallet = goneAfterSend ? { request: gone } : node;
     const connection = await connect(wallet);
     if (!onNetwork(connection, network)) fail(`${options.rpc} serves chain ${connection.chainId}, not ${network.chainName}`);
     return { connection, signer: await signerOf(wallet, connection, network) };
@@ -133,7 +144,7 @@ async function e2e(load, options) {
     const core = await Core.load(wasm);
     const keys = new HeldKeys(DEFAULT_BINDINGS);
     const store = await openRunStore(factory);
-    const { connection, signer } = await signerOfAccount(options.account);
+    const { connection, signer } = await signerOfAccount(options.account, options.reloadDuringBuy && !state.reloaded);
     const contracts = connectContracts(deployment, signer);
     const planOf = () => {
       const reveal = state.record?.reveal;
@@ -197,26 +208,40 @@ async function e2e(load, options) {
     return;
   }
 
-  state.record = await buyRun(env, accepting, player);
-  log(`bought run ${state.record.runId} in season ${state.record.season}`);
-  try {
+  if (options.reloadDuringBuy) {
+    const hash = await Promise.race([buyRun(env, accepting, player).then(() => fail("the page saw startRun's receipt")), sentUnseen]);
+    const runId = await contracts.challenge.runCount();
+    const key = runKey(network.chainId, await contracts.challenge.getAddress(), runId);
+    check(`the stored run ${runId}`, await (await openRunStore(factory)).get(key), undefined);
+    log(`reload while startRun ${hash} confirms: the node mined run ${runId}, and the store holds nothing of it`);
+    state.record = await reload(key);
     state.record = await continueRun(env, state.record);
-  } catch (error) {
-    if (!(error instanceof Reload)) throw error;
-    await checkInterrupted();
-    state.reloaded = true;
-    clock.now += RELOAD_GAP_MS;
-    ({ env, connection, contracts } = await pageEnv());
-    const challenge = await contracts.challenge.getAddress();
-    const resumed = await unfinishedRun(env.store, network.chainId, challenge, connection.account);
-    if (resumed?.key !== state.record.key) fail(`after the reload the page resumes ${resumed?.key}, not run ${state.record.runId}`);
-    log(`reloaded after ${RELOAD_GAP_MS / 1000} s: the page resumes run ${resumed.runId}`);
-    state.record = await continueRun(env, (state.interrupted = resumed));
+  } else {
+    state.record = await buyRun(env, accepting, player);
+    log(`bought run ${state.record.runId} in season ${state.record.season}`);
+    try {
+      state.record = await continueRun(env, state.record);
+    } catch (error) {
+      if (!(error instanceof Reload)) throw error;
+      await checkInterrupted();
+      state.record = await continueRun(env, (state.interrupted = await reload(state.record.key)));
+    }
   }
   await checkCommitted();
   env.provider.destroy();
   operator.provider.destroy();
   rmSync(scratch, { recursive: true, force: true });
+
+  /** Rebuilds the page's objects, which must find run `key` alone unfinished. */
+  async function reload(key) {
+    state.reloaded = true;
+    clock.now += RELOAD_GAP_MS;
+    ({ env, connection, contracts } = await pageEnv());
+    const resumed = await unfinishedRuns(env, connection.account);
+    check("the runs the page resumes after the reload", resumed.map((record) => record.key), key);
+    log(`reloaded after ${RELOAD_GAP_MS / 1000} s: the page resumes run ${resumed[0].runId}`);
+    return resumed[0];
+  }
 
   /** What the store held when the page went away. */
   async function checkInterrupted() {
@@ -318,8 +343,8 @@ async function e2e(load, options) {
       () => fail(`the page bought a run in season ${accepting.number} after it ended`),
       (error) => error.message,
     );
-    if (!message.includes(`NotAcceptingRuns(${accepting.number})`)) fail(`buying in the ended season failed otherwise: ${message}`);
-    log(`the page's startRun(${accepting.number}): ${message}`);
+    if (!message.startsWith(`season ${accepting.number + 1n} accepts runs now`)) fail(`buying in the ended season failed otherwise: ${message}`);
+    log(`the page refuses to buy in season ${accepting.number}, which it showed: ${message}`);
     const sent = await contracts.challenge.startRun(accepting.number, { value: accepting.runFee, gasLimit: 500_000n });
     const failure = await sent.wait().then(
       () => fail(`a startRun(${accepting.number}) sent anyway was accepted`),
@@ -339,18 +364,19 @@ const { values } = parseArgs({
     account: { type: "string", default: "2" },
     "reload-at": { type: "string" },
     "reload-after-end": { type: "string" },
+    "reload-during-buy": { type: "boolean", default: false },
     "stale-season": { type: "boolean", default: false },
     tools: { type: "string", default: join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "debug", "jiro-tools") },
   },
 });
 const usage =
-  "usage: node web/scripts/challenge-e2e.mjs --rpc <url> [--reload-at <level 1-6> | --reload-after-end out-of-lives|cleared | --stale-season] [--tools <jiro-tools>] [--network local] [--account <index>]";
+  "usage: node web/scripts/challenge-e2e.mjs --rpc <url> [--reload-at <level 1-6> | --reload-after-end out-of-lives|cleared | --reload-during-buy | --stale-season] [--tools <jiro-tools>] [--network local] [--account <index>]";
 if (values.rpc === undefined) throw new Error(usage);
 const reloadAt = values["reload-at"] === undefined ? undefined : Number(values["reload-at"]);
 if (reloadAt !== undefined && !(Number.isInteger(reloadAt) && reloadAt >= 1 && reloadAt <= 6)) throw new Error(usage);
 const wantedEnd = values["reload-after-end"] === undefined ? undefined : ENDS[values["reload-after-end"]];
 if (values["reload-after-end"] !== undefined && wantedEnd === undefined) throw new Error(usage);
-if ([reloadAt, wantedEnd, values["stale-season"] || undefined].filter((option) => option !== undefined).length > 1) throw new Error(usage);
+if ([reloadAt, wantedEnd, values["reload-during-buy"] || undefined, values["stale-season"] || undefined].filter((option) => option !== undefined).length > 1) throw new Error(usage);
 
 const server = await createServer({ root: WEB_ROOT, logLevel: "error", server: { middlewareMode: true, hmr: false }, appType: "custom" });
 try {
@@ -360,6 +386,7 @@ try {
     account: Number(values.account),
     reloadAt,
     wantedEnd,
+    reloadDuringBuy: values["reload-during-buy"],
     staleSeason: values["stale-season"],
     tools: values.tools,
   });
