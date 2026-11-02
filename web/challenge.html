@@ -12,13 +12,41 @@
       <p>Challenge runs are paid in ETH and verified onchain, on Arbitrum. Connect a browser wallet to play them. <a href="index.html">Training</a> · <a href="replay.html">Replay viewer</a> · <a href="editor.html">Level editor</a></p>
     </header>
     <main>
-      <section class="wallet" aria-label="Wallet">
-        <p id="wallet-status">Not connected.</p>
-        <button id="connect" type="button">Connect wallet</button>
-        <button id="switch" type="button" hidden></button>
-        <p id="balance" hidden></p>
-        <a id="faucet" target="_blank" rel="noreferrer" hidden>Get test ETH from an Arbitrum Sepolia faucet</a>
-        <p id="wallet-error" class="error" role="alert"></p>
+      <aside class="side">
+        <section class="wallet" aria-label="Wallet">
+          <p id="wallet-status">Not connected.</p>
+          <button id="connect" type="button">Connect wallet</button>
+          <button id="switch" type="button" hidden></button>
+          <p id="balance" hidden></p>
+          <a id="faucet" target="_blank" rel="noreferrer" hidden>Get test ETH from an Arbitrum Sepolia faucet</a>
+          <p id="wallet-error" class="error" role="alert"></p>
+        </section>
+        <section id="season" class="wallet" aria-label="Season" hidden>
+          <dl id="season-facts" class="hud"></dl>
+          <p>A run draws six of the season's 16 levels once its entropy block exists, and plays them back to back. Commit within the deadline: the time the six levels took, plus the commit slack.</p>
+          <button id="buy" type="button">Buy a run</button>
+          <button id="resume" type="button" hidden></button>
+          <p id="season-error" class="error" role="alert"></p>
+        </section>
+        <section id="run" class="wallet" aria-label="Run" hidden>
+          <p id="run-status" role="status"></p>
+          <p id="run-level"></p>
+          <p id="run-margin"></p>
+          <p id="hidden-warning" class="error" hidden>Keep this tab in front until the run is committed: browsers slow down the timers of hidden tabs, so the game stops while the deadline keeps running.</p>
+          <dl class="hud">
+            <dt>Claim</dt><dd id="hud-claim">–</dd>
+            <dt>Lives</dt><dd id="hud-lives">–</dd>
+            <dt>Shield</dt><dd id="hud-shield">–</dd>
+            <dt>Time</dt><dd id="hud-time">–</dd>
+          </dl>
+          <button id="stop" type="button" hidden>End the run and commit it now</button>
+          <table id="run-outcomes" class="outcome" hidden></table>
+          <button id="run-file" type="button" hidden>Download the run file</button>
+          <p id="run-error" class="error" role="alert"></p>
+        </section>
+      </aside>
+      <section class="field" hidden id="field-section">
+        <canvas id="field" tabindex="0" aria-label="Playing field"></canvas>
       </section>
     </main>
     <footer id="footer"></footer>

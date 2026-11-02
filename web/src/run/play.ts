@@ -1,12 +1,14 @@
 // The six levels of a revealed Challenge run (README §7.2, §8.2), back to back in mode 1, with no
 // pause between them but a short transition. The level in play is written to the run store every
-// second, at its start and at its end; a level a reload interrupted is closed by README §7.2's
-// rule.
+// second, at its start and at its end; a level the page will not play on (after a reload, or
+// when the player stops the run) is closed by README §7.2's rule, and so is every unplayed level,
+// which gets an X at tick 0.
 
 import { type Core, CoreError, type EndReason, fromHex, hex, RUN_LEVELS } from "../core";
 import { CONTROL_BITS, type HeldKeys } from "../input";
 import { journalEvents } from "../journal";
 import { CHALLENGE, startSession } from "../session";
+import { deadlineOf, latestCommitOf } from "./deadline";
 import type { LiveLevel, RunRecord, RunStore } from "./store";
 
 /** The mask a closing event holds: X alone (README §7.2). */
@@ -20,11 +22,18 @@ export interface PlayState {
   ticksRun: number;
 }
 
+/** The seconds left before the run's deadline and before commitRun's bound, if it were closed now. */
+export interface Margin {
+  onTime: bigint;
+  commitBound: bigint;
+}
+
 export interface PlayView {
   levelStarted(levelIndex: number, drawSlot: number): void;
   /** The level in play processed ticks since the last call. */
   ticked(core: Core): void;
   levelEnded(levelIndex: number, end: EndReason): void;
+  margin(margin: Margin): void;
 }
 
 export interface PlayEnv {
@@ -38,6 +47,8 @@ export interface PlayEnv {
   sleep(ms: number): Promise<void>;
   /** Resolves when the page may run the ticks due by now: on its next animation frame. */
   frame(state: PlayState): Promise<void>;
+  /** Whether the player asked to stop the run and commit it as it stands. */
+  stopRequested(): boolean;
   view: PlayView;
 }
 
@@ -93,6 +104,17 @@ export function runLevels(record: RunRecord, levels: readonly Uint8Array[]): Uin
   });
 }
 
+/** The margin of a run closed now (README §7.2): the live level closes at its next tick, and
+ *  each unplayed level uses one tick. */
+export function marginOf(record: RunRecord, closedTicks: readonly number[], liveTicks: number | undefined, chainNowMs: number): Margin {
+  const revealedAt = BigInt(revealOf(record).revealedAt);
+  const slack = BigInt(record.commitSlack);
+  const ticks = [...closedTicks, ...(liveTicks === undefined ? [] : [liveTicks + 1])];
+  while (ticks.length < RUN_LEVELS) ticks.push(1);
+  const now = BigInt(Math.floor(chainNowMs / 1000));
+  return { onTime: deadlineOf(revealedAt, ticks, slack) - now, commitBound: latestCommitOf(revealedAt, slack) - now };
+}
+
 /**
  * Plays the run's levels from where `record` stopped, and returns it with its six journals. A
  * stored live level is the one a reload interrupted: it is closed first, and the run resumes at
@@ -103,6 +125,8 @@ export async function playLevels(env: PlayEnv, record: RunRecord): Promise<RunRe
   const reveal = revealOf(record);
   const runNonce = fromHex(reveal.runNonce);
   const levels = runLevels(record, env.levels);
+  const closedTicks = closedTicksOf(core, record, levels);
+  const chainNow = () => env.now() + reveal.chainOffsetMs;
 
   const closeAt = async (live: LiveLevel): Promise<void> => {
     if (live.levelIndex !== record.journals.length) {
@@ -111,6 +135,7 @@ export async function playLevels(env: PlayEnv, record: RunRecord): Promise<RunRe
     const level = levels[live.levelIndex] as Uint8Array;
     const journal = closeLevel(core, level, runNonce, live);
     record.journals.push(hex(journal));
+    closedTicks.push(ticksUsedOf(core, level, journal));
     delete record.live;
     await store.put(record);
   };
@@ -118,6 +143,10 @@ export async function playLevels(env: PlayEnv, record: RunRecord): Promise<RunRe
   if (record.live !== undefined) await closeAt(record.live);
   while (record.journals.length < RUN_LEVELS) {
     const levelIndex = record.journals.length;
+    if (env.stopRequested()) {
+      await closeAt({ levelIndex, events: [], ticks: 0 });
+      continue;
+    }
     const level = levels[levelIndex] as Uint8Array;
     env.keys.clear();
     const loop = startSession(core, level, runNonce, env.keys, env.now, CHALLENGE, levelIndex);
@@ -127,11 +156,12 @@ export async function playLevels(env: PlayEnv, record: RunRecord): Promise<RunRe
     view.levelStarted(levelIndex, reveal.drawSlots[levelIndex] as number);
     let savedAt = env.now();
     let end: EndReason | undefined;
-    while (end === undefined) {
+    while (end === undefined && !env.stopRequested()) {
       await env.frame({ levelIndex, ticksRun: loop.ticksRun });
       const ranBefore = loop.ticksRun;
       end = loop.pump();
       if (loop.ticksRun !== ranBefore) view.ticked(core);
+      view.margin(marginOf(record, closedTicks, loop.ticksRun, chainNow()));
       if (env.now() - savedAt >= SAVE_INTERVAL_MS) {
         record.live = live();
         await store.put(record);
@@ -140,10 +170,18 @@ export async function playLevels(env: PlayEnv, record: RunRecord): Promise<RunRe
     }
     record.live = live();
     await store.put(record);
+    if (end === undefined) {
+      await closeAt(record.live);
+      continue;
+    }
     view.levelEnded(levelIndex, end);
     const journal = core.journal();
-    if (levelIndex + 1 < RUN_LEVELS) await env.sleep(TRANSITION_MS);
+    for (let waited = 0; waited < TRANSITION_MS && levelIndex + 1 < RUN_LEVELS; waited += SAVE_INTERVAL_MS) {
+      view.margin(marginOf(record, [...closedTicks, loop.ticksRun], undefined, chainNow()));
+      await env.sleep(SAVE_INTERVAL_MS);
+    }
     record.journals.push(hex(journal));
+    closedTicks.push(loop.ticksRun);
     delete record.live;
   }
   await store.put(record);

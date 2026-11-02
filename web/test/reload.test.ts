@@ -127,6 +127,38 @@ describe("a reload right after a level ended, before the next level is stored", 
   });
 });
 
+describe("a run the player stops", () => {
+  const stopAt = (levelIndex: number, ticksRun: number) => levelIndex > 3 || (levelIndex === 3 && ticksRun >= 10);
+
+  async function stopped() {
+    const core = await loadEngine();
+    const { store } = await freshStore();
+    const env = playEnv(core, store, LEVELS, { controls: commitAt30, stop: ({ levelIndex, ticksRun }) => stopAt(levelIndex, ticksRun) });
+    return { core, record: await playLevels(env, revealedRun(core)) };
+  }
+
+  it("closes the level in play at its next tick", async () => {
+    const { record } = await stopped();
+    expect(journalEvents(fromHex(record.journals[3] ?? "0x")).at(-1)).toEqual({ tick: 10, mask: X_ALONE });
+  });
+
+  it("gives each unplayed level an X at tick 0", async () => {
+    const { record } = await stopped();
+    expect(record.journals.slice(4).map((journal) => journalEvents(fromHex(journal)))).toEqual([
+      [{ tick: 0, mask: X_ALONE }],
+      [{ tick: 0, mask: X_ALONE }],
+    ]);
+  });
+
+  it("commits the unplayed levels with claim 0 after one tick", async () => {
+    const { core, record } = await stopped();
+    expect(outcomes(core, record).slice(4).map(({ endReason, claimBp, ticksUsed }) => [endReason, claimBp, ticksUsed])).toEqual([
+      ["Committed", 0, 1],
+      ["Committed", 0, 1],
+    ]);
+  });
+});
+
 describe("closing a level", () => {
   const level = LEVELS[0] as Uint8Array;
   const nonce = fromHex(RUN_NONCE);

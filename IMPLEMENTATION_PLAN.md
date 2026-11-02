@@ -2289,11 +2289,11 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 #### M5.7 Challenge page wiring
 
 - **Goal:** the Challenge page plays a run through the flow of M5.2, so that a player with a browser wallet buys, plays and commits a run on the PR's preview.
-- **Why:** split out of M5.2, whose PR came out above L. The page is UI over `web/src/run/`, which M5.2's headless e2e and unit tests already check without it.
+- **Why:** split out of M5.2, whose PR came out above L. The page is UI over `web/src/run/`, which M5.2's headless e2e and unit tests already check without it. After M5.2's review, what only the page needs in `web/src/run/` moved here too, to keep M5.2 within L.
 - **Deliverables:** `web/src/pages/challenge.ts` and `web/challenge.html`:
-  - the season view: price, pot and parameters, from `src/run/season.ts`, and Buy, which runs the season check before `startRun`;
-  - the run: the field and the HUD of the level in play, its status, the live deadline countdown and the time left before `commitRun`'s bound, and a control that ends the run and commits it at once;
-  - after a reload, the account's unfinished run resumed when the wallet connects;
+  - the season view: price, pot and parameters (`seasonEntries` in `src/run/season.ts`), and Buy, which pays into the season shown and runs the season check before `startRun`;
+  - the run: the field and the HUD of the level in play, its status, the live deadline countdown and the time left before `commitRun`'s bound (`marginOf` in `src/run/play.ts`), and a control that ends the run and commits it at once, closing the level in play and giving each unplayed level an X at tick 0 (`stopRequested`);
+  - after a reload, every unfinished run of the account resumed in turn when the wallet connects (`playUnfinished` in `src/run/flow.ts`); one run at a time in a tab, and a Web Lock per run across tabs (`withRunLock` in `src/run/store.ts`);
   - after the commit, the six Outcomes and the run file download;
   - a warning when the tab is hidden, since browsers throttle background timers;
   - the shipped levels (`web/src/shipped.ts`) and the HUD (`showHud` in `web/src/page.ts`), moved out of Training to be shared with it.

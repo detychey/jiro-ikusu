@@ -4,7 +4,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { deadlineOf, isOnTime, latestCommitOf } from "../src/run/deadline";
-import { repo } from "./drive";
+import { marginOf } from "../src/run/play";
+import { revealedRun } from "./challenge";
+import { loadEngine, repo } from "./drive";
 
 interface DeadlineFixture {
   revealedAt: number;
@@ -33,5 +35,14 @@ describe("the deadline", () => {
 
   it("bounds commitRun at 1,080 s plus the commit slack", () => {
     expect(latestCommitOf(1_000_000n, 120n)).toBe(1_001_200n);
+  });
+});
+
+describe("the countdown", () => {
+  it("counts the level in play as closed at its next tick, and each unplayed level as one tick", async () => {
+    // Revealed at 1,000 with a slack of 120 s: levels of 2,700 and 27 ticks, 300 ticks in play
+    // (301 once closed), and three unplayed levels make 3,031 ticks, which round up to 203 s.
+    const record = revealedRun(await loadEngine());
+    expect(marginOf(record, [2_700, 27], 300, 1_050_000)).toEqual({ onTime: 1_323n - 1_050n, commitBound: 2_200n - 1_050n });
   });
 });

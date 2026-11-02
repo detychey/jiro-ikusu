@@ -191,3 +191,17 @@ export async function unfinishedRuns(env: RunEnv, player: string): Promise<RunRe
   const runs = await env.store.runsOf(env.chainId, challenge, player);
   return runs.filter((record) => record.commit === undefined && record.forfeited === undefined);
 }
+
+/**
+ * Plays the player's unfinished runs through `play`, oldest first, reading them again after
+ * each, as a reload can leave several: until none is left, or `play` returns false to stop. A run
+ * that `play` returns from unfinished, as one another tab plays, is not tried again.
+ */
+export async function playUnfinished(env: RunEnv, player: string, play: (record: RunRecord) => Promise<boolean>): Promise<void> {
+  const tried = new Set<string>();
+  for (;;) {
+    const next = (await unfinishedRuns(env, player)).find(({ key }) => !tried.has(key));
+    if (next === undefined || !(await play(next))) return;
+    tried.add(next.key);
+  }
+}

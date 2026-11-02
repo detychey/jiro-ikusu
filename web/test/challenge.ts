@@ -60,6 +60,7 @@ export interface Script {
   beforeFrame?(state: PlayState): void;
   /** Called on each wait between levels; may throw Reload. */
   onSleep?(): void;
+  stop?(state: PlayState): boolean;
 }
 
 export function playEnv(core: Core, store: RunStore, levels: Uint8Array[], script: Script): PlayEnv {
@@ -86,7 +87,8 @@ export function playEnv(core: Core, store: RunStore, levels: Uint8Array[], scrip
       }
       time += FRAME_MS;
     },
-    view: { levelStarted: () => {}, ticked: () => {}, levelEnded: () => {} },
+    stopRequested: () => script.stop?.(state) ?? false,
+    view: { levelStarted: () => {}, ticked: () => {}, levelEnded: () => {}, margin: () => {} },
   };
 }
 
@@ -98,7 +100,7 @@ export function runEnv(core: Core, store: RunStore, levels: Uint8Array[], contra
     provider: {} as RunEnv["provider"],
     chainId: 31337,
     levelIds: [],
-    view: { status: () => {}, levelStarted: () => {}, ticked: () => {}, levelEnded: () => {} },
+    view: { status: () => {}, levelStarted: () => {}, ticked: () => {}, levelEnded: () => {}, margin: () => {} },
   };
 }
 

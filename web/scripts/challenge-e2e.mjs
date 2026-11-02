@@ -139,7 +139,7 @@ async function e2e(load, options) {
   const arbSys = connectMockArbSys(deployment.addresses.ArbSys, operator);
 
   /** What the page builds on load: a new engine, keys, store connection, signer and contracts. */
-  const state = { status: undefined, lastFrameLevel: undefined, reloaded: false, plan: undefined, record: undefined };
+  const state = { status: undefined, lastFrameLevel: undefined, reloaded: false, plan: undefined, record: undefined, margin: undefined };
   async function pageEnv() {
     const core = await Core.load(wasm);
     const keys = new HeldKeys(DEFAULT_BINDINGS);
@@ -184,13 +184,15 @@ async function e2e(load, options) {
         }
         clock.now += FRAME_MS;
       },
+      stopRequested: () => false,
       view: {
         status: (text) => {
           if (text !== state.status) log((state.status = text));
         },
         levelStarted: (levelIndex, slot) => log(`level ${levelIndex + 1} of 6: slot ${slot}, played by the ${planOf().bots[levelIndex].policy} bot`),
         ticked: () => {},
-        levelEnded: (levelIndex, end) => log(`level ${levelIndex + 1} ended: ${end}`),
+        levelEnded: (levelIndex, end) => log(`level ${levelIndex + 1} ended: ${end}; ${state.margin.onTime} s left before the deadline`),
+        margin: (margin) => (state.margin = margin),
       },
     };
     return { env, connection, contracts };

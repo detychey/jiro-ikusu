@@ -1,7 +1,7 @@
-// What the pages of the site share: their elements by id, the engine, the field's size, error
-// messages, and claims in percent.
+// What the pages of the site share: their elements by id, the engine, the field's size, the HUD,
+// a gate for actions that must not overlap, error messages, and claims in percent.
 
-import { Core } from "./core";
+import { Core, type Snapshot } from "./core";
 import type { Renderer } from "./render";
 
 const WASM_URL = new URL("../../target/wasm32-unknown-unknown/release/jiro_wasm.wasm", import.meta.url);
@@ -22,6 +22,31 @@ export async function loadCore(): Promise<Core> {
  *  and header. */
 export function fitField(renderer: Renderer): void {
   renderer.fit(Math.min(window.innerWidth - 32, 960), window.innerHeight - 160);
+}
+
+/** The HUD of the level in play: the claim against the target, the lives, the shield charges and
+ *  the time left. */
+export function showHud({ claimBp, targetBp, lives, shield, ticksLeft }: Snapshot): void {
+  element("hud-claim").textContent = `${percent(claimBp)} of ${percent(targetBp)}`;
+  element("hud-lives").textContent = String(lives);
+  element("hud-shield").textContent = String(shield);
+  element("hud-time").textContent = `${Math.ceil(ticksLeft / 15)} s`;
+}
+
+/** A gate for actions that must not overlap, such as two resumes of one run: a call claims it
+ *  before its first await, and returns false, without running its action, while another holds it. */
+export function exclusive(): (action: () => Promise<void>) => Promise<boolean> {
+  let held = false;
+  return async (action) => {
+    if (held) return false;
+    held = true;
+    try {
+      await action();
+      return true;
+    } finally {
+      held = false;
+    }
+  };
 }
 
 export function messageOf(error: unknown): string {

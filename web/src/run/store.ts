@@ -65,6 +65,16 @@ export function runKey(chainId: number, challenge: string, runId: bigint | strin
   return `${chainId}/${challenge.toLowerCase()}/${runId}`;
 }
 
+/** Runs `play` while this tab holds the run's Web Lock, so that two tabs never play one run;
+ *  returns false, without running it, while another tab holds the lock. */
+export function withRunLock(locks: LockManager, key: string, play: () => Promise<void>): Promise<boolean> {
+  return locks.request(`${DATABASE}/${key}`, { ifAvailable: true }, async (lock) => {
+    if (lock === null) return false;
+    await play();
+    return true;
+  });
+}
+
 function done<T>(request: IDBRequest<T>, what: string): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
