@@ -751,7 +751,7 @@ Boundless, RISC Zero's proof market on Base (M1.17, [Prover network](#prover-net
 | 176 to 196 million cycles | 788 | `ClaimDigestMatch` | 187,957,248 | 0.0000138 ETH | 0.0000184 ETH | 0.0000233 ETH |
 | any size | 1,370 | both | 193,986,560 | 0.0000139 ETH | 0.0000188 ETH | 0.0000350 ETH |
 
-The lowest price of the week was 0.0000134 ETH. A settler needs the seal, not the journal, onchain on Base: it computes the public values itself. So `ClaimDigestMatch` is the request a referee's prover would make, and its 176 to 196 million-cycle bucket, above the heaviest run's 136.6 million proving cycles, prices our proofs: since the price does not fall with fewer cycles, it serves for both modes. With ETH at $2,295.05 (CoinGecko `simple/price`, 2026-11-02 03:15 UTC):
+The lowest price of the week was 0.0000134 ETH. A settler needs the seal, not the journal, onchain on Base: it computes the public values itself. So `ClaimDigestMatch` is the request a referee's prover would make, and its 176 to 196 million-cycle bucket, above the heaviest run's 136,445,952 proving cycles, prices our proofs: since the price does not fall with fewer cycles, it serves for both modes. With ETH at $2,295.05 (CoinGecko `simple/price`, 2026-11-02 03:15 UTC):
 
 | Proof | Proving cycles | Expected price (p50) | p10 to p90 | Against the 0.00005 ETH run fee |
 |---|---:|---|---|---:|
