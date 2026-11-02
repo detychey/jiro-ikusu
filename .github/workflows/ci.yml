@@ -426,6 +426,18 @@ jobs:
             vectors/game/full-journal.json vectors/game/open-field-capture.json \
             vectors/game/rejected-level-id.json vectors/game/worst-case.json
 
+      - name: Guest ELFs
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: sha256sum referee/zk/target/riscv-guest/zk-host/zk-guest/riscv32im-risc0-zkvm-elf/release/{verify,trace}
+
+      - uses: actions/upload-artifact@v7.0.2
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        with:
+          name: zk-guest-elfs
+          path: referee/zk/target/riscv-guest/zk-host/zk-guest/riscv32im-risc0-zkvm-elf/release/
+          retention-days: 7
+          if-no-files-found: error
+
       - name: A dev-mode receipt round-trips (zk-exec)
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         timeout-minutes: 20
