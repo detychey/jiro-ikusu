@@ -4,7 +4,7 @@
       "mod": "jiro",
       "name": "Jiro Core Test",
       "about": "Replays four Jiro-ikusu golden vectors through the Rust game core and checks them bit for bit.",
-      "files": ["jiro.py", "jiro_core.mpy", "jiro_vectors.json"],
+      "files": ["jiro.py", "jiro_app.mpy", "jiro_core.mpy", "jiro_vectors.jsonl"],
       "entry": "run",
       "fw": "0.3.36",
       "label": "#2850ff"

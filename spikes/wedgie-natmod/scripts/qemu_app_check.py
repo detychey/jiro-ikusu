@@ -1,15 +1,18 @@
-"""Runs the wedgie test app's own checks (app/jiro.py's run(), unmodified) on MicroPython's qemu
-MICROBIT port, with the wedgie's lcd and ui modules stubbed. The app's files and jiro_core.mpy
-are served from a RAM filesystem. Usage:
+"""Runs the wedgie test app (app/jiro.py's run(), unmodified) on MicroPython's qemu MICROBIT port,
+with the wedgie's lcd and ui modules stubbed. The files app/wedgie.json lists, with jiro_core.mpy
+taken from the given path, are served from a RAM filesystem. Usage:
 
-  python3 -I -B qemu_app_check.py <firmware.elf> <app dir> <jiro_core.mpy> [free bytes]
+  python3 -I -B qemu_app_check.py <firmware.elf> <app dir> <jiro_core.mpy> [free bytes [<hole>x<count>]]
 
-With [free bytes], a ballast is allocated first so that about that much heap stays free, to
-approximate the wedgie's RAM. Exit status 0 when the app prints PASS.
+With [free bytes], a ballast first fills the heap's holes and then leaves about that much free,
+mostly in one block at its top, to approximate the wedgie's RAM. With <hole>x<count>, e.g. 4096x4,
+that free heap is fragmented: <count> holes of <hole> bytes, each followed by a 64-byte wall, lie
+below the rest of it. Exit status 0 when the app prints PASS.
 """
 
 import base64
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -31,7 +34,16 @@ class _F(io.IOBase):
     n = min(len(b), len(s.d) - s.o); b[:n] = memoryview(s.d)[s.o:s.o + n]; s.o += n; return n
   def read(s, n=-1):
     if n < 0: n = len(s.d) - s.o
-    r = bytes(memoryview(s.d)[s.o:s.o + n]); s.o += len(r); return r.decode()
+    n = min(n, len(s.d) - s.o); r = str(memoryview(s.d)[s.o:s.o + n], 'utf-8'); s.o += n; return r
+  def readline(s):
+    e = s.o
+    while e < len(s.d) and s.d[e] != 10: e += 1
+    return s.read(min(e + 1, len(s.d)) - s.o)
+  def __iter__(s): return s
+  def __next__(s):
+    r = s.readline()
+    if not r: raise StopIteration
+    return r
 class _FS:
   def mount(s, r, m): pass
   def umount(s): pass
@@ -47,6 +59,24 @@ vfs.mount(_FS(), '/ram'); os.chdir('/ram'); sys.path.insert(0, '/ram')
 """
 
 
+# Allocation is first fit: 512-byte chunks fill the heap's holes first, then the start of its top
+# block, and the walls between the given holes keep them apart. The fill loop creates no garbage.
+BALLAST = """\
+import gc, micropython
+gc.collect()
+_B = [None] * (gc.mem_free() // 512)
+i = 0
+while gc.mem_free() > {free} + {count} * 96 + 2048:
+  _B[i] = bytearray(512); i += 1
+_H, _W = [None] * {count}, [None] * {count}
+for i in range({count}): _H[i] = bytearray({hole}); _W[i] = bytearray(64)
+_P = bytearray(max(1, gc.mem_free() - {free} + {count} * {hole} - 16))
+del _H; gc.collect()
+print('heap free with ballast', gc.mem_free())
+micropython.mem_info()
+"""
+
+
 def upload_files(repl, files, chunk=3000):
     # Every buffer is allocated before any is filled, so the base64 chunks don't fragment the heap.
     repl.exec("_FILES.update({" + ", ".join(f"'{name}': bytearray({len(data)})" for name, data in files.items()) + "})")
@@ -57,9 +87,11 @@ def upload_files(repl, files, chunk=3000):
                       f"binascii.a2b_base64('{base64.b64encode(part).decode()}')")
 
 
-def main(firmware, app, mpy, free_bytes):
-    files = {"jiro.py": (app / "jiro.py").read_bytes(), "jiro_vectors.json": (app / "jiro_vectors.json").read_bytes(),
-             "jiro_core.mpy": Path(mpy).read_bytes(), "lcd.py": LCD_STUB, "ui.py": UI_STUB}
+def main(firmware, app, mpy, free_bytes, holes):
+    hole, count = map(int, holes.split("x")) if holes else (0, 0)
+    names = json.loads((app / "wedgie.json").read_text())["apps"][0]["files"]
+    files = {name: (app / name).read_bytes() for name in names}
+    files.update({"jiro_core.mpy": Path(mpy).read_bytes(), "lcd.py": LCD_STUB, "ui.py": UI_STUB})
     repl = qemu_natmod_vectors.RawRepl(firmware)
     try:
         # The filesystem's objects first, then the files, so that the free heap stays in one piece as on
@@ -68,8 +100,7 @@ def main(firmware, app, mpy, free_bytes):
         upload_files(repl, files)
         print(repl.exec("import gc; gc.collect(); print('heap free after upload', gc.mem_free())"), end="")
         if free_bytes:
-            print(repl.exec(f"_BALLAST = bytearray(gc.mem_free() - {free_bytes} - 64); gc.collect(); "
-                            "print('heap free with ballast', gc.mem_free())"), end="")
+            print(repl.exec(BALLAST.format(count=count, hole=hole, free=free_bytes)), end="")
         out = repl.exec("import jiro; jiro.run()")
         print(out, end="")
         return 0 if "jiro core test: PASS" in out else 1
@@ -78,4 +109,5 @@ def main(firmware, app, mpy, free_bytes):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1], Path(sys.argv[2]), sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 0))
+    sys.exit(main(sys.argv[1], Path(sys.argv[2]), sys.argv[3], int(sys.argv[4]) if len(sys.argv) > 4 else 0,
+                  sys.argv[5] if len(sys.argv) > 5 else ""))
