@@ -75,6 +75,11 @@ describe("the players' pot of the claims", () => {
     expect((await readSeason(contracts, provider, 1n)).playersPot).toBe(907n);
   });
 
+  it("leaves out the rollover while an earlier season is still to close", async () => {
+    const { contracts, provider } = seasonOne(false);
+    expect((await readSeason(contracts, provider, 2n)).playersPot).toBe(900n);
+  });
+
   it("is the contract's once the season has closed", async () => {
     const { contracts, provider } = seasonOne(true);
     expect((await readSeason(contracts, provider, 1n)).playersPot).toBe(500n);

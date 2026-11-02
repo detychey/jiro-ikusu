@@ -50,12 +50,16 @@ function startedLog(blockNumber: number, runId: bigint, player: string, season: 
   return { address: CHALLENGE_ADDRESS, blockNumber, ...CHALLENGE.encodeEventLog("RunStarted", [runId, player, season, `0x${"00".repeat(32)}`]) };
 }
 
-/** Season and Challenge stand-ins: season 1 started at block 20, with `totalQualifiedPoints`. */
-function fakeContracts(totalQualifiedPoints: bigint): Pick<Contracts, "season" | "challenge"> {
+/** Season and Challenge stand-ins: season 1 started at block 20, with `totalQualifiedPoints`;
+ *  `stateReads` records the overrides of each Season.seasons call. */
+function fakeContracts(totalQualifiedPoints: bigint, stateReads: unknown[] = []): Pick<Contracts, "season" | "challenge"> {
   const season = {
     interface: SEASON,
     getAddress: async () => SEASON_ADDRESS,
-    seasons: async () => ({ start: BigInt(TIMESTAMPS[20] ?? 0), totalQualifiedPoints }),
+    seasons: async (_number: bigint, overrides?: unknown) => {
+      stateReads.push(overrides);
+      return { start: BigInt(TIMESTAMPS[20] ?? 0), totalQualifiedPoints };
+    },
   };
   const challenge = { interface: CHALLENGE, getAddress: async () => CHALLENGE_ADDRESS };
   return { season, challenge } as unknown as Pick<Contracts, "season" | "challenge">;
@@ -135,7 +139,7 @@ describe("a season's leaderboard", () => {
   ];
 
   it("ranks the season's players from its events, with their runs and claims", async () => {
-    const rows = await seasonLeaderboard(fakeContracts(300n), fakeNode(logs).provider as never, 1n, 7);
+    const rows = await seasonLeaderboard(fakeContracts(300n), fakeNode(logs).provider as never, 1n, { chunk: 7 });
     expect(rows).toEqual([
       { rank: 1, ...run(BOB, 2n, 200n, 60n, true), runs: 1, claimed: 5n },
       { rank: 2, ...run(ALICE, 1n, 100n, 50n, true), runs: 2 },
@@ -146,6 +150,13 @@ describe("a season's leaderboard", () => {
     const { provider, ranges } = fakeNode(logs);
     await seasonLeaderboard(fakeContracts(300n), provider as never, 1n);
     expect(Math.min(...ranges.map(([from]) => from))).toBe(20);
+  });
+
+  it("reads Season's state at the block its logs stop at", async () => {
+    const stateReads: unknown[] = [];
+    const { provider, ranges } = fakeNode(logs);
+    await seasonLeaderboard(fakeContracts(300n, stateReads), provider as never, 1n, { latest: 45 });
+    expect([stateReads, Math.max(...ranges.map(([, to]) => to))]).toEqual([[{ blockTag: 45 }], 45]);
   });
 
   it("refuses logs whose qualified points are not Season's", async () => {

@@ -40,6 +40,12 @@ export interface SeasonFacts {
   rollover: bigint;
 }
 
+/** The rollover a season's pot takes when it closes: Season.pendingRollover goes only to the
+ *  season that closes next, the oldest one not yet closed (README §8.4). */
+export function rolloverOf(closesNext: boolean, pendingRollover: bigint): bigint {
+  return closesNext ? pendingRollover : 0n;
+}
+
 /** The players' pot that closing the season now would give (README §8.4): the fees, less the
  *  rake rounded down, plus the rollover. */
 export function projectedPlayersPot(facts: Pick<SeasonFacts, "fees" | "rakeBp" | "rollover">): bigint {

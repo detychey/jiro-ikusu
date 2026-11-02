@@ -158,7 +158,7 @@ network if needed.
   D10's order. The deployment's backend decides who settles it. On Stylus, and on the local
   chain's MockReferee, the page does: one `settleRun`, or `settleLevel` for each level not yet
   settled when `settleRun` does not fit in one transaction (its gas estimate fails without revert
-  data, or exceeds Arbitrum's 32M gas per transaction), with its progress, up to three tries when
+  data, as it does above Arbitrum's 32M of L2 gas per transaction), with its progress, up to three tries when
   the network fails, and reverts decoded. On zk the operator settles (README §7.5, D2), because
   proving needs credentials that cannot live in a browser: the page offers the run file and shows
   the cutoff, the season's end plus grace from `Season.settlementEndOf`. `Challenge` still takes a

@@ -114,10 +114,16 @@ describe("settling a run in the browser", () => {
     expect(calls).toEqual(["settleRun(7)"]);
   });
 
-  it("settles level by level when settleRun needs more than the gas cap", async () => {
-    const { contracts, calls } = fakeContracts({ estimate: async () => 40_000_000n });
-    await settleOnchain(contracts, FILE, ignore);
+  it("settles level by level when settleRun needs more than the caller's gas cap", async () => {
+    const { contracts, calls } = fakeContracts({ estimate: async () => 400_000n });
+    await settleOnchain(contracts, FILE, ignore, 1n);
     expect(calls).toEqual([0, 1, 2, 3, 4, 5].map((i) => `settleLevel(7, ${i})`));
+  });
+
+  it("sends settleRun when its estimate, L1 data cost included, is above 32M but the estimate succeeds", async () => {
+    const { contracts, calls } = fakeContracts({ estimate: async () => 34_000_000n });
+    await settleOnchain(contracts, FILE, ignore);
+    expect(calls).toEqual(["settleRun(7)"]);
   });
 
   it("settles level by level when settleRun runs out of gas in the estimate", async () => {

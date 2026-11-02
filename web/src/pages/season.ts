@@ -13,7 +13,7 @@ import { claimOf, type LeaderboardRow, seasonLeaderboard } from "../chain/leader
 import { networkOfPage, readOnlyProvider } from "../chain/networks";
 import { connect, formatEth, injectedWallet, onNetwork, signerOf, switchNetwork, type Wallet } from "../chain/wallet";
 import { element, loadCore, messageOf, pending } from "../page";
-import { projectedPlayersPot, type SeasonFacts, seasonEntries } from "../run/season";
+import { projectedPlayersPot, rolloverOf, type SeasonFacts, seasonEntries } from "../run/season";
 import { openRunStore } from "../run/store";
 import { shippedLevels } from "../shipped";
 import { showSettlement } from "./settle";
@@ -35,18 +35,22 @@ export interface SeasonView {
 /** Season `number` as the page shows it. */
 export async function readSeason(contracts: Pick<Contracts, "season" | "challenge">, provider: Provider, number: bigint): Promise<SeasonView> {
   const { season } = contracts;
-  const [params, state, end, settlementEnd, rollover, lastClosed] = await Promise.all([
-    season.paramsOf(number),
-    season.seasons(number),
-    season.endOf(number),
-    season.settlementEndOf(number),
-    season.pendingRollover(),
-    season.lastClosedSeason(),
+  const latest = await provider.getBlockNumber();
+  const at = { blockTag: latest };
+  const [params, state, end, settlementEnd, pendingRollover, lastClosed] = await Promise.all([
+    season.paramsOf(number, at),
+    season.seasons(number, at),
+    season.endOf(number, at),
+    season.settlementEndOf(number, at),
+    season.pendingRollover(at),
+    season.lastClosedSeason(at),
   ]);
   const { runFee, rulesVersion, rakeBp, grace, commitSlack, minClears } = params;
+  const closesNext = number === lastClosed + 1n;
+  const rollover = rolloverOf(closesNext, pendingRollover);
   const facts = { number, runFee, end, rulesVersion, rakeBp, grace, commitSlack, minClears, fees: state.fees, rollover };
   const playersPot = state.closed ? state.playersPot : projectedPlayersPot(facts);
-  const rows = (await seasonLeaderboard(contracts, provider, number)).map((row) => ({
+  const rows = (await seasonLeaderboard(contracts, provider, number, { latest })).map((row) => ({
     ...row,
     claim: claimOf(row, playersPot, state.totalQualifiedPoints),
   }));
@@ -54,7 +58,7 @@ export async function readSeason(contracts: Pick<Contracts, "season" | "challeng
     facts,
     settlementEnd,
     closed: state.closed,
-    closesNext: number === lastClosed + 1n,
+    closesNext,
     totalQualifiedPoints: state.totalQualifiedPoints,
     playersPot,
     rows,

@@ -16,8 +16,6 @@ import { isOnTime } from "../run/deadline";
 import { type RunFile, replayRunFile, runFileOf } from "../run/runfile";
 import type { RunRecord, RunStore } from "../run/store";
 
-/** Arbitrum's cap of L2 gas per transaction (README §7.3). */
-export const TRANSACTION_GAS_CAP = 32_000_000n;
 /** Tries of a settlement that fails for the network, not for a revert. */
 export const SETTLE_ATTEMPTS = 3;
 /** Challenge's SettlementStatus. */
@@ -80,11 +78,14 @@ function isTransient(error: unknown): boolean {
 }
 
 /**
- * settleRun's gas, or undefined when it does not fit in one transaction: above `gasCap`, or an
- * estimate that fails with no revert data, which is how a node reports that no gas limit up to the
- * block's lets the call finish. A revert with data is the settlement's own failure, and throws.
+ * settleRun's gas, or undefined when it does not fit in one transaction: an estimate that fails
+ * with no revert data, which is how a node reports that no gas limit up to the block's, or above
+ * Arbitrum's 32M of L2 gas per transaction (README §7.3), lets the call finish; or, when the
+ * caller sets `gasCap`, an estimate above it. The estimate is not compared with the 32M itself:
+ * on Arbitrum it adds the L1 data cost in L2 gas units, which the cap leaves out. A revert with
+ * data is the settlement's own failure, and throws.
  */
-async function settleRunGas({ challenge, season }: Contracts, file: RunFile, gasCap: bigint): Promise<bigint | undefined> {
+async function settleRunGas({ challenge, season }: Contracts, file: RunFile, gasCap: bigint | undefined): Promise<bigint | undefined> {
   const runId = BigInt(file.runId);
   let gas: bigint;
   try {
@@ -96,11 +97,11 @@ async function settleRunGas({ challenge, season }: Contracts, file: RunFile, gas
     }
     return undefined;
   }
-  return gas <= gasCap ? gas : undefined;
+  return gasCap === undefined || gas <= gasCap ? gas : undefined;
 }
 
 /** One pass of the settlement, from the levels already settled onchain. */
-async function settleOnce(contracts: Contracts, file: RunFile, progress: Progress, gasCap: bigint): Promise<void> {
+async function settleOnce(contracts: Contracts, file: RunFile, progress: Progress, gasCap: bigint | undefined): Promise<void> {
   const { challenge, season } = contracts;
   const runId = BigInt(file.runId);
   const { status, settledLevels } = await challenge.settlements(runId);
@@ -131,9 +132,10 @@ async function settleOnce(contracts: Contracts, file: RunFile, progress: Progres
  * Settles the run of `file` with an empty proof, as the Stylus referee and MockReferee take it:
  * settleRun, or settleLevel for each level not yet settled when settleRun does not fit in one
  * transaction. A pass that fails for the network is tried again, from what the chain then holds,
- * up to SETTLE_ATTEMPTS times; a revert throws at once, decoded.
+ * up to SETTLE_ATTEMPTS times; a revert throws at once, decoded. `gasCap`, when set, also sends
+ * settleLevel for a settleRun estimated above it.
  */
-export async function settleOnchain(contracts: Contracts, file: RunFile, progress: Progress, gasCap = TRANSACTION_GAS_CAP): Promise<void> {
+export async function settleOnchain(contracts: Contracts, file: RunFile, progress: Progress, gasCap?: bigint): Promise<void> {
   for (let attempt = 1; ; attempt += 1) {
     try {
       await settleOnce(contracts, file, progress, gasCap);

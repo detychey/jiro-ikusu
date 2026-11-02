@@ -54,16 +54,18 @@ function countBy(players: string[]): Map<string, number> {
 }
 
 /**
- * Season `number`'s leaderboard, read from the season's first block to the latest. Its qualified
- * players' scores must sum to Season's totalQualifiedPoints, or a log is missing: it throws then.
+ * Season `number`'s leaderboard, read from the season's first block to block `latest` (by default
+ * the newest), with Season's state read at that same block. Its qualified players' scores must sum
+ * to that state's totalQualifiedPoints, or a log is missing: it throws then.
  */
 export async function seasonLeaderboard(
   { season, challenge }: Pick<Contracts, "season" | "challenge">,
   provider: Provider,
   number: bigint,
-  chunk = LOG_CHUNK_BLOCKS,
+  { latest, chunk = LOG_CHUNK_BLOCKS }: { latest?: number; chunk?: number } = {},
 ): Promise<LeaderboardRow[]> {
-  const [state, latest] = await Promise.all([season.seasons(number), provider.getBlockNumber()]);
+  latest ??= await provider.getBlockNumber();
+  const state = await season.seasons(number, { blockTag: latest });
   if (state.start === 0n) throw new Error(`season ${number} has not opened`);
   const from = await firstBlockAt(provider, state.start);
   const [best, started, claimed] = await Promise.all([
