@@ -84,23 +84,30 @@ Once the wallet is on the right network, the page shows the season accepting run
 its players' pot so far (the fees less the rake, plus any rollover) and its parameters. It
 refuses to buy a run unless the engine's rules version is the season's `rulesVersion` and the 16
 shipped levels are the season's `levelIds`, slot by slot (`src/run/season.ts`); a run bought
-anyway would never settle. Then a run goes, without a pause, from `startRun` with that season's
-number and fee, through the wait for its entropy block, polling `isRevealable` every second, to
-`revealRun` at once, the six drawn levels in mode 1 with a 3 s transition between them, and one
-`commitRun` with the six journals as soon as the sixth level ends (README §7.2). A countdown
-shows the slack left before the run's deadline, with the contract's formula, as if the run were
-committed now, and the time left before `commitRun` refuses it. "End the run and commit it now"
-closes the level in play and gives every unplayed level an X at tick 0. A hidden tab gets a
-warning, in its title and on the page, as browsers throttle the timers of hidden tabs.
+anyway would never settle. Buy pays into the season shown: if another season, or another fee,
+accepts runs by then, the page shows it and asks to buy again. Then a run goes, without a pause,
+from `startRun` with that season's number and fee, through the wait for its entropy block,
+polling `isRevealable` every second, to `revealRun` at once, the six drawn levels in mode 1 with
+a 3 s transition between them, and one `commitRun` with the six journals as soon as the sixth
+level ends (README §7.2). A countdown shows the slack left before the run's deadline, with the
+contract's formula, as if the run were committed now, and the time left before `commitRun`
+refuses it. "End the run and commit it now" closes the level in play and gives every unplayed
+level an X at tick 0. A hidden tab gets a warning, in its title and on the page, as browsers
+throttle the timers of hidden tabs.
 
 Every step is written to IndexedDB first (`src/run/store.ts`), and the level in play, its events
 and its tick count, every second, at its start and at its end. When the wallet connects, the
-page resumes the oldest run of the account that it holds and has not committed: it reads the
-chain for a reveal or a commit whose receipt the reload lost, closes the interrupted level as
-README §7.2 specifies, by replaying the stored events through tick c − 1 and appending an X
-alone at tick c unless the level ended by then, and resumes at the next level. After the commit
-the page shows the six Outcomes, as the core replays them with the season's weights, and offers
-the run file of `docs/VERIFICATION.md`.
+page resumes every run of the account that it holds and that is neither committed nor
+forfeited, oldest first, with the account's unrevealed runs whose entropy block is still
+readable that the chain holds and the store lacks, as after a reload while `startRun` confirmed.
+It reads the chain for a reveal or a commit whose receipt the reload lost, closes the
+interrupted level as README §7.2 specifies, by replaying the stored events through tick c − 1
+and appending an X alone at tick c unless the level ended by then, and resumes at the next
+level. The chain's latest block, not the page's clock, decides that `commitRun`'s bound has
+passed; a commit onchain of other journals forfeits the run in this browser. One run plays at a
+time in a tab, and a Web Lock per run keeps a second tab from playing it: that tab says the run
+is open in another tab. After the commit the page shows the six Outcomes, as the core replays
+them with the season's weights, and offers the run file of `docs/VERIFICATION.md`.
 
 The page plays on Arbitrum Sepolia, or on the network `?network=<name>` names: `local` is the
 anvil chain of `scripts/contracts/localnet.mjs --up`, on port 8545, where nothing advances
@@ -136,7 +143,9 @@ bots fed as keys, and reloads that rebuild the page's objects on the same store.
 the commitment is the core's `run_commitment` of the stored journals, that the commit's calldata
 carries them, that each journal is its bot's or the closed one of README §7.2, that the run file
 reproduces the six Outcomes, and that `settleRun`, against MockReferee set to them, finds the run
-on time. `--stale-season` lets the season end and the next open before `startRun`, which reverts:
+on time. `--reload-during-buy` reloads once the wallet sent `startRun`, before the page sees its
+hash; `--stale-season` lets the season end and the next open after the page showed it, which
+`buyRun` refuses, and a `startRun` for it sent anyway reverts:
 
 ```bash
 cargo build -p jiro-tools --locked                    # the bots, target/debug/jiro-tools (--tools)
@@ -145,6 +154,7 @@ node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545
 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --reload-at 3
 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --reload-after-end out-of-lives
 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --reload-after-end cleared
+node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --reload-during-buy
 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --stale-season   # last: it opens a season
 ```
 
@@ -190,7 +200,7 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/chain/footer.ts` | The footer's contract addresses and build sha |
 | `src/chain/bindings/` | Generated by `scripts/bindings.mjs` from `contracts/abi/`: never edit by hand |
 | `src/errors.ts` | The core's error codes by name, with their meaning |
-| `test/*.test.ts` | vitest: the clock, the bindings, play, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, the run store and the run file |
+| `test/*.test.ts` | vitest: the clock, the bindings, play, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, what a reload resumes, the run store and its lock, and the run file |
 | `test/challenge.ts` | Plays a revealed run's levels without a chain, on a fake clock, with scripted keys and reloads |
 | `test/drive.ts` | Plays a level through the page's session on a fake clock, with the controls of a journal or a script |
 | `test/vectors.mjs` | The wasm parity runner of M1.11 (plain Node) |

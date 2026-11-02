@@ -194,8 +194,8 @@ jobs:
   # (plan M5.1). Then the Challenge run flow runs end to end on a local chain left up by
   # `localnet.mjs --up`, which needs Foundry and the contracts' submodules, with the playtest bots
   # of jiro-tools choosing the inputs: a run, a reload in the third level, reloads right after a
-  # level ends by lives out and by a clear, and a stale season, last as it opens a new one (plan
-  # M5.2). Its steps skip when no path of the `web` filter changed, except on workflow_dispatch.
+  # level ends by lives out and by a clear, a reload while startRun confirms, and a stale season,
+  # last as it opens a new one (plan M5.2). Its steps skip when no path of the `web` filter changed, except on workflow_dispatch.
   web:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -285,7 +285,7 @@ jobs:
           cargo build -p jiro-tools --locked
           npm --prefix scripts/contracts ci
           node scripts/contracts/localnet.mjs --up
-          for case in "" "--reload-at 3" "--reload-after-end out-of-lives" "--reload-after-end cleared" "--stale-season"; do
+          for case in "" "--reload-at 3" "--reload-after-end out-of-lives" "--reload-after-end cleared" "--reload-during-buy" "--stale-season"; do
             echo "=== BEGIN challenge-e2e ${case:-run} ==="
             # $case is a flag and its value, split on purpose.
             # shellcheck disable=SC2086

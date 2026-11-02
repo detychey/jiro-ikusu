@@ -49,7 +49,8 @@ export interface RunRecord {
   journals: string[];
   live?: LiveLevel;
   commit?: Commit;
-  /** Why the run can never be committed, such as a lapsed reveal. */
+  /** Why this browser can never commit the run: a lapsed reveal, commitRun's bound passed, or
+   *  other journals committed. */
   forfeited?: string;
 }
 
@@ -62,6 +63,16 @@ export interface RunStore {
 
 export function runKey(chainId: number, challenge: string, runId: bigint | string): string {
   return `${chainId}/${challenge.toLowerCase()}/${runId}`;
+}
+
+/** Runs `play` while this tab holds the run's Web Lock, so that two tabs never play one run;
+ *  returns false, without running it, while another tab holds the lock. */
+export function withRunLock(locks: LockManager, key: string, play: () => Promise<void>): Promise<boolean> {
+  return locks.request(`${DATABASE}/${key}`, { ifAvailable: true }, async (lock) => {
+    if (lock === null) return false;
+    await play();
+    return true;
+  });
 }
 
 function done<T>(request: IDBRequest<T>, what: string): Promise<T> {
