@@ -626,7 +626,7 @@ So the verifier runs the Rust core itself, in one of two ways:
   - it has a fast mock or dev mode for tests;
   - it has a verifier contract on Arbitrum, with Foundry test support.
 
-  Among the frameworks that pass, measured cycles and price decide. If the best-tooled zkVM still targets 32-bit RISC-V, that's fine: the core builds unchanged for either width.
+  Among the frameworks that pass, measured cycles and price decide. If the best-tooled zkVM still targets 32-bit RISC-V, that's fine: the core builds unchanged for either width. M1.12 chose RISC Zero, which targets RV32IM *(D2)*.
 - **A naming clash.** Brevis's zkVM is also called Pico. In this repository, "Pico" always means the Raspberry Pi board.
 
 **Agreed approach *(D2)*:**
@@ -879,7 +879,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | ID | Decision | Recommendation |
 |---|---|---|
 | D1 | Language of the core and of the firmware shell | **Decided:** one Rust core for every target; firmware shell: Rust on `embassy-rp`, built with cargo alone (owner, 2026-10-28), confirmed by M0.2's blinky build ([`docs/TOOLING.md`](docs/TOOLING.md#d1-evidence-embassy-rp-blinky)). |
-| D2 | Verification backend | **Agreed on 2026-10-28:** Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. Confirm with the M1 and M4 measurements. |
+| D2 | Verification backend | **Agreed on 2026-10-28:** Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. **Part 1, the zkVM framework: Decided:** RISC Zero (owner, 2026-11-02; [plan](IMPLEMENTATION_PLAN.md) M1.12), version 3.0.6, guests built for RV32IM. RISC Zero and SP1 both pass the four tooling checks, so cycles and price decided ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#m112-the-choice)). Cycles are within 5% of each other: the heaviest level, `10-worst`, takes 29.6 million user cycles (30.9 million proving cycles) on RISC Zero and 31.2 million on SP1; a six-level run, 130.7 million (136.6 million proving) against 136.9 million. A proof of that run costs about 0.000011 ETH ($0.024) on RISC Zero's Boundless market at its averages, mostly for aggregated proofs, against 0.433 PROVE ($0.090) for a Groth16 proof on SP1's network. RISC Zero also wrapped a proof for onchain verification in the agents' container and on a 2-vCPU runner, where SP1 ran out of memory. **Part 2, the backend,** is confirmed with the M4 measurements (M4.9). |
 | D3 | Player movement on claimed cells | **Decided:** rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. |
 | D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
 | D5 | Level defaults, and running out of lives | **Decided:** 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |

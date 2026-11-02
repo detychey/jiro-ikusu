@@ -132,7 +132,7 @@
 
 ## zkVM trials
 
-Trial records of the zkVM frameworks for the zk path of `IReferee` (README §7.3). Each framework gets one row in the summary and one section below, with the same fields in the same order. M1.16 measured SP1 and M1.17 RISC Zero, in the same shape, and [SP1 and RISC Zero side by side](#sp1-and-risc-zero-side-by-side) sets their facts next to each other. M1.12 then compares the frameworks that pass the four tooling checks, on cycles and price, and records the choice in README §13 D2.
+Trial records of the zkVM frameworks for the zk path of `IReferee` (README §7.3). Each framework gets one row in the summary and one section below, with the same fields in the same order. M1.16 measured SP1 and M1.17 RISC Zero, in the same shape, and [SP1 and RISC Zero side by side](#sp1-and-risc-zero-side-by-side) sets their facts next to each other. M1.12 then compared the frameworks that pass the four tooling checks, on cycles and price, and recorded the choice, RISC Zero, in README §13 D2: [M1.12: the choice](#m112-the-choice).
 
 The four tooling checks of README §7.3:
 
@@ -501,7 +501,7 @@ The onchain-verifiable receipt compresses the segment receipts into one succinct
 - **In the container: PASS.** `bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove groth16 vectors/game/commit-at-tick-0.json`, with the default segments, ended `verified: yes` after 1,281.8 s (above). The peak was 9.2 GiB in the host process during the segment proofs, under the session's 13.36 GiB cgroup, then 7.0 GiB (sampled) in the container that `risc0-groth16` started, with no memory cap; `dmesg` shows no out-of-memory kill. The verifier parameters digest is `73c457ba541936f0d907daf0c7253a39a9c5c427c225ba7709e44702d3c6eedc`, whose first four bytes are the 3.0 verifier's selector.
 - **Onchain check of that proof:** `cast call 0x0b144e07a0826182b6b59788c34b32bfa86fb711 "verify(bytes,bytes32,bytes32)" 0x73c457ba<seal> 0xdb9671cb97da76e0ec0789137da5e1497f34687e031d3a5082a316d3b3eab069 0x8394dc2c336cab35dc19c9c489d6afd15f09229a92955d14833bfcb41dcff6ba --rpc-url <rpc>`, with the seal and the sha256 of the journal (the 384-byte encoded Outcome of `commit-at-tick-0`) that `zk-host` printed, returns without reverting on Arbitrum One (block 520,373,707) and Arbitrum Sepolia (block 325,095,246), and `cast estimate` gives 277,009 gas on both. With the journal digest changed to `0x…01`, the call reverts with `VerificationFailed()` (`0x439cc0cd`).
 - **On Actions: PASS.** [Run 41344460922](https://github.com/detychey/jiro-ikusu/actions/runs/41344460922), on `ubuntu-24.04` (image 20261025.353.1): 2 vCPUs, 7,932 MiB of RAM and 3,071 MiB of swap. The host built in 62 min 35 s, executed `commit-at-tick-0` (PASS), and `docker pull` fetched the Groth16 image in 30 s (digest `sha256:a4f80ce2…a64ee`, as above). Then `zk-host prove groth16 vectors/game/commit-at-tick-0.json 19`, with segments of 2^19 cycles (3 segments), ended `verified: yes` after 2,160.4 s: peak 4,815,332 kB VmHWM in the host, 5,661 MiB sampled in the Docker container, and the runner's sampler peaked at 6,520 MiB used with 2,206 MiB of swap during the Docker step; `dmesg` shows no out-of-memory kill. Its seal verifies through the router on Arbitrum One (block 520,387,800) and Arbitrum Sepolia (block 325,110,799) with the same `cast call`, under the runner's image id. The run took 100.5 minutes (101 billed minutes).
-- **The image id depends on the build machine.** The runner's guest has image id `0x448f8f6e0e80d9a9cc06d51fc0b121c4ecc5b691e6f17a1e9787407e0f50e24d`, the container's `0xdb9671cb…b069`, from the same commit and toolchain: the ELF embeds absolute source paths in its panic locations (`strings` shows `/root/.cargo/registry/src/…` and `/home/user/wt/zk-trial-risc0/core/src/level.rs`). Each proof verifies only under its own image id; the runner's seal reverts with `VerificationFailed()` under the container's. A contract pins one image id, so the guest build must be reproducible: a path remap like M1.11's, or risc0-build's Docker build. Neither was tried.
+- **The image id depends on the build machine.** The runner's guest has image id `0x448f8f6e0e80d9a9cc06d51fc0b121c4ecc5b691e6f17a1e9787407e0f50e24d`, the container's `0xdb9671cb…b069`, from the same commit and toolchain: the ELF embeds absolute source paths in its panic locations (`strings` shows `/root/.cargo/registry/src/…` and `/home/user/wt/zk-trial-risc0/core/src/level.rs`). Each proof verifies only under its own image id; the runner's seal reverts with `VerificationFailed()` under the container's. A contract pins one image id, so the guest build must be reproducible: a path remap like M1.11's, or risc0-build's Docker build. Neither was tried here; M1.12 tried the first ([M1.12: the choice](#m112-the-choice), Image id).
 - **Docker:** needed for the Groth16 step only, on x86. The STARK proofs run in the host process.
 
 #### Onchain verifier
@@ -566,6 +566,97 @@ The facts M1.12 compares, from the two sections above; it makes no choice. Times
 | Verification gas, framework fixture | 234,718 (Groth16, `forge test`) | 252,496 (`forge test`); 277,009 estimated on Arbitrum One for this trial's proof |
 | Prover network | Succinct Prover Network: PROVE on Ethereum mainnet, minimum deposit 0.01 PROVE | Boundless: ETH on Base, no minimum deposit |
 | Run proof price | 0.433 PROVE ($0.090), Groth16 | about 0.000011 ETH ($0.024) at market averages, mostly aggregated proofs; raw Groth16 not priced |
+
+### M1.12: the choice
+
+**RISC Zero,** chosen by the owner on 2026-11-02 ("RISC Zero (Recommended)") from the two trials above, and recorded in README §13 D2 (part 1). Both frameworks pass the four checks, so cycles and price decide (README §7.3):
+
+| | SP1 | RISC Zero | Reading |
+|---|---|---|---|
+| Cycles, heaviest level (`10-worst`) | 31,227,278 executed; 27,203,307 PGU | 29,588,717 user; 30,932,992 proving | Within 5% of each other on every gate-set level: cycles do not separate them. Each network prices its own unit (PGU, proving cycles). |
+| Cycles, six-level run (the heaviest six levels) | 136,915,482 executed; 119,502,086 PGU | 130,741,601 user; 136,577,024 proving | As above |
+| Price of a six-level run proof on the framework's network | 0.433 PROVE ($0.090, about 0.00004 ETH), a Groth16 proof | about 0.000011 ETH ($0.024) at the Boundless market's averages, mostly aggregated proofs; a raw Groth16 seal was not priced | RISC Zero is about a quarter of SP1's price, with the caveat that its raw-Groth16 price is unmeasured. SP1's proof costs about 80% of the 0.00005 ETH run fee, RISC Zero's about 21%. |
+| Onchain-verifiable proof without a network | out of memory in the container and on Actions | PASS in the container and on a 2-vCPU runner, verified on Arbitrum One and Sepolia | Only RISC Zero can prove without a paid network today |
+
+The frameworks tie on cycles, and RISC Zero wins on price and on proving where the agent works. Its costs: 32-bit only (RV32IM; README §7.3 allows it), a clean host build of about an hour, and a raw Groth16 seal for Arbitrum being a non-default Boundless request.
+
+#### The merged referee
+
+`referee/zk/` on `main`: the kept branch's guest and host (`zk-trial-risc0`, `c7623f5`), as of `3cc7991`, the first commit of PR #57. RISC Zero 3.0.6 (`risc0-zkvm` and `risc0-build` pinned to `=3.0.6`), toolchain `r0.1.97.0` (`rustc 1.97.0-dev (e638c6cfe 2026-07-15)`), guest target `riscv32im-risc0-zkvm-elf`. Changes from the trial:
+
+- `zk-host execute` also takes the format vectors, through the verify guest, as [`web/test/vectors.mjs`](../web/test/vectors.mjs) pairs them: each journal is replayed on the open-field level, and must be rejected with its recorded code or, if valid, not by a decoder code (1 to 11); each level is replayed with the open-field-empty journal made to name its id, and must be rejected with its recorded code or accepted with its recorded `levelId`. It takes directories recursively, so `execute vectors/` runs every vector (`derivations.json` holds no vectors). Replay's code is read from the panic message as a whole number, where the trial's substring match would have taken `code 12` for `code 1`. Its output starts with the two programs' image ids.
+- The guests build with `-Zlocation-detail=none` (`[package.metadata.risc0] rustc-flags` in `guest/Cargo.toml`; the `r0.1.97.0` rustc is a `dev` build, which accepts `-Z` flags): panic locations no longer embed absolute source paths, below.
+- The `prove` command and `peak-memory.sh` stay on the kept branch for M4.8.
+
+**Executor.** `bash scripts/bootstrap.sh zk`, `cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host`, then `referee/zk/target/release/zk-host execute vectors/` (what the plan's `cargo run … -- execute vectors/` runs) at `3cc7991`, in the container: `126 vectors, 0 failed` in 4 min 6 s, the 51 format vectors, the 43 game vectors and the 32 gate-set vectors. The 75 game vectors' results and cycles (user and proving cycles, segments, trace-guest cycles) equal the trial's tables above in every cell, `full-journal` (3,626,078 user cycles) and `worst-case` (27,762,031) among them; panic locations are not on an accepted run's path. The six-level run (`zk-host execute-run`, the same six levels) takes 130,741,601 user cycles, as in the trial, and 136,445,952 proving cycles in 131 segments, 131,072 fewer than the trial's: the smaller ELF (126,756 bytes for `verify`, against 128,836) pages in less.
+
+The format vectors, through the verify guest (a rejected journal or level halts with no session, so no cycles):
+
+| Vector | Result | User cycles | Proving cycles | Segments |
+|---|---|---:|---:|---:|
+| `journal-challenge-level-5` | accepted | 2,004,856 | 2,162,688 | 3 |
+| `journal-event-count-2701` | error 7 | rejected |  |  |
+| `journal-first-broken-event-wins` | error 11 | rejected |  |  |
+| `journal-first-mask-0` | error 11 | rejected |  |  |
+| `journal-full-2700-events` | accepted | 4,155,053 | 4,456,448 | 5 |
+| `journal-last-tick-2699` | accepted | 2,038,812 | 2,228,224 | 3 |
+| `journal-level-index-6` | error 6 | rejected |  |  |
+| `journal-mask-returns-to-0` | accepted | 1,124,881 | 1,310,720 | 2 |
+| `journal-one-event` | accepted | 2,331,889 | 2,621,440 | 3 |
+| `journal-open-field-empty` | accepted | 2,002,964 | 2,162,688 | 3 |
+| `journal-other-rules-version` | error 4 | rejected |  |  |
+| `journal-reserved-bit-7` | error 10 | rejected |  |  |
+| `journal-reserved-mode-2` | error 5 | rejected |  |  |
+| `journal-tick-2700` | error 8 | rejected |  |  |
+| `journal-tick-not-increasing` | error 9 | rejected |  |  |
+| `journal-trailing-bytes` | error 2 | rejected |  |  |
+| `journal-truncated-events` | error 1 | rejected |  |  |
+| `journal-truncated-header` | error 1 | rejected |  |  |
+| `journal-unchanged-mask` | error 11 | rejected |  |  |
+| `journal-unknown-mode-3` | error 5 | rejected |  |  |
+| `journal-unknown-version` | error 3 | rejected |  |  |
+| `level-b2-whole-interior-spawn` | accepted | 1,923,047 | 2,097,152 | 2 |
+| `level-blocked-start` | error 39 | rejected |  |  |
+| `level-border-obstacle` | error 22 | rejected |  |  |
+| `level-boss-period-0` | error 26 | rejected |  |  |
+| `level-boss-size-1` | error 23 | rejected |  |  |
+| `level-boss-size-9` | error 23 | rejected |  |  |
+| `level-boss-spawn-on-obstacle` | error 37 | rejected |  |  |
+| `level-length-471` | error 20 | rejected |  |  |
+| `level-lives-0` | error 33 | rejected |  |  |
+| `level-minion-count-4` | error 27 | rejected |  |  |
+| `level-minion-period-0-with-minions` | error 30 | rejected |  |  |
+| `level-minion-period-1-without-minions` | error 30 | rejected |  |  |
+| `level-minion-spawn-off-rail` | error 38 | rejected |  |  |
+| `level-minion-spawn-x-60` | error 28 | rejected |  |  |
+| `level-one-cell-spawn` | accepted | 1,997,910 | 2,162,688 | 3 |
+| `level-open-area-1681` | error 36 | rejected |  |  |
+| `level-open-area-1682` | accepted | 1,767,361 | 2,097,152 | 2 |
+| `level-open-area-split` | error 35 | rejected |  |  |
+| `level-open-field` | accepted | 2,002,964 | 2,162,688 | 3 |
+| `level-respawn-delay-0-with-minions` | error 31 | rejected |  |  |
+| `level-respawn-delay-1-without-minions` | error 31 | rejected |  |  |
+| `level-spawn-x0-above-x1` | error 24 | rejected |  |  |
+| `level-spawn-x1-255-b8` | error 25 | rejected |  |  |
+| `level-spawn-x1-60-minus-b` | error 25 | rejected |  |  |
+| `level-target-10001` | error 34 | rejected |  |  |
+| `level-time-limit-0` | error 32 | rejected |  |  |
+| `level-time-limit-2701` | error 32 | rejected |  |  |
+| `level-unknown-version` | error 21 | rejected |  |  |
+| `level-unused-minion-slot` | error 29 | rejected |  |  |
+| `level-walls-and-minions` | accepted | 2,001,753 | 2,162,688 | 3 |
+
+**Image id.** The verify program's image id is `0x7e6e7a83a41a65e6aff08eefc8f7c321cfabd3f48335ca0ffd246c8131826bcb` and the trace program's `0x85bd44e3f94ab7402e9e64c0528b746ed3a0f4b7392cc3ae586093a28c418342` at `3cc7991`, in the container. On the runner, from the same commit and toolchain (`ci.yml`'s zk-exec job, runs [41368126873](https://github.com/detychey/jiro-ikusu/actions/runs/41368126873) and [41374389802](https://github.com/detychey/jiro-ikusu/actions/runs/41374389802)), the trace program's image id is the same, but the verify program's is `0x1e72b2e22a97adf71a3fde993f810d0f51f2bd0b5a1ab707c3c196cfe38a448f`. So taking the paths out is not enough:
+
+- The flag did remove every absolute source path: `strings` on both ELFs shows only the paths of the prebuilt standard library (`library/…`, and `rustc-demangle` under RISC Zero's own build machine's `/root/.cargo`), which are the same everywhere.
+- The two `verify` ELFs have the same size, 126,756 bytes, and 22,272 bytes differ: `llvm-objdump -d` shows the same code with its functions placed in a different order, and the call offsets moved accordingly.
+- The cause is Cargo's `-C metadata` hash, which takes the absolute path of a path dependency outside the workspace. `jiro-core` (`../../../core`) is outside the guest's workspace, so its crate hash, and every symbol name derived from it, changes with the checkout path: the guest target holds a different `libjiro_core-<hash>.rlib` for `/home/user/wt/m1.12`, for a copy of the tree at another path, and on the runner. The symbol names then most likely decide where the optimizer and linker place functions. A build from a copy at another path in the container happened to give the same ELFs, so a relocation test in one machine does not prove the build reproducible.
+
+**A reproducible guest build therefore remains a prerequisite of any deployment, for M4.8 and M4.10.** Two routes: RISC Zero's Docker build (risc0-build's `use_docker` option, which builds at `/src` inside `risczero/risc0-guest-builder`; Docker Hub has its `r0.1.97.0` tag, while risc0-build 3.0.6 defaults to `r0.1.88.0`, whose rustc 1.88 is older than the core's `rust-version` 1.96, so the tag must be set), or every build at one fixed absolute path. The `-Zlocation-detail=none` flag stays either way, since it is what takes the source paths out of the ELF.
+
+**CI.** `ci.yml`'s zk-exec job runs the format vectors and `full-journal`, `open-field-capture`, `rejected-level-id` and `worst-case` through the executor, and the dev-mode round trip (`cargo test --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --test mock_round_trip`, 0.14 s of test in the container); `nightly.yml` runs `execute vectors/`. Their timings are in [`TOOLING.md`](TOOLING.md#actions-minutes).
+
+**Left for M4.8 and M4.10:** a reproducible guest build (above), the public values' byte encoding (README §7.3), the price of a raw Groth16 seal on Boundless, and the Groth16 image, which only Docker Hub serves.
 
 ## Challenge gas
 

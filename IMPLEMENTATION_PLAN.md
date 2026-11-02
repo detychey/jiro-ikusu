@@ -98,7 +98,7 @@ Each work item block has these fields:
   - CI jobs have a `timeout-minutes` budget instead.
 - **CI profile (P14).** M0.4 builds one of two profiles, chosen from the round A1 answer:
   - **public** (a public repository, or a plan with enough minutes): heavy workflows (`nightly`, `stylus-gas`, `zk-prove`, `e2e`) run on every `pull_request` that touches their paths, and scheduled runs are daily.
-  - **private** (metered minutes, the expected case, §2): `ci.yml` groups its checks into at most four jobs (§3.4). Heavy workflows run only on `workflow_dispatch` or when the `ci:heavy` label is added to a PR (`pull_request` of type `labeled`). Scheduled runs are weekly.
+  - **private** (metered minutes, the expected case, §2): `ci.yml` groups its checks into at most five jobs (§3.4). Heavy workflows run only on `workflow_dispatch` or when the `ci:heavy` label is added to a PR (`pull_request` of type `labeled`). Scheduled runs are weekly.
 
   "This PR's `<workflow>` run" means a run on the PR's head: path-triggered in the public profile, label-triggered in the private one. To rerun a label-triggered workflow, remove the label and add it again.
 - **Minutes budget.** `docs/TOOLING.md` records the billed minutes per run of each workflow, from the job timings that `actions_list` returns, and a monthly budget. Before triggering a heavy run, the agent sums this month's billed minutes the same way. If the run would exceed the budget, it skips the run and says so in the PR.
@@ -237,7 +237,7 @@ deployments/         one record per network, with a list of contract generations
 | RP2040 bootrom image for rp2040js | a `raw.githubusercontent.com` URL at a fixed commit, or a shallow clone at a tag, and its sha256 (M3.3) | `firmware/emu/` |
 | nitro-devnode | `run-dev-node.sh` vendored from OffchainLabs/nitro-devnode at a fixed commit sha, and `NITRO_NODE_VERSION` set explicitly (M4.2) | `scripts/contracts/nitro/`, `stylus-gas.yml`, `e2e.yml` |
 | GitHub Actions | each third-party action at an exact version | workflows |
-| zkVM toolchain | version recorded by M1.12 | `referee/zk/`, `scripts/bootstrap.sh` (`zk` tier) |
+| zkVM toolchain | RISC Zero (M1.12): `risc0-zkvm` and `risc0-build` `=3.0.6`, Rust toolchain `r0.1.97.0` (`rustc 1.97.0-dev`) | `referee/zk/`, `scripts/bootstrap.sh` (`zk` tier) |
 
 ### 3.3 Cargo profiles and core lints
 
@@ -278,7 +278,7 @@ opt-level = "z"
 
 ### 3.4 CI jobs
 
-The workflow rules of §1.3 apply to every row. In the private profile, `ci.yml` groups its rows into the four jobs named in the last column; each row becomes a step group of that job, behind the same path filter. "Job" in the items below means the row.
+The workflow rules of §1.3 apply to every row. In the private profile, `ci.yml` groups its rows into the five jobs named in the last column; each row becomes a step group of that job, behind the same path filter. "Job" in the items below means the row.
 
 | Job | Workflow and trigger | Added by | Checks | Private profile |
 |---|---|---|---|---|
@@ -288,7 +288,7 @@ The workflow rules of §1.3 apply to every row. In the private profile, `ci.yml`
 | determinism | `ci.yml` | M0.4 | No float tokens in source. No soft-float references in the project-crate members of the float probe, on two targets. No `usize` in state, hashing or codec signatures. `overflow-checks = true` in every profile of every workspace root. CI toolchain equal to `rust-toolchain.toml`. Every rule unit of README §4 tagged (`check-rule-tags.sh`, M0.5). | rust |
 | vectors-drift | `ci.yml` | M1.2, M1.4; version gate from M1.9 | Regenerate `vectors/`, then `scripts/check-drift.sh vectors/`; `scripts/check-rules-version.sh` | rust |
 | wasm-parity | `ci.yml` | M1.11 | Every vector through `jiro-wasm` under Node; wasm size and sha256 | rust |
-| zk-exec | `ci.yml` (job-level path filter); full set in `nightly.yml` | M1.12 | Executor outcomes and trace digests equal native on a vector subset; a dev-mode round trip | rust |
+| zk-exec | `ci.yml` (job-level path filter); full set in `nightly.yml` | M1.12 | Executor outcomes and trace digests equal native on a vector subset; a dev-mode round trip | zk-exec: its own job, for its own build cache and time limit, since a cold build of the host takes about an hour (M1.12) |
 | difffuzz | `ci.yml` (fixed seed); `nightly.yml` (rotating seed) | M1.13 | Native, wasm and the zk executor agree on random cases | rust |
 | stylus | `ci.yml` | M4.1 | Generate the 200 fixed difffuzz cases, then TestVM replay of the vectors and the cases; size gate; sha256 | rust |
 | web | `ci.yml` | M2.1 | `npm ci`, typecheck, lint, vitest, build | web |
