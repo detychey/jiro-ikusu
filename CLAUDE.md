@@ -5,7 +5,7 @@
 
 ## Project
 
-Jiro-ikusu: a territory-capture arcade game, played on a Raspberry Pi Pico or in the browser, with paid Challenge runs verified onchain on Arbitrum.
+Jiro-ikusu: a territory-capture arcade game, played on a wedgie (a Raspberry Pi Pico handheld, Training only) or in the browser, with paid Challenge runs, played in the browser, verified onchain on Arbitrum.
 
 - [`README.md`](README.md) is the normative specification. If a skill, this file or the plan disagrees with it, the README wins.
 - [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) is the work breakdown. Follow its §1 to pick up, claim and finish a work item: one item, one pull request.
@@ -28,6 +28,6 @@ Jiro-ikusu: a territory-capture arcade game, played on a Raspberry Pi Pico or in
 | `levels/targets.json` or `tools/src/bots/**` | Rerun `playtest --check levels/targets.json` and regenerate its report in `reports/`, then rebuild `levels/README.md`, whose measured clear rates come from it. Once M2.9 has merged, the calibration rule above. |
 | `seasons/*.json` | README §8.4 and `docs/ECONOMY.md` |
 | `contracts/src/**` | README §7 and §8, if a frozen rule or range changes; regenerate `contracts/abi/` (from M4.3); the threat table of `docs/ECONOMY.md`, if a mitigation moved |
-| `vectors/**` | Regenerate `vectors/pack.bin` and `firmware/emu/transcripts/` (from M3.3) |
+| `vectors/**` | Nothing else to regenerate: the `wedgie` CI job builds its vector files from `vectors/` and replays them through the native module (from M3.8) |
 
 Owners of numbers: README §4 and §5 own the game's rule numbers and defaults; README §7 and §8 own those of runs, settlement and seasons, parameter ranges included; `levels/README.md`, generated from `levels/src/`, owns the per-level knobs; `levels/targets.json` owns the reference mix of playtest bots, the target clear rates, their tolerance and the claim floor (README §5, P11); `seasons/*.json` own the season parameters; `docs/ECONOMY.md` derives from them and owns none.
