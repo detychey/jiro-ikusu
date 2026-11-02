@@ -8,7 +8,7 @@ import { journalEvents } from "../src/journal";
 import { continueRun, type RunEnv } from "../src/run/flow";
 import { closeLevel, playLevels, X_ALONE } from "../src/run/play";
 import { openRunStore, type RunRecord } from "../src/run/store";
-import { chainEnv, freshStore, playEnv, Reload, revealedRun, RUN_NONCE, type Script, shippedLevels } from "./challenge";
+import { chainEnv, closedRun, freshStore, playEnv, Reload, revealedRun, RUN_NONCE, type Script, shippedLevels } from "./challenge";
 import { loadEngine } from "./drive";
 
 const LEVELS = shippedLevels();
@@ -200,16 +200,15 @@ describe("a run resumed after commitRun's bound", () => {
 });
 
 describe("a run resumed on a page clock past commitRun's bound, with the chain before it", () => {
-  it("is played on to its commit, not forfeited", async () => {
+  it("goes on to its commit, not forfeited", async () => {
     const core = await loadEngine();
     const { store } = await freshStore();
-    const record = { ...revealedRun(core), live: { levelIndex: 0, events: [], ticks: 40 } };
+    const record = closedRun(core, LEVELS);
     const onChain = chainEnv(core, store, LEVELS, [], { block: 0n, timestamp: 1_500 });
     const commitReached = new Error("commitRun's turn");
     const contracts = { ...onChain.contracts, challenge: { runs: async () => Promise.reject(commitReached) } };
-    const env = { ...onChain, contracts: contracts as unknown as RunEnv["contracts"], now: () => 2_201_000, stopRequested: () => true };
+    const env = { ...onChain, contracts: contracts as unknown as RunEnv["contracts"], now: () => 2_201_000 };
     await expect(continueRun(env, record)).rejects.toThrow(commitReached);
-    const stored = await store.get(record.key);
-    expect([stored?.forfeited, stored?.journals.length]).toEqual([undefined, 6]);
+    expect(record.forfeited).toBeUndefined();
   });
 });

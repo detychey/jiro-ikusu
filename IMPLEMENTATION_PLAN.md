@@ -2132,23 +2132,21 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 #### M5.2 Challenge run flow in the browser
 
 - **Goal:** a full Challenge run in the browser, committed within its deadline, on the rules the season accepts, and robust to a page reload.
-- **Split:** built, this item came out above L's 2,000 lines, so its PR split the page wiring out into M5.7. M5.2 keeps the run flow of `web/src/run/`, which its headless e2e and unit tests drive without the page, so every done-when line below stays here; M5.7 wires the flow into `challenge.html`. M5.2's size is L, as built.
+- **Split:** built, this item came out above L's 2,000 lines, so its PR split the page wiring out into M5.7. M5.2 keeps the run flow of `web/src/run/`, which its headless e2e and unit tests drive without the page, so every done-when line below stays here; M5.7 wires the flow into `challenge.html`. The review's fixes brought M5.2 above L again, so what only the page needs moved to M5.7 too: the handling of several runs and tabs (`playUnfinished`, `withRunLock`), the season view's entries (`seasonEntries`), the countdown's live margin (`marginOf`), and the player's stop, which closes the level in play and gives each unplayed level an X at tick 0. M5.2's size is L, as built.
 - **Deliverables:** `web/src/run/`:
   - Run start:
-    - the season view's entries: price, pot, parameters;
     - a season check: the flow refuses to call `startRun` unless the wasm core's `RULES_VERSION` equals the season's `rulesVersion` and the 16 shipped level ids equal the season's ids;
     - `startRun(s)`, where s is the season number whose `rulesVersion` and level ids the season check passed, sending that season's fee;
     - a wait that polls the entropy source's `isRevealable` until the entropy block exists (usually 10 to 20 s, README §7.2), then `revealRun` at once.
   - Play:
     - the six drawn levels, from the wasm core's draw;
     - back-to-back play with mode-1 journals, and no pause;
-    - a live deadline margin using the contract's formula, tested against the deadline fixtures of `vectors/derivations.json` (M4.7).
+    - the run's deadline with the contract's formula, tested against the deadline fixtures of `vectors/derivations.json` (M4.7).
   - Interruption:
     - the run state (nonce, drawn levels, current level) and the live events and current tick are written to IndexedDB every second;
     - after a reload, the flow closes the interrupted level's journal as README §7.2 specifies. It replays the stored journal through tick c − 1, where c = max(n, e + 1), n is the stored tick count and e the last event's tick. If the level ended by then, it keeps the journal as it is; otherwise it appends an X at tick c. It then resumes the run at the next level.
   - Commit:
     - one `commitRun` transaction as soon as the run ends, carrying the six journals (P5), with the margin left before the deadline;
-    - X-at-tick-0 journals for unplayed levels;
     - the journals kept in IndexedDB, and written as a run file (M4.7).
   - `web/scripts/challenge-e2e.mjs`.
 - **Done when:**
@@ -2291,11 +2289,11 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 #### M5.7 Challenge page wiring
 
 - **Goal:** the Challenge page plays a run through the flow of M5.2, so that a player with a browser wallet buys, plays and commits a run on the PR's preview.
-- **Why:** split out of M5.2, whose PR came out above L. The page is UI over `web/src/run/`, which M5.2's headless e2e and unit tests already check without it.
+- **Why:** split out of M5.2, whose PR came out above L. The page is UI over `web/src/run/`, which M5.2's headless e2e and unit tests already check without it. After M5.2's review, what only the page needs in `web/src/run/` moved here too, to keep M5.2 within L.
 - **Deliverables:** `web/src/pages/challenge.ts` and `web/challenge.html`:
-  - the season view: price, pot and parameters, from `src/run/season.ts`, and Buy, which runs the season check before `startRun`;
-  - the run: the field and the HUD of the level in play, its status, the live deadline countdown and the time left before `commitRun`'s bound, and a control that ends the run and commits it at once;
-  - after a reload, the account's unfinished run resumed when the wallet connects;
+  - the season view: price, pot and parameters (`seasonEntries` in `src/run/season.ts`), and Buy, which pays into the season shown and runs the season check before `startRun`;
+  - the run: the field and the HUD of the level in play, its status, the live deadline countdown and the time left before `commitRun`'s bound (`marginOf` in `src/run/play.ts`), and a control that ends the run and commits it at once, closing the level in play and giving each unplayed level an X at tick 0 (`stopRequested`);
+  - after a reload, every unfinished run of the account resumed in turn when the wallet connects (`playUnfinished` in `src/run/flow.ts`); one run at a time in a tab, and a Web Lock per run across tabs (`withRunLock` in `src/run/store.ts`);
   - after the commit, the six Outcomes and the run file download;
   - a warning when the tab is hidden, since browsers throttle background timers;
   - the shipped levels (`web/src/shipped.ts`) and the HUD (`showHud` in `web/src/page.ts`), moved out of Training to be shared with it.

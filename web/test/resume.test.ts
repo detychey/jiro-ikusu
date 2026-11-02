@@ -1,11 +1,11 @@
-// What a reload resumes (plan M5.2): every unfinished run of the player, the runs whose startRun
-// receipt the page did not see, and not a run committed elsewhere with other journals.
+// What a reload resumes (plans M5.2 and M5.7): the runs whose startRun receipt the page did not
+// see, every unfinished run of the player in turn, and not a run committed elsewhere with other
+// journals.
 
 import { describe, expect, it } from "vitest";
 import { continueRun, playUnfinished, unfinishedRuns } from "../src/run/flow";
-import { playLevels } from "../src/run/play";
 import { type RunRecord, runKey } from "../src/run/store";
-import { chainEnv, freshStore, playEnv, revealedRun, shippedLevels } from "./challenge";
+import { chainEnv, closedRun, freshStore, revealedRun, shippedLevels } from "./challenge";
 import { loadEngine } from "./drive";
 
 const LEVELS = shippedLevels();
@@ -66,8 +66,7 @@ describe("a reload that leaves several runs unfinished", () => {
 describe("a run committed onchain with other journals", () => {
   it("is forfeited, and no longer unfinished", async () => {
     const { store } = await freshStore();
-    const stopped = playEnv(core, store, LEVELS, { controls: () => undefined, stop: () => true });
-    const record = await playLevels(stopped, revealedRun(core));
+    const record = closedRun(core, LEVELS);
     const runs = [{ player: PLAYER, target: 1n, revealedAt: 1_000n, committedAt: 1_100n, commitment: `0x${"ab".repeat(32)}` }];
     const env = chainEnv(core, store, LEVELS, runs, { block: 1_000n, timestamp: 1_200 });
     await continueRun(env, record);
