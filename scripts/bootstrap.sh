@@ -3,14 +3,13 @@
 # tier is already complete, the last line printed is "nothing to install".
 set -euo pipefail
 
-[ "$#" -le 1 ] || { echo "usage: bootstrap.sh [core|web|contracts|firmware|zk]" >&2; exit 1; }
+[ "$#" -le 1 ] || { echo "usage: bootstrap.sh [core|web|contracts|wedgie|zk]" >&2; exit 1; }
 readonly TIER="${1-core}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO_ROOT
 readonly BIN_DIR=/usr/local/bin
 
 readonly CARGO_STYLUS_VERSION=0.10.10
-readonly ELF2UF2_VERSION=2.2.0
 readonly BINARYEN_VERSION=120.0.0
 readonly SLITHER_VERSION=0.11.6
 readonly FOUNDRY_VERSION=v1.8.6
@@ -22,6 +21,10 @@ readonly RISC0_RUST_TAG=r0.1.97.0
 readonly RISC0_RUST_SHA256=100b597d605b706bec94e1d32bfaaf5851df8d75173f986d4b56a3e90916be53
 readonly RISC0_HOME_DIR="${RISC0_HOME:-$HOME/.risc0}"
 readonly RISC0_TOOLCHAIN_DIR="$RISC0_HOME_DIR/toolchains/v$RISC0_RUST-rust-x86_64-unknown-linux-gnu"
+readonly MICROPYTHON_TAG=v1.29.0
+readonly MICROPYTHON_COMMIT=0fd6c573ea815774668bbb16b8e197c8822368b2
+readonly PYELFTOOLS_VERSION=0.32
+readonly WEDGIE_HOME="${JIRO_WEDGIE_HOME:-$HOME/.cache/jiro-wedgie}"
 
 # Checks must never install a toolchain implicitly: only ensure_rust installs.
 export RUSTUP_AUTO_INSTALL=0
@@ -113,8 +116,10 @@ packages_installed() {
 }
 
 install_packages() {
-  run_logged apt-get update -qq
-  run_logged apt-get install -y -qq "$@"
+  local sudo=()
+  [ "$(id -u)" = 0 ] || sudo=(sudo)
+  run_logged "${sudo[@]}" apt-get update -qq
+  run_logged "${sudo[@]}" apt-get install -y -qq "$@"
 }
 
 ensure_node() {
@@ -193,6 +198,28 @@ register_risc0_toolchain() {
   run_logged rustup toolchain link risc0 "$RISC0_TOOLCHAIN_DIR"
 }
 
+micropython_cloned() {
+  [ "$(git -C "$WEDGIE_HOME/micropython" rev-parse HEAD 2>/dev/null)" = "$MICROPYTHON_COMMIT" ]
+}
+
+clone_micropython() {
+  rm -rf "$WEDGIE_HOME/micropython"
+  mkdir -p "$WEDGIE_HOME"
+  run_logged git -c advice.detachedHead=false clone --depth 1 --branch "$MICROPYTHON_TAG" \
+    https://github.com/micropython/micropython.git "$WEDGIE_HOME/micropython"
+}
+
+# mpy_ld needs pyelftools; a venv, because the runners' system Python refuses global installs.
+pyelftools_installed() {
+  "$WEDGIE_HOME/venv/bin/python3" -c 'import sys, elftools; sys.exit(elftools.__version__ != sys.argv[1])' \
+    "$PYELFTOOLS_VERSION" 2>/dev/null
+}
+
+install_pyelftools() {
+  run_logged python3 -m venv "$WEDGIE_HOME/venv"
+  run_logged "$WEDGIE_HOME/venv/bin/pip" install --quiet "pyelftools==$PYELFTOOLS_VERSION"
+}
+
 cxx_present() {
   command -v g++ >/dev/null || command -v c++ >/dev/null
 }
@@ -216,11 +243,12 @@ case "$TIER" in
     ensure "Foundry $FOUNDRY_VERSION" foundry_installed install_foundry
     ensure "slither $SLITHER_VERSION" slither_installed install_slither
     ;;
-  firmware)
+  wedgie)
     ensure_rust
-    ensure "apt packages libudev-dev and pkg-config" packages_installed install_packages \
-      libudev-dev pkg-config
-    ensure "elf2uf2-rs $ELF2UF2_VERSION" crate_installed install_crate elf2uf2-rs "$ELF2UF2_VERSION"
+    ensure "apt packages gcc-arm-none-eabi and qemu-system-arm" packages_installed install_packages \
+      gcc-arm-none-eabi qemu-system-arm
+    ensure "MicroPython $MICROPYTHON_TAG in $WEDGIE_HOME/micropython" micropython_cloned clone_micropython
+    ensure "pyelftools $PYELFTOOLS_VERSION in $WEDGIE_HOME/venv" pyelftools_installed install_pyelftools
     ;;
   zk)
     ensure_rust
@@ -229,7 +257,7 @@ case "$TIER" in
     ensure "rzup settings and the risc0 rustup toolchain" risc0_toolchain_registered register_risc0_toolchain
     ;;
   *)
-    fail "unknown tier '$TIER'; expected core, web, contracts, firmware or zk"
+    fail "unknown tier '$TIER'; expected core, web, contracts, wedgie or zk"
     ;;
 esac
 

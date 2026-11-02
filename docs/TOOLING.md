@@ -16,7 +16,7 @@ Probe record of work item M0.2, made on 2026-10-28 in the agents' cloud containe
 - **P14, repository and CI profile: private, on the free plan's minutes, with the private CI profile** (plan §1.3). The owner keeps the repository private until a working version exists, then makes it public (owner, 2026-10-28; plan §15, question 18). M0.4 builds the private profile. When the repository becomes public, a follow-up PR switches CI to the public profile; no plan item schedules it yet.
   - The `detychey` organization's private repositories share 2,000 Actions minutes a month on GitHub Free, ethblockdigger included. Jobs run on 2-vCPU runners and are billed rounded up to the minute.
   - **Monthly budget for jiro-ikusu: 1,500 minutes** (a proposal; the owner can change it in review), leaving 500 for ethblockdigger.
-- **D1 superseded (2026-11-02).** The device is now a wedgie app, with the core as a MicroPython native module (README §13 D1). The `firmware` tier and the rows below that serve it (elf2uf2-rs, uf2conv.py, the embassy-rp blinky, rp2040js, the RP2040 bootrom) stay as M0.2's record; no remaining item uses them. Plan M3.8 replaces the tier with a `wedgie` tier and records its tools here.
+- **D1 superseded (2026-11-02).** The device is now a wedgie app, with the core as a MicroPython native module (README §13 D1). The rows below that served the `firmware` tier (elf2uf2-rs, uf2conv.py, the embassy-rp blinky, rp2040js, the RP2040 bootrom) stay as M0.2's record; no remaining item uses them. M3.8 replaced the tier with the `wedgie` tier, whose tools are the four `wedgie` rows below.
 - **Core MSRV input (plan §3.2).** The oldest zkVM rustc is 1.96 (SP1), so M1.1 sets `rust-version = "1.96"` in `core/Cargo.toml`. Caveat for M1.17: risc0-build 3.0.6 builds guests in Docker with `r0.1.88.0` (rustc 1.88), not with the 1.97 toolchain recorded here. If M1.17 needs that Docker build, `rust-version = "1.96"` is too new for it; M1.17 reports it, and lowering the MSRV needs a plan change, since plan §3.2 takes it only from this record.
 
 ## Probe results
@@ -36,6 +36,10 @@ Probe record of work item M0.2, made on 2026-10-28 in the agents' cloud containe
 | rp2040js | 1.4.1 | PASS | firmware (`firmware/emu` package, M3.3) | M3.3 |
 | Playwright | 1.63.0; Chrome for Testing 153.0.8010.12 (chromium revision 1243) | PASS (preinstalled browser) | web | M2.2 |
 | wrangler | 4.154.0 | PASS | web (`web/package.json`, M2.2) | M2.2 |
+| arm-none-eabi-gcc, binutils | gcc 13.2.1 20231009 (Ubuntu package `gcc-arm-none-eabi` 15:13.2.rel1-2); GNU ld 2.42 (`binutils-arm-none-eabi` 2.42-1ubuntu1+23) | PASS | wedgie | M3.8, M3.9 |
+| qemu-system-arm | 8.2.2 (Ubuntu package 1:8.2.2+ds-0ubuntu1.18) | PASS | wedgie | M3.8, M3.9 |
+| MicroPython (`mpy_ld`, `mpy-cross`, the qemu port) | v1.29.0, commit 0fd6c573ea815774668bbb16b8e197c8822368b2 | PASS | wedgie | M3.8, M3.9 |
+| pyelftools | 0.32, in a venv | PASS | wedgie | M3.8, M3.9 |
 | Foundry (forge, cast, anvil, chisel) | 1.8.6 (6bad0a66, 2026-10-21) | PASS, through the direct asset | contracts | M4 |
 | Docker | 29.9.2; containerd 2.4.2; runc 1.5.2 | PASS, through a registry mirror | none (started by hand) | M1.16, M1.17, M4.2, M4.8, M4.14, M4.16 |
 | nitro-devnode (M4.2) | `run-dev-node.sh` at OffchainLabs/nitro-devnode commit ebb523d4; `offchainlabs/nitro-node:v3.12.2-5f02f3f` | PASS, through a registry mirror | contracts (`stylus-gas.yml`, `e2e.yml`) | M4.2, M4.9, M4.14, M4.15, M4.16 |
@@ -136,6 +140,13 @@ Only each framework's Rust toolchain was installed; M1.16 and M1.17 install the 
     3. Run the offline `rzup default rust 1.97.0`, which registers the `risc0` rustup toolchain.
   - **Toolchain:** its target is `riscv32im-risc0-zkvm-elf`.
   - **The zk tier (M1.12)** runs step 2, then writes `~/.risc0/settings.toml` and runs `rustup toolchain link risc0 ~/.risc0/toolchains/v1.97.0-rust-x86_64-unknown-linux-gnu`, which makes the symlink of step 1. It skips the rzup binary and step 3: risc0-build reads rzup's settings as a library (M1.17). `RISC0_HOME` moves `~/.risc0`, as it does for risc0-build. The host's `prove` feature also needs a C++ compiler, which the tier checks for.
+
+### wedgie tools (wedgie)
+
+- **apt:** `apt-get install -y gcc-arm-none-eabi qemu-system-arm`, through `sudo` when not root, as on the runners. URLs: `archive.ubuntu.com` (noble universe and noble-updates); 57.5 MB for `gcc-arm-none-eabi` (505 MB installed), 11.0 MB for `qemu-system-arm`. Ubuntu 24.04 has no other `gcc-arm-none-eabi`, so the tier checks that the packages are installed and CI prints both versions; the glue's object code, and so `jiro_core.mpy`'s sha256, follow the compiler's version.
+- **MicroPython:** `git clone --depth 1 --branch v1.29.0 https://github.com/micropython/micropython.git ~/.cache/jiro-wedgie/micropython` (65 MB), checked against commit `0fd6c573ea815774668bbb16b8e197c8822368b2`; `JIRO_WEDGIE_HOME` moves `~/.cache/jiro-wedgie`. No submodule is needed: the qemu port is built without a frozen manifest, which would need `lib/micropython-lib`. `wedgie/scripts/build-qemu.sh` then builds `mpy-cross` and the qemu port's MICROBIT firmware in 16 s on 4 CPUs.
+- **pyelftools** for `mpy_ld`: `python3 -m venv ~/.cache/jiro-wedgie/venv`, then its `pip install pyelftools==0.32` (from `pypi.org` and `files.pythonhosted.org`; 15 MB with pip). A venv, because the runners' system Python refuses global installs (PEP 668). `wedgie/natmod/glue/Makefile` runs `mpy_ld` with the venv's Python.
+- **Time:** the tier took 11 s from an empty `~/.cache/jiro-wedgie` with the apt packages and the Rust toolchain present: the clone, then the venv.
 
 ### RP2040 bootrom (for M3.3)
 
@@ -287,7 +298,7 @@ The SessionStart hook in `.claude/settings.json` runs the core tier at the start
 | core | the Rust toolchain of `rust-toolchain.toml` | 35 to 49 s |
 | web | core, then checks for Node 22 and the preinstalled Chromium, and runs `npm install` in `web/` once it has a lockfile | under 1 s until `web/` exists |
 | contracts | core, cargo-stylus 0.10.10, binaryen 120.0.0, Foundry v1.8.6, slither 0.11.6 | about 8 min, mostly cargo-stylus |
-| firmware | core, `libudev-dev` and `pkg-config`, elf2uf2-rs 2.2.0 | about 40 s (apt 11 s, cargo install 26 s) |
+| wedgie | core, `gcc-arm-none-eabi` and `qemu-system-arm` from apt, MicroPython v1.29.0 cloned at commit 0fd6c573, pyelftools 0.32 in a venv (wedgie tools, above). M3.8 replaced the `firmware` tier (libudev-dev, pkg-config, elf2uf2-rs) with it | 11 s with the apt packages and the core tier present (M3.8) |
 | zk | core, a check for a C++ compiler (`g++`), the RISC Zero Rust toolchain `r0.1.97.0` from its release asset with its sha256, rzup's `settings.toml` and the `risc0` rustup toolchain (zkVM toolchains, above). The first build of `referee/zk/` then takes about an hour (docs/VERIFICATION.md, RISC Zero) | 1 min 7 s with an empty `RUSTUP_HOME` and `RISC0_HOME`, the core tier's Rust install included (M1.12) |
 
 ## Actions minutes

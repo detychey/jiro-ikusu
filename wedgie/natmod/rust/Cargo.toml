@@ -1,0 +1,38 @@
+[package]
+name = "jiro-natmod"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+jiro-core = { path = "../../../core" }
+# The trace keccak uses the core's own keccak crate, at the version of the root Cargo.lock.
+tiny-keccak = { version = "=2.0.2", features = ["keccak"] }
+
+[workspace]
+
+[profile.dev]
+overflow-checks = true
+
+[profile.test]
+overflow-checks = true
+
+[profile.bench]
+overflow-checks = true
+
+# opt-level "s": the module's code is loaded into the wedgie's RAM (wedgie/README.md, Size).
+[profile.release]
+overflow-checks = true
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+opt-level = "s"
+
+[profile.stylus]
+inherits = "release"
+opt-level = "z"
