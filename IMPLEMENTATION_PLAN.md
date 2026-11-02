@@ -1,18 +1,18 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. On 2026-11-02 the owner made the device a wedgie app that plays Training only (README §13 D1, D15): M3.8-M3.10 replace M3.1-M3.7, and M5.4 is deferred.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
-[`README.md`](README.md) is the normative specification, and this plan turns it into 66 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
+[`README.md`](README.md) is the normative specification, and this plan turns it into 69 work items. Five are conditional (M1.14, M1.15, M3.10, M4.10, M4.15) and one is optional (M4.13). Seven are superseded (M3.1-M3.7) and one is deferred past v1 (M5.4). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
 The order:
 
 1. **Gates before code** (M0.1-M0.4): a pinned toolchain, a session bootstrap, and CI checks that catch nondeterminism.
 2. **Rules freeze** (M0.5-M0.7): every open decision except D2 and D7, and every "frozen in M0" placeholder, written into the README as exact, tagged text. D14, raised in M0.7's review, gets its exact rule in M1.18.
 3. **The core** (M1): one rule area per PR, then golden vectors with per-tick traces that every later target must reproduce.
-4. **Parallel tracks.** Device bring-up starts during M1 (M3.1), the contracts after M0 (M4.3), and the level tool after the format vectors (M2.4). Bots and levels follow replay (M1.8). Stylus gas and the zk trials follow the gameplay vectors (M1.9), and the zk proving pipeline follows the zk choice (M1.12). The browser follows the wasm build (M1.11). Measurements feed back into the work; they never block rule work.
+4. **Parallel tracks.** The wedgie's native module follows the gate-set vectors (M3.8 after M2.9), the contracts after M0 (M4.3), and the level tool after the format vectors (M2.4). Bots and levels follow replay (M1.8). Stylus gas and the zk trials follow the gameplay vectors (M1.9), and the zk proving pipeline follows the zk choice (M1.12). The browser follows the wasm build (M1.11). Measurements feed back into the work; they never block rule work.
 5. **dApp and a testnet season** (M5).
 
-Item count: M0 7, M1 18, M2 11, M3 7, M4 16, M5 7. Review findings split out of M4.12 add items from M4.17 on.
+Item count: M0 7, M1 18, M2 11, M3 10 (seven superseded), M4 16, M5 7 (one deferred). Review findings split out of M4.12 add items from M4.17 on.
 
 ## Contents
 
@@ -23,7 +23,7 @@ Item count: M0 7, M1 18, M2 11, M3 7, M4 16, M5 7. Review findings split out of 
 5. [M0 Rules freeze](#5-m0-rules-freeze)
 6. [M1 Core](#6-m1-core)
 7. [M2 Browser, levels and bots](#7-m2-browser-levels-and-bots)
-8. [M3 Pico](#8-m3-pico)
+8. [M3 wedgie app](#8-m3-wedgie-app)
 9. [M4 Referee and contracts](#9-m4-referee-and-contracts)
 10. [M5 dApp and testnet season](#10-m5-dapp-and-testnet-season)
 11. [Decision schedule](#11-decision-schedule)
@@ -39,7 +39,7 @@ Item count: M0 7, M1 18, M2 11, M3 7, M4 16, M5 7. Review findings split out of 
 
 - **Ids.** Items are numbered `M<milestone>.<n>`. Ids are stable and never reused. A new item, whether split from an existing one or added as a follow-up, takes the next free number in its milestone. So numbers do not always follow dependency order; the "Depends on" column does.
   - Reserved: M4.15 for the Stylus gas optimization that M4.9 files if the gas gate fails (§4); M4.17 and up for review findings that M4.12 splits out.
-- **Conditional items** (M1.14, M1.15, M4.10, M4.15) are built only if a measurement calls for them. The PR that rules one out marks it "not built" (or "deferred") in this file. M4.13 is optional.
+- **Conditional items** (M1.14, M1.15, M3.10, M4.10, M4.15) are built only if a measurement calls for them. The PR that rules one out marks it "not built" (or "deferred") in this file. M4.13 is optional.
 - **Depends on** means merged, unless the item is stacked on an open dependency (§1.2).
 - **PR titles** start with the id, for example `M1.3 Level format v1, validity, rail and claim`.
 - **Agents never push to `main` and never merge** their own PRs.
@@ -79,7 +79,7 @@ Each work item block has these fields:
 
 ### 1.3 Conventions for agents
 
-- **Session start.** From M0.2 on, a SessionStart hook runs `scripts/bootstrap.sh core` in cloud sessions whose working directory is this repository. Claude Code reads project hooks only from the working directory's `.claude/settings.json`, so a session started with several repositories runs `bash scripts/bootstrap.sh core` itself first. An item that names another tier (`web`, `contracts`, `firmware`, `zk`) runs `bash scripts/bootstrap.sh <tier>` first.
+- **Session start.** From M0.2 on, a SessionStart hook runs `scripts/bootstrap.sh core` in cloud sessions whose working directory is this repository. Claude Code reads project hooks only from the working directory's `.claude/settings.json`, so a session started with several repositories runs `bash scripts/bootstrap.sh core` itself first. An item that names another tier (`web`, `contracts`, `wedgie`, `zk`) runs `bash scripts/bootstrap.sh <tier>` first.
 - **Skills.** Load the skills an item lists before writing code. The project skills are:
   - [`deterministic-core`](.claude/skills/deterministic-core/SKILL.md)
   - [`journal-codec`](.claude/skills/journal-codec/SKILL.md)
@@ -108,7 +108,7 @@ Each work item block has these fields:
   - **Evidence for a new workflow** is its `pull_request` run on the PR that adds it. GitHub runs `schedule` only on the default branch, and `workflow_dispatch` only for workflow files already on the default branch, so neither can prove the PR that adds the workflow. Later items may dispatch it on their own branch (`actions_run_trigger` with `ref`).
   - **Heavy runs** use a reduced case count on `pull_request` and the full count on `schedule`. A scheduled `nightly.yml` run skips its work when `main` has no commit since the previous scheduled run. No other workflow skips scheduled work.
   - **Concurrency.** Every workflow sets a `concurrency` group per workflow and ref. Pull-request runs cancel in progress. Runs that deploy or send transactions never do: `season-ops.yml`, and `pages.yml` on pushes to `main`, set `cancel-in-progress: false`.
-  - **Caching and limits.** Every workflow caches Rust builds (Swatinem/rust-cache) and installed binaries (actions/cache), and gives every job a `timeout-minutes`. Artifacts the user flashes (UF2 files) set `retention-days: 90`.
+  - **Caching and limits.** Every workflow caches Rust builds (Swatinem/rust-cache) and installed binaries (actions/cache), and gives every job a `timeout-minutes`. Artifacts the user installs (wedgie app folders) set `retention-days: 90`.
   - **Results the agent needs** (gas tables, cycle tables, proof fixtures, preview URLs) are printed to the job log between `=== BEGIN <name> ===` and `=== END <name> ===`, and read with `get_job_logs` (`tail_lines`). Job summaries and artifacts are secondary outputs.
 - **Downloads.**
   - Pin every installer to an explicit version, for example `foundryup --install <version>` or `sp1up --version <version>`. A pinned installer fetches release assets from `github.com/<owner>/<repo>/releases/download/...`, which the proxy serves.
@@ -132,9 +132,9 @@ Each work item block has these fields:
 - **The PR body** follows the template from M0.1: the item id, the item's "Needs user" text, and the "done when" checklist. Each ticked line carries its evidence: the command and the tail of its output, or a CI run link.
 - **CI must be green.**
 - **Gates are shown to fail.** Where an item says to show a gate failing, the agent pushes a scratch commit that breaks the gate, links the failing run, and reverts the commit before review. A gate that is a local script may show its failing output in the PR instead, but each new CI gate fails once in CI.
-- **(user) lines** cover hardware checks, gating play tests and repository answers. Hardware and play steps run on the PR's own build: the UF2 artifact of the PR's CI run, and the PR's preview URL (M2.2 gives every PR one). M3.7 is a follow-up item of this kind: a hardware run of code that has already merged.
+- **(user) lines** cover hardware checks, gating play tests and repository answers. Hardware and play steps run on the PR's own build: the wedgie app artifact of the PR's CI run, and the PR's preview URL (M2.2 gives every PR one).
 - **Impression plays** (M2.2, M2.10) are not done-when lines and don't gate the merge. Their feedback becomes a follow-up item if it calls for a change.
-- **Milestone-closing PRs** (M0.7, M1.13, M2.10, M3.7, M4.14, M5.6) update the README status line and the status line of this file.
+- **Milestone-closing PRs** (M0.7, M1.13, M2.10, M3.9, M4.14, M5.6) update the README status line and the status line of this file.
 
 ### 1.5 How the user reviews
 
@@ -152,15 +152,15 @@ The agent works in an ephemeral cloud container. These facts were checked on 202
 | Area | State | Consequence for the plan |
 |---|---|---|
 | Rust | 1.97.0 stable via rustup. Targets `thumbv6m-none-eabi`, `wasm32-unknown-unknown`, `riscv32im-unknown-none-elf` install fine. The system `llvm-nm` is LLVM 18. | M0.2 installs ethblockdigger's 1.98.0 pin and rustup's `llvm-tools`, which matches rustc's LLVM |
-| Other runtimes | Node 22, npm 10, Python 3.13, CMake 3.28, jq; apt is reachable | npm-hosted tools (solc, binaryen, rp2040js, Playwright, wrangler) are preferred; system packages come from apt (`libudev-dev` for elf2uf2-rs) |
+| Other runtimes | Node 22, npm 10, Python 3.13, CMake 3.28, jq; apt is reachable | npm-hosted tools (solc, binaryen, Playwright, wrangler) are preferred; system packages come from apt (`arm-none-eabi-gcc` and `qemu-system-arm` for the wedgie tier, M3.8) |
 | Compute | 4 CPUs, 15 GB RAM, no swap, about 30 GB free disk, no GPU | zk proving runs on CPU only. The onchain-verifiable wrapping step of SP1 and RISC Zero runs in Docker by default and may need more RAM than this (M1.16, M1.17, M4.8 measure). |
 | Docker | CLI present, no daemon running; untested whether `dockerd` can be started | nitro-devnode runs on GitHub Actions runners (M4.2, M4.16); a local daemon is the secondary route |
-| Not installed | Foundry (`forge`, `cast`), solc, `arm-none-eabi-gcc`, wasm-pack, `libudev-dev` | M0.2 probes them. The Rust firmware shell avoids `arm-none-eabi-gcc` and the wasm build avoids wasm-pack. |
+| Not installed | Foundry (`forge`, `cast`), solc, `arm-none-eabi-gcc`, wasm-pack, `libudev-dev` | M0.2 probes them. The wasm build avoids wasm-pack. The wedgie's native module needs `arm-none-eabi-gcc` for its C glue (M3.8). |
 | GitHub downloads | `api.github.com`, release-note pages, and the pages of repositories not attached to the session return 403. Release assets under `github.com/<owner>/<repo>/releases/download/` are served (206 for the Foundry tarball and for SP1's `cargo_prove`), and so is `raw.githubusercontent.com`. | Pinned installers and direct asset URLs (§1.3). M0.2 records, per tool, which URLs it fetches and whether they are API or asset URLs. |
 | GitHub repository | `detychey` is an organization, and all its repositories are private, `jiro-ikusu` and `ethblockdigger` included. On GitHub Free, an organization gets 2,000 Actions minutes a month for private repositories, shared by all of them, and each job is billed rounded up to the minute; ethblockdigger's referee job took about 4 minutes. Private-repository runners have 2 vCPUs and about 7 GB RAM; public-repository runners have 4 vCPUs and 16 GB. | The private CI profile (§1.3, M0.4) and a minutes budget. Round A1 asks for an Actions spending limit, a paid plan, or a public repository (§15, question 18). On the free plan, branch protection and GitHub Pages are unavailable for private repositories. |
 | GitHub tools | MCP tools: open PRs, add labels, trigger and read workflows (`actions_run_trigger`, `actions_list`, `get_job_logs`), subscribe to PR activity (`subscribe_pr_activity`) | Whether artifacts can be fetched into the container is untested; M0.4 checks. Until then, results travel through log markers (§1.3). The user's replies wake a subscribed session (§1.2). |
 | Sessions | Ephemeral | A tiered bootstrap and a hook (M0.2), draft-PR claims (§1.2). Everything worth keeping is committed. |
-| Hardware | The Raspberry Pi Pico and the Waveshare Pico-LCD-1.3 are with the user | Emulator parity in CI (M3.3). The user flashes PR artifacts and plays on PR previews. |
+| Hardware | The wedgie (a Raspberry Pi Pico with the Waveshare Pico-LCD-1.3) is with the user | Parity of the native module in MicroPython's qemu port in CI (M3.8). The user installs PR artifacts on the wedgie and plays on PR previews. |
 
 Only the user can:
 
@@ -168,7 +168,7 @@ Only the user can:
 - answer the repository questions: license, visibility, Actions plan or spending limit, preview privacy;
 - change repository settings: enable Actions, set required checks where the plan allows;
 - set Actions secrets and cloud-environment variables;
-- satisfy (user) lines: flash and play on the hardware, play-test in the browser, and paste the results;
+- satisfy (user) lines: install and play on the wedgie, play-test in the browser, and paste the results;
 - create and fund testnet keys, and fund their own browser wallet;
 - open a prover-network account and approve its spend cap, if one is needed;
 - approve the scheduled season operations;
@@ -182,26 +182,27 @@ Only the user can:
 
 ```text
 core/                jiro-core: no_std, no alloc. Rules, codec, seeds, state hash, Recorder
-shell/               jiro-shell: no_std, not consensus. USB link codec and dirty-cell diff,
-                     shared by the firmware and the web app; never hashed
+shell/               jiro-shell: no_std, not consensus. Dirty-cell diff, shared by the web
+                     app and the wedgie's native module; never hashed
 tools/               jiro-tools: native CLI (vectors, replay, level, playtest, calibrate,
-                     difffuzz, pack)
+                     difffuzz)
 tools/xcheck/        Node + ethers: worked examples and keccak/deadline fixtures
 web/                 Vite + TypeScript app. web/wasm is jiro-wasm (cdylib)
-firmware/            own Cargo workspace: drivers (host-testable), app (jiro-firmware),
-                     emu/ (rp2040js runner, transcripts/)
+wedgie/              natmod/ (rust/: jiro-natmod, own Cargo workspace; glue/: C glue,
+                     jiro_core.mpy), app/ (the game), check/ (the vector check app),
+                     scripts/ (builds, MicroPython's qemu port, vector runs)
 referee/stylus/      jiro-referee-stylus
 referee/zk/          guest and host of the chosen zkVM, own workspace
 contracts/           Solidity sources, tests, abi/ (generated)
 levels/              src/*.txt sources, NN-name.bin, targets.json, README.md (generated)
-vectors/             format/, game/, levels/, derivations.json, pack.bin, COVERAGE.md, README.md
+vectors/             format/, game/, levels/, derivations.json, COVERAGE.md, README.md
 seasons/             calibration-1.json (M2.9), testnet-0.json (M4.14), testnet-1.json (M5.5)
 scripts/             bootstrap, CI checks, float-probe/ (own workspace),
                      contracts/ (Node package: deploy, preflight, e2e, localnet, stylus-gas,
                      activation, season operations; nitro/ holds the vendored dev-node script)
-docs/                TOOLING, VERIFICATION, ECONOMY, LINK, DEPLOYMENT, SEASON_RUNBOOK,
+docs/                TOOLING, VERIFICATION, ECONOMY, DEPLOYMENT, SEASON_RUNBOOK,
                      TESTNET, TESTNET-1-REPORT
-reports/             playtest, calibration, bot and device reports
+reports/             playtest, calibration, bot and wedgie reports
 deployments/         one record per network, with a list of contract generations
 .github/workflows/   ci, nightly, pages, stylus-gas, zk-prove, e2e, season-ops
 ```
@@ -211,7 +212,7 @@ deployments/         one record per network, with a list of contract generations
 **Cargo workspaces.**
 
 - The root workspace holds `core`, `shell`, `tools`, `web/wasm` and `referee/stylus`.
-- `firmware/`, `referee/zk/` and `scripts/float-probe/` are separate workspaces, because they have their own targets, profiles or toolchains. So is the zk guest, if the framework builds it on its own.
+- `wedgie/natmod/rust/`, `referee/zk/` and `scripts/float-probe/` are separate workspaces, because they have their own targets, profiles or toolchains. So is the zk guest, if the framework builds it on its own.
 - Cargo ignores the root profiles inside a separate workspace, so each workspace root repeats the profiles of §3.3. `scripts/check-profiles.sh` (M0.4) enforces this.
 
 ### 3.2 Pins
@@ -226,15 +227,15 @@ deployments/         one record per network, with a list of contract generations
 | stylus-sdk | 0.10.8, as ethblockdigger | `referee/stylus/Cargo.toml` |
 | cargo-stylus | 0.10.10, as ethblockdigger's preflight | `scripts/bootstrap.sh`, workflows |
 | wasm-opt | npm `binaryen@120.0.0` | `referee/build-wasm.sh` |
-| Node, npm | 22, 10 | CI, `web/`, `tools/xcheck/`, `scripts/contracts/`, `firmware/emu/` |
+| Node, npm | 22, 10 | CI, `web/`, `tools/xcheck/`, `scripts/contracts/` |
 | ethers | 6, exact version in each lockfile | `tools/xcheck/`, `web/`, `scripts/contracts/` |
 | solc | 0.8.28 with ethblockdigger's `evmVersion` (shanghai) | `contracts/` |
 | OpenZeppelin | 5, exact version | `contracts/` |
 | Contract toolchain | Foundry at an exact version, or ethblockdigger's harness, chosen by the M0.2 probe (P2) | `contracts/`, `scripts/bootstrap.sh` |
 | Foundry in workflows | `foundry-rs/foundry-toolchain` at an exact version, whatever P2 decides, because nitro-devnode's script calls `cast` | `stylus-gas.yml`, `e2e.yml` |
-| embassy-rp, embassy-executor, embassy-time, embassy-usb | exact versions | `firmware/Cargo.lock` |
-| elf2uf2-rs, rp2040js, Playwright, wrangler | versions recorded by M0.2 | `scripts/bootstrap.sh`, lockfiles |
-| RP2040 bootrom image for rp2040js | a `raw.githubusercontent.com` URL at a fixed commit, or a shallow clone at a tag, and its sha256 (M3.3) | `firmware/emu/` |
+| MicroPython, for `mpy_ld`, `mpy-cross` and the qemu port | v1.29.0, commit 0fd6c573: the version the wedgie's firmware 0.3.76 runs | `scripts/bootstrap.sh` (`wedgie` tier), M3.8 |
+| arm-none-eabi-gcc, qemu-system-arm, pyelftools | versions recorded by M3.8; pyelftools 0.32, as the spike | `scripts/bootstrap.sh` (`wedgie` tier) |
+| Playwright, wrangler | versions recorded by M0.2 | `scripts/bootstrap.sh`, lockfiles |
 | nitro-devnode | `run-dev-node.sh` vendored from OffchainLabs/nitro-devnode at a fixed commit sha, and `NITRO_NODE_VERSION` set explicitly (M4.2) | `scripts/contracts/nitro/`, `stylus-gas.yml`, `e2e.yml` |
 | GitHub Actions | each third-party action at an exact version | workflows |
 | zkVM toolchain | RISC Zero (M1.12): `risc0-zkvm` and `risc0-build` `=3.0.6`, Rust toolchain `r0.1.97.0` (`rustc 1.97.0-dev`) | `referee/zk/`, `scripts/bootstrap.sh` (`zk` tier) |
@@ -260,7 +261,7 @@ opt-level = "z"
 ```
 
 - README §3 requires `overflow-checks = true` in every build profile, so that all builds behave the same. Every workspace root of §3.1 carries these lines.
-- `release` keeps opt-level 3 for native tools, bots and `--release` test suites, so time gates measure fast code. `referee/build-wasm.sh` builds with `--profile stylus`, the size settings of ethblockdigger's [`referee/Cargo.toml`](https://github.com/detychey/ethblockdigger/blob/main/referee/Cargo.toml). The firmware may define its own size profile the same way.
+- `release` keeps opt-level 3 for native tools, bots and `--release` test suites, so time gates measure fast code. `referee/build-wasm.sh` builds with `--profile stylus`, the size settings of ethblockdigger's [`referee/Cargo.toml`](https://github.com/detychey/ethblockdigger/blob/main/referee/Cargo.toml). The native module's workspace, `wedgie/natmod/rust`, defines its own size profile the same way.
 
 `jiro-core` and `jiro-shell` start with:
 
@@ -273,7 +274,7 @@ opt-level = "z"
 ```
 
 - Grid access goes through a bounded cell-index type and `get`, so stepping code cannot index out of bounds: y × 60 + x from two `u8` coordinates can reach 15,555.
-- With `forbid(unsafe_code)` the core cannot own a mutable static. Its large buffers (grid, capture stack, journal) are fixed-size fields of the structs that use them (`Game`, `Recorder`), or are passed in as `&mut`. The targets (`jiro-wasm`, the firmware) place those structs in their own statics, with whatever minimal `unsafe` or cell type their platform needs.
+- With `forbid(unsafe_code)` the core cannot own a mutable static. Its large buffers (grid, capture stack, journal) are fixed-size fields of the structs that use them (`Game`, `Recorder`), or are passed in as `&mut`. The targets place those structs in their own memory, with whatever minimal `unsafe` or cell type their platform needs: `jiro-wasm` in statics, the native module in buffers the wedgie app allocates.
 - `jiro-wasm` is `no_std` only on wasm32: `#![cfg_attr(target_arch = "wasm32", no_std)]` with `#[cfg(target_arch = "wasm32")] #[panic_handler]`. Host builds of the workspace (clippy, build, test) then use std.
 
 ### 3.4 CI jobs
@@ -294,9 +295,8 @@ The workflow rules of §1.3 apply to every row. In the private profile, `ci.yml`
 | web | `ci.yml` | M2.1 | `npm ci`, typecheck, lint, vitest, build | web |
 | levels-drift | `ci.yml` | M2.4 | Rebuild `levels/` and `levels/README.md`, then `scripts/check-drift.sh levels/` | rust |
 | contracts | `ci.yml` | M4.3 | Contract tests; regenerate `contracts/abi/`, then `scripts/check-drift.sh contracts/abi/` | contracts |
-| firmware | `ci.yml` (job-level path filter) | M3.1; UF2s from M3.3 and M3.4 | Firmware build; `bringup.uf2`, `vectors.uf2` and `jiro-firmware.uf2` artifacts; static memory gate | firmware |
-| firmware-emu | `ci.yml` (PR subset); `nightly.yml` (full set and packed difffuzz cases) | M3.3 | The vectors firmware in rp2040js; regenerated transcripts checked for drift | firmware |
-| nightly | `nightly.yml`: `pull_request` at reduced counts, `schedule` at full counts | M1.10; extended by M1.12, M1.13, M2.9, M3.3 | Long property runs, 100,000 random journals, the minion coverage long run, difffuzz, the zk-exec full set, `calibrate --check`, the firmware-emu full set | heavy |
+| wedgie | `ci.yml` (job-level path filter) | M3.8; the app from M3.9 | `jiro_core.mpy` built and its sha256 printed; every game and gate-set vector through the module in MicroPython's qemu port; the app's qemu play test; `wedgie-check` and `wedgie-app` artifacts | wedgie |
+| nightly | `nightly.yml`: `pull_request` at reduced counts, `schedule` at full counts | M1.10; extended by M1.12, M1.13, M2.9 | Long property runs, 100,000 random journals, the minion coverage long run, difffuzz, the zk-exec full set, `calibrate --check` | heavy |
 | pages | `pages.yml`: `pull_request` and pushes to `main` | M2.2 | Build, Playwright smoke test, Cloudflare Pages deploy: one preview per PR, production on `main` | own workflow |
 | stylus-gas | `stylus-gas.yml`: `pull_request` on `core/`, `referee/`, `vectors/`, its script and itself | M4.2; gate set from M4.9; `cargo stylus verify` dispatch from M4.14 | The deployed wasm on nitro-devnode: outcomes equal native on the vectors and the 200 fixed cases, gas per vector | heavy |
 | zk-prove | `zk-prove.yml`: `pull_request` on itself and the host's prove module; `workflow_dispatch` | M4.8 | A real proof, the wrapping step, timings, the proof fixture | heavy |
@@ -312,7 +312,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 | M0 Rules freeze | No open decision blocks M1 | M0.2 (D1), M0.5, M0.6, M0.7 |
 | M1 Core | Tests pass; vectors committed; zkVM chosen; cycle counts recorded | M1.9, M1.10, M1.12, M1.13 |
 | M2 Browser | All 16 levels playable; bot clear rates on target | M2.9, M2.10 |
-| M3 Pico | Device state-hash traces match the native build | M3.3 (emulator), M3.7 (hardware) |
+| M3 wedgie app | The module reproduces every vector's outcome and trace on qemu's Cortex-M0, and its vector check passes on a wedgie; all 16 levels play in Training on a wedgie | M3.8 (qemu and the check app), M3.9 (Training) |
 | M4 Referee and contracts | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. | M4.14, with the gas gate below measured in M4.9 |
 | M5 dApp and season 1 | A full season closes and pays out on testnet | M5.6 |
 
@@ -1413,7 +1413,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `reports/calibration-1.md`.
   - `nightly.yml`: a `calibrate --check` drift step, on `schedule` only.
 
-  **Freeze.** Merging this PR freezes the levels and `calibration-1.json`, which M3.5, M4.9, M4.14 and M5.5 use. After that, a level change or a `RULES_VERSION` bump follows the `CLAUDE.md` calibration rule, and its PR lists the measurements it invalidates.
+  **Freeze.** Merging this PR freezes the levels and `calibration-1.json`, which M3.9, M4.9, M4.14 and M5.5 use. After that, a level change or a `RULES_VERSION` bump follows the `CLAUDE.md` calibration rule, and its PR lists the measurements it invalidates.
 - **Done when:**
   - (user) the user's play-test result is in a PR comment: one line per level, OK or what feels wrong;
   - `calibrate --check` exits 0, in under 15 minutes in the container;
@@ -1460,200 +1460,102 @@ Each milestone's README §9 "done when" closes when these items merge:
 - **Verify with:** `cargo run -p jiro-tools --release --locked -- playtest --levels levels/ --only 1 --runs 1000 --seed 1 --check levels/targets.json`, and the commands of `reports/bold-sweep.md` for its rows.
 - **Skills:** `parity-testing`. **README:** §5. **Needs user:** approve the bold bot, the reference mix and the retuned L01 (merge; round D3b).
 
-## 8. M3 Pico
+## 8. M3 wedgie app
 
-Bring-up (M3.1) starts during M1; README §9 allows it to run in parallel at any time. The items below use Rust embassy-rp (D1). Only if M0.2's blinky fails does M0.2 rewrite them, for the fallback the owner then picks.
+On 2026-11-02 the device became a wedgie app that plays Training only (README §13 D1, D15). The wedgie keeps its own MicroPython firmware; the app is MicroPython, and the core runs in it as a native module, `jiro_core.mpy`. The spike of PR #42 (`spikes/wedgie-natmod/` on branch `claude/wedgie-app-spike`) built that module and ran it on qemu and on a real wedgie. M3.8-M3.10 replace M3.1-M3.7, which were written for Rust firmware on embassy-rp and a USB link to the browser. Their ids stay reserved, and their designs stay in this file's history at 2dd13a2.
 
 | ID | Title | Depends on | Size | Needs user |
 |---|---|---|---|---|
-| M3.1 | Firmware workspace, LCD and input bring-up | M0.2, M1.1 | M | Flash; check the display and 9 inputs |
-| M3.2 | Link protocol and USB CDC transport | M3.1, M1.11 | M | none |
-| M3.3 | Vector pack, vectors firmware, emulator parity | M3.2, M1.9, M1.10 | M | none |
-| M3.6 | Device page "Run vectors" | M3.3, M2.1 | M | none |
-| M3.7 | Hardware vector run | M3.6, M2.2 | S | Flash; run the vectors; paste the report |
-| M3.4 | Device game loop and live mirror | M2.1, M2.2, M3.3, M3.6 | M | Play; report timing |
-| M3.5 | Firmware Training mode with the 16 levels | M3.4, M2.9 | M | Play all 16 levels; post the PASS list |
+| M3.1 | Firmware workspace, LCD and input bring-up: **superseded** by M3.8 (D1) | M0.2, M1.1 | M | none |
+| M3.2 | Link protocol and USB CDC transport: **superseded**; the link returns with device Challenge (§16) | M3.1, M1.11 | M | none |
+| M3.3 | Vector pack, vectors firmware, emulator parity: **superseded** by M3.8 (D1) | M3.2, M1.9, M1.10 | M | none |
+| M3.6 | Device page "Run vectors": **superseded** by M3.8's check app (D1, D15) | M3.3, M2.1 | M | none |
+| M3.7 | Hardware vector run: **superseded** by M3.8 (D1) | M3.6, M2.2 | S | none |
+| M3.4 | Device game loop and live mirror: **superseded** by M3.9 (D1, D15) | M2.1, M2.2, M3.3, M3.6 | M | none |
+| M3.5 | Firmware Training mode with the 16 levels: **superseded** by M3.9 (D1) | M3.4, M2.9 | M | none |
+| M3.8 | wedgie native module, reproducible build and qemu parity | M1.9, M2.9 | M | Install the check app; report PASS |
+| M3.9 | wedgie app: Training with the 16 levels | M3.8, M2.9, M3.10 if filed | L | Play; report timing and the PASS list |
+| M3.10 | In-place constructors for a smaller core stack (only if M3.9's RAM check fails) | M3.8 | M | none |
 
-#### M3.1 Firmware workspace, LCD and input bring-up
+#### M3.1-M3.7 Superseded
 
-- **Goal:** the device shell builds in CI and drives the display and every input, before any gameplay depends on it.
-- **Deliverables:** `firmware/`, its own Cargo workspace:
-  - **The workspace root manifest,** with the §3.3 profiles and a release opt-level chosen for size.
-  - **`firmware/.cargo/config.toml`:** `build.target = "thumbv6m-none-eabi"` and the linker settings, so builds from `firmware/` target the device.
-  - **`firmware/drivers` (`jiro-firmware-drivers`):**
-    - the ST7789VW command stream, the 4 × 4 cell blit, and the pin-to-mask table;
-    - generic over the embedded-hal 1.0 traits, so host tests can record the SPI byte stream and drive the pins.
-  - **`firmware/app` (`jiro-firmware`):**
-    - embassy-rp, embassy-executor and embassy-time, pinned;
-    - `memory.x` for 2 MB of flash and 264 KB of RAM;
-    - no global allocator;
-    - path dependencies on `../../core` and `../../shell`.
-  - **Wiring, per README §2:**
-    - SPI1 with CLK on GP10, DIN on GP11, CS on GP9, DC on GP8, RST on GP12 and BL on GP13, and the Waveshare reference init sequence;
-    - inputs with pull-ups, active-low, mapped to the §6.1 mask per D8. Y and the joystick press are never read into the mask.
-  - **`bringup` binary:** a blue border, a black interior, and one indicator per input, 9 in all.
-  - **`scripts/check-fw-mem.sh`.** The float check stays on the probe (M0.4), which covers the core on `thumbv6m-none-eabi`; the firmware itself may use floats in rendering effects that never feed back into game state (`rp2040-firmware` skill).
-  - **The firmware CI job,** with a job-level path filter: `apt-get install -y libudev-dev pkg-config` and elf2uf2-rs (or the converter M0.2 chose); a release build; `bringup.uf2` uploaded as an artifact with `retention-days: 90`; a `.text`/`.data`/`.bss` report.
+**Superseded** on 2026-11-02 by the wedgie app (README §13 D1) and offline Training on the device (D15). M3.1's PR #39, parked, is superseded too; the owner closes it. What the old items did, and where it went:
+
+- **M3.1** (embassy-rp workspace, ST7789 driver, pin table, `bringup.uf2`): the wedgie's firmware drives the display and the inputs. The pin-to-mask mapping moves to M3.9.
+- **M3.2** (link protocol over USB CDC, `docs/LINK.md`): served the live mirror, the Device page and device Challenge. None is in v1; a link returns with device Challenge (§16).
+- **M3.3** (vector pack, vectors firmware, rp2040js parity): M3.8 checks the module in MicroPython's qemu port instead.
+- **M3.6** (Device page over Web Serial) and **M3.7** (hardware vector run): M3.8's check app shows PASS or FAIL on the wedgie's own screen.
+- **M3.4** (embassy game loop, live mirror) and **M3.5** (firmware Training): M3.9, without the mirror.
+
+#### M3.8 wedgie native module, reproducible build and qemu parity
+
+- **Goal:** README §9's M3 parity: jiro-core as the wedgie's native module, built reproducibly in CI and checked against every golden vector on a Cortex-M0 MicroPython, before any game code depends on it.
+- **Deliverables,** moved from the spike, `spikes/wedgie-natmod/` on branch `claude/wedgie-app-spike` (PR #42):
+  - **`wedgie/natmod/rust` (`jiro-natmod`):** its own Cargo workspace, with the §3.3 profiles and a release opt-level chosen for size. A `staticlib` for `thumbv6m-none-eabi`, built with `-C relocation-model=pic`, with the spike's `extern "C"` interface (`jiro_api.h`) and a path dependency on `../../../core`. It has no `.data` and no `.bss`.
+  - **`wedgie/natmod/glue`:** `jiro.c`, `call_on_stack.S` and the Makefile, which links the glue's objects before the Rust object. MicroPython v1.29.0's `mpy_ld` builds the armv6m entry trampoline from `mpy_init`'s offset in its own section, so the object that defines `mpy_init` must come first: the spike's first build froze a wedgie this way. `call_on_stack.S` runs the core on a 64 KB stack the app allocates, because the rp2 port's C stack is 8 KB.
+  - **`wedgie/scripts/`:** build the Rust object and the module; build MicroPython v1.29.0's qemu port for a Cortex-M0 board with native modules enabled and an 8 KB C stack, as the rp2 port has; run vectors through the module there; and the spike's check of `mpy_ld`'s armv6m rules.
+  - **`wedgie/check/`:** the spike's test app (`wedgie.json`, `jiro.py`, its code precompiled with MicroPython v1.29.0's `mpy-cross`, and a vector file generated from `vectors/` at build time). It replays its vectors through the module and the Recorder, and shows PASS or FAIL per vector on the screen.
+  - **The `wedgie` tier** of `scripts/bootstrap.sh`, replacing `firmware`: `arm-none-eabi-gcc`, `qemu-system-arm`, pyelftools 0.32, and MicroPython at tag v1.29.0, commit 0fd6c573, with each version and install route recorded in `docs/TOOLING.md`.
+  - **The root workspace** excludes `wedgie/natmod/rust` instead of `firmware`.
+  - **The `wedgie` CI job** (§3.4), with a job-level path filter on `core/`, `shell/`, `wedgie/`, `vectors/`, `scripts/bootstrap.sh` and the workflow. It caches the MicroPython builds, builds `jiro_core.mpy`, prints its size and sha256 between log markers, runs the vectors through it in qemu, and uploads `wedgie/check/` with the module as the `wedgie-check` artifact, with `retention-days: 90`.
+  - **`wedgie/README.md`:** building, installing with `python3 wedgie.py install .`, recovering a wedgie that hangs on an app (hold both grey buttons while plugging in, then `wedgie.py uninstall`), and the spike's RAM and stack findings with their source.
 - **Done when:**
-  - CI produces the `bringup` UF2;
-  - `.data` + `.bss` is printed and at most 64 KiB;
-  - the map file has no `__rust_alloc` symbol;
-  - host tests show that the init bytes equal the committed table, and that a one-cell change emits exactly one CASET/RASET/RAMWR window of 16 pixels;
-  - a host test asserts the pin-to-mask table: GP2 → bit 0 (up), GP18 → bit 1 (down), GP16 → bit 2 (left), GP20 → bit 3 (right), GP15 → bit 4 (A), GP17 → bit 5 (B), GP19 → bit 6 (X), and GP21 (Y) and GP3 (press) are never read;
-  - `check-profiles.sh` passes with `firmware/` included;
-  - (user) on hardware, the border shows and all 9 indicators respond: a PASS comment with a photo.
+  - the qemu run passes every vector of `vectors/game/` and `vectors/levels/` through the module, in one MicroPython session: replay's code, the Outcome, the tick count, the trace keccak and the last state hash; and, for every vector that replay accepts, the Recorder's journal and final state hash;
+  - a vector with one altered journal byte fails the run, shown once in CI (§1.4);
+  - two clean builds print the same sha256 of `jiro_core.mpy`;
+  - the module's header is that of an armv6m module of MicroPython v1.29.0, the same as the wedgie firmware's own native modules;
+  - the stack peak of `start`, `step` and `replay` is printed, and stays under the 64 KB stack;
+  - `check-profiles.sh` passes with `wedgie/natmod/rust` included, and the check app's folder keeps the wedgie's app limits: at most 30 files and 256 KB, every file name starting with its `mod`;
+  - (user) on a wedgie, the check app from this PR's CI run shows PASS for every vector it carries.
 - **Verify with:**
-  - `cd firmware && cargo build --release --locked -p jiro-firmware --bin bringup && elf2uf2-rs target/thumbv6m-none-eabi/release/bringup bringup.uf2`
-  - `cd firmware && cargo test --locked -p jiro-firmware-drivers --target x86_64-unknown-linux-gnu`
-  - `bash scripts/check-fw-mem.sh firmware/target/thumbv6m-none-eabi/release/bringup && bash scripts/check-profiles.sh`
-- **Skills:** `rp2040-firmware`; tier `firmware`. **README:** §2, §6.1. **Needs user:** flash `bringup.uf2` from this PR's CI run (hold BOOTSEL, plug in USB, copy the file), check the display and the 9 inputs, and comment PASS with a photo (round C1).
+  - `bash scripts/bootstrap.sh wedgie && make -C wedgie/natmod/glue && sha256sum wedgie/natmod/glue/jiro_core.mpy`
+  - `python3 -I wedgie/scripts/qemu_natmod_vectors.py <firmware.elf> wedgie/natmod/glue/jiro_core.mpy . --all`, under a timeout, since a module that hard-faults hangs qemu
+  - `bash scripts/check-profiles.sh`
+- **Skills:** `rp2040-firmware`, `parity-testing`; tier `wedgie`. **README:** §2, §3, §9 M3. **Needs user:** download this PR's `wedgie-check` artifact, run `python3 wedgie.py install .` in its folder, press green on the wedgie, and comment PASS or the failing lines with a photo (round C1).
 
-#### M3.2 Link protocol and USB CDC transport
+#### M3.9 wedgie app: Training with the 16 levels
 
-- **Goal:** a single implementation of the USB link protocol, shared by the firmware and the web app.
+- **Goal:** README §8.1 Training on the wedgie: all 16 levels, offline, at 15 Hz, with local best scores.
 - **Deliverables:**
-  - `shell/src/link.rs`:
-    - frames of u8 type, u16 big-endian length, payload and CRC-16;
-    - down messages: LoadLevel (level bytes, `runNonce`, `levelIndex`, mode), Start;
-    - up messages:
-      - Hello (firmware version, `RULES_VERSION`). The firmware version is the crate version constant, never a git sha, so recorded transcripts stay stable.
-      - Event (tick, mask), sent as it happens;
-      - LevelEnd (outcome, final state hash, journal bytes);
-      - Trace (tick, 32-byte state hash), in test builds only;
-      - TickStats, every 15 ticks, carrying the current tick: the heartbeat M5.4 relies on;
-      - Error;
-    - strict decoding.
-  - Link exports in `jiro-wasm`.
-  - `firmware/app/src/usb.rs`: embassy-usb CDC-ACM. Emulator builds use UART0 instead.
-  - `docs/LINK.md`: the protocol, versioned and not consensus.
-  - A one-line pointer to `docs/LINK.md` in README §6.5.
+  - **Module exports** for the renderer, in `jiro-natmod` and the glue: the cells that changed, from `jiro-shell`'s dirty-cell diff so that it exists once; the player, the boss and the minions; lives, claim and shield; the end of the level and its Outcome.
+  - **`wedgie/app/`**, a wedgie app (`mod` `jiro`, entry `run`). Its code is precompiled with MicroPython v1.29.0's `mpy-cross` behind a small `jiro.py`, which allocates the core's stack and Recorder before it imports anything else, as the spike's RAM findings require.
+    - **The tick:** every 66,667 µs on an absolute schedule. A late tick is late; it is never skipped or stepped twice.
+    - **Each tick:** sample the inputs once, into the §6.1 mask per D8, with Y and the joystick press never in it; step the Recorder; redraw the changed cells and the entities; push only the regions that changed.
+    - **Timing:** step time and render time measured separately, with the worst case and an overrun counter, shown on the end screen.
+    - **Levels:** the 16 levels' bytes and the weights of `seasons/calibration-1.json`, generated into the app at build time.
+    - **Screens (P12):** a level select outside play, with the joystick and green (A), never journaled; between-level screens with claim, score and lives; a brief overlay at level start. See §15, question 11.
+    - **Training `runNonce`:** from the wedgie's random source, since §6.3 allows any value in training.
+    - **Best scores:** per level in `/saves/jiro/`, which survives reinstalls.
+  - **A qemu play test,** with the screen and inputs stubbed as the spike's `qemu_app_check.py` does: it plays level 1 with scripted inputs to the summary screen, and checks the journal and the score against native replay. It runs with the heap filled down to the free RAM a wedgie reports with no app: 137,760 bytes in the spike.
+  - **The `wedgie` CI job** builds `wedgie/app/` with the module and uploads it as the `wedgie-app` artifact, with `retention-days: 90`.
+  - **Timing and RAM** measured on the wedgie, committed to `reports/wedgie-<date>.md`.
+
+  **If the app does not fit.** When the qemu play test fails at the free RAM above, or a wedgie reports a MemoryError in round E1, this item's draft PR files M3.10 with the shortfall it measured, and waits for it: it stacks on M3.10's PR or rebases after it merges (§1.2). Otherwise this PR marks M3.10 "not built".
 - **Done when:**
-  - round-trip tests pass;
-  - truncated, oversized, bad-CRC and unknown-type frames are rejected, with a test each;
-  - the firmware builds with USB enabled.
+  - the qemu play test passes in CI, at the free RAM above;
+  - the app's folder keeps the wedgie's app limits, checked as in M3.8;
+  - the free heap and the largest free block after start are printed over USB, and recorded;
+  - (user) on a wedgie, each of the 16 levels can be selected, at least one is played to its end with captures, the overrun counter shows 0 and the worst tick is under 50 ms, and a best score survives unplugging: the user posts the PASS list of the 16 levels and the two values.
+
+  This closes README §9's M3, so this PR updates the status lines.
+- **Verify with:** `bash scripts/bootstrap.sh wedgie && make -C wedgie/natmod/glue && bash wedgie/scripts/build-app.sh && python3 -I wedgie/scripts/qemu_app_check.py <firmware.elf> wedgie/app 137760`
+- **Skills:** `rp2040-firmware`, `deterministic-core`; tier `wedgie`. **README:** §2, §4.4, §6.1, §6.2, §8.1, §9 M3. **Needs user:** install this PR's `wedgie-app` artifact, select each of the 16 levels, play at least one to its end, unplug and replug, and post the PASS list, the overrun counter and the worst tick, with any comment on readability (round E1).
+
+#### M3.10 In-place constructors for a smaller core stack (only if M3.9's RAM check fails)
+
+- **When.** The core needs about 63 KB of stack because `start` builds its large structs on the stack (`start` peaks at 62,784 bytes, PR #42), so the app gives up 64 KB of its about 137 KB. M3.9's draft PR files this item, with the shortfall it measured, if its qemu play test fails at the free RAM a wedgie reports with no app, or if a wedgie reports a MemoryError in round E1; M3.9 then waits for it. Otherwise M3.9 marks it "not built".
+- **Goal:** the core runs within a stack small enough for the app to fit, without changing any outcome.
+- **Deliverables:** constructors in the core that initialize `Game` and `Recorder` in place, in memory the caller provides; `jiro-natmod` and the glue using them; the smaller stack in `wedgie/check/jiro.py`, which M3.9's app takes over; the new stack peaks in `wedgie/README.md`.
+- **Done when:**
+  - `bash scripts/check-rules-version.sh --reverse` passes: no vector changed and no version bumped;
+  - every `ci.yml` parity job that exists on `main` is green;
+  - M3.8's qemu run passes every vector through the module on the smaller stack, with the heap filled down to 137,760 bytes free; the stack peaks it prints fit that stack, and the stack saved covers the shortfall M3.9 reported;
+  - `zk-host image-id` prints the image id that `ZkReferee` pins, and `referee/build-wasm.sh` prints the Stylus wasm's sha256 of `main`. If either changed, the PR states the `ZkReferee` redeploy it forces, and it merges only while no season is open and before the next season's referee is deployed: the freeze rule of `docs/SEASON_RUNBOOK.md` (M5.5).
 - **Verify with:**
-  - `cargo test -p jiro-shell --locked`
-  - `cd firmware && cargo build --release --locked -p jiro-firmware`
-- **Skills:** `rp2040-firmware`, `journal-codec`; tier `firmware`. **README:** §6.5. **Needs user:** none.
-
-#### M3.3 Vector pack, vectors firmware, emulator parity
-
-- **Goal:** README §9's M3 done-when checked in an emulator in CI: the device build's traces match the native build.
-- **Deliverables:**
-  - **`jiro-tools pack`:** writes `vectors/pack.bin`, holding every vector's level, nonce, `levelIndex`, mode and journal. It is drift-checked. `pack --difffuzz target/difffuzz --out target/difffuzz-pack.bin` packs a small set of M1.10's cases, generated first, for the nightly run.
-  - **The `vectors` firmware binary:**
-    - embeds `pack.bin`;
-    - replays every vector with the device's own core build;
-    - streams Trace and LevelEnd frames;
-    - paints the stack, to report its high-water mark.
-  - **`firmware/emu/{package.json, package-lock.json, run.mjs}`:**
-    - runs the firmware in rp2040js, pinned, under Node. The rp2040js npm package ships no loader and no bootrom, so `run.mjs` carries its own UF2 loader, which writes the UF2 blocks the firmware job produces into flash.
-    - the bootrom comes from a `raw.githubusercontent.com` URL at a fixed commit (rp2040js's `demo/bootrom.ts`), or from a shallow clone of raspberrypi/pico-bootrom at a tag (the B1 image), checked against its sha256;
-    - reads the UART frames and compares them with `vectors/**/*.trace`;
-    - reports the first differing tick.
-  - **`firmware/emu/transcripts/run-vectors-subset.bin`:** the recorded frame stream of the PR subset, for M3.6's mock serial port. The firmware-emu job regenerates it and checks it with `check-drift.sh`.
-  - **The firmware job** converts the `vectors` binary to `vectors.uf2` and uploads it, on PRs and on pushes to `main`, with `retention-days: 90`.
-  - **The firmware-emu CI job,** with a job-level path filter on `core/`, `shell/`, `firmware/` and `vectors/`, and a time budget: the format vectors and 4 game vectors on PRs. `nightly.yml` gains the full set and the packed difffuzz cases.
-
-  If rp2040js cannot run embassy's clock or USB setup, the `vectors` binary uses a minimal rp2040-hal main over UART instead. The PR records which path works.
-- **Done when:**
-  - the emulator reports PASS for the PR subset in CI, and this PR's `nightly.yml` run is green;
-  - a local emulator run passes the full set and the packed difffuzz cases, with its command, output and duration in the PR;
-  - static RAM plus the stack high-water mark is at most 50 % of 264 KB;
-  - the transcript regenerates with no drift;
-  - CI uploads `vectors.uf2`;
-  - the bootrom source and sha256 are recorded in `docs/TOOLING.md`.
-- **Verify with:**
-  - `cargo run -p jiro-tools --locked -- pack && bash scripts/check-drift.sh vectors/pack.bin`
-  - `cd firmware && cargo build --release --locked -p jiro-firmware --bin vectors && elf2uf2-rs target/thumbv6m-none-eabi/release/vectors vectors.uf2 && node emu/run.mjs vectors.uf2 ../vectors`
-  - `cargo run -p jiro-tools --release --locked -- difffuzz --seed 1 --cases 200 --out target/difffuzz && cargo run -p jiro-tools --locked -- pack --difffuzz target/difffuzz --out target/difffuzz-pack.bin`
-- **Skills:** `rp2040-firmware`, `parity-testing`; tier `firmware`. **README:** §6.5, §9 M3. **Needs user:** none.
-
-#### M3.6 Device page "Run vectors"
-
-- **Goal:** a one-click hardware vector run in the browser, tested before anyone flashes a device.
-- **Deliverables:**
-  - `web/src/serial.ts`, a Web Serial wrapper over the M3.2 link exports.
-  - `web/src/pages/device.ts`, with a "Run vectors" button. It:
-    - connects over Web Serial;
-    - compares the streamed hashes with the traces bundled into the site;
-    - shows PASS or FAIL per vector, with the first differing tick;
-    - builds a JSON report with the keys `firmwareVersion`, `rulesVersion`, `results` (per vector: `name`, `pass`, `firstDifferingTick`), `staticRam` and `stackHighWater`, offered for download and through a "Copy report" button, so the user can paste it into a PR comment.
-  - `web/test/device.test.ts`: a mock SerialPort that replays M3.3's transcript.
-- **Done when:**
-  - the transcript produces PASS for every vector in it;
-  - a corrupted transcript byte produces FAIL with its tick;
-  - the copied report equals the downloaded one;
-  - an unsupported-browser message shows outside desktop Chrome and Edge.
-- **Verify with:** `npm --prefix web test -- device`
-- **Skills:** `rp2040-firmware`, `parity-testing`; tier `web`. **README:** §6.5. **Needs user:** none.
-
-#### M3.7 Hardware vector run
-
-- **Goal:** README §9's M3 done-when on the real device.
-- **Deliverables:**
-  - a `ci.yml` run on `main` dispatched by the agent (`actions_run_trigger`, `workflow_dispatch`, so every step runs), and the direct link to that run's `vectors.uf2` artifact, posted in the PR;
-  - `reports/device-<date>.json`: the report the user pastes, committed by the agent;
-  - the status lines.
-- **Done when:**
-  - (user) the Device page report is pasted into a PR comment;
-  - the committed report shows PASS for every vector;
-  - static RAM plus the stack high-water mark in the report is at most 135,168 bytes, 50 % of the RP2040's 270,336.
-
-  This closes README §9's M3.
-- **Verify with:**
-  - `jq -e 'all(.results[]; .pass)' reports/device-*.json`
-  - `jq -e '.staticRam + .stackHighWater <= 135168' reports/device-*.json`
-- **Skills:** `rp2040-firmware`. **README:** §9 M3. **Needs user:** flash `vectors.uf2` from the run linked in the PR, open the Device page of the preview in desktop Chrome or Edge, click "Run vectors", then "Copy report", and paste the JSON into a PR comment in a code block (round C2).
-
-#### M3.4 Device game loop and live mirror
-
-- **Goal:** the game playable on the Pico within the 66 ms tick budget, and mirrored live in the browser.
-- **Deliverables:**
-  - **`firmware/app/src/{tick,game,render}.rs`:**
-    - an embassy Ticker every 66,667 µs, on an absolute schedule. A late tick is late; it is never skipped or stepped twice.
-    - each tick:
-      1. sample the inputs once;
-      2. pass the mask to the core Recorder, which steps the game;
-      3. redraw the cells reported by DirtyCells;
-      4. draw the entities;
-      5. stream Event frames, and a TickStats frame every 15 ticks.
-    - a capture redraw that doesn't fit in one tick is spread across ticks;
-    - step time and render time are measured separately, with the worst case and an overrun counter, in TickStats;
-    - an end screen shows the claim and the state hash prefix;
-    - it plays a level received by LoadLevel, or the embedded open-field level.
-  - **`firmware/emu/inputs.mjs`:** drives GPIO levels on a schedule in rp2040js, and checks the journal bytes and the final hash against a scripted vector.
-  - **Device page "Play" mode:**
-    - sends LoadLevel and a nonce;
-    - mirrors the board from the streamed events, with the wasm core;
-    - at LevelEnd, checks the device's journal and hash against its own replay.
-  - **The firmware job** uploads `jiro-firmware.uf2`, on PRs and on pushes to `main`, with `retention-days: 90`.
-- **Done when:**
-  - the emulator GPIO test passes;
-  - CI uploads `jiro-firmware.uf2`;
-  - (user) on hardware, a full level with captures shows 0 overruns and a worst tick under 50 ms, and the Device page reports a match: the user posts the three values;
-  - the numbers are committed to `docs/LINK.md`.
-- **Verify with:**
-  - `cd firmware && cargo build --release --locked -p jiro-firmware && elf2uf2-rs target/thumbv6m-none-eabi/release/jiro-firmware jiro-firmware.uf2 && node emu/inputs.mjs jiro-firmware.uf2 ../vectors/game/open-field-capture.json`
-  - `npm --prefix web test -- device`
-- **Skills:** `rp2040-firmware`, `deterministic-core`; tiers `firmware`, `web`. **README:** §2, §4.4, §6.2, §6.5. **Needs user:** flash this PR's `jiro-firmware.uf2`, play a level with this PR's Device page open, and post the overrun counter, the worst tick time and whether it matched (round E1).
-
-#### M3.5 Firmware Training mode with the 16 levels
-
-- **Goal:** README §8.1 Training on the Pico: all 16 levels, offline.
-- **Deliverables:**
-  - `firmware/app/build.rs`: embeds `levels/*.bin` and the weights of `seasons/calibration-1.json`.
-  - `menu.rs`: a level select outside play, driven by the joystick and A, never journaled.
-  - `hud.rs` (P12): a between-level screen with claim, score and lives, plus a brief overlay at level start. See §15, question 11.
-  - A training `runNonce` from ROSC entropy; scores kept in RAM.
-  - `firmware/emu/training.mjs`: plays level 1 with scripted inputs up to the summary screen, and checks the score against native replay.
-- **Done when:**
-  - the UF2 is built in CI;
-  - the emulator test passes;
-  - static RAM stays within the M3.1 budget;
-  - (user) on hardware, each of the 16 levels can be selected, and at least one was played to its end: the user posts the PASS list of the 16 levels.
-- **Verify with:** `cd firmware && cargo build --release --locked -p jiro-firmware && elf2uf2-rs target/thumbv6m-none-eabi/release/jiro-firmware jiro-firmware.uf2 && node emu/training.mjs jiro-firmware.uf2`
-- **Skills:** `rp2040-firmware`; tier `firmware`. **README:** §2, §8.1. **Needs user:** flash this PR's UF2, select each of the 16 levels, play at least one to its end, and post the PASS list, with any comment on HUD readability and overruns (round E2).
+  - `cargo run -p jiro-tools --release --locked -- vectors && bash scripts/check-drift.sh vectors/ && bash scripts/check-rules-version.sh --reverse`
+  - M3.8's qemu run, with the heap filled down to 137,760 bytes free
+  - `referee/zk/target/release/zk-host image-id` and `bash referee/build-wasm.sh`, on this branch and on `main`
+- **Skills:** `deterministic-core`, `rp2040-firmware`, `onchain-referee`; tiers `wedgie`, `zk`. **README:** §3, §7.3. **Needs user:** none.
 
 ## 9. M4 Referee and contracts
 
@@ -2077,12 +1979,14 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   5. deploy `Challenge`;
   6. verify the Solidity sources on Sourcify. For a Stylus referee, add a `deployment_tx` input to `stylus-gas.yml` that runs `cargo stylus verify --deployment-tx <tx>` (it needs Docker), and dispatch it;
   7. run the e2e happy path with a bot run, in zk mode with real proofs if D2 = zk. If the bot's run clears no level, play another, so that M5.5 can rehearse a claim;
-  8. record the addresses, transaction links, gas per transaction, verify gas per level and reveal timing.
+  8. time the largest commit: buy a second run and commit six full journals, the 8,171 bytes of `vectors/game/full-journal`'s journal each (`commitRun` never parses them, so the run need not settle);
+  9. record the addresses, transaction links, gas per transaction, verify gas per level, reveal timing, the `commitRun` inclusion latency of the full six-journal commit, from submission to its block's timestamp, and the margin left at commit by the settled bot run, its deadline minus `committedAt`.
 
   `docs/DEPLOYMENT.md` also holds a redeploy section, modeled on ethblockdigger's [`DEPLOYMENT.md`](https://github.com/detychey/ethblockdigger/blob/main/docs/DEPLOYMENT.md) B5: contracts are immutable, so a redeploy is a new generation, appended to the deployments record's list of generations.
 - **Done when:**
   - a run is settled end to end on Arbitrum Sepolia, with Arbiscan links in `docs/DEPLOYMENT.md`, and it cleared at least one level;
   - `isSolvent()` returns true;
+  - `docs/DEPLOYMENT.md` records the full six-journal commit's inclusion latency and the bot run's margin at commit;
   - the Solidity sources are verified on Sourcify (links in `DEPLOYMENT.md`);
   - for a Stylus referee, the `cargo stylus verify` run passes (run link);
   - README §9's M4 gate holds as M4.9 states it.
@@ -2100,8 +2004,8 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | M5.1 | Wallet and chain plumbing | M2.10, M4.11 | M | none |
 | M5.2 | Challenge run flow in the browser | M5.1 | L | none |
 | M5.3 | Settlement, season pages, replay of committed runs | M2.3, M4.9, M5.2 | L | none |
-| M5.4 | Web Serial bridge for Challenge runs | M3.4, M4.14, M5.7 | M | Fund your wallet; a six-level Pico run on Sepolia |
-| M5.5 | Season operations, testnet-1 parameters, testnet-0 close | M4.14, M5.3, M5.4 | M | Approve the parameters, the schedule, its secrets and the feedback channel |
+| M5.4 | Web Serial bridge for Challenge runs: **deferred** past v1 by D15 (§16) | M3.4, M4.14, M5.7 | M | none |
+| M5.5 | Season operations, testnet-1 parameters, testnet-0 close | M4.14, M5.3 | M | Approve the parameters, the schedule, its secrets and the feedback channel |
 | M5.6 | Testnet season 1 | M5.3, M5.5 | M | Testers, play, approvals |
 | M5.7 | Challenge page wiring | M5.2 | M | none |
 
@@ -2188,30 +2092,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 
 #### M5.4 Web Serial bridge for Challenge runs
 
-- **Goal:** Challenge runs played on the Pico, with the browser as the link to the chain, and a disconnect that costs the level's remaining time, not the run.
-- **Deliverables:**
-  - Run-flow support in `web/src/serial.ts`:
-    - the device's Hello `RULES_VERSION` must equal the season's, or the page refuses to start a run;
-    - LoadLevel for each drawn level, with `runNonce`, `levelIndex` and mode 1;
-    - events received live into the browser's journal and mirror, and the current tick from TickStats (every 15 ticks);
-    - LevelEnd checked against the wasm replay. A mismatch aborts the run with a message.
-    - the same commit path as browser play;
-    - an unsupported-browser message outside desktop Chrome and Edge;
-    - a disconnect mid-level closes that level's journal with the events received plus an X event, or none if the level already ended, as README §7.2 specifies, with n the last tick count known from TickStats. The level is committed with its claim, and its ticks used follow the time actually spent. The run continues at the next level once the device reconnects; levels still unplayed at the end get X-at-tick-0 journals. See §15, question 13.
-  - `firmware/app/src/challenge.rs`: waits for LoadLevel, plays the level, returns LevelEnd. There is no pause.
-  - `web/test/bridge.test.ts`: replays a six-level transcript, recorded from rp2040js, through a mock SerialPort.
-  - Level-transition overhead, measured in the emulator rehearsal and recorded in `docs/LINK.md`.
-- **Done when:**
-  - the transcript rebuilds the six journals byte for byte;
-  - an altered device hash raises an error;
-  - a Hello with another `RULES_VERSION` is refused;
-  - a transcript cut in the middle of the second level gives a valid journal for it that replays, and the run commits within the deadline computed from the deadline fixtures' formula;
-  - the transition overhead is recorded;
-  - (user) on hardware, a six-level run on Arbitrum Sepolia completes with all six checks matching: the user posts its run id and the margin shown at commit, and the agent checks the run onchain.
-- **Verify with:**
-  - `npm --prefix web test -- bridge`
-  - `cd firmware && cargo build --release --locked -p jiro-firmware`
-- **Skills:** `rp2040-firmware`, `journal-codec`, `frontend-ux`; tiers `web`, `firmware`. **README:** §6.5, §7.1, §7.2. **Needs user:** fund your browser wallet from an Arbitrum Sepolia faucet; flash this PR's UF2; play one six-level Challenge run on this PR's preview in desktop Chrome or Edge; post the run id and the margin shown at commit (round G1).
+**Deferred** (§16) on 2026-11-02 by D15: the device plays Training only, and Challenge runs are played in the browser (README §6.5, §13 D15). The item was written for the embassy firmware of M3.2 and M3.4, both superseded. When device Challenge comes back, a new item designs the bridge for the wedgie app; this item's design stays in this file's history at 2dd13a2. M5.5 no longer waits for it, and round G1 is dropped with it.
 
 #### M5.5 Season operations, testnet-1 parameters and testnet-0 close
 
@@ -2227,7 +2108,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - the referee from `deployments/arbitrum-sepolia.json`;
     - the fee (0.00005 ETH, in wei), the rake, `minClears`, and a length of 14 days (D12);
     - the settlement grace. With Stylus, the 48 h proposal. With zk, sized from M4.8's proving time per run × the expected number of settled runs, with the derivation stated.
-    - commitSlack, sized from the M5.4 rehearsal and the margin reported in round G1: at least 2 × the worst observed transition and transaction overhead. If M4.13 ran, its threshold recommendation is applied through `minClears` or declined here, with the reason.
+    - commitSlack, sized from the level transitions of a headless six-level run of the Challenge page on the local chain, as M5.7 runs it, and from the inclusion latency of the full six-journal `commitRun` and the margin at commit that M4.14 records in `docs/DEPLOYMENT.md`: at least 2 × the worst observed transition and transaction overhead. If M4.13 ran, its threshold recommendation is applied through `minClears` or declined here, with the reason.
   - `.github/workflows/season-ops.yml`, following §1.3, with `cancel-in-progress: false`:
     - a daily `schedule`: `status`, failing when `isSolvent` is false; the bot runs from `TESTER_KEY` on the days the runbook lists; `close` and `withdraw` once end plus grace has passed; with zk, `settle` for each player with a handed-off run file under `seasons/testnet-1/runs/` whose best run is not yet settled;
     - `pull_request` on itself and `season.mjs`: a read-only `status` of `testnet-0` on Sepolia, with no secret;
@@ -2239,26 +2120,21 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - the slack and grace derivations.
   - `docs/TESTNET.md`, the tester guide:
     - getting test ETH from an Arbitrum Sepolia faucet;
-    - desktop Chrome or Edge for the Pico;
     - the controls and rules: keyboard mapping, Commit, the zero score when the lives run out;
-    - flashing the season's UF2 with BOOTSEL;
     - with zk, the handoff channel and cutoff;
     - a feedback channel reachable without repository access, where testers attach their journal or run file: GitHub issues if the repository is public, otherwise the form or mailbox the user names in round G2;
-    - known gaps: test ETH only; unaudited contracts; the run nonce computable up to 256 blocks before the reveal; a lapsed reveal forfeits the run; a disconnect or reload closes the current level; desktop and keyboard only; Web Serial only in Chrome and Edge.
+    - known gaps: test ETH only; unaudited contracts; the run nonce computable up to 256 blocks before the reveal; a lapsed reveal forfeits the run; a reload closes the current level; desktop and keyboard only; Challenge in the browser only (README §13 D15).
   - The handoff instructions and the feedback channel, added to `web/src/pages/settle.ts` (M5.3).
-  - The season's UF2, published by `pages.yml` under `/firmware/` on the preview site, with its sha256 and `RULES_VERSION`.
   - **testnet-0 rehearsal:** once its end plus grace has passed, `season.mjs close` on `testnet-0`, a claim for the M4.14 bot player, `season.mjs withdraw` for the rake, and the `isSolvent` result and the dust, recorded in `docs/DEPLOYMENT.md`.
 - **Done when:**
   - on the local chain, the five commands run and `status` output equals the contract views;
   - this PR's `season-ops.yml` run is green;
   - `testnet-1.json` is complete, and the runbook explains the slack and grace derivations;
-  - this PR's preview serves the UF2 and its checksum;
   - `testnet-0` is closed, the bot player has claimed and the rake has reached the treasury on Sepolia, with Arbiscan links and `isSolvent` true.
 - **Verify with:**
   - local chain: `node scripts/contracts/localnet.mjs --up && node scripts/contracts/season.mjs status --rpc http://127.0.0.1:8545`
   - `node scripts/contracts/season.mjs status --network arbitrum-sepolia --season seasons/testnet-0.json` shows the season closed and claimed.
-  - `curl -sf <this PR's preview URL>/firmware/SHA256SUMS`
-- **Skills:** `onchain-referee`; tiers `contracts`, `firmware`. **README:** §7.2, §8.2, §8.4. **Needs user:** approve the testnet-1 parameters; add `TESTER_KEY`, and the prover credential if D2 = zk, as Actions secrets; approve the season-ops schedule; name the tester feedback channel if the repository is private (round G2).
+- **Skills:** `onchain-referee`; tiers `contracts`, `web`. **README:** §7.2, §8.2, §8.4. **Needs user:** approve the testnet-1 parameters; add `TESTER_KEY`, and the prover credential if D2 = zk, as Actions secrets; approve the season-ops schedule; name the tester feedback channel if the repository is private (round G2).
 
 #### M5.6 Testnet season 1
 
@@ -2266,7 +2142,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Checkpoints,** each a commit on the draft PR: open; mid-season status; settlement cutoff; close after end plus grace; claims and the report. `send_later` reminders are set for mid-season and for end plus grace.
 - **Deliverables:**
   - testnet season 1, opened on Arbitrum Sepolia with `seasons/testnet-1.json`;
-  - testers playing in the browser and on the Pico, and bots playing from the tester key;
+  - testers playing in the browser, and bots playing from the tester key;
   - best runs settled: by players with Stylus, or by `season-ops.yml` from handed-off run files with zk;
   - after the end plus the grace period, any address closes the season, qualified players claim, and `season.mjs withdraw` sends the rake to the treasury;
   - `docs/TESTNET-1-REPORT.md`:
@@ -2281,13 +2157,13 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - the season closed through a permissionless `closeSeason` transaction;
   - at least one player claimed a pro-rata payout, and `isSolvent` held after every claim;
   - each claim paid exactly bestScore × playersPot / totalQualifiedPoints, rounded down, and playersPot − Σ shares, claimed or not, is less than the number of qualified players, in wei (rounding dust);
-  - (user) at least one settled run was played on the Pico, and at least one in the browser: the user names their run ids.
+  - (user) at least one settled run was played by a person in the browser, not by a bot: the user names its run id.
 
   This closes README §9's M5, so this PR updates the status lines.
 - **Verify with:**
   - `node scripts/contracts/season.mjs status --network arbitrum-sepolia --season seasons/testnet-1.json`
   - Arbiscan links for the close and claim transactions, in the report.
-- **Skills:** `onchain-referee`, `qa`. **README:** §8.2, §9 M5. **Needs user:** recruit testers, approve opening the season, play (at least one Pico run), keep the tester key funded, commit or pass on handed-off run files if D2 = zk, and check the report after the close (round G3).
+- **Skills:** `onchain-referee`, `qa`. **README:** §8.2, §9 M5. **Needs user:** recruit testers, approve opening the season, fund your browser wallet and play (at least one browser run), keep the tester key funded, commit or pass on handed-off run files if D2 = zk, and check the report after the close (round G3).
 
 #### M5.7 Challenge page wiring
 
@@ -2317,7 +2193,7 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 
 | ID | Decision | Decided in | Needed by | Recommendation |
 |---|---|---|---|---|
-| D1 | Firmware shell language | Owner, 2026-10-28; confirmed by M0.2's blinky | M3.1 | Decided: Rust embassy-rp, as its own Cargo workspace, with a UF2 from elf2uf2-rs. It needs no `arm-none-eabi-gcc`. If the blinky fails, the owner chooses between rp2040-hal and C++ on the Pico SDK, and M0.2 rewrites M3.1-M3.5 for that choice. |
+| D1 | Device software | Owner, 2026-10-31 ("Let's do Jiro as a wedgie app"), GO on 2026-11-02 after the spike's device test (PR #42) | M3.8 | Decided: a wedgie app in MicroPython, with jiro-core as a native module, `jiro_core.mpy`, built with MicroPython v1.29.0's `mpy_ld` (README §3). It supersedes the owner's 2026-10-28 answer, Rust on embassy-rp flashed as a UF2, confirmed by M0.2's blinky, for which M3.1-M3.7 were written. |
 | D2, part 1 | zkVM framework | M1.12, from M1.16 and M1.17 | M1.13, M4.8 | README §7.3's four tooling checks first, then measured cycles and price. Trial SP1 and RISC Zero. |
 | D2, part 2 | Verification backend, and testnet aggregation | M4.9 | M4.10 (unless it starts early), M4.12, M4.14, M5.3 | Stylus whenever activations are open on the target chain; ZkReferee while they stay paused. The gas gate is defined in §4. If it fails with activations open, M4.15 runs, and if it still fails the user chooses from both cost tables. Both backends sit behind `IReferee`. Decided in M4.9 (owner, 2026-11-02): zk for testnet, activations being paused and the gate failed; M4.14 deploys ZkReferee; no aggregation on testnet; M4.15 deferred. |
 | D3 | Movement on claimed cells | Owner, 2026-10-28; pinned in M0.5 | M1.6 | Decided: rail only |
@@ -2332,6 +2208,7 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | D12 | Chain, currency, season length | Owner, 2026-10-28; pinned in M0.7 | M4.3, M4.5, M4.6 | Decided: native ETH; Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing ethblockdigger's contracts; a 0.00005 ETH Challenge run; 14-day seasons on testnet (`testnet-0` aside), likely on mainnet too. |
 | D13 | Names | Owner, 2026-10-28; crate and contract names in M0.5 | M0.4 (crates), M4.1 (contracts) | Decided: Jiro-ikusu ([`name.md`](name.md)); the crates and contracts listed in README §13 D13, approved by merging M0.5 |
 | D14 | Seed space: seeded boss randomness | Owner, 2026-10-29, from M0.7's review; rule in M1.18 | M1.5 | Decided: the level seed keeps driving the boss through the level, so no two runs share a game and inputs can be neither copied nor precomputed (README §7.4). M1.18 writes the exact rule. |
+| D15 | Device scope | Owner, 2026-11-02 ("Offline Training only (Recommended)") | M3.9, M5.5 | Decided: the device plays Training only, offline; Challenge runs are played only in the browser. The device-to-browser link (README §6.5) and M5.4 leave v1 (§16). |
 | P1 | Rust pin | M0.2 | M0.4 | 1.98.0, as ethblockdigger; otherwise the newest version that installs |
 | P2 | Contract toolchain | M0.2 | M4.3 | Foundry at a pinned version, if `forge` installs and runs: zk verifiers ship Foundry tests, and fuzz and invariant tests are built in. Otherwise ethblockdigger's harness for everything. Never both. Decided only after the pinned installer and the direct asset URL were both tried. |
 | P3 | Repository layout additions | M0.4 | M1.4, M2.1 | Add `tools/` (the native target of README §3) and `shell/` (shared code that is not consensus) to README §3 |
@@ -2343,7 +2220,7 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | P9 | Preview hosting | M2.2 | M2.2 | Cloudflare Pages through wrangler, with one preview per PR, as ethblockdigger deploys. GitHub Pages cannot serve per-PR previews and needs a paid plan for a private repository. |
 | P10 | Level authoring | M2.4 | M2.7 | ASCII sources compiled by the core's level codec, with `.bin` files canonical; the editor produces the same bytes |
 | P11 | Target clear-rate curve and floor | M2.6 | M2.7 | Non-increasing, from at least 90 % at level 1 to about 15 % at level 16, within ±5 pp over 1,000 seeds; a 500 bp floor, with every level's median effective claim above it |
-| P12 | Device HUD | M3.5 | M3.5 | Between-level screens, plus a brief overlay at level start |
+| P12 | Device HUD | M3.9 | M3.9 | Between-level screens, plus a brief overlay at level start |
 | P13 | Testnet-1 parameters | M5.5 | M5.6 | Ids and weights from `calibration-1.json`; slack and grace from measurements; length per D12 |
 | P14 | Repository visibility, Actions budget, CI profile | M0.2, from the owner's answer in round A1 | M0.4 | Public, if the license allows: larger runners, unmetered minutes, required checks available, and the public CI profile. Otherwise the private CI profile, a spending limit or paid plan, and the budget recorded in `docs/TOOLING.md`. |
 | P15 | License | M0.1 | M2.2 | The owner's choice; no default |
@@ -2375,10 +2252,9 @@ Browser, levels and bots
   M1.8 + M2.4 (+ M1.15 if built) -> M2.6 -> M2.11 -> M2.7 -> M2.8
   M1.10 + M2.2 + M2.8 -> M2.9 ; M2.1 + M2.3 + M2.5 + M2.9 -> M2.10
 
-Device (bring-up starts during M1)
-  M0.2 + M1.1 -> M3.1 ; M3.1 + M1.11 -> M3.2
-  M3.2 + M1.9 + M1.10 -> M3.3 ; M3.3 + M2.1 -> M3.6 ; M3.6 + M2.2 -> M3.7
-  M3.3 + M3.6 + M2.1 + M2.2 -> M3.4 ; M3.4 + M2.9 -> M3.5
+Device (the wedgie app; M3.1-M3.7 superseded)
+  M1.9 + M2.9 -> M3.8 ; M3.8 -> M3.10 (if M3.9's RAM check fails)
+  M3.8 + M2.9 (+ M3.10 if filed) -> M3.9
 
 Verification
   M0.7 + M1.9 + M1.10 -> M4.1 ; M4.1 + M0.3 + M4.3 -> M4.2
@@ -2397,10 +2273,10 @@ Contracts (start after M0)
 
 dApp and season
   M2.10 + M4.11 -> M5.1 -> M5.2 -> M5.7 ; M5.2 + M2.3 + M4.9 -> M5.3
-  M5.7 + M3.4 + M4.14 -> M5.4 ; M4.14 + M5.3 + M5.4 -> M5.5 ; M5.3 + M5.5 -> M5.6
+  M4.14 + M5.3 -> M5.5 ; M5.3 + M5.5 -> M5.6 ; M5.4 deferred (§16)
 ```
 
-**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40. M2.11, a follow-up of M2.6 on the levels chain, adds one more and breaks the ties below: M2.6 > M2.11 > M2.7 > M2.8 > M4.11 becomes the only longest chain, ending at 41, and M1.9 > M4.7 and the browser chain move to slack 1. M5.2 came out L, and split its page wiring out into M5.7 (M), which M5.4 waits for. The browser chain then becomes the only longest chain, ending at 43: M1.8 19 > M1.9 22 > M1.11 24 > M2.1 26 > M2.2 27 > M2.9 29 > M2.10 30 > M5.1 32 > M5.2 35 > M5.7 37 > M5.4 39 > M5.5 41 > M5.6 43. The levels chain moves to slack 1, into M2.9, and M4.11 > M4.16 > M4.10 > M4.12 > M4.14 to slack 2.
+**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40. M2.11, a follow-up of M2.6 on the levels chain, adds one more and breaks the ties below: M2.6 > M2.11 > M2.7 > M2.8 > M4.11 becomes the only longest chain, ending at 41, and M1.9 > M4.7 and the browser chain move to slack 1. M5.2 came out L, and split its page wiring out into M5.7 (M), which M5.4 waits for. The browser chain then becomes the only longest chain, ending at 43: M1.8 19 > M1.9 22 > M1.11 24 > M2.1 26 > M2.2 27 > M2.9 29 > M2.10 30 > M5.1 32 > M5.2 35 > M5.7 37 > M5.4 39 > M5.5 41 > M5.6 43. The levels chain moves to slack 1, into M2.9, and M4.11 > M4.16 > M4.10 > M4.12 > M4.14 to slack 2. On 2026-11-02, D15 deferred M5.4, so M5.5 waits only for M4.14 and M5.3. The browser chain stays the only longest chain, now through M5.3, and ends at 42: M1.8 19 > M1.9 22 > M1.11 24 > M2.1 26 > M2.2 27 > M2.9 29 > M2.10 30 > M5.1 32 > M5.2 35 > M5.3 38 > M5.5 40 > M5.6 42. M5.7 feeds no later item, and M4.11 > M4.16 > M4.10 > M4.12 > M4.14 moves to slack 3. The wedgie items are off the critical path: no M4 or M5 item waits for M3.8 (31), M3.10 if filed (33), or M3.9 (34, or 36 after M3.10).
 
 ```text
 M0.1 1 > M0.5 3 > M0.6 5 > M1.1 7 > M1.3 9 > M1.5 11 > M1.7 13 > M1.8 16 > M1.15 18
@@ -2420,10 +2296,10 @@ Several chains tie with it, so each of these is also critical (slack 0):
   - M1.7 finds no traps, or the user accepts the current rule's rate: M1.14 and M1.15 drop out, and the end moves to 37.
 - **Near-critical items** (slack in units):
   - 1: M1.2; M0.7 > M1.18; the zk trials M1.16, M1.17 > M1.12; M4.8; the Stylus measurement M4.1 > M4.2; M4.9; the viewer and editor M2.3, M2.5.
-  - 2: M1.4; M1.10; M1.14; the device chain M3.2 > M3.3 > M3.6 > M3.4.
-  - 5 or more: M2.4 (5); M3.5 (6); the contracts chain M4.3 > M4.4 > M4.5 > M4.6 (7); M3.7 and M4.13 (9); M0.3 (12); M1.13 (13); M3.1 (16).
-- **Owner latency.** The 39 units count agent work only. The main chain alone holds 19 sequential merges. These owner rounds (§13) sit on critical chains: A1, A2, A3 (M0.1, M0.2 and M0.5, M0.4 and M0.6), B1 (M1.7), D3, D3b, D4, D5 (the target curve, the bold bot and mix, and the layouts of M2.6, M2.11, M2.7 and M2.8), F0 when it occurs (before M4.10), F1 and F2 (M4.9 and M4.12, M4.14), and G1-G3 (M5.4-M5.6). Stacking (§1.2) lets agents work ahead of merges, but each review and each hardware or play turnaround on this list delays the end by its own length. The season then runs for its configured length plus the settlement grace.
-- **Owner steps with little slack:** A4 and B0, the M0.7 review and the D14 rule (1); B3, the zk framework and any prover route (1); B2, the D7 replacement (2); E1, the device timing check (2); and the reviews of M2.3 and M2.5 (1).
+  - 2: M1.4; M1.10; M1.14.
+  - 5 or more: M2.4 (5); the contracts chain M4.3 > M4.4 > M4.5 > M4.6 (7); M4.13 (9); M0.3 (12); M1.13 (13).
+- **Owner latency.** The 39 units count agent work only. The main chain alone holds 19 sequential merges. These owner rounds (§13) sit on critical chains: A1, A2, A3 (M0.1, M0.2 and M0.5, M0.4 and M0.6), B1 (M1.7), D3, D3b, D4, D5 (the target curve, the bold bot and mix, and the layouts of M2.6, M2.11, M2.7 and M2.8), F0 when it occurs (before M4.10), F1 and F2 (M4.9 and M4.12, M4.14), and G2 and G3 (M5.5, M5.6). Stacking (§1.2) lets agents work ahead of merges, but each review and each hardware or play turnaround on this list delays the end by its own length. The season then runs for its configured length plus the settlement grace.
+- **Owner steps with little slack:** A4 and B0, the M0.7 review and the D14 rule (1); B3, the zk framework and any prover route (1); B2, the D7 replacement (2); and the reviews of M2.3 and M2.5 (1).
 
 ## 13. Human-in-the-loop checklist
 
@@ -2457,10 +2333,10 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Merge the two trial rows, then approve the framework (M1.12).
   - If wrapping failed in the container and on Actions, choose a route for real proofs: approve a prover network with a spend cap and set its credential (it bills on a mainnet chain; secrets table, §1.3), or choose a public repository, a machine of yours with Docker and 32 GB, or a settlement on the local node for M4 (question 7).
 
-### Round C: hardware vector checks
+### Round C: wedgie vector check
 
-- [ ] **C1** (M3.1 ready): flash `bringup.uf2` from the PR's CI run (hold BOOTSEL, plug in USB, copy the file). Check the border and the 9 inputs, and comment PASS with a photo.
-- [ ] **C2** (M3.7 open): flash `vectors.uf2` from the run the agent links in the PR. Open the Device page of the preview in desktop Chrome or Edge, click "Run vectors", then "Copy report", and paste the JSON into a PR comment. This closes M3.
+- [ ] **C1** (M3.8 ready): download the PR's `wedgie-check` artifact, run `python3 wedgie.py install .` in its folder and press green on the wedgie. Comment PASS, or the failing lines, with a photo. If the wedgie hangs on the app, hold both grey buttons while plugging it in, then run `python3 wedgie.py uninstall`.
+- C2, the Device page run of the embassy firmware, is superseded with M3.7 (D1).
 
 ### Round D: browser play and levels
 
@@ -2473,10 +2349,10 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 - [ ] **D6** (M2.9 ready; slack 1): play all 16 levels on the PR's preview, and comment one line per level. Merging freezes the levels.
 - [ ] **D7, does not gate** (M2.10 ready): play a few levels in Training on the PR's preview, and check the scores and local bests.
 
-### Round E: hardware play
+### Round E: wedgie play
 
-- [ ] **E1** (M3.4 ready; slack 2): flash the PR's `jiro-firmware.uf2` and play a level with the PR's Device page open. Post the overrun counter, the worst tick time and whether it matched.
-- [ ] **E2** (M3.5 ready): select each of the 16 levels on the device, play at least one to its end, and post the PASS list, with any comment on HUD readability and overruns.
+- [ ] **E1** (M3.9 ready): install the PR's `wedgie-app` artifact. Select each of the 16 levels, play at least one to its end, unplug and replug to check that the best score stays, and post the PASS list, the overrun counter and the worst tick, with any comment on readability. This closes M3.
+- E2, Training on the embassy firmware, is merged into E1 (D1).
 
 ### Round F: testnet deployment
 
@@ -2491,7 +2367,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 
 ### Round G: testnet season
 
-- [ ] **G1, critical** (M5.4 ready): fund your browser wallet from an Arbitrum Sepolia faucet. Flash the PR's UF2, play one six-level Challenge run on the PR's preview, and post its run id and the margin shown at commit.
+- G1, a six-level Challenge run on the Pico, is dropped with M5.4 (D15).
 - [ ] **G2, critical** (M5.5 ready):
   - Approve the testnet-1 parameters.
   - Add `TESTER_KEY`, and the prover credential if D2 = zk, as Actions secrets.
@@ -2499,7 +2375,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - If the repository is private, name the tester feedback channel (a form or a mailbox).
 - [ ] **G3, critical** (M5.6 open):
   - Recruit testers, and approve opening the season.
-  - Play at least one run on the Pico, keep the tester key funded, and name the run ids of a Pico run and a browser run.
+  - Fund your browser wallet from an Arbitrum Sepolia faucet, play at least one run in the browser, keep the tester key funded, and name your run's id.
   - If D2 = zk, commit or pass on the run files testers hand off, before the cutoff.
   - After the close, check the report.
 
@@ -2517,17 +2393,19 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 | No zkVM passes the four checks, or CPU proving or wrapping is impractical | One trial per framework, including a wrapping attempt with peak RAM (M1.16, M1.17); an exit with user options (M1.12); real proofs in the container and on Actions (M4.8); a prover route chosen in round B3, or round F0 before M4.10 | M4.8 |
 | A prover network needs real money on a mainnet chain | Its chain, token, minimum deposit and cost per proof recorded (M1.16, M1.17); a separate account with a spend cap the user approves (rounds B3, F0); other routes offered (question 7) | M4.10 |
 | Minions get trapped on 2-wide rails (D7) | The coverage property over every cell of the rail component, on 10,000 boards in CI and 100,000 locally and nightly, with one committed count each (M1.7); a replacement or an accepted rate specified and approved before it is built (M1.14, M1.15) | M1.7, or M1.15 |
-| Targets disagree, through `usize` width, overflow, floats or iteration order | The M0.4 gates: lints including `indexing_slicing`, soft-float references in the project crates of a linked probe, no `usize` in state or codecs, overflow checks in every workspace root, four cross builds. Per-tick traces on native and wasm (M1.11); trace digests on the zk executor (M1.12); difffuzz across native, wasm and the executor (M1.13); emulator traces and packed difffuzz cases (M3.3); the hardware run (M3.7). The Stylus contract code under the TestVM, which runs natively (M4.1). The wasm build itself, deployed on nitro-devnode, on the vectors and the 200 fixed cases (M4.2). | M1.13, M3.7, M4.2 |
+| Targets disagree, through `usize` width, overflow, floats or iteration order | The M0.4 gates: lints including `indexing_slicing`, soft-float references in the project crates of a linked probe, no `usize` in state or codecs, overflow checks in every workspace root, four cross builds. Per-tick traces on native and wasm (M1.11); trace digests on the zk executor (M1.12); difffuzz across native, wasm and the executor (M1.13); the native module's outcomes and traces in MicroPython's qemu port, and its check app on a wedgie (M3.8). The Stylus contract code under the TestVM, which runs natively (M4.1). The wasm build itself, deployed on nitro-devnode, on the vectors and the 200 fixed cases (M4.2). | M1.13, M3.8, M4.2 |
 | Spec gaps get resolved silently in code | The M0.5-M0.7 freeze; every rule unit of README §4 tagged or marked as rationale, checked in CI (M0.5, M0.4); every tag mapped to a vector or test, checked by test (M1.9); the `CLAUDE.md` sync table and the PR template for later gaps | M1.9 |
 | A rule changes without a `RULES_VERSION` bump | The behavior-change definition (M0.1, PIN-13); `check-rules-version.sh` in the vectors-drift job, shown failing once (M1.9); the reverse check for optimizations (M4.15); no `core/` or `levels/` change while a season is open (M5.5) | M1.9 |
-| The hardware is only with the user, so device bugs surface late | Bring-up in parallel during M1 (M3.1); host byte-stream and pin-table tests; rp2040js parity in CI (M3.3); a one-click "Run vectors" page tested on a recorded transcript (M3.6); PR previews and UF2 artifacts for every hardware step | M3.7 |
-| rp2040js cannot run embassy's setup or USB | Its own UF2 loader and a pinned bootrom image; UART transport in emulator builds; a minimal rp2040-hal runner for the vectors binary (M3.3) | M3.3 |
-| The RP2040 misses the 66 ms tick on a capture plus redraw | Dirty-cell redraw; capture redraws spread across ticks; step and render timing with an overrun counter | M3.4 |
+| The hardware is only with the user, so device bugs surface late | The spike ran the module on a real wedgie before the plan changed (PR #42); the module checked in MicroPython's qemu port on every PR that touches it (M3.8); the app's play test in qemu (M3.9); app artifacts for every hardware step | M3.9 |
+| `mpy_ld` links the module wrongly, and the wedgie hangs on the app, as the spike's first build did | The glue linked before the Rust object, and the spike's check of `mpy_ld`'s armv6m rules (M3.8); the module imported and run in MicroPython's qemu port in CI; recovery by holding both grey buttons at plug-in, documented in `wedgie/README.md` | M3.8 |
+| The app does not fit the wedgie's RAM: the core's 64 KB stack, its 18.5 KB Recorder and the module's 15.7 KB, against about 137 KB free; `start` peaks at 62,784 bytes, which leaves about 2.7 KB of the stack for interrupt frames (PR #42) | The spike's measures: the large blocks allocated first, the app's code precompiled, levels and vectors read one at a time (M3.8, M3.9); the play test run at the free RAM a wedgie reports (M3.9); in-place constructors in the core if that fails (M3.10) | M3.9, or M3.10 |
+| A wedgie firmware update moves to another MicroPython version, whose native-module format the module no longer matches | MicroPython pinned to the wedgie's v1.29.0 (§3.2); the module's header checked against it (M3.8); the check app rerun after a firmware update | Not retired; rechecked on each wedgie firmware update |
+| The device misses the 66 ms tick on a capture plus redraw | The worst core tick estimated at about 22 ms on qemu (PR #42); dirty-cell redraw and pushes of the changed regions only; step and render timing with an overrun counter (M3.9) | M3.9 |
 | Levels or rules change after costs were measured or a season opened | The level freeze at M2.9; the `CLAUDE.md` calibration rule; the runbook's freeze while a season is open (M5.5) | M2.9, M5.5 |
-| A client or device on other rules than the season's takes a paid run that cannot settle | The season check before `startRun` (M5.2) and the device's Hello check (M5.4); a season-bound referee (M0.7, M4.5) | M5.4 |
-| A USB disconnect or a page reload mid-level makes the whole run late | The level's journal is closed as README §7.2 specifies, so its ticks used follow the wall time (M0.7); a TickStats heartbeat (M3.2); IndexedDB persistence every second (M5.2); tested with a cut transcript and a simulated reload (M5.2, M5.4) | M5.4 |
+| A client on other rules than the season's takes a paid run that cannot settle | The season check before `startRun` (M5.2); a season-bound referee (M0.7, M4.5); Challenge in the browser only (D15) | M5.2 |
+| A page reload mid-level makes the whole run late | The level's journal is closed as README §7.2 specifies, so its ticks used follow the wall time (M0.7); IndexedDB persistence every second (M5.2); tested with a simulated reload (M5.2) | M5.2 |
 | Browser timer lateness or background-tab throttling eats the commit slack | The absolute-deadline loop (M2.1); a hidden-tab warning (M5.7); the slack as a season parameter, sized from measurements (M5.5) | M5.5 |
-| The commit slack is too tight for Pico players | Transition overhead measured in the emulator rehearsal and on a real Pico run (M5.4, round G1); the slack set before the season opens (M5.5) | M5.5 |
+| The commit slack is too tight for real players | Level transitions measured in a headless run of the Challenge page (M5.5) and the full commit's inclusion latency on Sepolia (M4.14); the slack set before the season opens (M5.5); deadline margins and misses in the season report (M5.6) | M5.5 |
 | Season deadlines pass while no agent session is running | `season-ops.yml` on a daily schedule, never cancelled mid-run, failing on insolvency; `send_later` reminders for the season checkpoints (M5.5, M5.6) | M5.6 |
 | The settlement grace is too short for zk proving | Grace sized from M4.8's proving time per run and the expected settled runs (M5.5) | M5.5 |
 | Close and claim fail on Sepolia when they first matter | `testnet-0` closed and claimed in a rehearsal before `testnet-1` opens (M5.5) | M5.5 |
@@ -2539,7 +2417,6 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 | Toolchain drift changes the referee's bytes, or a zkVM's rustc lags the pin | Pinned rustc, binaryen and cargo-stylus; `--locked`; sha256 compared across clean builds (M4.1); a core MSRV from the zkVM toolchains, built in CI (M0.2, M1.1) | M4.1 |
 | Keys in the agent's environment | Testnet-only keys, stored per the secrets table (§1.3); the prover credential in its own capped account; the preflight refuses any other chain id (M4.16) | M4.14 |
 | Preview URLs are reachable by anyone who has them, while the repository is private | Asked in round A1 (§15, question 19); Cloudflare Access on the Pages project if the user wants previews private | M2.2 |
-| Web Serial works only in desktop Chrome and Edge | Documented in the dApp and in `docs/TESTNET.md`; browser play works everywhere and verifies the same way (README §7.1) | M5.4 |
 | A consensus bug is found in a live season's referee, which is immutable and has no pause | Accepted residual on testnet (M0.7, M4.12); a procedure listed as a pre-mainnet prerequisite (§16) | Out of scope (pre-mainnet) |
 | Unaudited contracts, and the regulatory exposure of a paid pot | Testnet with test ETH only; the residual risks in `ECONOMY.md` (M4.12); an audit, a legal read with geo-gating as its fallback, and key custody listed as pre-mainnet prerequisites | Out of scope (pre-mainnet) |
 
@@ -2559,13 +2436,13 @@ Each question has a default in this plan, and the item that settles it unless th
 | 8 | If D2 = zk, proving needs credentials that cannot live in a browser. Who proves, and how do run files reach the prover? | The operator, through `season-ops.yml`. Players hand off their run file through a channel named in `docs/TESTNET.md`, before a cutoff. | M5.5 |
 | 9 | A 7-day testnet season, against ethblockdigger's 14 days? | Settled by the owner on 2026-10-28: 14 days on testnet, likely on mainnet too | Owner, 2026-10-28 |
 | 10 | When does `RULES_VERSION` bump during development? | On every behavior change: one that moves a committed vector's outcome, error code or trace, or implements a rule edit made after the rule was first implemented. First implementations of frozen rules don't bump it. M1.9's gate enforces this. | M0.5 |
-| 11 | The 60 × 60 grid fills the whole 240 × 240 screen, which leaves no room for a HUD during play. | Between-level screens, plus a brief overlay at level start | M3.5 |
-| 12 | The Pico has no chain access, but Training uses the season's scoring. How does it get the weights? | Baked into each firmware build from the calibration file; sending them over USB can come later | M3.5 |
-| 13 | What happens if the USB link drops, or the page reloads, mid-level in a Challenge run? | The level's journal is closed with the events received and an X at tick max(n, e + 1), where n is the ticks known to be processed and e the last event's tick, or with no X if the level has already ended (README §7.2), so the level keeps its claim and its ticks used follow the wall time; the run continues at the next level | M5.2, M5.4 |
+| 11 | The 60 × 60 grid fills the whole 240 × 240 screen, which leaves no room for a HUD during play. | Between-level screens, plus a brief overlay at level start | M3.9 |
+| 12 | The device has no chain access, but Training uses the season's scoring. How does it get the weights? | Baked into each app build from the calibration file | M3.9 |
+| 13 | What happens if the page reloads mid-level in a Challenge run? | The level's journal is closed with the events received and an X at tick max(n, e + 1), where n is the ticks known to be processed and e the last event's tick, or with no X if the level has already ended (README §7.2), so the level keeps its claim and its ticks used follow the wall time; the run continues at the next level. A USB disconnect, the other case this question covered, left v1 with device Challenge (D15). | M5.2 |
 | 14 | README §5 says the 16 levels are authored with the editor, but an agent cannot drive a GUI reliably. | ASCII sources compiled by the core codec, with the editor producing the same bytes; README §5 is amended | M2.4 |
 | 15 | `GUIDELINES.md` references Cometh's `AGENTS_COMETH.md`. Copy it from ethblockdigger, or drop the reference? | Copy it | M0.1 |
 | 16 | Neither repository has a license file. Which license applies? | Settled by the owner on 2026-10-28: MIT | Owner, 2026-10-28; committed in M0.1 |
-| 17 | The hat also fits the Pico 2 (RP2350). Is it in scope? | RP2040 only | Not scheduled |
+| 17 | The hat also fits the Pico 2 (RP2350), and the wedgie also comes with one. Is it in scope? | RP2040 only | Not scheduled |
 | 18 | The repository is private, in an organization whose private repositories share 2,000 Actions minutes a month on the free plan, on 2-vCPU runners, with no branch protection or GitHub Pages. Can it be public, or which plan and spending limit apply? | Settled by the owner on 2026-10-28: private, on the free plan's minutes with the private CI profile, until a working version exists; then public, with the public CI profile | Owner, 2026-10-28; recorded in M0.2 (P14) |
 | 19 | Cloudflare Pages previews are reachable by anyone who has the URL. Is that acceptable while the repository is private? | Settled by the owner on 2026-10-28: yes, previews stay public | Owner, 2026-10-28; applied in M2.2 |
 | 20 | `skills-import.md` lists the ethskills `feedback` skill, which has no `name` field and posts notes to ethskills.com. Import it? | No; it is marked "not imported" | M0.3 |
@@ -2575,6 +2452,7 @@ Each question has a default in this plan, and the item that settles it unless th
 
 - **Superchallenge** (M6, D11). It stays in [`TODO.md`](TODO.md), which keeps its analysis and the bounty-rounds proposal. It needs its own design pass and a legal read before any work starts. Until then, v1 decoders reject journal mode 2 (M0.5). When it comes back, it reuses the level format and validity check (M1.3), the level tool and editor (M2.4, M2.5), and ethblockdigger's `MapNFT` and map renderer.
 - **Proving service** (a later version): a third-party service that proves runs through an API and settles them for the player, with gasless claims, which need a new `Season` generation with signed claims and a relay-fee cap. Its design is in README §7.5.
+- **Device Challenge** (a later version, D15): Challenge runs played on the wedgie, with the browser as the link to the chain (README §6.5, §7.5). M5.4 is deferred until then, and the link M3.2 designed comes back with it, rewritten for the wedgie app.
 - **Stylus gas optimization while activations are paused.** If M4.9's gate fails while activations are paused, M4.15 is marked "deferred" and runs when activations reopen, before any Stylus season. M4.9 deferred it on 2026-11-02 (gate maximum 11,599,408 gas, activations paused).
 - **Pre-mainnet prerequisites** (not scheduled; listed in `docs/ECONOMY.md` from M0.7):
   - a professional audit of the contracts;
