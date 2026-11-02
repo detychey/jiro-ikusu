@@ -5,8 +5,10 @@
 # run, and the playtest, the levels build and `calibrate --check`, whose playtest report, levels
 # table, calibration file, calibration report and gate set must match the committed ones (plan
 # M2.6, M2.9). Every run also puts every vector through the zk referee's executor, in its own job
-# that shares ci.yml's zk-exec build cache (plan M1.12). A scheduled run skips its work when main
-# has no commit since the previous scheduled run.
+# that shares ci.yml's zk-exec build cache (plan M1.12). Differential fuzzing (plan M1.13) draws
+# M1.10's random cases from a seed that rotates with the run id: 10,000 through jiro-wasm and the
+# first 200 of them through the executor, 2,000 and 20 on a PR run; a mismatch names its case.
+# A scheduled run skips its work when main has no commit since the previous scheduled run.
 # Once the toolchain is installed, every check runs even after another check failed. Never a
 # required check.
 name: nightly
@@ -31,6 +33,9 @@ permissions:
   contents: read
   actions: read
 
+env:
+  DIFFFUZZ_SEED: ${{ github.run_id }}
+
 jobs:
   heavy:
     if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'ci:heavy' }}
@@ -43,6 +48,7 @@ jobs:
         shell: bash
     env:
       CASES: ${{ github.event_name == 'schedule' && '100000' || inputs.cases || '2000' }}
+      WASM_CASES: ${{ github.event_name == 'pull_request' && '2000' || '10000' }}
     steps:
       - name: Work to do
         id: work
@@ -87,9 +93,21 @@ jobs:
           echo "=== END properties ==="
           exit "$status"
 
-      - name: difffuzz, the fixed set
+      - uses: actions/setup-node@v7.1.0
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
-        run: cargo run -p jiro-tools --release --locked -- difffuzz --seed 1 --cases 200 --out target/difffuzz
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: difffuzz, WASM_CASES cases of seed DIFFFUZZ_SEED through jiro-wasm
+        if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
+        run: |
+          echo "seed $DIFFFUZZ_SEED, $WASM_CASES cases"
+          cargo run -p jiro-tools --release --locked -- difffuzz --seed "$DIFFFUZZ_SEED" --cases "$WASM_CASES" --out target/difffuzz
+          bash web/wasm/build-wasm.sh
+          npm --prefix web ci
+          node web/test/difffuzz.mjs target/difffuzz
 
       - name: Minion coverage on 100,000 boards
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' && github.event_name == 'schedule' }}
@@ -115,7 +133,9 @@ jobs:
   # The full set of the zk-exec row (plan §3.4, M1.12): every vector under vectors/ through the zk
   # referee's guests, as ci.yml's zk-exec job runs a subset. It runs once `heavy` has decided there
   # is work, even if a check of `heavy` failed. It restores ci.yml's zk-exec cache, so a cold build
-  # (about 63 minutes) happens only when that cache is missing (ci.yml, zk-exec).
+  # (about 63 minutes) happens only when that cache is missing (ci.yml, zk-exec). Then it runs the
+  # first ZK_CASES of the difffuzz cases that `heavy` replays through jiro-wasm: the same seed
+  # gives the same cases, which a debug build of jiro-tools writes again here.
   zk-exec:
     needs: heavy
     if: ${{ !cancelled() && needs.heavy.outputs.run == 'true' }}
@@ -126,6 +146,7 @@ jobs:
         shell: bash
     env:
       RISC0_BUILD_LOCKED: "1"
+      ZK_CASES: ${{ github.event_name == 'pull_request' && '20' || '200' }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -155,3 +176,11 @@ jobs:
       - name: Every vector through the executor
         timeout-minutes: 30
         run: referee/zk/target/release/zk-host execute vectors/
+
+      - name: difffuzz, the first ZK_CASES cases of seed DIFFFUZZ_SEED through the executor
+        if: ${{ !cancelled() }}
+        timeout-minutes: 20
+        run: |
+          echo "seed $DIFFFUZZ_SEED, $ZK_CASES cases"
+          cargo run -p jiro-tools --locked -- difffuzz --seed "$DIFFFUZZ_SEED" --cases "$ZK_CASES" --out target/difffuzz
+          referee/zk/target/release/zk-host difffuzz target/difffuzz
