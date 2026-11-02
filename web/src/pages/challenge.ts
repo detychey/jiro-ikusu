@@ -6,7 +6,7 @@
 // build. Training never loads this page's chain code.
 
 import { bundledDeployment, type Deployment } from "../chain/deployments";
-import { acceptingSeason, connectContracts, type Contracts } from "../chain/contracts";
+import { type AcceptingSeason, acceptingSeason, connectContracts, type Contracts } from "../chain/contracts";
 import { footerEntries, renderFooter } from "../chain/footer";
 import { networkOfPage } from "../chain/networks";
 import {
@@ -23,13 +23,13 @@ import {
 } from "../chain/wallet";
 import { type Core, hex } from "../core";
 import { CONTROLS, HeldKeys, loadBindings } from "../input";
-import { element, fitField, loadCore, messageOf, percent, showHud } from "../page";
+import { element, exclusive, fitField, loadCore, messageOf, percent, showHud } from "../page";
 import { Renderer } from "../render";
-import { buyRun, continueRun, type RunEnv, unfinishedRun } from "../run/flow";
+import { buyRun, continueRun, playUnfinished, type RunEnv, SeasonChanged } from "../run/flow";
 import type { Margin } from "../run/play";
 import { replayRunFile, runFileOf } from "../run/runfile";
 import { checkSeason, seasonEntries } from "../run/season";
-import { openRunStore, type RunRecord, type RunStore } from "../run/store";
+import { openRunStore, type RunRecord, type RunStore, withRunLock } from "../run/store";
 import { shippedLevels } from "../shipped";
 import { browserStorage } from "../storage";
 
@@ -140,8 +140,12 @@ export function mount(): void {
   const deployment: Deployment = found;
   let wallet: Wallet | undefined;
   let engine: Promise<Engine> | undefined;
+  /** The season the page shows, which Buy pays into. */
+  let shown: AcceptingSeason | undefined;
   /** The run in play, while one is. */
   let active: RunRecord | undefined;
+  /** Held while a run is bought, resumed or played: one at a time, on the one Core. */
+  const exclusively = exclusive();
   let stopRequested = false;
   let hiddenDuringRun = false;
 
@@ -205,40 +209,49 @@ export function mount(): void {
     element("season").hidden = false;
     try {
       checkSeason(env.core.rulesVersion, env.levelIds, params);
+      shown = accepting;
       buyButton.disabled = false;
     } catch (error) {
+      shown = undefined;
       buyButton.disabled = true;
       show("season-error", messageOf(error));
     }
   }
 
-  /** Plays `record` from the step it reached to its commit, then shows its Outcomes. */
-  async function play(env: RunEnv, record: RunRecord): Promise<void> {
-    active = record;
-    stopRequested = false;
-    hiddenDuringRun = document.hidden;
-    element("run").hidden = false;
-    element("hidden-warning").hidden = !hiddenDuringRun;
-    element("run-outcomes").hidden = true;
-    element<HTMLButtonElement>("run-file").hidden = true;
-    resumeButton.hidden = true;
-    buyButton.hidden = true;
-    keys.clear();
-    show("run-error", "");
-    show("run-status", `Run ${record.runId} of season ${record.season}`);
-    try {
-      const done = await continueRun(env, record);
-      if (done.commit !== undefined) showOutcomes(env, done);
-      await showSeason(env, env.contracts);
-    } catch (error) {
-      show("run-error", `Run ${record.runId}: ${messageOf(error)}`);
-      show("resume", `Continue run ${record.runId}`);
-    } finally {
-      active = undefined;
-      stopButton.hidden = true;
-      buyButton.hidden = false;
-      document.title = "Jiro-ikusu Challenge";
-    }
+  /** Plays `record` from the step it reached to its commit, then shows its Outcomes, unless
+   *  another tab plays it. Returns whether to go on to the player's next unfinished run. */
+  async function play(env: RunEnv, record: RunRecord): Promise<boolean> {
+    let failed = false;
+    const locked = await withRunLock(navigator.locks, record.key, async () => {
+      active = record;
+      stopRequested = false;
+      hiddenDuringRun = document.hidden;
+      element("run").hidden = false;
+      element("hidden-warning").hidden = !hiddenDuringRun;
+      element("run-outcomes").hidden = true;
+      element<HTMLButtonElement>("run-file").hidden = true;
+      resumeButton.hidden = true;
+      buyButton.hidden = true;
+      keys.clear();
+      show("run-error", "");
+      show("run-status", `Run ${record.runId} of season ${record.season}`);
+      try {
+        const done = await continueRun(env, record);
+        if (done.commit !== undefined) showOutcomes(env, done);
+        await showSeason(env, env.contracts);
+      } catch (error) {
+        failed = true;
+        show("run-error", `Run ${record.runId}: ${messageOf(error)}`);
+        show("resume", "Continue the unfinished runs");
+      } finally {
+        active = undefined;
+        stopButton.hidden = true;
+        buyButton.hidden = false;
+        document.title = "Jiro-ikusu Challenge";
+      }
+    });
+    if (!locked) show("run-error", `Run ${record.runId} is open in another tab: it plays there.`);
+    return !failed;
   }
 
   function showOutcomes(env: RunEnv, record: RunRecord): void {
@@ -267,14 +280,17 @@ export function mount(): void {
     };
   }
 
-  /** Shows the season, and resumes a run this browser holds and has not committed. */
+  /** Shows the season, and resumes the runs this browser holds and has not committed, unless a
+   *  run is already bought, resumed or played in this tab. */
   async function onConnected(connection: Connection): Promise<void> {
     const { env, contracts } = await runEnv(connection);
     await showSeason(env, contracts);
-    if (active !== undefined) return;
-    const challenge = await contracts.challenge.getAddress();
-    const unfinished = await unfinishedRun(env.store, env.chainId, challenge, connection.account);
-    if (unfinished !== undefined) await play(env, unfinished);
+    await exclusively(() => resumeRuns(env, connection.account));
+  }
+
+  /** Plays the player's unfinished runs, oldest first, until none is left or one fails. */
+  function resumeRuns(env: RunEnv, player: string): Promise<void> {
+    return playUnfinished(env, player, (record) => play(env, record));
   }
 
   async function connected(): Promise<Connection> {
@@ -319,8 +335,15 @@ export function mount(): void {
       async () => {
         const connection = await connected();
         const { env, contracts } = await runEnv(connection);
-        const accepting = await acceptingSeason(contracts.season, env.provider);
-        await play(env, await buyRun(env, accepting, connection.account));
+        const buy = async (): Promise<void> => {
+          if (shown === undefined) throw new Error("no season the page can play accepts runs");
+          const record = await buyRun(env, shown, connection.account).catch(async (error: unknown) => {
+            if (error instanceof SeasonChanged) await showSeason(env, contracts);
+            throw error;
+          });
+          if (await play(env, record)) await resumeRuns(env, connection.account);
+        };
+        if (!(await exclusively(buy))) throw new Error("a run is already in play in this tab");
       },
       "season-error",
     );
@@ -330,10 +353,8 @@ export function mount(): void {
       resumeButton,
       async () => {
         const connection = await connected();
-        const { env, contracts } = await runEnv(connection);
-        const unfinished = await unfinishedRun(env.store, env.chainId, await contracts.challenge.getAddress(), connection.account);
-        if (unfinished === undefined) throw new Error("this browser holds no unfinished run of this account");
-        await play(env, unfinished);
+        const { env } = await runEnv(connection);
+        if (!(await exclusively(() => resumeRuns(env, connection.account)))) throw new Error("a run is already in play in this tab");
       },
       "run-error",
     );

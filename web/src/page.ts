@@ -1,5 +1,5 @@
 // What the pages of the site share: their elements by id, the engine, the field's size, the HUD,
-// error messages, and claims in percent.
+// a gate for actions that must not overlap, error messages, and claims in percent.
 
 import { Core, type Snapshot } from "./core";
 import type { Renderer } from "./render";
@@ -31,6 +31,22 @@ export function showHud({ claimBp, targetBp, lives, shield, ticksLeft }: Snapsho
   element("hud-lives").textContent = String(lives);
   element("hud-shield").textContent = String(shield);
   element("hud-time").textContent = `${Math.ceil(ticksLeft / 15)} s`;
+}
+
+/** A gate for actions that must not overlap, such as two resumes of one run: a call claims it
+ *  before its first await, and returns false, without running its action, while another holds it. */
+export function exclusive(): (action: () => Promise<void>) => Promise<boolean> {
+  let held = false;
+  return async (action) => {
+    if (held) return false;
+    held = true;
+    try {
+      await action();
+      return true;
+    } finally {
+      held = false;
+    }
+  };
 }
 
 export function messageOf(error: unknown): string {
