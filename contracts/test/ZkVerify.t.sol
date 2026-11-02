@@ -7,19 +7,51 @@ import {RiscZeroGroth16Verifier} from "risc0/groth16/RiscZeroGroth16Verifier.sol
 import {VerificationFailed} from "risc0/IRiscZeroVerifier.sol";
 import {Outcome} from "../src/interfaces/IReferee.sol";
 
+/// The proof fixtures of test/fixtures/zk-proofs.json, and the public values of the game vectors
+/// they prove, rebuilt in the encoding of referee/zk/README.md.
+abstract contract ZkFixtures is Test {
+    function zkFixtures() internal view returns (string memory) {
+        return vm.readFile(string.concat(vm.projectRoot(), "/test/fixtures/zk-proofs.json"));
+    }
+
+    /// One `abi.encode(uint16 weightBp, Outcome)` per proven level, in order, with the Outcome's
+    /// journalHash and levelId computed from the vector's journal and level bytes.
+    function publicValuesOf(string memory mode) internal view returns (bytes memory publicValues) {
+        string[] memory paths = vm.parseJsonStringArray(zkFixtures(), string.concat(mode, ".vectors"));
+        for (uint256 i; i < paths.length; ++i) {
+            string memory vector = vm.readFile(string.concat(vm.projectRoot(), "/../", paths[i]));
+            uint16 weightBp = uint16(vm.parseJsonUint(vector, ".weightBp"));
+            publicValues = bytes.concat(publicValues, abi.encode(weightBp, outcomeOf(vector)));
+        }
+    }
+
+    function outcomeOf(string memory vector) internal pure returns (Outcome memory outcome) {
+        outcome.journalHash = keccak256(vm.parseJsonBytes(vector, ".journal"));
+        outcome.levelId = keccak256(vm.parseJsonBytes(vector, ".level"));
+        outcome.runNonce = vm.parseJsonBytes32(vector, ".outcome.runNonce");
+        outcome.levelIndex = uint8(vm.parseJsonUint(vector, ".outcome.levelIndex"));
+        outcome.drawSlot = uint8(vm.parseJsonUint(vector, ".outcome.drawSlot"));
+        outcome.mode = uint8(vm.parseJsonUint(vector, ".outcome.mode"));
+        outcome.rulesVersion = uint16(vm.parseJsonUint(vector, ".outcome.rulesVersion"));
+        outcome.endReason = uint8(vm.parseJsonUint(vector, ".outcome.endReason"));
+        outcome.claimBp = uint16(vm.parseJsonUint(vector, ".outcome.claimBp"));
+        outcome.ticksUsed = uint16(vm.parseJsonUint(vector, ".outcome.ticksUsed"));
+        outcome.levelScore = uint32(vm.parseJsonUint(vector, ".outcome.levelScore"));
+    }
+}
+
 /// The zk proofs of `zk-host prove` (plan M4.8), from the logs of a zk-prove.yml run and of the
 /// container's proof of `worst-case` (test/fixtures/zk-proofs.json names each source), verified by
 /// RISC Zero's 3.0 Groth16 verifier, called directly as a zk referee calls it, never through the
 /// upgradeable router (docs/ECONOMY.md, zk prover trust). The public values are rebuilt here from
-/// the proven game vectors, in the encoding of referee/zk/README.md, the way a zk referee builds
-/// them from what settlement submits.
-contract ZkVerifyTest is Test {
+/// the proven game vectors, in the encoding of referee/zk/README.md, which ZkReferee decodes.
+contract ZkVerifyTest is ZkFixtures {
     RiscZeroGroth16Verifier internal verifier;
     string internal fixtures;
 
     function setUp() public {
         verifier = new RiscZeroGroth16Verifier(ControlID.CONTROL_ROOT, ControlID.BN254_CONTROL_ID);
-        fixtures = vm.readFile(string.concat(vm.projectRoot(), "/test/fixtures/zk-proofs.json"));
+        fixtures = zkFixtures();
     }
 
     function test_aLevelProofVerifies() public view {
@@ -60,30 +92,5 @@ contract ZkVerifyTest is Test {
         bytes memory seal = vm.parseJsonBytes(fixtures, string.concat(mode, ".seal"));
         bytes32 imageId = vm.parseJsonBytes32(fixtures, string.concat(mode, ".imageId"));
         verifier.verify(seal, imageId, sha256(publicValues));
-    }
-
-    /// One `abi.encode(uint16 weightBp, Outcome)` per proven level, in order, with the Outcome's
-    /// journalHash and levelId computed from the vector's journal and level bytes.
-    function publicValuesOf(string memory mode) internal view returns (bytes memory publicValues) {
-        string[] memory paths = vm.parseJsonStringArray(fixtures, string.concat(mode, ".vectors"));
-        for (uint256 i; i < paths.length; ++i) {
-            string memory vector = vm.readFile(string.concat(vm.projectRoot(), "/../", paths[i]));
-            uint16 weightBp = uint16(vm.parseJsonUint(vector, ".weightBp"));
-            publicValues = bytes.concat(publicValues, abi.encode(weightBp, outcomeOf(vector)));
-        }
-    }
-
-    function outcomeOf(string memory vector) internal pure returns (Outcome memory outcome) {
-        outcome.journalHash = keccak256(vm.parseJsonBytes(vector, ".journal"));
-        outcome.levelId = keccak256(vm.parseJsonBytes(vector, ".level"));
-        outcome.runNonce = vm.parseJsonBytes32(vector, ".outcome.runNonce");
-        outcome.levelIndex = uint8(vm.parseJsonUint(vector, ".outcome.levelIndex"));
-        outcome.drawSlot = uint8(vm.parseJsonUint(vector, ".outcome.drawSlot"));
-        outcome.mode = uint8(vm.parseJsonUint(vector, ".outcome.mode"));
-        outcome.rulesVersion = uint16(vm.parseJsonUint(vector, ".outcome.rulesVersion"));
-        outcome.endReason = uint8(vm.parseJsonUint(vector, ".outcome.endReason"));
-        outcome.claimBp = uint16(vm.parseJsonUint(vector, ".outcome.claimBp"));
-        outcome.ticksUsed = uint16(vm.parseJsonUint(vector, ".outcome.ticksUsed"));
-        outcome.levelScore = uint32(vm.parseJsonUint(vector, ".outcome.levelScore"));
     }
 }

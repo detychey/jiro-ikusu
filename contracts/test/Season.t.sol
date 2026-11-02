@@ -6,6 +6,7 @@ import {CommonBase} from "forge-std/Base.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
 import {Season, SeasonParams, SeasonState, BestRun} from "../src/Season.sol";
+import {IReferee} from "../src/interfaces/IReferee.sol";
 import {MockReferee} from "../src/mocks/MockReferee.sol";
 
 uint16 constant RULES_VERSION = 2;
@@ -17,7 +18,7 @@ uint64 constant COMMIT_SLACK = 120;
 uint32 constant MAX_RUN_SCORE = 393_210;
 uint32 constant MAX_RUN_TICKS = 16_200;
 
-function defaultParams(MockReferee referee) pure returns (SeasonParams memory params) {
+function defaultParams(IReferee referee) pure returns (SeasonParams memory params) {
     params.referee = referee;
     params.rulesVersion = RULES_VERSION;
     for (uint256 slot; slot < 16; ++slot) {

@@ -956,6 +956,77 @@ Verification is by exception (README §7.3): a season verifies each player's bes
 
 Aggregation stays a pre-mainnet prerequisite if zk becomes the mainnet path (plan §16), where the number of verified runs per season is known.
 
+## ZkReferee
+
+Plan M4.10, 2026-11-02: the zk backend behind `IReferee`, which M4.14 deploys (D2 = zk). [`contracts/src/ZkReferee.sol`](../contracts/src/ZkReferee.sol) holds three immutables: RISC Zero's verifier, the verify program's image id and its rules version. The verifier is the 3.0 Groth16 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D` on Arbitrum One and Sepolia, called directly, never the router ([Verification gas](#verification-gas), `docs/ECONOMY.md`). `Challenge` and `Season` are unchanged.
+
+- **The proof** is `abi.encode(bytes seal, bytes publicValues)`, the two values `zk-host prove` prints between its `zk-fixture` markers. `verify` requires 384 bytes of public values and `verifyRun` 2,304, so a level proof and a run proof cannot stand in for each other. `ZkReferee` verifies the seal against `sha256(publicValues)` and its image id, decodes the public values as `(uint16 weightBp, Outcome)` per level ([`referee/zk/README.md`](../referee/zk/README.md#public-values)), and requires each level's weight, `journalHash` and `levelId` to be the submitted ones. `Challenge` then binds the Outcomes to the run (README §7.2).
+- **Proving a run:** `zk-host prove --run <run file> --season <season file>` ([Run file v1](#run-file-v1)); the season file gives each level's weight by its draw slot. The host executes the run first and checks each level's weight, level id, run nonce, level index, draw slot, mode and rules version before it proves.
+- **Deployment:** `deploy.mjs --backend zk --image-id <zk-host image-id> --rules-version <n>`, over RISC Zero's mock verifier `RiscZeroMockVerifier` on the local chains and the Groth16 verifier elsewhere ([`deployments/README.md`](../deployments/README.md)).
+
+### The fixture set
+
+**The full set: one real run proof of six levels**, `challengeRun` in [`contracts/test/fixtures/zk-proofs.json`](../contracts/test/fixtures/zk-proofs.json), proving the run file [`contracts/test/fixtures/zk-run.json`](../contracts/test/fixtures/zk-run.json). It was proven **in the agent's container, not by a `zk-prove.yml` dispatch**: this month's Actions minutes were nearly used up (about 1,460 of 1,500), and the owner chose local checks only. The build ran at the fixed path, from a bind mount of the worktree, so its verify image id is `0xa3013dc48ccd9e8e28c6625a8362a1fde513e1c51ae1e50286445c0eae3702b1`, M4.8's, the runner's.
+
+The run is run 1 of `ZkRefereeTest`'s deployment (`Challenge` `0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9` on chain 31337), in a season of `seasons/calibration-1.json`. MockArbSys's block hashes make its nonce `0xaab42536f4ae3853662197c83122e0ffaa0ab9b1a96ac78169485803947768a9` on every test run. Each drawn level was played by the `bold` bot (`jiro-tools playtest --policy bold --nonce … --level-index i`). To keep the proof to about two hours on 4 CPUs, the first five levels were then closed at tick c by an X, as a client closes a level early (README §7.2), keeping the bot's events before c. The sixth was kept whole: the bot cleared it.
+
+| Level index | Level | Draw slot | Weight | Closed at | End reason | Claim | Ticks used | Score | Journal |
+|---:|---|---:|---:|---:|---|---:|---:|---:|---:|
+| 0 | `02-sentry` | 1 | 15,586 | 90 | Committed | 1,640 | 91 | 2,556 | 116 B |
+| 1 | `10-maze` | 9 | 13,692 | 60 | Committed | 902 | 61 | 1,235 | 122 B |
+| 2 | `03-heavy` | 2 | 15,770 | 30 | Committed | 856 | 31 | 1,349 | 104 B |
+| 3 | `08-storm` | 7 | 14,979 | 90 | Committed | 983 | 91 | 1,472 | 167 B |
+| 4 | `14-titan` | 13 | 28,591 | 30 | Committed | 570 | 31 | 1,629 | 110 B |
+| 5 | `04-pair` | 3 | 15,758 | | Cleared | 8,168 | 262 | 12,871 | 260 B |
+
+The native replay gives a run score of 21,112, 567 ticks and 1 clear; `ZkReferee.t.sol` settles the run through `Challenge` and expects exactly these in `RunSettled`.
+
+Measured with `bash referee/zk/peak-memory.sh <zk-host> prove --run contracts/test/fixtures/zk-run.json --season seasons/calibration-1.json`, from the build at the fixed path, on 4 CPUs with 15.7 GiB of RAM, in the 13.36 GiB memory cgroup of M4.8. The Groth16 image `risczero/risc0-groth16-prover:v2025-04-03.1` (digest `sha256:a4f80ce2…a64ee`) pulled in 1 min 30 s through the registry mirror. It ran from 11:20:02 to 13:27:21 UTC, alone:
+
+| Environment | Mode | Input | Segment limit | Segments | Proving cycles (user) | Segment proofs | Recursion | Groth16 | Total | Peak host | Peak Docker | Seal |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| container | run | `zk-run.json` | 2^20 | 16 | 16,777,216 (15,374,362) | 6,554.7 s | 913.3 s | 170.4 s | 7,638.5 s | 9,613,604 kB (9.2 GiB) | 7,207 MiB | 260 bytes |
+
+- **Per segment:** 410 s of segment proving and 57 s of recursion, M4.8's rate ([Proving](#proving)). The six levels take 15.4 million user cycles for 567 ticks: each level's setup costs more than the ticks of these short journals.
+- **Checked twice:** the host checked the executor's public values against the run file and the season before proving, and the Groth16 receipt's after (`verified: yes`). The public values equal the dev-mode receipt's, sha256 `0x1bed6b0e…3557`.
+
+### Tests and gas
+
+`cd contracts && forge test --match-contract ZkReferee -vv --gas-report`, with forge 1.8.6 and solc 0.8.28. All 12 tests pass, each one scenario:
+
+- The run settles through `Challenge` with the real proof, and `RunSettled` carries the native replay's score, ticks and clears.
+- `verifyRun` reverts in four cases: on tampered public values (`VerificationFailed`, from the verifier), under another image id (`VerificationFailed`), with another weight (`WeightMismatch`), and with another level (`LevelIdMismatch`).
+- `settleRun` of a run whose committed journal 3 differs from the proven one reverts with `JournalHashMismatch`.
+- A level proof does not pass as a run proof, and the reverse (`PublicValuesLengthMismatch`).
+- `verify` returns M4.8's level proof's Outcome, equal to its vector's.
+- The rest cover `rulesVersion()` and the constructor's checks.
+
+Gas from the traces (`-vvvv`), each a call's own frame, without the transaction's 21,000 and its calldata:
+
+| Call | Gas | Of which the Groth16 verifier's `verify` | ZkReferee's own |
+|---|---:|---:|---:|
+| `ZkReferee.verifyRun`, the fixture run | 262,251 | 225,091 | 37,160 |
+| `ZkReferee.verify`, M4.8's level proof of `commit-at-tick-0` | 235,730 | 225,091 | 10,639 |
+| `Challenge.settleRun`, the fixture run, `verifyRun` and `Season.recordRun` (75,319) included | 525,983 | 225,091 | |
+
+- **ZkReferee's own gas** covers decoding the proof, the `sha256` of the public values, decoding the Outcomes, and hashing each level and journal, which `Challenge` also hashes.
+- **Calldata:** this run's `settleRun` carries 7,524 bytes (5,713 of them zero), of which the proof is 2,720: 51,828 gas at EIP-2028's prices. EIP-7623's floor for it, 150,570 with the 21,000 included, is below the transaction's gas, so it does not apply. Settlement gas grows with the journals' calldata ([Settlement gas](#settlement-gas)); the verification stays near 262,000 per run, plus ZkReferee's hashing of longer journals.
+- **Against M4.9's estimate,** which put a verified run at 804,194 gas (227,591 for the proof and M4.7's 576,603 of settlement): this run's `settleRun` takes 525,983 plus 51,828 of calldata and the 21,000 base, 598,811 in all, with short journals.
+
+### End to end, zk mode
+
+`node scripts/contracts/e2e.mjs --network local --zk`, run in the container from the fixed path on 2026-11-02 (anvil 1.8.6, forge 1.8.6): ZkReferee over `RiscZeroMockVerifier`, pinned to `zk-host image-id`, and every settlement with a dev-mode proof of `RISC0_DEV_MODE=1 zk-host prove`. The happy path's and the late run's run files go through `prove --run <run file> --season`, and each level of the fallback run through `prove --level`, as a game vector holding its native Outcome. Every case passed: the happy path settled with score 88,580, 3,783 ticks and 6 clears, and the `settleLevel` fallback with 74,836, 3,445 and 6, both as the native replay. The late run was marked late. The copied journal reverted with `OutcomeRunNonceMismatch`. For the wrong rulesVersion run, the prover refused with replay's code 4, so no proof of it exists. The six dev-mode proofs took under a second. The mock verifier's gas is not the Groth16 verifier's, so these figures are not costs:
+
+| Transaction | Calldata bytes | Gas |
+|---|---:|---:|
+| deploy RiscZeroMockVerifier | | 509,372 |
+| deploy ZkReferee | | 762,698 |
+| `Challenge.settleRun`, happy path | 10,084 | 345,558 |
+| `Challenge.settleLevel` 0 to 5, fallback | 1,732 to 2,308 | 94,407 to 113,229 |
+| `Challenge.settleRun`, late run | 6,884 | 219,473 |
+
+`e2e.yml` gains an `e2e-zk` job that runs this command on anvil, building the zk host with ci.yml's zk-exec cache. Because of the minutes budget, this PR does not run it.
+
 ## Run file v1
 
 The run file carries everything needed to replay, prove and settle one committed Challenge run, without reading the commit transaction: what the dApp hands to a prover (M4.10), shows and exports (M5.2), and what the season job settles from (M5.5). It is a JSON object:

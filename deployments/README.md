@@ -20,7 +20,7 @@ A generation is a JSON object with exactly these keys:
 |---|---|---|
 | `deployedAt` | string | when `deploy.mjs` finished deploying it, an ISO 8601 UTC time with milliseconds, as `Date.toISOString` writes it |
 | `sourceCommit` | string | the full sha of the commit `deploy.mjs` ran from |
-| `backend` | string | the referee at `Referee` (README §7.3): `mock` for MockReferee, `stylus` for the Stylus referee deployed and activated through cargo-stylus, `zk` for a zk backend, whose runs the operator proves and settles (README §7.5). M4.10 adds ZkReferee to `deploy.mjs`; until then only `localnet.mjs --up --backend zk` writes `zk`, with MockReferee standing in. |
+| `backend` | string | the referee at `Referee` (README §7.3): `mock` for MockReferee, `stylus` for the Stylus referee deployed and activated through cargo-stylus, `zk` for `ZkReferee`, whose runs the operator proves and settles (README §7.5). `ZkReferee` is pinned to the verify program's image id (`deploy.mjs --image-id`, from `zk-host image-id`) and calls RISC Zero's mock verifier `RiscZeroMockVerifier` on `local` and `nitro-devnode`, and RISC Zero's 3.0 Groth16 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D` on any other network (plan M4.10). `localnet.mjs --up --backend zk` also writes `zk`, with MockReferee standing in. |
 | `operator` | address | `Season`'s operator: the deployer |
 | `treasury` | address | `Season`'s treasury, which `withdrawRake` pays |
 | `ArbSys` | address | the ArbSys `ArbBlockhashEntropy` reads: the precompile `0x0000000000000000000000000000000000000064` on Arbitrum chains, MockArbSys on `local` |

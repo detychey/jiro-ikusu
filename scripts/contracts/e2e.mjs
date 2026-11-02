@@ -20,14 +20,21 @@
 // `local` starts anvil with MockReferee, which returns the native replay's Outcomes, and moves
 // MockArbSys and the block time instead. The player and the settler are fresh accounts the
 // deployer funds; the treasury is a fresh address.
-// Usage: [DEPLOYER_KEY=0x…] node e2e.mjs --network <local|nitro-devnode> [--rpc <url>] [--port <anvil port>]
-// jiro-tools is built with cargo into $CARGO_TARGET_DIR (default target/).
+// --zk, the zk mode (plan M4.10), deploys ZkReferee over RISC Zero's mock verifier on either network instead,
+// pinned to the image id of the zk host's verify program. Each settlement then carries a dev-mode
+// proof of `RISC0_DEV_MODE=1 zk-host prove`: of the run file (docs/VERIFICATION.md, Run file v1)
+// for settleRun, and of each level, written as a game vector with its native Outcome, for
+// settleLevel. In the wrong rulesVersion case the prover refuses the run: no proof of it exists.
+// M4.14 proves for real, under the Groth16 verifier.
+// Usage: [DEPLOYER_KEY=0x…] node e2e.mjs --network <local|nitro-devnode> [--zk] [--rpc <url>] [--port <anvil port>]
+// jiro-tools and, in the zk mode, zk-host are built with cargo into $CARGO_TARGET_DIR (default
+// target/, and referee/zk/target for zk-host).
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { Contract, Wallet, concat, formatEther, getBytes, hexlify, keccak256, parseEther, toQuantity } from "ethers";
+import { AbiCoder, Contract, Wallet, concat, formatEther, getBytes, hexlify, keccak256, parseEther, toQuantity } from "ethers";
 import { NETWORKS, REPO_ROOT, assertPrivateKey, buildContracts, connect, deployContracts, sendTransaction } from "./deploy.mjs";
 import { isEntryPoint, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 import { CALIBRATION, assertEqual, eventOf, startAnvil } from "./localnet.mjs";
@@ -50,6 +57,8 @@ const FUNDING = parseEther("1");
 // The reference mix of levels/targets.json first; a level keeps the first journal that clears.
 const POLICIES = ["bold", "committer", "greedy", "edge-nibbler"];
 const JIRO_TOOLS = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "release", "jiro-tools");
+const ZK_HOST = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "referee", "zk", "target"), "release", "zk-host");
+const CALIBRATION_FILE = join(REPO_ROOT, "seasons", "calibration-1.json");
 const OUTCOME_FIELDS = ["journalHash", "levelId", "runNonce", "levelIndex", "drawSlot", "mode", "rulesVersion", "endReason", "claimBp", "ticksUsed", "levelScore"];
 const READ_WINDOW = 256n;
 const TICKS_PER_SECOND = 15n;
@@ -134,6 +143,59 @@ function jiroTools(args) {
   const result = spawnSync(JIRO_TOOLS, args, { cwd: REPO_ROOT, encoding: "utf8" });
   if (result.error) throw result.error;
   return result;
+}
+
+function zkHost(args, env = process.env) {
+  const result = spawnSync(ZK_HOST, args, { cwd: REPO_ROOT, encoding: "utf8", env });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`zk-host ${args.join(" ")} failed:\n${result.stderr}`);
+  return result.stdout;
+}
+
+/** The dev-mode proof of `zk-host prove <args>`, as settlement takes it: abi.encode(seal, publicValues). */
+function devModeProof(args) {
+  const output = zkHost(["prove", ...args], { ...process.env, RISC0_DEV_MODE: "1" });
+  const fixture = output.match(/=== BEGIN zk-fixture ===\n(.*)\n=== END zk-fixture ===/)?.[1];
+  if (fixture === undefined) throw new Error(`zk-host prove printed no fixture:\n${output}`);
+  const { seal, publicValues } = JSON.parse(fixture);
+  return AbiCoder.defaultAbiCoder().encode(["bytes", "bytes"], [seal, publicValues]);
+}
+
+/** The run's file (docs/VERIFICATION.md, Run file v1), as the dApp exports it, and its proof. */
+function proveRun(context, run) {
+  const file = join(context.workDir, `run-${run.runId}.json`);
+  const runFile = {
+    version: 1,
+    chainId: NETWORKS[context.network].chainId,
+    challenge: context.challengeAddress,
+    runId: String(run.runId),
+    runNonce: run.runNonce,
+    levels: run.levels.map(({ level }) => level),
+    drawSlots: run.levels.map(({ level }) => CALIBRATION.levelIds.indexOf(keccak256(level))),
+    journals: run.levels.map(({ journal }) => hexlify(journal)),
+  };
+  writeFileSync(file, JSON.stringify(runFile));
+  return devModeProof(["--run", file, "--season", CALIBRATION_FILE]);
+}
+
+/** The proof of one level, given to the prover as a game vector (vectors/README.md) with its native Outcome. */
+function proveLevel(context, { level, journal, weightBp, outcome }, name) {
+  const file = join(context.workDir, `${name}.json`);
+  writeFileSync(file, JSON.stringify({ kind: "game", name, level, journal, weightBp, outcome }));
+  return devModeProof(["--level", file]);
+}
+
+/** README §7.3, "Rejections revert": the prover refuses a journal that replay rejects, so the run has no proof. */
+function assertNoProof(run, prove, expectedCode) {
+  let refusal;
+  try {
+    prove();
+  } catch (error) {
+    refusal = error.message.match(/replay rejects: code (\d+)/)?.[1];
+    if (refusal === undefined) throw error;
+  }
+  assertEqual(`${run.caseName}: the prover's refusal code`, refusal, expectedCode);
+  console.log(`[e2e] ${run.caseName}: run ${run.runId} has no proof, the prover refuses it with replay's code ${refusal}`);
 }
 
 /** The levels of levels/, by level id; every level of the calibration season must be there. */
@@ -309,7 +371,13 @@ async function runCases(context) {
   console.log(`[e2e] five runs committed, ${await elapsed()}`);
 
   if (context.backend === "mock") await setMockOutcomes(context, [happy, fallback, late]);
-  const settleArgs = (run) => [run.runId, run.levels.map(({ level }) => level), run.levels.map(({ journal }) => journal), "0x"];
+  if (context.backend === "zk") {
+    for (const run of [happy, late]) run.proof = proveRun(context, run);
+    copied.proof = happy.proof;
+    fallback.levelProofs = fallback.levels.map((level, levelIndex) => proveLevel(context, level, `run-${fallback.runId}-level-${levelIndex}`));
+    console.log(`[e2e] dev-mode proofs made, ${await elapsed()}`);
+  }
+  const settleArgs = (run) => [run.runId, run.levels.map(({ level }) => level), run.levels.map(({ journal }) => journal), run.proof ?? "0x"];
 
   await assertRunSettled(context, happy.caseName, happy, await record(happy.caseName, "Challenge.settleRun", asSettler.settleRun(...settleArgs(happy)), challenge));
   assertEqual("the player's best run after the happy path", (await season.bestRunOf(number, player.address)).runId, happy.runId);
@@ -320,7 +388,7 @@ async function runCases(context) {
     lastLevel = await record(
       fallback.caseName,
       `Challenge.settleLevel ${levelIndex}`,
-      asSettler.settleLevel(fallback.runId, levelIndex, journalHashes, level, journal, "0x"),
+      asSettler.settleLevel(fallback.runId, levelIndex, journalHashes, level, journal, fallback.levelProofs?.[levelIndex] ?? "0x"),
       challenge,
     );
   }
@@ -338,13 +406,17 @@ async function runCases(context) {
 
   const [firstWrong] = wrongRules.levels;
   assertEqual("wrong rulesVersion: the native replay's error", replay(context.workDir, firstWrong.level, firstWrong.journal, firstWrong.weightBp).error, 4);
-  const wrongRevert = await revertOf(asSettler.settleRun.staticCall(...settleArgs(wrongRules)), [challenge.interface, context.referee.interface]);
-  const expectedWrong =
-    context.backend === "stylus"
-      ? "Error(level 0: replay error 4)"
-      : `NoOutcome(${keccak256(firstWrong.level)}, ${keccak256(firstWrong.journal)}, ${firstWrong.weightBp})`;
-  assertEqual("wrong rulesVersion: settleRun's revert", wrongRevert, expectedWrong);
-  console.log(`[e2e] wrong rulesVersion: run ${wrongRules.runId}'s settleRun reverts with ${wrongRevert}`);
+  if (context.backend === "zk") {
+    assertNoProof(wrongRules, () => proveRun(context, wrongRules), 4);
+  } else {
+    const wrongRevert = await revertOf(asSettler.settleRun.staticCall(...settleArgs(wrongRules)), [challenge.interface, context.referee.interface]);
+    const expectedWrong =
+      context.backend === "stylus"
+        ? "Error(level 0: replay error 4)"
+        : `NoOutcome(${keccak256(firstWrong.level)}, ${keccak256(firstWrong.journal)}, ${firstWrong.weightBp})`;
+    assertEqual("wrong rulesVersion: settleRun's revert", wrongRevert, expectedWrong);
+    console.log(`[e2e] wrong rulesVersion: run ${wrongRules.runId}'s settleRun reverts with ${wrongRevert}`);
+  }
   console.log(`[e2e] settlements done, ${await elapsed()}`);
 
   await clock.passTime("season close", await season.settlementEndOf(number));
@@ -375,8 +447,8 @@ function gasTable() {
   return lines.join("\n");
 }
 
-async function runSuite(network, rpc) {
-  const backend = BACKEND_OF[network];
+async function runSuite(network, rpc, zk) {
+  const backend = zk ? "zk" : BACKEND_OF[network];
   const provider = await connect(network, rpc);
   const deployerKey = process.env.DEPLOYER_KEY;
   // No child needs it from the environment: the Stylus build runs third-party build scripts.
@@ -405,7 +477,18 @@ async function runSuite(network, rpc) {
       recordFile,
       network,
       NETWORKS[network].chainId,
-      await deployContracts({ artifacts, provider, rpc, network, deployer, deployerKey, backend, treasury, rulesVersion: CALIBRATION.rulesVersion }),
+      await deployContracts({
+        artifacts,
+        provider,
+        rpc,
+        network,
+        deployer,
+        deployerKey,
+        backend,
+        treasury,
+        rulesVersion: CALIBRATION.rulesVersion,
+        imageId: zk ? zkHost(["image-id"]).trim() : undefined,
+      }),
     );
     const [generation] = readDeploymentRecord(recordFile).generations;
     console.log("[e2e] the deployment record matches the schema");
@@ -426,6 +509,7 @@ async function runSuite(network, rpc) {
     const { season: number, start } = eventOf(season, opened, "SeasonOpened");
     const arbSys = new Contract(generation.ArbSys, artifacts.MockArbSys.abi, deployer);
     const context = {
+      network,
       backend,
       provider,
       player,
@@ -438,7 +522,7 @@ async function runSuite(network, rpc) {
       challengeAddress: generation.Challenge,
       challenge: new Contract(generation.Challenge, artifacts.Challenge.abi, provider),
       entropy: new Contract(generation.ArbBlockhashEntropy, artifacts.ArbBlockhashEntropy.abi, provider),
-      referee: new Contract(generation.Referee, artifacts.MockReferee.abi, deployer),
+      referee: new Contract(generation.Referee, (zk ? artifacts.ZkReferee : artifacts.MockReferee).abi, deployer),
       clock: chainClockOf(network, provider, deployer, arbSys),
       levels: readLevels(),
       workDir: recordDir,
@@ -458,13 +542,17 @@ async function runSuite(network, rpc) {
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { network: { type: "string" }, rpc: { type: "string" }, port: { type: "string", default: "8545" } } });
-  if (!BACKEND_OF[values.network]) throw new Error("usage: node e2e.mjs --network <local|nitro-devnode> [--rpc <url>] [--port <anvil port>]");
-  execFileSync("cargo", ["build", "-p", "jiro-tools", "--release", "--locked"], { cwd: REPO_ROOT, stdio: ["ignore", "inherit", "inherit"] });
-  if (values.network !== "local") return runSuite(values.network, values.rpc ?? NETWORKS[values.network].rpc);
+  const { values } = parseArgs({
+    options: { network: { type: "string" }, zk: { type: "boolean", default: false }, rpc: { type: "string" }, port: { type: "string", default: "8545" } },
+  });
+  if (!BACKEND_OF[values.network]) throw new Error("usage: node e2e.mjs --network <local|nitro-devnode> [--zk] [--rpc <url>] [--port <anvil port>]");
+  const build = (args) => execFileSync("cargo", ["build", "--release", "--locked", ...args], { cwd: REPO_ROOT, stdio: ["ignore", "inherit", "inherit"] });
+  build(["-p", "jiro-tools"]);
+  if (values.zk) build(["--manifest-path", join(REPO_ROOT, "referee", "zk", "Cargo.toml"), "-p", "zk-host"]);
+  if (values.network !== "local") return runSuite(values.network, values.rpc ?? NETWORKS[values.network].rpc, values.zk);
   const { anvil, rpc } = await startAnvil(values.port, false);
   try {
-    await runSuite("local", rpc);
+    await runSuite("local", rpc, values.zk);
   } finally {
     anvil.kill();
   }

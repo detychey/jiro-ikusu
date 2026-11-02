@@ -1,12 +1,13 @@
 // Deploys a contract generation (plan M4.11), adapted from ethblockdigger's
 // scripts/contracts/deploy.ts at commit 15f9d73405a8c9940870a6375b950c6c7bd5f4ce, without its
 // MockUSDC: ArbBlockhashEntropy on ArbSys (MockArbSys on the local chain, which has no precompile),
-// the referee (MockReferee, or the Stylus referee through cargo-stylus), Season with the treasury
-// and the deployer as its operator, then Challenge, bound to Season. The generation is written as
+// the referee (MockReferee, the Stylus referee through cargo-stylus, or ZkReferee over a RISC Zero
+// verifier), Season with the treasury and the deployer as its operator, then Challenge, bound to
+// Season. The generation is written as
 // the newest of deployments/<network>.json (deployments/README.md). It opens no season.
 // Contracts are immutable, so every run deploys a new generation; it never resumes an earlier one.
-// Usage: node deploy.mjs --network <local|nitro-devnode> --backend <mock|stylus> --treasury <address>
-//          [--rules-version <n>, for mock] [--rpc <url>]
+// Usage: node deploy.mjs --network <local|nitro-devnode> --backend <mock|stylus|zk> --treasury <address>
+//          [--rules-version <n>, for mock and zk] [--image-id <bytes32>, for zk] [--rpc <url>]
 // The local chain's deployer is the node's first unlocked account (anvil's development account 0).
 // On nitro-devnode, DEPLOYER_KEY holds the deployer's key.
 import { execFileSync, spawnSync } from "node:child_process";
@@ -29,6 +30,12 @@ const ARB_SYS_PRECOMPILE = "0x0000000000000000000000000000000000000064";
 const STYLUS_WASM = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "jiro_referee_stylus.opt.wasm");
 // nitro-devnode seals a block per transaction within milliseconds; ethers polls receipts every 4 s by default.
 const RECEIPT_POLLING_MS = 100;
+// RISC Zero's 3.0 Groth16 verifier on Arbitrum One and Arbitrum Sepolia, which ZkReferee holds and
+// calls directly, never through RISC Zero's upgradeable router (README §7.3, docs/ECONOMY.md).
+export const RISC_ZERO_GROTH16_VERIFIER = "0x2a098988600d87650Fb061FfAff08B97149Fa84D";
+// The selector of the dev-mode seals of `RISC0_DEV_MODE=1 zk-host prove`, followed by the claim's
+// digest, which RISC Zero's mock verifier accepts when deployed with it.
+const MOCK_VERIFIER_SELECTOR = "0xffffffff";
 
 export function deploymentFileOf(network) {
   return join(REPO_ROOT, "deployments", `${network}.json`);
@@ -43,7 +50,10 @@ export function buildContracts() {
     return { abi, bytecode: bytecode.object };
   };
   return Object.fromEntries(
-    ["MockArbSys", "ArbBlockhashEntropy", "MockReferee", "MockForwarder", "Season", "Challenge"].map((name) => [name, artifactOf(name)]),
+    ["MockArbSys", "ArbBlockhashEntropy", "MockReferee", "MockForwarder", "RiscZeroMockVerifier", "ZkReferee", "Season", "Challenge"].map((name) => [
+      name,
+      artifactOf(name),
+    ]),
   );
 }
 
@@ -137,24 +147,40 @@ async function deployStylusReferee(provider, rpc, deployerKey) {
 }
 
 /**
- * Deploys the full set and returns the generation to record. `deployerKey` is the Stylus
- * backend's only, which cargo-stylus needs; `rulesVersion` is MockReferee's only.
+ * ZkReferee for the verify program `imageId`. The local chains have no RISC Zero verifier: there it
+ * calls RISC Zero's mock verifier, which accepts the dev-mode seals of `RISC0_DEV_MODE=1 zk-host prove`.
  */
-export async function deployContracts({ artifacts, provider, rpc, network, deployer, deployerKey, backend, treasury, rulesVersion }) {
+async function deployZkReferee({ artifacts, provider, network, deployer, imageId, rulesVersion }) {
+  const verifier =
+    network === "local" || network === "nitro-devnode"
+      ? await (await deployContract(artifacts.RiscZeroMockVerifier, "RiscZeroMockVerifier", deployer, [MOCK_VERIFIER_SELECTOR])).getAddress()
+      : RISC_ZERO_GROTH16_VERIFIER;
+  if ((await provider.getCode(verifier)) === "0x") throw new Error(`the RISC Zero verifier at ${verifier} has no code on ${network}`);
+  return (await deployContract(artifacts.ZkReferee, "ZkReferee", deployer, [verifier, imageId, rulesVersion])).getAddress();
+}
+
+/**
+ * Deploys the full set and returns the generation to record. `deployerKey` is the Stylus
+ * backend's only, which cargo-stylus needs; `rulesVersion` is MockReferee's and ZkReferee's, and
+ * `imageId`, the verify program's (`zk-host image-id`), ZkReferee's.
+ */
+export async function deployContracts({ artifacts, provider, rpc, network, deployer, deployerKey, backend, treasury, rulesVersion, imageId }) {
   if (!BACKENDS.includes(backend)) throw new Error(`unknown backend ${backend}: expected one of ${BACKENDS.join(", ")}`);
   if (backend === "stylus" && network === "local") throw new Error("anvil runs no Stylus program: deploy the stylus backend on nitro-devnode");
-  if (backend === "zk") throw new Error("deploy.mjs has no ZkReferee branch yet (plan M4.10)");
-  if (backend === "mock" && !Number.isInteger(rulesVersion)) throw new Error("the mock backend needs the rules version MockReferee returns");
+  if (backend !== "stylus" && !Number.isInteger(rulesVersion)) throw new Error(`the ${backend} backend needs the rules version its referee returns`);
+  if (backend === "zk" && !/^0x[0-9a-fA-F]{64}$/.test(imageId ?? "")) throw new Error("the zk backend needs the verify program's image id, 32 bytes in hex");
   const operator = getAddress(await deployer.getAddress());
   console.log(`network ${network}, backend ${backend}, operator ${operator}, treasury ${getAddress(treasury)}`);
 
   const arbSys =
     network === "local" ? await (await deployContract(artifacts.MockArbSys, "MockArbSys", deployer, [])).getAddress() : ARB_SYS_PRECOMPILE;
   const entropy = await deployContract(artifacts.ArbBlockhashEntropy, "ArbBlockhashEntropy", deployer, [arbSys]);
-  const referee =
-    backend === "mock"
-      ? await (await deployContract(artifacts.MockReferee, "MockReferee", deployer, [rulesVersion])).getAddress()
-      : await deployStylusReferee(provider, rpc, deployerKey);
+  const deployReferee = {
+    mock: async () => (await deployContract(artifacts.MockReferee, "MockReferee", deployer, [rulesVersion])).getAddress(),
+    stylus: () => deployStylusReferee(provider, rpc, deployerKey),
+    zk: () => deployZkReferee({ artifacts, provider, network, deployer, imageId, rulesVersion }),
+  };
+  const referee = await deployReferee[backend]();
   const season = await deployContract(artifacts.Season, "Season", deployer, [treasury, operator]);
   const challenge = await deployContract(artifacts.Challenge, "Challenge", deployer, [await entropy.getAddress(), await season.getAddress()]);
   await sendTransaction("Season.bindChallenge", season.bindChallenge(await challenge.getAddress()), season);
@@ -188,12 +214,13 @@ async function main() {
       backend: { type: "string" },
       treasury: { type: "string" },
       "rules-version": { type: "string" },
+      "image-id": { type: "string" },
       rpc: { type: "string" },
     },
   });
   if (!values.network || !values.backend || !values.treasury) {
     throw new Error(
-      "usage: node deploy.mjs --network <local|nitro-devnode> --backend <mock|stylus> --treasury <address> [--rules-version <n>] [--rpc <url>]",
+      "usage: node deploy.mjs --network <local|nitro-devnode> --backend <mock|stylus|zk> --treasury <address> [--rules-version <n>] [--image-id <bytes32>] [--rpc <url>]",
     );
   }
   const network = values.network;
@@ -214,6 +241,7 @@ async function main() {
     backend: values.backend,
     treasury: values.treasury,
     rulesVersion: values["rules-version"] === undefined ? undefined : Number(values["rules-version"]),
+    imageId: values["image-id"],
   });
   const file = deploymentFileOf(network);
   prependGeneration(file, network, NETWORKS[network].chainId, generation);

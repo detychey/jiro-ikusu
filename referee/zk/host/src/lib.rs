@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use risc0_zkvm::ExecutorEnv;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 // The guests, built by risc0-build: `VERIFY_ELF` and `VERIFY_ID` commit `(uint16 weightBp,
 // Outcome)` as ABI words per level and panic on a rejected journal; `TRACE_ELF` and `TRACE_ID`,
@@ -16,7 +16,7 @@ pub const OUTCOME_LEN: usize = 12 * WORD;
 pub const TRACED_LEN: usize = 1 + WORD + OUTCOME_LEN;
 
 /// The Outcome's fields in ABI order (README §7.3); the first three are bytes32.
-const OUTCOME_FIELDS: [&str; 11] = [
+pub const OUTCOME_FIELDS: [&str; 11] = [
     "journalHash",
     "levelId",
     "runNonce",
@@ -30,6 +30,19 @@ const OUTCOME_FIELDS: [&str; 11] = [
     "levelScore",
 ];
 const BYTES32_FIELDS: usize = 3;
+/// The fields a run file and its season fix (docs/VERIFICATION.md, Run file v1); the replay gives
+/// the others. journalHash is settlement's to check, from the journal bytes.
+pub const RUN_FIELDS: [&str; 6] = [
+    "levelId",
+    "runNonce",
+    "levelIndex",
+    "drawSlot",
+    "mode",
+    "rulesVersion",
+];
+const RUN_FILE_VERSION: u64 = 1;
+const RUN_LEVELS: usize = 6;
+const MODE_CHALLENGE: u64 = 1;
 const LEVEL_ID_FIELD: usize = 1;
 
 /// The kinds of vectors/, and M1.10's random cases, which are game vectors without a trace file.
@@ -106,11 +119,14 @@ impl FormatFixtures {
     }
 }
 
-pub fn read_vector(path: &Path) -> Result<Value, String> {
+fn read_json(path: &Path) -> Result<Value, String> {
     let text =
         std::fs::read_to_string(path).map_err(|error| format!("{}: {error}", path.display()))?;
-    let vector: Value =
-        serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))?;
+    serde_json::from_str(&text).map_err(|error| format!("{}: {error}", path.display()))
+}
+
+pub fn read_vector(path: &Path) -> Result<Value, String> {
+    let vector = read_json(path)?;
     match vector["kind"].as_str() {
         Some(kind) if VECTOR_KINDS.contains(&kind) => Ok(vector),
         other => Err(format!(
@@ -131,6 +147,59 @@ pub fn read_games(paths: &[String]) -> Result<(Vec<Value>, Vec<Input>), String> 
         .map(Input::of_game)
         .collect::<Result<Vec<_>, _>>()?;
     Ok((vectors, inputs))
+}
+
+/// A run file's six levels, scored at its season's weights (seasons/*.json): each level's
+/// expected weightBp and `RUN_FIELDS`, and its input.
+pub fn read_run(run_path: &Path, season_path: &Path) -> Result<(Vec<Value>, Vec<Input>), String> {
+    let run = read_json(run_path)?;
+    let season = read_json(season_path)?;
+    if run["version"] != RUN_FILE_VERSION {
+        return Err(format!(
+            "{}: version {}, expected {RUN_FILE_VERSION}",
+            run_path.display(),
+            run["version"]
+        ));
+    }
+    let six = |name: &str| {
+        run[name]
+            .as_array()
+            .filter(|values| values.len() == RUN_LEVELS)
+            .ok_or(format!("{}: {name} is not 6 values", run_path.display()))
+    };
+    let (levels, journals, slots) = (six("levels")?, six("journals")?, six("drawSlots")?);
+    let mut records = Vec::new();
+    let mut inputs = Vec::new();
+    for (index, ((level, journal), slot)) in levels.iter().zip(journals).zip(slots).enumerate() {
+        let slot = slot
+            .as_u64()
+            .ok_or(format!("drawSlots[{index}] is not a number"))?;
+        let at = |name: &str| {
+            usize::try_from(slot)
+                .ok()
+                .and_then(|slot| season[name].get(slot))
+                .ok_or(format!("{}: no {name}[{slot}]", season_path.display()))
+        };
+        let record = json!({
+            "name": format!("level {index}"),
+            "weightBp": at("weightsBp")?,
+            "outcome": {
+                "levelId": at("levelIds")?,
+                "runNonce": run["runNonce"],
+                "levelIndex": index,
+                "drawSlot": slot,
+                "mode": MODE_CHALLENGE,
+                "rulesVersion": season["rulesVersion"],
+            },
+        });
+        inputs.push(Input {
+            level: bytes(level).map_err(|error| format!("levels[{index}]: {error}"))?,
+            journal: bytes(journal).map_err(|error| format!("journals[{index}]: {error}"))?,
+            weight_bp: weight_bp(&record)?,
+        });
+        records.push(record);
+    }
+    Ok((records, inputs))
 }
 
 /// The guests' input stream, as raw little-endian u32 words: the number of levels, then each
@@ -186,23 +255,31 @@ pub fn check_traced(vector: &Value, values: &[u8]) -> Result<(), String> {
 
 /// Checks one level's `(uint16 weightBp, Outcome)` words against the vector.
 pub fn check_outcome(vector: &Value, words: &[u8]) -> Result<(), String> {
-    let (weight, fields) = split_outcome(words)?;
-    if weight != u64::from(weight_bp(vector)?) {
+    check_fields(vector, words, &OUTCOME_FIELDS)
+}
+
+/// Checks one level's words against the record's weightBp and its Outcome's `fields`.
+fn check_fields(record: &Value, words: &[u8], fields: &[&str]) -> Result<(), String> {
+    let (weight, outcome) = split_outcome(words)?;
+    if weight != u64::from(weight_bp(record)?) {
         return Err(format!(
-            "weightBp {weight}, the vector records {}",
-            vector["weightBp"]
+            "weightBp {weight}, expected {}",
+            record["weightBp"]
         ));
     }
-    for (index, (name, word)) in OUTCOME_FIELDS.iter().zip(fields.chunks(WORD)).enumerate() {
+    for (index, (name, word)) in OUTCOME_FIELDS.iter().zip(outcome.chunks(WORD)).enumerate() {
+        if !fields.contains(name) {
+            continue;
+        }
         let value = if index < BYTES32_FIELDS {
             Value::from(format!("0x{}", hex::encode(word)))
         } else {
             Value::from(uint(word)?)
         };
-        if vector["outcome"][name] != value {
+        if record["outcome"][name] != value {
             return Err(format!(
-                "outcome.{name} {value}, the vector records {}",
-                vector["outcome"][name]
+                "outcome.{name} {value}, expected {}",
+                record["outcome"][name]
             ));
         }
     }
@@ -212,18 +289,29 @@ pub fn check_outcome(vector: &Value, words: &[u8]) -> Result<(), String> {
 /// Checks the verify guest's public values against the vectors it replayed: one
 /// `(uint16 weightBp, Outcome)` per level, in order (referee/zk/README.md).
 pub fn check_outcomes(vectors: &[Value], public_values: &[u8]) -> Result<(), String> {
-    if public_values.len() != vectors.len() * OUTCOME_LEN {
+    check_levels(vectors, public_values, &OUTCOME_FIELDS)
+}
+
+/// Checks public values level by level against the records' weightBp and Outcome `fields`:
+/// `OUTCOME_FIELDS` for vectors, `RUN_FIELDS` for a run file's levels.
+pub fn check_levels(
+    records: &[Value],
+    public_values: &[u8],
+    fields: &[&str],
+) -> Result<(), String> {
+    if public_values.len() != records.len() * OUTCOME_LEN {
         return Err(format!(
             "verify guest committed {} bytes for {} levels",
             public_values.len(),
-            vectors.len()
+            records.len()
         ));
     }
-    vectors
+    records
         .iter()
         .zip(public_values.chunks(OUTCOME_LEN))
-        .try_for_each(|(vector, words)| {
-            check_outcome(vector, words).map_err(|error| format!("{}: {error}", vector["name"]))
+        .try_for_each(|(record, words)| {
+            check_fields(record, words, fields)
+                .map_err(|error| format!("{}: {error}", record["name"]))
         })
 }
 

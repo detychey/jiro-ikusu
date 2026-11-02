@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Vm} from "forge-std/Vm.sol";
 import {Challenge, Run, Settlement, SettlementStatus} from "../src/Challenge.sol";
-import {Outcome} from "../src/interfaces/IReferee.sol";
+import {IReferee, Outcome} from "../src/interfaces/IReferee.sol";
 import {MockReferee} from "../src/mocks/MockReferee.sol";
 import {Season, SeasonParams, BestRun} from "../src/Season.sol";
 import {ChallengeFixture, calldataGasOf, journalOf, runOf} from "./Challenge.t.sol";
@@ -125,7 +125,7 @@ abstract contract SettlementFixture is ChallengeFixture {
         number = openSeason(calibrationParams(referee));
     }
 
-    function calibrationParams(MockReferee referee_) internal view returns (SeasonParams memory params) {
+    function calibrationParams(IReferee referee_) internal view returns (SeasonParams memory params) {
         params = defaultParams(referee_);
         params.rulesVersion = calibrationRulesVersion;
         for (uint256 slot; slot < 16; ++slot) {
