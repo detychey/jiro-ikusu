@@ -62,13 +62,17 @@ async function rpcAnswers(rpc) {
   }
 }
 
-/** Starts anvil on `port`; detached, it outlives this process. Throws, with anvil's log, if it does not answer. */
-export async function startAnvil(port, detached) {
+/**
+ * Starts anvil on `port`, with `forkUrl`'s chain forked when given; detached, it outlives this
+ * process. Throws, with anvil's log, if it does not answer.
+ */
+export async function startAnvil(port, detached, { chainId = CHAIN_ID, forkUrl } = {}) {
   const rpc = `http://127.0.0.1:${port}`;
   if (await rpcAnswers(rpc)) throw new Error(`a node already answers on ${rpc}: stop it, or pass another --port`);
   const logFile = join(tmpdir(), `jiro-localnet-anvil-${port}.log`);
   const log = openSync(logFile, "w");
-  const anvil = spawn("anvil", ["--port", String(port), "--chain-id", String(CHAIN_ID)], { detached, stdio: ["ignore", log, log] });
+  const fork = forkUrl ? ["--fork-url", forkUrl] : [];
+  const anvil = spawn("anvil", ["--port", String(port), "--chain-id", String(chainId), ...fork], { detached, stdio: ["ignore", log, log] });
   closeSync(log);
   let exited = false;
   anvil.on("exit", () => (exited = true));

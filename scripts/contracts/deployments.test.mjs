@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, test } from "node:test";
-import { assertDeploymentRecord, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
+import { assertDeploymentRecord, prependGeneration, readDeploymentRecord, recordSeason } from "./deployments.mjs";
 
 const OLDER = {
   deployedAt: "2026-11-01T10:00:00.000Z",
@@ -84,6 +84,19 @@ test("prependGeneration refuses a record of another chain", () => {
   const file = join(dir, "local.json");
   writeFileSync(file, JSON.stringify(recordOf(OLDER)));
   assert.throws(() => prependGeneration(file, "local", 412346, NEWER), /records chain 31337/);
+});
+
+test("recordSeason adds the season to the newest generation only", () => {
+  const file = join(dir, "local.json");
+  writeFileSync(file, JSON.stringify(recordOf(NEWER, OLDER)));
+  recordSeason(file, "testnet-0", 1);
+  assert.deepEqual(JSON.parse(readFileSync(file, "utf8")), recordOf({ ...NEWER, seasons: { "testnet-0": 1 } }, OLDER));
+});
+
+test("recordSeason refuses a label already recorded", () => {
+  const file = join(dir, "local.json");
+  writeFileSync(file, JSON.stringify(recordOf(OLDER)));
+  assert.throws(() => recordSeason(file, "local", 2), /already records season 1/);
 });
 
 test("a record whose network does not name its file is refused", () => {

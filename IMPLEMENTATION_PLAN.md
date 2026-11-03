@@ -199,7 +199,8 @@ vectors/             format/, game/, levels/, derivations.json, COVERAGE.md, REA
 seasons/             calibration-1.json (M2.9), testnet-0.json (M4.14), testnet-1.json (M5.5)
 scripts/             bootstrap, CI checks, float-probe/ (own workspace),
                      contracts/ (Node package: deploy, preflight, e2e, localnet, stylus-gas,
-                     activation, season operations; nitro/ holds the vendored dev-node script)
+                     activation, season operations, fork rehearsal, Sourcify verification;
+                     nitro/ holds the vendored dev-node script)
 docs/                TOOLING, VERIFICATION, ECONOMY, DEPLOYMENT, SEASON_RUNBOOK,
                      TESTNET, TESTNET-1-REPORT
 reports/             playtest, calibration, bot and wedgie reports
@@ -2098,7 +2099,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 
 - **Goal:** everything needed to open, watch, settle and close a season on schedule, the testnet-1 parameters set from measurements, and a rehearsed close and claim on Sepolia.
 - **Deliverables:**
-  - `scripts/contracts/season.mjs`, with five commands:
+  - `scripts/contracts/season.mjs`, with five commands (M4.14 adds `open`, which this item keeps):
     - `open`: opens a season from a season file, and writes the season number `open` assigned, from its event, into `deployments/<network>.json` under the file's label, after checking the 16 levels with the level tool and, for a Stylus referee, that its remaining activation time (`ArbWasm.programTimeLeft`) covers the season's length plus grace;
     - `status`: runs, commits, settlements, pot, `isSolvent`;
     - `close`: the permissionless close;
