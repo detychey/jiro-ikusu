@@ -141,7 +141,7 @@ Modeled on ethblockdigger's [`DEPLOYMENT.md`](https://github.com/detychey/ethblo
 
 ## 5. Fork rehearsal
 
-**Rehearsal numbers, not testnet results.** `node scripts/contracts/fork-rehearsal.mjs` on 2026-11-03, against anvil 1.8.6 forking Arbitrum Sepolia at block 325,491,130 (`anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --chain-id 421614`), forge 1.8.6, solc 0.8.28, Node 22.22.0, ethers 6.17.0, from this PR's scripts on `main` at `7023fee`. It ran the steps of §2 through the same functions as the scripts, then stopped anvil; nothing was sent to Arbitrum Sepolia, and its records went to a temporary directory. It took about one minute.
+**Rehearsal numbers, not testnet results.** `node scripts/contracts/fork-rehearsal.mjs` on 2026-11-03, against anvil 1.8.6 forking Arbitrum Sepolia (`anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --chain-id 421614`), forge 1.8.6, solc 0.8.28, Node 22.22.0, ethers 6.17.0: at block 325,491,130 from this PR's scripts over `main` at `7023fee`, and again at block 325,493,637 from this PR's first commit `de57be5`, with the same gas for every transaction. It ran the steps of §2 through the same functions as the scripts, then stopped anvil; nothing was sent to Arbitrum Sepolia, and its records went to a temporary directory. It took about one minute.
 
 ### What it used
 
@@ -175,7 +175,7 @@ The preflight passed (`ready: yes`, the Stylus rows skipped, the `RISC Zero veri
 - **`settleRun`** took 530,143 gas for the whole transaction. M4.10 put the same run at 598,811 with the Groth16 verifier called directly, adding the calldata's 51,828 and the base 21,000 to the 525,983 of a test's call frame (`docs/VERIFICATION.md`, Tests and gas); a test frame's accounting is not a transaction's, so the two do not compare closely.
 - **Verification gas** (`eth_estimateGas`, the transaction's 21,000 and calldata included): `ZkReferee.verifyRun` of the run proof 340,011; `ZkReferee.verify` of M4.8's level proof of `commit-at-tick-0` 283,158.
 - **The emergency stop's extra gas:** `verify` of the run proof's seal and digest takes 265,391 gas through the stop and 256,164 on the Groth16 verifier directly, 9,227 more (estimates with the transaction's base and calldata, both cold). M4.12 traced 5,785 for the stop's own frame in a warm test.
-- **Timing:** meaningless on a fork, which seals a block per transaction: the reveal came 0 s after the `startRun` block, and the commits landed in the next second. The margin at commit of run 1 was 157 s: its deadline, `revealedAt` + ⌈567 / 15⌉ + 120, minus `committedAt`; run 2's margin to its latest commit was 1,200 s, the whole 1,080 + 120. The F2 session measures both on Sepolia.
+- **Timing:** meaningless on a fork, which seals a block per transaction: the reveal came 0 s after the `startRun` block, and the commits landed in the next second. The margin at commit of run 1 was 157 s in one run and 158 s in the other: its deadline, `revealedAt` + ⌈567 / 15⌉ + 120, minus `committedAt`; run 2's margin to its latest commit was 1,199 to 1,200 s, nearly the whole 1,080 + 120. The F2 session measures both on Sepolia.
 
 ## 6. Proving the bot run
 
