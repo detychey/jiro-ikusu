@@ -14,7 +14,6 @@ import save
 import ui
 import wedgie
 
-LEVELS = "jiro_levels.bin"
 MAGIC = b"JL01"
 LEVEL_BYTES = 472
 TRAINING = 0
@@ -52,48 +51,41 @@ STATUS_LEN = 23
 LIVE = 1
 STEP_ERROR = 0x100
 END_TITLES = ("", "Committed", "Cleared", "Out of lives", "Time up")
+# The heap stages jiro.py and the app measure, as the level select shows them: at run(), after
+# jiro.py's buffers, after the imports, after the screen, after the app's start, at the level select
+# and at the last level start.
+HEAP_STAGES = ("run", "buf", "imp", "lcd", "app", "sel", "lvl")
 
 
-def main(stack, recorder, shadow, free_before):
-    if jc.recorder_size() > len(recorder) or jc.shadow_size() > len(shadow):
-        raise ValueError("jiro_core needs a %d B Recorder and a %d B shadow" % (jc.recorder_size(), jc.shadow_size()))
-    Training(stack, recorder, shadow, free_before).run()
+def main(stack, recorder, shadow, level, level_file, bests, heap, stages):
+    """`stack` is a list that holds the core's stack, which Training lends to save.store."""
+    if jc.recorder_size() > len(recorder) or jc.shadow_size() > len(shadow) or len(level) != LEVEL_BYTES:
+        raise ValueError("jiro_core needs a %d B Recorder, a %d B shadow and a %d B level buffer" % (
+            jc.recorder_size(), jc.shadow_size(), LEVEL_BYTES))
+    if not isinstance(bests, dict):
+        raise ValueError("the bests save is not a dict")
+    Training(stack, recorder, shadow, level, level_file, bests, heap, stages).run()
 
 
-def read_levels():
+def read_levels(f):
     """The level file's index: (name, weightBp, level id, offset of the level bytes) per level."""
     levels = []
-    with open(LEVELS, "rb") as f:
-        if f.read(4) != MAGIC:
-            raise ValueError(LEVELS + " is not a JL01 level file")
-        rules_version, count = struct.unpack(">HB", f.read(3))
-        if rules_version != jc.rules_version():
-            raise ValueError("the levels are scored for rules version %d, the core runs %d" % (rules_version, jc.rules_version()))
-        offset = 7
-        for _ in range(count):
-            name = f.read(f.read(1)[0]).decode()
-            weight = struct.unpack(">H", f.read(2))[0]
-            level_id = f.read(32)
-            offset += 1 + len(name) + 2 + 32
-            levels.append((name, weight, level_id, offset))
-            f.seek(LEVEL_BYTES, 1)
-            offset += LEVEL_BYTES
+    f.seek(0)
+    if f.read(4) != MAGIC:
+        raise ValueError("the level file is not a JL01 level file")
+    rules_version, count = struct.unpack(">HB", f.read(3))
+    if rules_version != jc.rules_version():
+        raise ValueError("the levels are scored for rules version %d, the core runs %d" % (rules_version, jc.rules_version()))
+    offset = 7
+    for _ in range(count):
+        name = f.read(f.read(1)[0]).decode()
+        weight = struct.unpack(">H", f.read(2))[0]
+        level_id = f.read(32)
+        offset += 1 + len(name) + 2 + 32
+        levels.append((name, weight, level_id, offset))
+        f.seek(LEVEL_BYTES, 1)
+        offset += LEVEL_BYTES
     return levels
-
-
-def largest_block():
-    """The largest bytearray the heap can hold now, to 16 bytes."""
-    low, high = 0, gc.mem_free()
-    while high - low > 16:
-        size = (low + high) // 2
-        try:
-            block = bytearray(size)
-        except MemoryError:
-            high = size
-        else:
-            del block
-            low = size
-    return low
 
 
 def sample(keys):
@@ -123,8 +115,13 @@ def wait_until(due):
         pass
 
 
+def thousandths(n):
+    """n / 1000 to one decimal: µs as ms, bytes as kB."""
+    return "%d.%d" % (n // 1000, n % 1000 // 100)
+
+
 def ms(us):
-    return "%d.%d ms" % (us // 1000, us % 1000 // 100)
+    return thousandths(us) + " ms"
 
 
 def push_box(show_rect, old_x, old_y, new_x, new_y, size, margin=0):
@@ -143,23 +140,27 @@ def fill_around(fill_rect, x, y, margin, color):
 
 
 class Training:
-    def __init__(self, stack, recorder, shadow, free_before):
-        self.stack, self.recorder, self.shadow = stack, recorder, shadow
+    def __init__(self, stack, recorder, shadow, level, level_file, bests, heap, stages):
+        self.stack_holder, self.stack, self.stack_bytes = stack, stack[0], len(stack[0])
+        self.recorder, self.shadow, self.level, self.level_file, self.bests = recorder, shadow, level, level_file, bests
+        self.heap, self.stages = heap, stages
         self.screen, self.keys = lcd.LCD(), lcd.Keys()
+        heap(stages, "lcd")
         self.frame = self.screen.buffer
         self.show_rect, self.fill_rect = self.screen.show_rect, self.screen.fill_rect  # bound once, not per tick
-        self.level = bytearray(LEVEL_BYTES)
         self.status, self.previous = array("H", [0] * STATUS_LEN), array("H", [0] * STATUS_LEN)
         self.rect = array("H", [0] * 4)
-        self.levels = read_levels()
-        self.bests = save.load("bests", {})
-        if not isinstance(self.bests, dict):
-            raise ValueError("the bests save is not a dict")
-        gc.collect()
-        free, block = gc.mem_free(), largest_block()
-        print("jiro: free heap %d B before the app, %d B after start, largest free block %d B" % (free_before, free, block))
+        self.levels = read_levels(level_file)
+        heap(stages, "app")
         print("jiro: random source", wedgie.rand_source())
-        self.heap = "free %d B, block %d B" % (free, block)
+
+    def heap_lines(self):
+        """The heap stages, two to a line, in kB: free, then the largest block."""
+        cells = []
+        for stage in HEAP_STAGES:
+            measured = self.stages.get(stage)
+            cells.append(stage + (" -" if measured is None else " %s/%s" % (thousandths(measured[0]), thousandths(measured[1]))))
+        return [(" ".join(cells[i:i + 2]), ui.MUTED) for i in range(0, len(cells), 2)]
 
     def best_key(self, index):
         """As the browser's Training page keys bests: the rules version, the level id and the
@@ -178,13 +179,13 @@ class Training:
     def choose(self, index):
         """The level select, outside play and never journaled: the joystick picks, green plays."""
         count = len(self.levels)
+        self.heap(self.stages, "sel")
         while True:
             best = self.bests.get(self.best_key(index))
             ui.page(self.screen, "Level %d of %d" % (index + 1, count),
                     [(self.levels[index][0], ui.INK),
-                     ("no best yet" if best is None else "best %d" % best, ui.MUTED),
-                     ("< > other levels", ui.MUTED),
-                     (self.heap, ui.MUTED)], "{g} play")
+                     ("no best yet" if best is None else "best %d" % best, ui.MUTED)] + self.heap_lines(),
+                    "< > {g} play")
             step = 0
             while not step:
                 pressed = self.keys.pressed()
@@ -196,9 +197,8 @@ class Training:
 
     def start(self, index):
         name, _, level_id, offset = self.levels[index]
-        with open(LEVELS, "rb") as f:
-            f.seek(offset)
-            f.readinto(self.level)
+        self.level_file.seek(offset)
+        self.level_file.readinto(self.level)
         code = jc.start(self.recorder, self.level, TRAINING, wedgie.rand(32), TRAINING_INDEX, self.stack)
         if code:
             raise RuntimeError("the core rejects level %s: code %d" % (name, code))
@@ -226,6 +226,7 @@ class Training:
 
     def play(self, index):
         self.start(index)
+        self.heap(self.stages, "lvl")
         self.redraw()
         self.overlay(index)
         self.redraw()
@@ -315,11 +316,7 @@ class Training:
         best = self.bests.get(key)
         if best is None or score > best:
             self.bests[key] = score
-            try:
-                save.store("bests", self.bests)
-                best_line = "a new best"
-            except OSError as error:
-                best_line = "best not saved: %s" % error
+            best_line = self.store_bests()
         else:
             best_line = "best %d" % best
         ui.page(self.screen, END_TITLES[end],
@@ -343,3 +340,18 @@ class Training:
         self.keys.pressed()  # presses made before the summary's first 0.5 s do not skip it
         while "A" not in self.keys.pressed():
             time.sleep_ms(30)
+
+    def store_bests(self):
+        """Stores the bests in the core's stack's block, idle between levels, then takes the stack
+        back: save.store opens a 1,148-byte file and writes the bests' text, which the heap may
+        hold in no other block by now. What the store frees leaves the block whole again."""
+        self.stack = self.stack_holder[0] = None
+        gc.collect()
+        try:
+            save.store("bests", self.bests)
+            best_line = "a new best"
+        except OSError as error:
+            best_line = "best not saved: %s" % error
+        gc.collect()
+        self.stack = self.stack_holder[0] = bytearray(self.stack_bytes)
+        return best_line

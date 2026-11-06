@@ -1,27 +1,37 @@
 """The Training app's play test (plan M3.9): runs wedgie/app/jiro.py's run(), unmodified, on
 MicroPython v1.29.0's qemu MICROBIT port (scripts/build-qemu.sh builds it), with the wedgie's
-lcd, ui, save, wedgie and time modules stubbed and the app's files served from a RAM filesystem. A
-ballast fills the heap down to the given free bytes, the free RAM a wedgie reports with no app,
-before run() starts. The scripted inputs pick level 1, play it with two captures and commit, up
-to the summary screen. The app's clock is a stub over the port's: its ticks_us starts shortly
-before its 2^30 µs wrap, so the wrap falls in play, and on tick LATE_TICK it jumps LATE_US ahead,
+lcd, ui, save, wedgie and time modules stubbed and the app's files served from a RAM filesystem
+whose open() allocates what a wedgie's does: a 1,148-byte littlefs file object. The test's files
+and stubs sit above one large free block, as a wedgie's free RAM is, and a ballast fills the heap
+down to the given free bytes, the free RAM a wedgie reports with no app, before run() starts:
+part of them in small holes of 64 to 512 bytes between live blocks, the rest in that block. At
+the app's first level select, once it has started, the test fills every free block larger than
+SQUEEZE_BYTES, as a wedgie's heap was after round E1's second build started: from then on the app
+must allocate nothing larger, so a level start that opens a file fails, as it did on the wedgie.
+The scripted inputs pick level 1, play it with two captures and commit, then from the summary go
+back to the level select, pick level 2 and play it with the same inputs, so that what the app
+allocates per level is allocated twice. The app's clock is a stub over the port's: its ticks_us
+wraps 2^30 µs shortly after each level's tick 0, and on tick LATE_TICK it jumps LATE_US ahead,
 more than ticks_diff's 2^29 µs range, as a wedgie whose ticks fell that far behind would see it:
 the remaining ticks must run at once, late, instead of sleeping for minutes. Then it checks:
 
-- the journal the app printed: its header (Training, the stub's run nonce, level 1's id from
-  seasons/calibration-1.json, levelIndex 0) and its events, which must be the changes of the
-  README §6.1 mask that the scripted keys give under D8, Y and the joystick press never in it;
-- the app's end reason, claim, ticks and score against native replay of that journal
-  (`jiro-tools replay` with level 1's weight), and that it captured something;
-- the best score it stored, the free heap and largest free block it printed, the summary screen,
-  and no overrun before the clock's jump and one on every tick from it on.
+- per level, the journal the app printed: its header (Training, the stub's run nonce, the level's
+  id from seasons/calibration-1.json, levelIndex 0) and its events, which must be the changes of
+  the README §6.1 mask that the scripted keys give under D8, Y and the joystick press never in it;
+- per level, the app's end reason, claim, ticks and score against native replay of that journal
+  (`jiro-tools replay` with the level's weight), and that it captured something;
+- the best scores it stored, the free heap and largest free block it printed at each stage, a
+  summary screen per level, and no overrun before the clock's jump and one on every tick from it on.
 
 It prints the app's step, render and tick maxima in qemu microseconds and in instructions. qemu
 runs with -icount shift=3, 8 ns of virtual time per instruction, and the port's ticks assume a
 25 MHz SysTick that qemu's nRF51 clocks at 16 MHz, so one microsecond the app measures is
 1,562.5 / 8 = 195.3 instructions (measured with an inline-assembler loop of known length).
 
-Usage: python3 -I qemu_app_check.py <firmware.elf> <app dir> <free bytes>
+Usage: python3 -I qemu_app_check.py <firmware.elf> <app dir> <free bytes> [<holes>]
+
+<holes> is the number of small holes among the free bytes, HOLES by default; 0 leaves them all in
+the large block.
 
 Run it under a timeout: a module that hard-faults hangs qemu. Exit status 0 when every check
 passes.
@@ -46,9 +56,19 @@ INSTRUCTIONS_PER_US = 1562.5 / 2 ** ICOUNT_SHIFT
 RP2040_MHZ = 125
 ROW_PUSH_US = 45  # a show_rect row on a wedgie (wedgie.dev/code.md)
 RUN_NONCE = bytes.fromhex("277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd")
-LEVEL = "levels/01-open.bin"
 HEADER_LEN = 71
-WRAP_AFTER_US = 3_500_000  # from the clock stub's import to its wrap: about tick 24, play starting 1.9 s after it
+PLAYS = (1, 2)  # the levels played, in order, from the level select
+# MicroPython v1.29.0's rp2 port mounts littlefs with progsize=256, so a file's cache is 1,024
+# bytes, allocated with its 124-byte object (extmod/vfs_lfsx_file.c): the wedgie's "memory
+# allocation failed, allocating 1148 bytes" of round E1's second try.
+LFS_FILE_BYTES = 1148
+HOLES = 32
+SQUEEZE_BYTES = 1024  # round E1's second build measured a largest free block of 747 B after start on qemu
+HOLE_SIZES = (64, 256, 448, 128, 320, 512, 192, 384)  # bytes, interleaved with 16-byte live blocks
+UPLOAD_ROOM = 32 * 1024  # what uploading the files needs beside them
+STUB_ROOM = 64 * 1024  # what importing the stubs needs, their 28,800-byte screen buffer included
+STAGES = ("run", "buf", "imp", "lcd", "app", "sel", "lvl")
+WRAP_AFTER_US = 1_500_000  # from the last press outside play, just before tick 0, to the clock's wrap: about tick 22
 LATE_TICK = 70
 LATE_US = 600_000_000
 
@@ -68,13 +88,26 @@ SCRIPT = [
     (1, ("X",), ()),                    # commit
 ]
 
-# The menu presses before play: green on the level select picks level 1.
-MENU = [["A"]]
+
+def menu_presses():
+    """The presses outside play, in order: on the level select, joystick right to the level and
+    green; the presses discarded before tick 0; and after a level, on its summary, the presses
+    discarded in its first 0.5 s, then green."""
+    presses, selected = [], 1
+    for play, level in enumerate(PLAYS):
+        if play:
+            presses += [[], ["A"]]
+        presses += [["right"]] * (level - selected) + [["A"], []]
+        selected = level
+    return presses
+
 
 STUBS = {
+    # The screen buffer, allocated before lcd.py, whose scripted inputs take room to compile.
+    "lcd_buffer.py": "BUF = bytearray(28800)\n",
     "lcd.py": """\
-import clock, framebuf
-_BUF = bytearray(28800)
+import clock, framebuf, gc
+from lcd_buffer import BUF as _BUF
 _PALETTE = ((0, 0, 0), (255, 255, 255), (40, 100, 230), (255, 42, 42), (255, 220, 0), (60, 255, 120),
             (154, 154, 154), (34, 196, 82), (90, 90, 90))
 def color(r, g, b):
@@ -94,13 +127,44 @@ class LCD(framebuf.FrameBuffer):
     s.text(t, (240 - 8 * len(t)) // 2, y, c)
 class ScriptDone(Exception):
   pass
-_menu, _script, _tick, _play, _wrap = MENU, SCRIPT, [0], [False], [0]
+_menu, _script, _tick, _play, _wrap, _level, _held = MENU, SCRIPT, [0], [False], [0], [0], [None] * 64
+def _largest():
+  gc.collect()
+  low, high = 0, gc.mem_free()
+  while high - low > 16:
+    size = (low + high) // 2
+    try:
+      block = bytearray(size)
+    except MemoryError:
+      high = size
+    else:
+      del block
+      low = size
+  return low
+def _squeeze():
+  for i in range(len(_held)):
+    size = _largest()
+    if size <= SQUEEZE_BYTES:
+      break
+    _held[i] = bytearray(size - SQUEEZE_BYTES)
+  size = _largest()
+  if size > SQUEEZE_BYTES:
+    raise ValueError('the squeeze left a %d B block' % size)
+  print('squeezed: free %d B, largest block %d B' % (gc.mem_free(), size))
 class Keys:
   def held(s, name):
     _play[0] = True
     return _tick[0] < len(_script) and name in _script[_tick[0]][0]
   def pressed(s):
+    if _play[0] and _tick[0] >= len(_script):
+      _level[0] += 1
+      if _level[0] == PLAY_COUNT:
+        raise ScriptDone('scripted inputs done; most rows pushed in a tick: %d' % _rows[1])
+      _play[0], _tick[0] = False, 0
     if not _play[0]:
+      if _held[0] is None:
+        _squeeze()
+      clock.wrap_in(WRAP_AFTER_US)
       return _menu.pop(0) if _menu else []
     if _tick[0] == 0:
       _wrap[0] = clock.ticks_us()
@@ -108,8 +172,6 @@ class Keys:
       if clock.ticks_us() >= _wrap[0]:
         raise ValueError('the clock did not wrap between tick 0 and tick %d' % LATE_TICK)
       clock.jump(LATE_US)
-    if _tick[0] >= len(_script):
-      raise ScriptDone('scripted inputs done; most rows pushed in a tick: %d' % _rows[1])
     if _tick[0]:
       _rows[1] = max(_rows[1], _rows[0])  # what the previous tick pushed
     _rows[0] = 0
@@ -119,7 +181,9 @@ class Keys:
     # Python's ints stay below 2^30 here, small ints on the port: ticks_us is (port's - _back) mod 2^30.
     "clock.py": """\
 import time as _time
-_back = [(_time.ticks_us() - (0x3fffffff - WRAP_AFTER_US)) & 0x3fffffff]
+_back = [0]
+def wrap_in(us):
+  _back[0] = (_time.ticks_us() - (0x3fffffff - us)) & 0x3fffffff
 def ticks_us():
   return (_time.ticks_us() - _back[0]) & 0x3fffffff
 def jump(us):
@@ -131,13 +195,16 @@ WHITE, INK, MUTED, GREEN, GREEN_D, GREY, RED = 1, 0, 6, 7, 7, 8, 3
 def page(screen, head, lines, hint):
   print('ui.page', repr(head), repr([line[0] for line in lines]), repr(hint))
 """,
+    # As a wedgie's save does: a file to read, or the text of the value and a file to write it to.
+    # The test starts with no saves, and the saves are in flash, not in RAM.
     "save.py": """\
-_saves = {}
 def load(name, default):
-  return _saves.get(name, default)
+  _file = bytearray(LFS_FILE_BYTES)
+  return default
 def store(name, value):
-  _saves[name] = value
-  print('save.store', repr(name), repr(value))
+  text = repr(value)
+  _file = bytearray(LFS_FILE_BYTES)
+  print('save.store', repr(name), text)
 """,
     "wedgie.py": """\
 def rand(n):
@@ -151,7 +218,7 @@ def rand_source():
 VFS = """\
 import sys, io, vfs, os
 class _F(io.IOBase):
-  def __init__(s, d): s.d = d; s.o = 0
+  def __init__(s, d): s.lfs = bytearray(LFS_FILE_BYTES); s.d = d; s.o = 0
   def __enter__(s): return s
   def __exit__(s, *a): pass
   def ioctl(s, r, a): return 0 if r == 4 else -1
@@ -175,18 +242,46 @@ class _FS:
 vfs.mount(_FS(), '/ram'); os.chdir('/ram'); sys.path.insert(0, '/ram')
 """
 
-# Allocation is first fit: 512-byte chunks fill the heap's holes first, then the start of its top
-# block, which a last buffer then trims to leave about `free` bytes, in one block at the top.
+# Before the test's files, a placeholder takes the bottom of the heap, so that they land above it.
+# Before the stubs, it shrinks to leave them room to compile, above it too. Freed, it leaves one
+# large block below them, as a wedgie's free RAM is. Allocation is first fit.
+PLACEHOLDER = """\
+import gc
+_P0 = None
+gc.collect()
+_P0 = bytearray(gc.mem_free() - {room})
+"""
+
+# The ballast frees the placeholder, fills every free block, largest first (lcd.py's _largest
+# measures them), then frees the largest: there the holes' blocks, each followed by a 16-byte
+# bytearray that stays, take its bottom, and a filler trims it, freeing the next largest blocks
+# first if it is too small. Freeing the holes' blocks then leaves about `free` bytes: `hole bytes`
+# in the holes, the rest above them. A bytearray of n bytes is a 16-byte object and its n bytes,
+# in 16-byte blocks.
 BALLAST = """\
 import gc
+from lcd import _largest
+_P0 = None
+_R, _H, _K = [None] * 256, [None] * {holes}, [None] * {holes}
+n = 0
+while n < len(_R):
+  size = _largest()
+  if size < 64:
+    break
+  _R[n] = bytearray(size); n += 1
+_R[0] = None
 gc.collect()
-_B = [None] * (gc.mem_free() // 512)
-i = 0
-while gc.mem_free() > {free} + 2048:
-  _B[i] = bytearray(512); i += 1
-_P = bytearray(max(1, gc.mem_free() - {free} - 16))
+for i in range({holes}):
+  _H[i] = bytearray({hole_sizes}[i % {size_count}]); _K[i] = bytearray(16)
+top, k = {free} - {hole_bytes}, 1
+while gc.mem_free() < top + 32 and k < n:
+  _R[k] = None; k += 1
+  gc.collect()
+_T = bytearray(max(1, gc.mem_free() - top - 32))
+_H = None
 gc.collect()
-print('heap free with ballast', gc.mem_free())
+print('heap free with ballast', gc.mem_free(), 'of which', {hole_bytes}, 'in', {holes}, 'holes of 64 to 512 B;',
+      'largest block', _largest())
 """
 
 
@@ -225,12 +320,12 @@ def expected_events(ticks_used):
     return events
 
 
-def native_replay(repo, journal, weight):
+def native_replay(repo, level_path, journal, weight):
     with tempfile.TemporaryDirectory() as scratch:
-        path = Path(scratch) / "level1.jrn"
+        path = Path(scratch) / "level.jrn"
         path.write_bytes(journal)
         result = subprocess.run(["cargo", "run", "-q", "-p", "jiro-tools", "--locked", "--", "replay", "--level",
-                                 str(repo / LEVEL), "--journal", str(path), "--weight", str(weight)],
+                                 str(level_path), "--journal", str(path), "--weight", str(weight)],
                                 cwd=repo, capture_output=True, text=True)
     if result.returncode != 0:
         raise SystemExit(f"FAIL: native replay of the app's journal: {result.stderr.strip()}")
@@ -244,21 +339,30 @@ def fields(line, *names):
     return [int(words[words.index(name) + 1]) for name in names]
 
 
-def check(out, err, repo):
-    lines = out.splitlines()
-    calibration = json.loads((repo / "seasons" / "calibration-1.json").read_text())
-    level_id, weight = bytes.fromhex(calibration["levelIds"][0][2:]), calibration["weightsBp"][0]
+def level_outputs(lines):
+    """Per level the app ended, in order: its level line, its timing line and its journal."""
+    outputs = []
+    for at, line in enumerate(lines):
+        if line.startswith("jiro: level "):
+            journal = ""
+            for following in lines[at + 2:]:
+                if not following.startswith("jiro: journal "):
+                    break
+                journal += following.split()[2]
+            outputs.append((line, lines[at + 1], bytes.fromhex(journal)))
+    return outputs
+
+
+def check_level(repo, calibration, level, output, stored):
+    """The problems of one level's play, and prints its result and timing."""
+    line, timing, journal = output
+    level_id, weight = bytes.fromhex(calibration["levelIds"][level - 1][2:]), calibration["weightsBp"][level - 1]
+    level_path = sorted((repo / "levels").glob("[0-9][0-9]-*.bin"))[level - 1]
     problems = []
-    if "ScriptDone" not in err:
-        problems.append("the app did not run to the end of the scripted inputs: " + err.strip()[-400:])
-    heap = [line for line in lines if line.startswith("jiro: free heap")]
-    level = [line for line in lines if line.startswith("jiro: level 1 ")]
-    timing = [line for line in lines if line.startswith("jiro: step max")]
-    if not (heap and level and timing):
-        return problems + ["the app printed no heap, level or timing line"]
-    end, claim, ticks, score = fields(level[0], "end", "claim_bp", "ticks", "score")
-    journal = bytes.fromhex("".join(line.split()[2] for line in lines if line.startswith("jiro: journal ")))
-    replayed = native_replay(repo, journal, weight)
+    if fields(line, "level")[0] != level or not timing.startswith("jiro: step max"):
+        return [f"expected level {level}'s result and timing, got {line!r} and {timing!r}"]
+    end, claim, ticks, score = fields(line, "end", "claim_bp", "ticks", "score")
+    replayed = native_replay(repo, level_path, journal, weight)
     if [end, claim, ticks, score] != [replayed[key] for key in ("endReason", "claimBp", "ticksUsed", "levelScore")]:
         problems.append(f"the app shows end {end}, claim {claim}, ticks {ticks}, score {score}; native replay {replayed}")
     if claim == 0:
@@ -269,46 +373,73 @@ def check(out, err, repo):
         problems.append(f"journal header {journal[:HEADER_LEN].hex()}")
     if journal[HEADER_LEN:] != expected_events(ticks):
         problems.append(f"journal events {journal[HEADER_LEN:].hex()}, expected {expected_events(ticks).hex()}")
-    stored = [ast.literal_eval(line.split(" ", 2)[2]) for line in lines if line.startswith("save.store 'bests'")]
     key = f"{calibration['rulesVersion']}/0x{level_id.hex()}/{weight}"
-    if not stored or stored[-1].get(key) != score:
+    if stored.get(key) != score:
         problems.append(f"stored bests {stored}, expected {key}: {score}")
-    if not any(line.startswith("ui.page") and "'{g} next'" in line for line in lines):
-        problems.append("the app showed no summary screen")
-    step_us, render_us, tick_us, overruns = map(int, re.findall(r"\d+", timing[0]))
+    step_us, render_us, tick_us, overruns = map(int, re.findall(r"\d+", timing))
     if overruns != ticks - LATE_TICK:
         problems.append(f"{overruns} overruns, expected {ticks - LATE_TICK}: none before the clock's jump on tick "
                         f"{LATE_TICK}, then every tick")
-    print(f"level 1: end {end}, claim {claim} bp, ticks {ticks}, score {score}; native replay agrees" if not problems
-          else f"level 1: end {end}, claim {claim} bp, ticks {ticks}, score {score}")
+    print(f"level {level} ({level_path.name}): end {end}, claim {claim} bp, ticks {ticks}, score {score}"
+          + ("; native replay agrees" if not problems else ""))
     for name, us in (("step", step_us), ("render", render_us), ("tick", tick_us)):
         instructions = us * INSTRUCTIONS_PER_US
-        print(f"worst {name}: {us} us on qemu, {instructions / 1e6:.2f} M instructions, "
+        print(f"  worst {name}: {us} us on qemu, {instructions / 1e6:.2f} M instructions, "
               f"{instructions / RP2040_MHZ / 1000:.1f} ms at {RP2040_MHZ} MHz and one instruction per cycle")
     return problems
 
 
-def main(firmware, app, free_bytes):
+def check(out, err, repo):
+    lines = out.splitlines()
+    calibration = json.loads((repo / "seasons" / "calibration-1.json").read_text())
+    problems = []
+    if "ScriptDone" not in err:
+        problems.append("the app did not run to the end of the scripted inputs: " + err.strip()[-400:])
+    printed = {re.match(r"jiro: heap (\w+):", line)[1] for line in lines if line.startswith("jiro: heap ")}
+    if printed != set(STAGES):
+        problems.append(f"the app printed the heap at stages {sorted(printed)}, expected {sorted(STAGES)}")
+    outputs = level_outputs(lines)
+    if len(outputs) != len(PLAYS):
+        return problems + [f"the app ended {len(outputs)} levels, expected {len(PLAYS)}"]
+    stores = [ast.literal_eval(line.split(" ", 2)[2]) for line in lines if line.startswith("save.store 'bests'")]
+    stored = stores[-1] if stores else {}
+    for level, output in zip(PLAYS, outputs):
+        problems += check_level(repo, calibration, level, output, stored)
+    summaries = sum(1 for line in lines if line.startswith("ui.page") and "'{g} next'" in line)
+    if summaries != len(PLAYS):
+        problems.append(f"the app showed {summaries} summary screens, expected {len(PLAYS)}")
+    return problems
+
+
+def main(firmware, app, free_bytes, holes):
     repo = Path(__file__).resolve().parents[2]
     names = json.loads((app / "wedgie.json").read_text())["apps"][0]["files"]
     files = {name: (app / name).read_bytes() for name in names}
     stubs = dict(STUBS)
-    stubs["clock.py"] = f"WRAP_AFTER_US = {WRAP_AFTER_US}\n" + stubs["clock.py"]
-    stubs["lcd.py"] = f"LATE_TICK = {LATE_TICK}\nLATE_US = {LATE_US}\nMENU = {MENU!r}\nSCRIPT = {[(held, tapped) for ticks, held, tapped in SCRIPT for _ in range(ticks)]!r}\n" + stubs["lcd.py"]
+    script = [(held, tapped) for ticks, held, tapped in SCRIPT for _ in range(ticks)]
+    stubs["lcd.py"] = (f"SQUEEZE_BYTES = {SQUEEZE_BYTES}\nWRAP_AFTER_US = {WRAP_AFTER_US}\nLATE_TICK = {LATE_TICK}\n"
+                       f"LATE_US = {LATE_US}\nPLAY_COUNT = {len(PLAYS)}\nMENU = {menu_presses()!r}\nSCRIPT = {script!r}\n"
+                       ) + stubs["lcd.py"]
+    stubs["save.py"] = f"LFS_FILE_BYTES = {LFS_FILE_BYTES}\n" + stubs["save.py"]
     stubs["wedgie.py"] = f"NONCE = {RUN_NONCE!r}\n" + stubs["wedgie.py"]
     files.update({name: text.encode() for name, text in stubs.items()})
+    sizes = [HOLE_SIZES[i % len(HOLE_SIZES)] for i in range(holes)]
+    hole_bytes = sum((size + 15) // 16 * 16 + 16 for size in sizes)
     qemu = qemu_natmod_vectors.QEMU
     qemu[qemu.index("shift=0")] = f"shift={ICOUNT_SHIFT}"
     repl = qemu_natmod_vectors.RawRepl(firmware)
     try:
-        # The filesystem's objects first, then the files, then the firmware's modules (the stubs,
-        # with the 28,800-byte screen buffer), all before the ballast: on a wedgie the files are
-        # in flash, and the free RAM it reports already excludes the firmware's modules.
-        repl.exec("_FILES = {}\n" + VFS)
+        # The placeholder, the filesystem's objects, the files, then the firmware's modules (the
+        # stubs, with the 28,800-byte screen buffer), all before the ballast: on a wedgie the
+        # files are in flash, and the free RAM it reports already excludes the firmware's modules.
+        repl.exec(PLACEHOLDER.format(room=sum(map(len, files.values())) + UPLOAD_ROOM))
+        repl.exec(f"_FILES = {{}}\nLFS_FILE_BYTES = {LFS_FILE_BYTES}\n" + VFS)
         upload_files(repl, files)
-        repl.exec("import sys, clock; sys.modules['time'] = clock")
+        repl.exec(PLACEHOLDER.format(room=STUB_ROOM))
+        repl.exec("import lcd_buffer, sys, clock; sys.modules['time'] = clock")
         repl.exec("import lcd, ui, save, wedgie")
-        print(repl.exec(BALLAST.format(free=free_bytes)), end="")
+        print(repl.exec(BALLAST.format(free=free_bytes, holes=holes, hole_bytes=hole_bytes, hole_sizes=HOLE_SIZES,
+                                       size_count=len(HOLE_SIZES))), end="")
         out, err = run_app(repl)
     finally:
         repl.p.kill()
@@ -322,6 +453,6 @@ def main(firmware, app, free_bytes):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    if len(sys.argv) not in (4, 5):
         raise SystemExit(__doc__)
-    sys.exit(main(sys.argv[1], Path(sys.argv[2]), int(sys.argv[3])))
+    sys.exit(main(sys.argv[1], Path(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]) if len(sys.argv) == 5 else HOLES))

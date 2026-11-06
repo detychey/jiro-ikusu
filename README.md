@@ -82,7 +82,7 @@ The core allocates nothing: its buffers have fixed sizes. The RP2040 has 270,336
 | Journal: at most 1 event per tick × 2,700 ticks × 3 bytes ([§6.2](#62-events)) | 8,100 |
 | Full-screen RGB565 framebuffer (not used) | 115,200, about 43 % of SRAM |
 
-On the wedgie, the firmware owns the screen: a 16-color buffer of 240 × 240 × 4 bits, 28,800 bytes, and a full-screen push takes about 25 ms ([wedgie code guide](https://wedgie.dev/code.md)). About 137 KB of RAM is left for an app: the spike's wedgie reported 137,760 bytes free with no app. Jiro's app holds the core's 64 KB stack, its 18.5 KB Recorder, the 18.2 KB module and the 3.6 KB shadow of the dirty-cell diff ([§3](#3-architecture)); on qemu, with the heap filled down to 137,760 bytes free, about 20 KB stay free after it starts.
+On the wedgie, the firmware owns the screen: a 16-color buffer of 240 × 240 × 4 bits, 28,800 bytes, and a full-screen push takes about 25 ms ([wedgie code guide](https://wedgie.dev/code.md)). About 137 KB of RAM is left for an app: the spike's wedgie reported 137,760 bytes free with no app. Jiro's app holds the core's 64 KB stack, its 18.5 KB Recorder, the 18.2 KB module and the 3.6 KB shadow of the dirty-cell diff ([§3](#3-architecture)); on qemu, with the heap filled down to 137,760 bytes free, about 18 KB stay free after it starts.
 
 A tick changes only a handful of cells. So the app redraws the changed 4×4-pixel cells and pushes only the regions that changed.
 
