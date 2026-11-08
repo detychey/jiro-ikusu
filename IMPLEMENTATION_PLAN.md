@@ -1,6 +1,6 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. On 2026-11-02 the owner made the device a wedgie app that plays Training only (README §13 D1, D15): M3.8-M3.10 replace M3.1-M3.7, and M5.4 is deferred.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. On 2026-11-02 the owner made the device a wedgie app that plays Training only (README §13 D1, D15): M3.8-M3.10 replace M3.1-M3.7, and M5.4 is deferred. M3, the wedgie app, closed with M3.9 on 2026-11-02; M3.10 was not built.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
 [`README.md`](README.md) is the normative specification, and this plan turns it into 69 work items. Five are conditional (M1.14, M1.15, M3.10, M4.10, M4.15) and one is optional (M4.13). Seven are superseded (M3.1-M3.7) and one is deferred past v1 (M5.4). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
@@ -1475,7 +1475,7 @@ On 2026-11-02 the device became a wedgie app that plays Training only (README §
 | M3.5 | Firmware Training mode with the 16 levels: **superseded** by M3.9 (D1) | M3.4, M2.9 | M | none |
 | M3.8 | wedgie native module, reproducible build and qemu parity | M1.9, M2.9 | M | Install the check app; report PASS |
 | M3.9 | wedgie app: Training with the 16 levels | M3.8, M2.9, M3.10 if filed | L | Play; report timing and the PASS list |
-| M3.10 | In-place constructors for a smaller core stack (only if M3.9's RAM check fails) | M3.8 | M | none |
+| M3.10 | In-place constructors for a smaller core stack (only if M3.9's RAM check fails): **not built**, M3.9's play test passed at 137,760 bytes free | M3.8 | M | none |
 
 #### M3.1-M3.7 Superseded
 
@@ -1542,6 +1542,8 @@ On 2026-11-02 the device became a wedgie app that plays Training only (README §
 - **Skills:** `rp2040-firmware`, `deterministic-core`; tier `wedgie`. **README:** §2, §4.4, §6.1, §6.2, §8.1, §9 M3. **Needs user:** install this PR's `wedgie-app` artifact, select each of the 16 levels, play at least one to its end, unplug and replug, and post the PASS list, the overrun counter and the worst tick, with any comment on readability (round E1).
 
 #### M3.10 In-place constructors for a smaller core stack (only if M3.9's RAM check fails)
+
+**Not built.** M3.9's qemu play test passed with the heap filled down to 137,760 bytes free, with about 18 KB still free after the app starts, and passed down to 128,000 with 32 small holes (`reports/wedgie-2026-11-02.md`). Round E1's second try hit a MemoryError at level start, on a 1,148-byte file object rather than on the stack; the app now allocates nothing sizable after it starts. A MemoryError on the stack, the Recorder or the module would reopen it.
 
 - **When.** The core needs about 63 KB of stack because `start` builds its large structs on the stack (`start` peaks at 62,784 bytes, PR #42), so the app gives up 64 KB of its about 137 KB. M3.9's draft PR files this item, with the shortfall it measured, if its qemu play test fails at the free RAM a wedgie reports with no app, or if a wedgie reports a MemoryError in round E1; M3.9 then waits for it. Otherwise M3.9 marks it "not built".
 - **Goal:** the core runs within a stack small enough for the app to fit, without changing any outcome.
