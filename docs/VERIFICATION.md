@@ -1031,7 +1031,7 @@ Gas from the traces (`-vvvv`), each a call's own frame, without the transaction'
 
 ## Run file v1
 
-The run file carries everything needed to replay, prove and settle one committed Challenge run, without reading the commit transaction: what the dApp hands to a prover (M4.10), shows and exports (M5.2), and what the season job settles from (M5.5). It is a JSON object:
+The run file carries everything needed to replay, prove and settle one committed Challenge run, without reading the commit transaction: what a prover proves (M4.10), what the dApp shows and exports (M5.2), and what the season job rebuilds from chain data and settles from (M5.5). It is a JSON object:
 
 | Field | JSON type | Content |
 |---|---|---|
