@@ -9,7 +9,17 @@
 # stack and 800 bytes of other statics, and holds the app's play test (qemu_app_check.py): its
 # files, the 28,800-byte screen buffer and the 137,760 bytes a wedgie has free. Prints the
 # firmware's path.
+#
+# Usage: build-qemu.sh [irqsim]
+# irqsim builds the firmware, in build-MICROBIT-irqsim, with the irqsim user C module (irqsim/):
+# the port's SysTick interrupt dispatches a hard IRQ callback, as the wedgie firmware's key IRQ
+# does, for qemu_app_check.py --hard-irq.
 set -euo pipefail
+
+case "$*" in
+  "" | irqsim) ;;
+  *) echo "usage: build-qemu.sh [irqsim]" >&2; exit 2 ;;
+esac
 
 mpy_dir="${JIRO_WEDGIE_HOME:-$HOME/.cache/jiro-wedgie}/micropython"
 log="$mpy_dir/build-qemu.log"
@@ -26,11 +36,16 @@ build() {
 build make -C "$mpy_dir/mpy-cross" -j"$(nproc)"
 port_flags=(BOARD=MICROBIT FROZEN_MANIFEST= MICROPY_HEAP_SIZE=241664 MICROPY_STACK_SIZE=8192
   CFLAGS_EXTRA="-DMICROPY_EMIT_THUMB=1 -DMICROPY_EMIT_INLINE_THUMB=1")
+build_name=build-MICROBIT
+if [ "$#" -eq 1 ]; then
+  build_name=build-MICROBIT-irqsim
+  port_flags+=(BUILD="$build_name" USER_C_MODULES="$(cd "$(dirname "${BASH_SOURCE[0]}")/irqsim" && pwd)")
+fi
 # make does not track these flags: a build made with others starts afresh.
-port_build="$mpy_dir/ports/qemu/build-MICROBIT"
+port_build="$mpy_dir/ports/qemu/$build_name"
 if [ "$(cat "$port_build/jiro-flags" 2>/dev/null)" != "${port_flags[*]}" ]; then
   rm -rf "$port_build"
 fi
 build make -C "$mpy_dir/ports/qemu" "${port_flags[@]}" -j"$(nproc)"
 echo "${port_flags[*]}" >"$port_build/jiro-flags"
-echo "$mpy_dir/ports/qemu/build-MICROBIT/firmware.elf"
+echo "$port_build/firmware.elf"

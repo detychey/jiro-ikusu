@@ -32,12 +32,18 @@ the remaining ticks must run at once, late, instead of sleeping for minutes. The
   clock's jump and one on every tick from it on;
 - that the heap was locked over every tick's sample, step and render.
 
+With --hard-irq, on the firmware `build-qemu.sh irqsim` builds, every tick of the port's SysTick,
+from before the ballast on, also calls a Python callback as a hard IRQ, as the wedgie firmware's
+key IRQ (power.py's _touch, on any key press) runs wherever the app is: all the checks above must
+still pass, and the callback must have interrupted jiro_core and run cleanly every time. In round
+E1 such an interrupt, on the stack jiro_core ran on, froze the wedgie.
+
 It prints the app's step, render and tick maxima in qemu microseconds and in instructions. qemu
 runs with -icount shift=3, 8 ns of virtual time per instruction, and the port's ticks assume a
 25 MHz SysTick that qemu's nRF51 clocks at 16 MHz, so one microsecond the app measures is
 1,562.5 / 8 = 195.3 instructions (measured with an inline-assembler loop of known length).
 
-Usage: python3 -I qemu_app_check.py <firmware.elf> <app dir> <free bytes> [<holes>]
+Usage: python3 -I qemu_app_check.py <firmware.elf> <app dir> <free bytes> [<holes>] [--hard-irq]
 
 <holes> is the number of small holes among the free bytes, HOLES by default; 0 leaves them all in
 the large block.
@@ -326,6 +332,17 @@ print('heap free with ballast', gc.mem_free(), 'of which', {hole_bytes}, 'in', {
       'largest block', _largest())
 """
 
+# The wedgie firmware's key IRQ callback, power.py's _touch, which irqsim calls at every tick. Armed
+# before the ballast, so that the ballast leaves the app the same free bytes as without it.
+ARM_HARD_IRQ = """\
+import irqsim
+_last = 0
+def _touch(_):
+  global _last
+  _last = clock.ticks_ms()
+irqsim.hard(_touch)
+"""
+
 
 def upload_files(repl, files, chunk=3000):
     # Every buffer is allocated before any is filled, so the base64 chunks don't fragment the heap.
@@ -343,7 +360,9 @@ def run_app(repl):
     repl.p.stdin.flush()
     if repl.read_until(b"OK") != b"":
         raise SystemExit("raw REPL did not acknowledge the code")
-    return repl.read_until(b"\x04").decode(), repl.read_until(b"\x04").decode()
+    out, err = repl.read_until(b"\x04").decode(), repl.read_until(b"\x04").decode()
+    repl.read_until(b">")
+    return out, err
 
 
 def scripted_masks():
@@ -431,7 +450,7 @@ def check_level(repo, calibration, level, output, stored):
     return problems
 
 
-def check(out, err, repo):
+def check(out, err, repo, irq_counts):
     lines = out.splitlines()
     calibration = json.loads((repo / "seasons" / "calibration-1.json").read_text())
     problems = []
@@ -456,10 +475,13 @@ def check(out, err, repo):
         problems.append(f"the app showed {len(summaries)} summary screens, expected {len(PLAYS)}")
     elif "best not saved: flash full" not in summaries[0] or "a new best" not in summaries[1]:
         problems.append(f"expected the first summary's best not saved, the flash full, then a new best: {summaries}")
+    if irq_counts is not None and (not irq_counts or irq_counts[1] == 0 or irq_counts[2] != 0):
+        problems.append(f"expected hard IRQs that interrupted jiro_core and none that failed, got (dispatched, in "
+                        f"jiro_core, failed) {irq_counts or 'unread: the app did not end'}")
     return problems
 
 
-def main(firmware, app, free_bytes, holes):
+def main(firmware, app, free_bytes, holes, hard_irq):
     repo = Path(__file__).resolve().parents[2]
     names = json.loads((app / "wedgie.json").read_text())["apps"][0]["files"]
     files = {name: (app / name).read_bytes() for name in names}
@@ -486,14 +508,21 @@ def main(firmware, app, free_bytes, holes):
         repl.exec(PLACEHOLDER.format(room=STUB_ROOM))
         repl.exec("import lcd_buffer, sys, clock; sys.modules['time'] = clock")
         repl.exec("import lcd, ui, save, wedgie")
+        if hard_irq:
+            repl.exec(ARM_HARD_IRQ)
         print(repl.exec(BALLAST.format(free=free_bytes, holes=holes, hole_bytes=hole_bytes, hole_sizes=HOLE_SIZES,
                                        size_count=len(HOLE_SIZES))), end="")
         out, err = run_app(repl)
+        irq_counts = None
+        if hard_irq:
+            irq_counts = ast.literal_eval(repl.exec("print(irqsim.stats())")) if "ScriptDone" in err else ()
     finally:
         repl.p.kill()
     print(out, end="")
     print(err.strip().splitlines()[-1] if err.strip() else "")
-    problems = check(out, err, repo)
+    if irq_counts:
+        print(f"irqsim: {irq_counts[0]} hard IRQs, {irq_counts[1]} in jiro_core, {irq_counts[2]} failed")
+    problems = check(out, err, repo, irq_counts)
     for problem in problems:
         print("FAIL:", problem)
     print("qemu play test:", "PASS" if not problems else f"FAIL ({len(problems)})")
@@ -501,6 +530,10 @@ def main(firmware, app, free_bytes, holes):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) not in (4, 5):
+    args = sys.argv[1:]
+    hard_irq = args[-1:] == ["--hard-irq"]
+    if hard_irq:
+        args = args[:-1]
+    if len(args) not in (3, 4):
         raise SystemExit(__doc__)
-    sys.exit(main(sys.argv[1], Path(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]) if len(sys.argv) == 5 else HOLES))
+    sys.exit(main(args[0], Path(args[1]), int(args[2]), int(args[3]) if len(args) == 4 else HOLES, hard_irq))

@@ -35,7 +35,7 @@
 
 #define STACK_MIN (64 * 1024)
 
-void jiro_glue_panic(void) {
+void jiro_raise_panic(void) {
     mp_raise_msg(&mp_type_RuntimeError, MP_ERROR_TEXT("jiro-core panic"));
 }
 

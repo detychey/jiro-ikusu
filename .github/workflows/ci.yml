@@ -540,7 +540,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' || steps.changes.outputs.wedgie == 'true' }}
         with:
           path: ~/.cache/jiro-wedgie
-          key: wedgie-micropython-0fd6c573-${{ hashFiles('wedgie/scripts/build-qemu.sh') }}
+          key: wedgie-micropython-0fd6c573-${{ hashFiles('wedgie/scripts/build-qemu.sh', 'wedgie/scripts/irqsim/**') }}
 
       - name: Toolchain
         id: toolchain
@@ -562,10 +562,14 @@ jobs:
         if: ${{ steps.toolchain.outcome == 'success' }}
         run: cargo fmt --manifest-path wedgie/natmod/rust/Cargo.toml --check
 
-      - name: MicroPython's mpy-cross and qemu port
+      - name: MicroPython's mpy-cross and qemu port, and the port with irqsim
         id: micropython
         if: ${{ steps.toolchain.outcome == 'success' }}
-        run: echo "firmware=$(bash wedgie/scripts/build-qemu.sh)" >>"$GITHUB_OUTPUT"
+        run: |
+          firmware="$(bash wedgie/scripts/build-qemu.sh)"
+          irqsim_firmware="$(bash wedgie/scripts/build-qemu.sh irqsim)"
+          echo "firmware=$firmware" >>"$GITHUB_OUTPUT"
+          echo "irqsim_firmware=$irqsim_firmware" >>"$GITHUB_OUTPUT"
 
       - name: jiro_core.mpy, its mpy_ld rules and its header (wedgie)
         if: ${{ steps.toolchain.outcome == 'success' }}
@@ -616,6 +620,16 @@ jobs:
           timeout 600 python3 -I wedgie/scripts/qemu_app_check.py "${{ steps.micropython.outputs.firmware }}" \
             wedgie/app 137760 || status=$?
           echo "=== END wedgie-app ==="
+          exit "$status"
+
+      - name: The play test with a hard IRQ at every tick, as the wedgie firmware's key IRQ (wedgie)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: |
+          echo "=== BEGIN wedgie-app-hard-irq ==="
+          status=0
+          timeout 600 python3 -I wedgie/scripts/qemu_app_check.py "${{ steps.micropython.outputs.irqsim_firmware }}" \
+            wedgie/app 137760 --hard-irq || status=$?
+          echo "=== END wedgie-app-hard-irq ==="
           exit "$status"
 
       - uses: actions/upload-artifact@v7.0.2
