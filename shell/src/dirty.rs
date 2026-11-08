@@ -7,6 +7,8 @@ use jiro_core::consts::CELLS;
 use jiro_core::grid::Grid;
 use jiro_core::types::{Cell, CellIndex};
 
+/// One byte per cell, nothing else: the wedgie's native module uses a caller's buffer as one.
+#[repr(transparent)]
 pub struct Shadow {
     /// Each cell's state plus one, as last reported; 0 for a cell never reported. All zero at
     /// first, so a static `Shadow` needs no initialized data, and any byte value is a valid
@@ -26,15 +28,15 @@ impl Shadow {
         Self { cells: [0; CELLS] }
     }
 
-    /// Compares `grid` with the shadow, calls `changed` with the index and the state of each
-    /// cell that differs, in row-major order, and copies those states into the shadow.
-    pub fn update(&mut self, grid: &Grid, mut changed: impl FnMut(u16, Cell)) {
-        for ((cell, shadow), index) in CellIndex::all().zip(self.cells.iter_mut()).zip(0_u16..) {
+    /// Compares `grid` with the shadow, calls `changed` with each cell that differs and its
+    /// state, in row-major order, and copies those states into the shadow.
+    pub fn update(&mut self, grid: &Grid, mut changed: impl FnMut(CellIndex, Cell)) {
+        for (cell, shadow) in CellIndex::all().zip(self.cells.iter_mut()) {
             let state = grid.get(cell);
             let reported = (state as u8).saturating_add(1);
             if *shadow != reported {
                 *shadow = reported;
-                changed(index, state);
+                changed(cell, state);
             }
         }
     }
@@ -71,8 +73,11 @@ impl DirtyCells {
             count,
         } = self;
         *count = 0;
-        shadow.update(grid, |index, _| {
-            if let Some(slot) = changed.get_mut(usize::from(*count)) {
+        shadow.update(grid, |cell, _| {
+            if let (Some(slot), Ok(index)) = (
+                changed.get_mut(usize::from(*count)),
+                u16::try_from(cell.get()),
+            ) {
                 *slot = index;
                 *count = count.saturating_add(1);
             }

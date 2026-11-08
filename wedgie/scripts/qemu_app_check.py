@@ -7,10 +7,17 @@ down to the given free bytes, the free RAM a wedgie reports with no app, before 
 part of them in small holes of 64 to 512 bytes between live blocks, the rest in that block. At
 the app's first level select, once it has started, the test fills every free block larger than
 SQUEEZE_BYTES, as a wedgie's heap was after round E1's second build started: from then on the app
-must allocate nothing larger, so a level start that opens a file fails, as it did on the wedgie.
-The scripted inputs pick level 1, play it with two captures and commit, then from the summary go
-back to the level select, pick level 2 and play it with the same inputs, so that what the app
-allocates per level is allocated twice. The app's clock is a stub over the port's: its ticks_us
+must allocate nothing larger, so a level start that opens a file fails, as it did on the wedgie
+(it fills a block down to SQUEEZE_BYTES, or a block under twice that whole: allocation is first
+fit, so a smaller filler would land in a smaller block). There too it wraps the app's sample,
+jiro_core's step and the app's render in calls that lock the heap, so a tick that allocates fails
+with a MemoryError (the wedgie's own lcd module allocates in show_rect and Keys.pressed, which the
+stubs here do not). The scripted inputs pick level 1, play it with two captures and commit, then
+from the summary go back to the level select, pick level 2 and play it with the same inputs, so
+that what the app allocates per level is allocated twice. The first save.store raises
+OSError("flash full: ..."), as a wedgie's does when its flash is full, after allocating the bests'
+text and a file object: the app must still take its stack back and play level 2, whose store
+saves both bests. The app's clock is a stub over the port's: its ticks_us
 wraps 2^30 µs shortly after each level's tick 0, and on tick LATE_TICK it jumps LATE_US ahead,
 more than ticks_diff's 2^29 µs range, as a wedgie whose ticks fell that far behind would see it:
 the remaining ticks must run at once, late, instead of sleeping for minutes. Then it checks:
@@ -21,7 +28,9 @@ the remaining ticks must run at once, late, instead of sleeping for minutes. The
 - per level, the app's end reason, claim, ticks and score against native replay of that journal
   (`jiro-tools replay` with the level's weight), and that it captured something;
 - the best scores it stored, the free heap and largest free block it printed at each stage, a
-  summary screen per level, and no overrun before the clock's jump and one on every tick from it on.
+  summary screen per level, the first saying its best was not saved, and no overrun before the
+  clock's jump and one on every tick from it on;
+- that the heap was locked over every tick's sample, step and render.
 
 It prints the app's step, render and tick maxima in qemu microseconds and in instructions. qemu
 runs with -icount shift=3, 8 ns of virtual time per instruction, and the port's ticks assume a
@@ -106,7 +115,7 @@ STUBS = {
     # The screen buffer, allocated before lcd.py, whose scripted inputs take room to compile.
     "lcd_buffer.py": "BUF = bytearray(28800)\n",
     "lcd.py": """\
-import clock, framebuf, gc
+import clock, framebuf, gc, micropython, sys
 from lcd_buffer import BUF as _BUF
 _PALETTE = ((0, 0, 0), (255, 255, 255), (40, 100, 230), (255, 42, 42), (255, 220, 0), (60, 255, 120),
             (154, 154, 154), (34, 196, 82), (90, 90, 90))
@@ -141,12 +150,38 @@ def _largest():
       del block
       low = size
   return low
+_inner, _locked = {}, [0, 0, 0]
+def _sample(keys):
+  _locked[0] += 1
+  micropython.heap_lock()
+  try:
+    return _inner['sample'](keys)
+  finally:
+    micropython.heap_unlock()
+def _step(recorder, mask, stack):
+  _locked[1] += 1
+  micropython.heap_lock()
+  try:
+    return _inner['step'](recorder, mask, stack)
+  finally:
+    micropython.heap_unlock()
+def _render(app, status, previous):
+  _locked[2] += 1
+  micropython.heap_lock()
+  try:
+    return _inner['render'](app, status, previous)
+  finally:
+    micropython.heap_unlock()
+def _lock_ticks():
+  app, jc = sys.modules['jiro_app'], sys.modules['jiro_core']
+  _inner['sample'], _inner['step'], _inner['render'] = app.sample, jc.step, app.Training.render
+  app.sample, jc.step, app.Training.render = _sample, _step, _render
 def _squeeze():
   for i in range(len(_held)):
     size = _largest()
     if size <= SQUEEZE_BYTES:
       break
-    _held[i] = bytearray(size - SQUEEZE_BYTES)
+    _held[i] = bytearray(size - SQUEEZE_BYTES if size > 2 * SQUEEZE_BYTES else size)
   size = _largest()
   if size > SQUEEZE_BYTES:
     raise ValueError('the squeeze left a %d B block' % size)
@@ -159,10 +194,12 @@ class Keys:
     if _play[0] and _tick[0] >= len(_script):
       _level[0] += 1
       if _level[0] == PLAY_COUNT:
-        raise ScriptDone('scripted inputs done; most rows pushed in a tick: %d' % _rows[1])
+        raise ScriptDone('scripted inputs done; most rows pushed in a tick: %d; heap locked over %d samples, %d steps '
+                         'and %d renders' % (_rows[1], _locked[0], _locked[1], _locked[2]))
       _play[0], _tick[0] = False, 0
     if not _play[0]:
-      if _held[0] is None:
+      if not _inner:
+        _lock_ticks()
         _squeeze()
       clock.wrap_in(WRAP_AFTER_US)
       return _menu.pop(0) if _menu else []
@@ -176,7 +213,7 @@ class Keys:
       _rows[1] = max(_rows[1], _rows[0])  # what the previous tick pushed
     _rows[0] = 0
     _tick[0] += 1
-    return list(_script[_tick[0] - 1][1])
+    return _script[_tick[0] - 1][1]
 """,
     # Python's ints stay below 2^30 here, small ints on the port: ticks_us is (port's - _back) mod 2^30.
     "clock.py": """\
@@ -196,14 +233,19 @@ def page(screen, head, lines, hint):
   print('ui.page', repr(head), repr([line[0] for line in lines]), repr(hint))
 """,
     # As a wedgie's save does: a file to read, or the text of the value and a file to write it to.
-    # The test starts with no saves, and the saves are in flash, not in RAM.
+    # The test starts with no saves, and the saves are in flash, not in RAM. The first store
+    # fails as on a wedgie whose flash is full.
     "save.py": """\
+_stores = [0]
 def load(name, default):
   _file = bytearray(LFS_FILE_BYTES)
   return default
 def store(name, value):
   text = repr(value)
   _file = bytearray(LFS_FILE_BYTES)
+  _stores[0] += 1
+  if _stores[0] == 1:
+    raise OSError('flash full: delete some saves at wedgie.dev')
   print('save.store', repr(name), text)
 """,
     "wedgie.py": """\
@@ -395,6 +437,7 @@ def check(out, err, repo):
     problems = []
     if "ScriptDone" not in err:
         problems.append("the app did not run to the end of the scripted inputs: " + err.strip()[-400:])
+    locked = re.search(r"heap locked over (\d+) samples, (\d+) steps and (\d+) renders", err)
     printed = {re.match(r"jiro: heap (\w+):", line)[1] for line in lines if line.startswith("jiro: heap ")}
     if printed != set(STAGES):
         problems.append(f"the app printed the heap at stages {sorted(printed)}, expected {sorted(STAGES)}")
@@ -405,9 +448,14 @@ def check(out, err, repo):
     stored = stores[-1] if stores else {}
     for level, output in zip(PLAYS, outputs):
         problems += check_level(repo, calibration, level, output, stored)
-    summaries = sum(1 for line in lines if line.startswith("ui.page") and "'{g} next'" in line)
-    if summaries != len(PLAYS):
-        problems.append(f"the app showed {summaries} summary screens, expected {len(PLAYS)}")
+    ticks = sum(fields(line, "ticks")[0] for line, _, _ in outputs)
+    if not locked or not int(locked[1]) == int(locked[2]) == ticks <= int(locked[3]):
+        problems.append(f"the heap was locked over {locked and locked[0]}, expected every one of the {ticks} ticks")
+    summaries = [line for line in lines if line.startswith("ui.page") and "'{g} next'" in line]
+    if len(summaries) != len(PLAYS):
+        problems.append(f"the app showed {len(summaries)} summary screens, expected {len(PLAYS)}")
+    elif "best not saved: flash full" not in summaries[0] or "a new best" not in summaries[1]:
+        problems.append(f"expected the first summary's best not saved, the flash full, then a new best: {summaries}")
     return problems
 
 

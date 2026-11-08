@@ -9,8 +9,6 @@
 #define JIRO_HASH_LEN 32
 #define JIRO_MISUSE 255
 #define JIRO_STEP_ERROR 0x100
-#define JIRO_STATUS_LEN 23
-#define JIRO_FRAME_BYTES 28800
 
 typedef struct {
     const uint8_t *level;
@@ -57,6 +55,7 @@ typedef struct {
     uint8_t *frame;
     const uint8_t *colors;
     uint16_t *rect;
+    uint32_t full;
     uint32_t count;
 } jiro_paint_args_t;
 
@@ -85,8 +84,10 @@ size_t jiro_recorder_align(void);
 uint32_t jiro_recorder_start(jiro_start_args_t *args);
 uint32_t jiro_recorder_step(jiro_step_args_t *args);
 uint32_t jiro_recorder_view(jiro_view_args_t *args);
+size_t jiro_status_len(void);
 uint32_t jiro_status(jiro_status_args_t *args);
 uint32_t jiro_score(jiro_score_args_t *args);
+size_t jiro_frame_bytes(void);
 size_t jiro_shadow_size(void);
 uint32_t jiro_paint(jiro_paint_args_t *args);
 uint32_t jiro_restore(jiro_restore_args_t *args);

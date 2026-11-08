@@ -57,6 +57,9 @@ fn shadow_reports_the_state_of_each_changed_cell() {
     shadow.update(&grid, |_, _| {});
     grid.set(CellIndex::new(Pos { x: 30, y: 58 }).unwrap(), Cell::Trail);
     let mut reported = Vec::new();
-    shadow.update(&grid, |index, state| reported.push((index, state)));
-    assert_eq!(reported, [(58 * 60 + 30, Cell::Trail)]);
+    shadow.update(&grid, |cell, state| reported.push((cell, state)));
+    assert_eq!(
+        reported,
+        [(CellIndex::new(Pos { x: 30, y: 58 }).unwrap(), Cell::Trail)]
+    );
 }

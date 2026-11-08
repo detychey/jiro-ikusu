@@ -1,6 +1,6 @@
-//! jiro-core for a MicroPython dynamic native module (armv6m). Every entry point but
-//! `jiro_rules_version` has the shape `fn(*mut Args) -> u32`, so that the C glue can call it on a
-//! stack of its own (the rp2 port's C stack is 8 KB; a Game alone is 10 KB). No statics: mpy_ld
+//! jiro-core for a MicroPython dynamic native module (armv6m). Every entry point that runs the
+//! core has the shape `fn(*mut Args) -> u32`, so that the C glue can call it on a stack of its
+//! own (the rp2 port's C stack is 8 KB; a Game alone is 10 KB). No statics: mpy_ld
 //! links no .data and rejects a PC-relative reference to .bss, so every buffer comes from the
 //! caller.
 
@@ -10,7 +10,7 @@ use core::mem::{align_of, size_of};
 use core::slice;
 
 use jiro_core::Error;
-use jiro_core::consts::RULES_VERSION;
+use jiro_core::consts::{MINION_SLOTS, RULES_VERSION, W};
 use jiro_core::hash::state_hash;
 use jiro_core::journal::{Header, Mode};
 use jiro_core::level::{self, level_id};
@@ -262,6 +262,14 @@ pub unsafe extern "C" fn jiro_recorder_view(args: *mut ViewArgs) -> u32 {
 /// claim and target in basis points, player x and y, boss x, y and size B, then for each of the
 /// 3 minion slots its state (0 unused, 1 live, 2 destroyed), x and y (0 unless live).
 pub const STATUS_LEN: usize = 23;
+const HEAD_FIELDS: usize = 14;
+const MINION_FIELDS: usize = 3;
+const _: () = assert!(HEAD_FIELDS + MINION_SLOTS * MINION_FIELDS == STATUS_LEN);
+
+#[unsafe(no_mangle)]
+pub extern "C" fn jiro_status_len() -> usize {
+    STATUS_LEN
+}
 
 #[repr(C)]
 pub struct StatusArgs {
@@ -288,7 +296,7 @@ pub unsafe extern "C" fn jiro_status(args: *mut StatusArgs) -> u32 {
     };
     let (player, boss) = (&game.player, &game.boss);
     let mut fields = [0; STATUS_LEN];
-    let head = [
+    let head: [u16; HEAD_FIELDS] = [
         game.end.map_or(0, |end| end as u16),
         game.ticks_used,
         game.time_limit,
@@ -305,7 +313,7 @@ pub unsafe extern "C" fn jiro_status(args: *mut StatusArgs) -> u32 {
         u16::from(boss.size),
     ];
     let minions = game.minions.slots.iter().flat_map(|slot| match slot {
-        None => [0, 0, 0],
+        None => [0; MINION_FIELDS],
         Some(minion) => match minion.state {
             State::Live { pos, .. } => [1, u16::from(pos.x), u16::from(pos.y)],
             State::Destroyed { .. } => [2, 0, 0],
@@ -355,7 +363,11 @@ pub unsafe extern "C" fn jiro_score(args: *mut ScoreArgs) -> u32 {
 pub const FRAME_BYTES: usize = 28_800;
 const ROW_BYTES: usize = 120;
 const CELL_PX: u16 = 4;
-const GRID_CELLS: u16 = 60;
+
+#[unsafe(no_mangle)]
+pub extern "C" fn jiro_frame_bytes() -> usize {
+    FRAME_BYTES
+}
 
 #[unsafe(no_mangle)]
 pub extern "C" fn jiro_shadow_size() -> usize {
@@ -373,12 +385,14 @@ pub struct PaintArgs {
     pub colors: *const [u8; 4],
     /// Out: the pixel rectangle (x, y, width, height) that holds the painted cells.
     pub rect: *mut [u16; 4],
+    /// Not 0: paint every cell, as if the shadow matched no grid.
+    pub full: u32,
     /// Out: the number of cells painted.
     pub count: u32,
 }
 
-/// Paints the cells that changed since the shadow was last updated (jiro-shell's diff) into the
-/// framebuffer: 0, or MISUSE for a color above 15 or a buffer without a Recorder.
+/// Paints the cells that changed since the shadow was last updated (jiro-shell's diff), or every
+/// cell, into the framebuffer: 0, or MISUSE for a color above 15 or a buffer without a Recorder.
 ///
 /// # Safety
 /// Every pointer of `args` is valid for its length; `recorder` is aligned.
@@ -393,10 +407,14 @@ pub unsafe extern "C" fn jiro_paint(args: *mut PaintArgs) -> u32 {
         return MISUSE;
     }
     let shadow = unsafe { &mut *args.shadow };
+    if args.full != 0 {
+        *shadow = Shadow::new();
+    }
     let frame = unsafe { slice::from_raw_parts_mut(args.frame, FRAME_BYTES) };
-    let (mut count, mut x0, mut y0, mut x1, mut y1) = (0, GRID_CELLS, GRID_CELLS, 0, 0);
-    shadow.update(&recorder.game().grid, |index, state| {
-        let (x, y) = (index % GRID_CELLS, index / GRID_CELLS);
+    let (mut count, mut x0, mut y0, mut x1, mut y1) = (0, u16::from(W), u16::from(W), 0, 0);
+    shadow.update(&recorder.game().grid, |cell, state| {
+        let Pos { x, y } = cell.pos();
+        let (x, y) = (u16::from(x), u16::from(y));
         paint_cell(frame, x, y, colors[state as usize]);
         (x0, y0, x1, y1) = (x0.min(x), y0.min(y), x1.max(x + 1), y1.max(y + 1));
         count += 1;
@@ -442,7 +460,7 @@ pub unsafe extern "C" fn jiro_restore(args: *mut RestoreArgs) -> u32 {
     let frame = unsafe { slice::from_raw_parts_mut(args.frame, FRAME_BYTES) };
     let grid = &recorder.game().grid;
     let clip = |start: u32, len: u32| {
-        let end = start.saturating_add(len).min(u32::from(GRID_CELLS));
+        let end = start.saturating_add(len).min(u32::from(W));
         (start.min(end) as u8)..(end as u8)
     };
     for y in clip(args.y, args.height) {
@@ -456,7 +474,7 @@ pub unsafe extern "C" fn jiro_restore(args: *mut RestoreArgs) -> u32 {
     0
 }
 
-/// Fills cell (x, y), x and y below 60, with a 4-bit color.
+/// Fills cell (x, y), inside the grid, with a 4-bit color.
 fn paint_cell(frame: &mut [u8], x: u16, y: u16, color: u8) {
     let pair = color << 4 | color;
     for row in 0..CELL_PX {
