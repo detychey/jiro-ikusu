@@ -1,6 +1,6 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. On 2026-11-02 the owner made the device a wedgie app that plays Training only (README §13 D1, D15): M3.8-M3.10 replace M3.1-M3.7, and M5.4 is deferred.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. On 2026-11-02 the owner made the device a wedgie app that plays Training only (README §13 D1, D15): M3.8-M3.10 replace M3.1-M3.7, and M5.4 is deferred. M3, the wedgie app, closed with M3.9 on 2026-11-02; M3.10 was not built.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
 [`README.md`](README.md) is the normative specification, and this plan turns it into 69 work items. Five are conditional (M1.14, M1.15, M3.10, M4.10, M4.15) and one is optional (M4.13). Seven are superseded (M3.1-M3.7) and one is deferred past v1 (M5.4). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
@@ -302,7 +302,7 @@ The workflow rules of §1.3 apply to every row. In the private profile, `ci.yml`
 | stylus-gas | `stylus-gas.yml`: `pull_request` on `core/`, `referee/`, `vectors/`, its script and itself | M4.2; gate set from M4.9; `cargo stylus verify` dispatch from M4.14 | The deployed wasm on nitro-devnode: outcomes equal native on the vectors and the 200 fixed cases, gas per vector | heavy |
 | zk-prove | `zk-prove.yml`: `pull_request` on itself and the host's prove module; `workflow_dispatch` | M4.8 | A real proof, the wrapping step, timings, the proof fixture | heavy |
 | e2e | `e2e.yml`: `pull_request` on `contracts/`, `scripts/contracts/`, `referee/` and itself | M4.16 | Contract end-to-end run on nitro-devnode with the real referee | heavy |
-| season-ops | `season-ops.yml`: daily `schedule`, `workflow_dispatch`, `pull_request` on itself | M5.5 | Season status and solvency, bot runs, close, zk settlement | own workflow |
+| season-ops | `season-ops.yml`: daily `schedule`, `workflow_dispatch`, `pull_request` on itself | M5.5 | Season status and solvency, bot runs, close, zk settlement through a prover network | own workflow |
 
 ## 4. Milestone overview
 
@@ -1476,7 +1476,7 @@ On 2026-11-02 the device became a wedgie app that plays Training only (README §
 | M3.5 | Firmware Training mode with the 16 levels: **superseded** by M3.9 (D1) | M3.4, M2.9 | M | none |
 | M3.8 | wedgie native module, reproducible build and qemu parity | M1.9, M2.9 | M | Install the check app; report PASS |
 | M3.9 | wedgie app: Training with the 16 levels | M3.8, M2.9, M3.10 if filed | L | Play; report timing and the PASS list |
-| M3.10 | In-place constructors for a smaller core stack (only if M3.9's RAM check fails) | M3.8 | M | none |
+| M3.10 | In-place constructors for a smaller core stack (only if M3.9's RAM check fails): **not built**, M3.9's play test passed at 137,760 bytes free | M3.8 | M | none |
 
 #### M3.1-M3.7 Superseded
 
@@ -1543,6 +1543,8 @@ On 2026-11-02 the device became a wedgie app that plays Training only (README §
 - **Skills:** `rp2040-firmware`, `deterministic-core`; tier `wedgie`. **README:** §2, §4.4, §6.1, §6.2, §8.1, §9 M3. **Needs user:** install this PR's `wedgie-app` artifact, select each of the 16 levels, play at least one to its end, unplug and replug, and post the PASS list, the overrun counter and the worst tick, with any comment on readability (round E1).
 
 #### M3.10 In-place constructors for a smaller core stack (only if M3.9's RAM check fails)
+
+**Not built.** M3.9's qemu play test passed with the heap filled down to 137,760 bytes free, with about 18 KB still free after the app starts, and passed down to 128,000 with 32 small holes (`reports/wedgie-2026-11-02.md`). Round E1's second try hit a MemoryError at level start, on a 1,148-byte file object rather than on the stack; the app now allocates nothing sizable after it starts. A MemoryError on the stack, the Recorder or the module would reopen it.
 
 - **When.** The core needs about 63 KB of stack because `start` builds its large structs on the stack (`start` peaks at 62,784 bytes, PR #42), so the app gives up 64 KB of its about 137 KB. M3.9's draft PR files this item, with the shortfall it measured, if its qemu play test fails at the free RAM a wedgie reports with no app, or if a wedgie reports a MemoryError in round E1; M3.9 then waits for it. Otherwise M3.9 marks it "not built".
 - **Goal:** the core runs within a stack small enough for the app to fit, without changing any outcome.
@@ -1914,6 +1916,8 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   - a test settles a run through `Challenge` with ZkReferee and the fixture set;
   - tampered public values, a proof for another journal, and a wrong image id each revert;
   - this PR's `e2e.yml` run passes the zk mode.
+
+  **Merged with the last line open.** PR #62 merged on 2026-11-02 before its `e2e.yml` run: November's Actions minutes were nearly used up, and the owner chose local checks only. The zk mode passed in the container (`docs/VERIFICATION.md`, End to end, zk mode). The `e2e.yml` run follows the 1 December reset, or M4.14's real-proof run on Arbitrum Sepolia covers it, if the owner prefers.
 - **Verify with:**
   - `cd contracts && forge test --match-contract ZkReferee -vv`
   - `get_job_logs` for this PR's `e2e.yml` run
@@ -1981,7 +1985,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
   6. verify the Solidity sources on Sourcify. For a Stylus referee, add a `deployment_tx` input to `stylus-gas.yml` that runs `cargo stylus verify --deployment-tx <tx>` (it needs Docker), and dispatch it;
   7. run the e2e happy path with a bot run, in zk mode with real proofs if D2 = zk. If the bot's run clears no level, play another, so that M5.5 can rehearse a claim;
   8. time the largest commit: buy a second run and commit six full journals, the 8,171 bytes of `vectors/game/full-journal`'s journal each (`commitRun` never parses them, so the run need not settle);
-  9. record the addresses, transaction links, gas per transaction, verify gas per level, reveal timing, the `commitRun` inclusion latency of the full six-journal commit, from submission to its block's timestamp, and the margin left at commit by the settled bot run, its deadline minus `committedAt`.
+  9. record the addresses, transaction links, gas per transaction, verify gas per level, reveal timing, the `commitRun` inclusion latency of the full six-journal commit, from submission to its block's timestamp, the margin left at commit by the settled bot run, its deadline minus `committedAt`, and, with zk, the bot run's proving time and proving cycles, from which M5.5 presents the proving route.
 
   `docs/DEPLOYMENT.md` also holds a redeploy section, modeled on ethblockdigger's [`DEPLOYMENT.md`](https://github.com/detychey/ethblockdigger/blob/main/docs/DEPLOYMENT.md) B5: contracts are immutable, so a redeploy is a new generation, appended to the deployments record's list of generations.
 - **Done when:**
@@ -2006,7 +2010,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | M5.2 | Challenge run flow in the browser | M5.1 | L | none |
 | M5.3 | Settlement, season pages, replay of committed runs | M2.3, M4.9, M5.2 | L | none |
 | M5.4 | Web Serial bridge for Challenge runs: **deferred** past v1 by D15 (§16) | M3.4, M4.14, M5.7 | M | none |
-| M5.5 | Season operations, testnet-1 parameters, testnet-0 close | M4.14, M5.3 | M | Approve the parameters, the schedule, its secrets and the feedback channel |
+| M5.5 | Season operations, testnet-1 parameters, testnet-0 close | M4.14, M5.3 | M | Choose the proving route; approve the parameters, the schedule and its secrets |
 | M5.6 | Testnet season 1 | M5.3, M5.5 | M | Testers, play, approvals |
 | M5.7 | Challenge page wiring | M5.2 | M | none |
 
@@ -2076,7 +2080,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Deliverables:**
   - `web/src/pages/settle.ts`, for the backend in `deployments/<network>.json`:
     - Stylus: settles the player's best run with one `settleRun` transaction, falling back to six `settleLevel` transactions if it fails for gas, with progress, retries and decoded revert reasons;
-    - zk: the operator settles (M5.5), because proving needs credentials that cannot live in a browser; the contract itself stays open to any submitter (README §7.2). The page exports the run file and shows the settlement cutoff: the season's end plus grace, read from the `Season` contract (M4.5). M5.5 adds the handoff instructions.
+    - zk: the operator settles (M5.5), because proving needs credentials that cannot live in a browser; the contract itself stays open to any submitter (README §7.2). The page exports the run file and shows the settlement cutoff: the season's end plus grace, read from the `Season` contract (M4.5). M5.5 adds that the operator settles best runs from chain data.
   - `web/src/pages/season.ts`: parameters, pot, end time and a countdown, a permissionless close button, and claiming.
   - A leaderboard, built from `Challenge` and `Season` events through chunked `eth_getLogs`.
   - `web/src/chain/calldata.ts`: the M2.3 viewer loads any committed run's journals from its commit transaction (P5). It decodes a direct call's input as `commitRun`; for a smart-account wallet, it finds the embedded `commitRun` call by its selector and run id, and otherwise falls back to `debug_traceTransaction` where the RPC serves it, or says the run needs a trace RPC. It keeps the journals only if they match the stored commitment.
@@ -2104,47 +2108,50 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - `status`: runs, commits, settlements, pot, `isSolvent`;
     - `close`: the permissionless close;
     - `withdraw`: the permissionless rake withdrawal to the treasury;
-    - `settle`: replays a player's run files offline with the core, picks their best run in D10 order (qualification, then score, then fewer ticks), and submits that run only, proving it first when D2 = zk.
+    - `settle`: rebuilds from chain data the run file (M4.7) of each committed run of the season, as `committedRun` in `web/src/chain/calldata.ts` does (M5.3): the six journals of its `commitRun` calldata (P5), the run nonce of its reveal, and its drawn levels, from the shipped level bytes whose ids the season holds. It replays the runs offline with the core and the season's weights, picks each player's best on-time run in D10 order (qualification, then score, then fewer ticks), and submits each best run not yet settled, proving it first when D2 = zk. Players hand nothing off (owner, 2026-11-08, "Rebuild from chain (Recommended)"; README §7.5).
+  - **The proving route** for players' runs on zk (owner, 2026-11-08, "Decide at M5.5"). The PR presents it with measured numbers: the proving time of M4.14's bot run, and a prover network's price, about 0.0000184 ETH per Groth16 proof on Boundless (M4.8). The owner chooses in round G2 between a prover network on a capped account, with round F0's credential, and the owner's own machine. The settlement grace derives from the route.
   - `seasons/testnet-1.json` (P13), which references `calibration-1.json` for the ids and weights:
     - the referee from `deployments/arbitrum-sepolia.json`;
     - the fee (0.00005 ETH, in wei), the rake, `minClears`, and a length of 14 days (D12);
-    - the settlement grace. With Stylus, the 48 h proposal. With zk, sized from M4.8's proving time per run × the expected number of settled runs, with the derivation stated.
+    - the settlement grace. With Stylus, the 48 h proposal. With zk, derived from the proving route: its proving time per run and the expected number of settled runs, with the derivation stated.
     - commitSlack, sized from the level transitions of a headless six-level run of the Challenge page on the local chain, as M5.7 runs it, and from the inclusion latency of the full six-journal `commitRun` and the margin at commit that M4.14 records in `docs/DEPLOYMENT.md`: at least 2 × the worst observed transition and transaction overhead. If M4.13 ran, its threshold recommendation is applied through `minClears` or declined here, with the reason.
   - `.github/workflows/season-ops.yml`, following §1.3, with `cancel-in-progress: false`:
-    - a daily `schedule`: `status`, failing when `isSolvent` is false; the bot runs from `TESTER_KEY` on the days the runbook lists; `close` and `withdraw` once end plus grace has passed; with zk, `settle` for each player with a handed-off run file under `seasons/testnet-1/runs/` whose best run is not yet settled;
+    - a daily `schedule`: `status`, failing when `isSolvent` is false; the bot runs from `TESTER_KEY` on the days the runbook lists; `close` and `withdraw` once end plus grace has passed; with zk, `settle`, only when the route is a prover network;
     - `pull_request` on itself and `season.mjs`: a read-only `status` of `testnet-0` on Sepolia, with no secret;
     - `workflow_dispatch`.
+
+    **Actions cannot prove whole runs.** A whole six-level run takes about 9 to 11 h to prove on 4 CPUs (M4.14's prep, PR #67), and up to 16 to 17 h for the gate set's heaviest run (`docs/ECONOMY.md`). GitHub-hosted jobs stop at 6 h (`docs/VERIFICATION.md`, Proving). Private-repository runners have 2 vCPUs and about 7 GB, and even a public repository's 4-vCPU runners (§2) would need the 9 to 11 h. The workflow therefore never proves on its runner: it only requests proofs from a prover network, and on the owner's machine the owner runs `season.mjs settle`.
   - `docs/SEASON_RUNBOOK.md`:
-    - the season's dates, the settlement cutoff, and what runs on which date;
+    - the season's dates, the end of settlement (end plus grace, `Season.settlementEndOf`), and what runs on which date;
     - the freeze rule: while a season is open, no PR that changes `core/` or `levels/` merges, so that a rule change that moves no vector cannot slip in;
-    - with zk, the run-file handoff: players send their run file to the operator through the channel named in `docs/TESTNET.md`, before the cutoff, and the operator commits it under `seasons/testnet-1/runs/` through a PR;
+    - with zk, the operator's settlement: the route the owner chose, with the numbers the PR presented, when `season.mjs settle` runs on it, and how the operator checks that every player's best run has settled before end plus grace;
     - the slack and grace derivations.
   - `docs/TESTNET.md`, the tester guide:
     - getting test ETH from an Arbitrum Sepolia faucet;
     - the controls and rules: keyboard mapping, Commit, the zero score when the lives run out;
-    - with zk, the handoff channel and cutoff;
-    - a feedback channel reachable without repository access, where testers attach their journal or run file: GitHub issues if the repository is public, otherwise the form or mailbox the user names in round G2;
+    - with zk, that the operator settles each player's best run from chain data, so players do nothing after committing, and that a player may still prove and settle their own run from the page's run file until end plus grace;
+    - the feedback channel, where testers attach their journal or run file: GitHub issues, since the repository is public from round F3; a form or mailbox the user names in round G2 only if it is still private;
     - known gaps: test ETH only; unaudited contracts; the run nonce computable up to 256 blocks before the reveal; a lapsed reveal forfeits the run; a reload closes the current level; desktop and keyboard only; Challenge in the browser only (README §13 D15).
-  - The handoff instructions and the feedback channel, added to `web/src/pages/settle.ts` (M5.3).
+  - In `web/src/pages/settle.ts` (M5.3), on zk: the page keeps its run-file export, for a player who proves and settles their own run, and says that the operator settles each player's best run from chain data, with nothing to send. It also names the feedback channel.
   - **testnet-0 rehearsal:** once its end plus grace has passed, `season.mjs close` on `testnet-0`, a claim for the M4.14 bot player, `season.mjs withdraw` for the rake, and the `isSolvent` result and the dust, recorded in `docs/DEPLOYMENT.md`.
 - **Done when:**
-  - on the local chain, the five commands run and `status` output equals the contract views;
+  - on the local chain, the five commands run, `status` output equals the contract views, and `settle` rebuilds each committed run's file from chain data and the shipped levels, equal to the run file the dApp wrote at commit (M5.2), and submits only each player's best run;
   - this PR's `season-ops.yml` run is green;
-  - `testnet-1.json` is complete, and the runbook explains the slack and grace derivations;
+  - `testnet-1.json` is complete, and the runbook states the proving route the owner chose and explains the slack and grace derivations;
   - `testnet-0` is closed, the bot player has claimed and the rake has reached the treasury on Sepolia, with Arbiscan links and `isSolvent` true.
 - **Verify with:**
   - local chain: `node scripts/contracts/localnet.mjs --up && node scripts/contracts/season.mjs status --rpc http://127.0.0.1:8545`
   - `node scripts/contracts/season.mjs status --network arbitrum-sepolia --season seasons/testnet-0.json` shows the season closed and claimed.
-- **Skills:** `onchain-referee`; tiers `contracts`, `web`. **README:** §7.2, §8.2, §8.4. **Needs user:** approve the testnet-1 parameters; add `TESTER_KEY`, and the prover credential if D2 = zk, as Actions secrets; approve the season-ops schedule; name the tester feedback channel if the repository is private (round G2).
+- **Skills:** `onchain-referee`; tiers `contracts`, `web`. **README:** §7.2, §7.5, §8.2, §8.4. **Needs user:** choose the proving route; approve the testnet-1 parameters; add `TESTER_KEY`, and the prover credential if a prover network proves, as Actions secrets; approve the season-ops schedule; name a tester feedback channel only if the repository is still private (round G2).
 
 #### M5.6 Testnet season 1
 
 - **Goal:** README §9's M5 done-when: a full season closes and pays out on testnet.
-- **Checkpoints,** each a commit on the draft PR: open; mid-season status; settlement cutoff; close after end plus grace; claims and the report. `send_later` reminders are set for mid-season and for end plus grace.
+- **Checkpoints,** each a commit on the draft PR: open; mid-season status; the best runs settled, after the end; close after end plus grace; claims and the report. `send_later` reminders are set for mid-season and for end plus grace.
 - **Deliverables:**
   - testnet season 1, opened on Arbitrum Sepolia with `seasons/testnet-1.json`;
   - testers playing in the browser, and bots playing from the tester key;
-  - best runs settled: by players with Stylus, or by `season-ops.yml` from handed-off run files with zk;
+  - best runs settled: by players with Stylus; with zk, by the operator's `season.mjs settle` from chain data, on the route chosen in round G2 (M5.5), or by players who prove their own;
   - after the end plus the grace period, any address closes the season, qualified players claim, and `season.mjs withdraw` sends the rake to the treasury;
   - `docs/TESTNET-1-REPORT.md`:
     - runs, settled runs, and gas and verification cost per settled run;
@@ -2164,7 +2171,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Verify with:**
   - `node scripts/contracts/season.mjs status --network arbitrum-sepolia --season seasons/testnet-1.json`
   - Arbiscan links for the close and claim transactions, in the report.
-- **Skills:** `onchain-referee`, `qa`. **README:** §8.2, §9 M5. **Needs user:** recruit testers, approve opening the season, fund your browser wallet and play (at least one browser run), keep the tester key funded, commit or pass on handed-off run files if D2 = zk, and check the report after the close (round G3).
+- **Skills:** `onchain-referee`, `qa`. **README:** §8.2, §9 M5. **Needs user:** recruit testers, approve opening the season, fund your browser wallet and play (at least one browser run), keep the tester key funded, run `season.mjs settle` on your machine after the end if it is the proving route, and check the report after the close (round G3).
 
 #### M5.7 Challenge page wiring
 
@@ -2223,7 +2230,7 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | P11 | Target clear-rate curve and floor | M2.6 | M2.7 | Non-increasing, from at least 90 % at level 1 to about 15 % at level 16, within ±5 pp over 1,000 seeds; a 500 bp floor, with every level's median effective claim above it |
 | P12 | Device HUD | M3.9 | M3.9 | Between-level screens, plus a brief overlay at level start |
 | P13 | Testnet-1 parameters | M5.5 | M5.6 | Ids and weights from `calibration-1.json`; slack and grace from measurements; length per D12 |
-| P14 | Repository visibility, Actions budget, CI profile | M0.2, from the owner's answer in round A1 | M0.4 | Public, if the license allows: larger runners, unmetered minutes, required checks available, and the public CI profile. Otherwise the private CI profile, a spending limit or paid plan, and the budget recorded in `docs/TOOLING.md`. |
+| P14 | Repository visibility, Actions budget, CI profile | M0.2, from the owner's answer in round A1; when it goes public: owner, 2026-11-08 (§15, question 18) | M0.4 | Public, if the license allows: larger runners, unmetered minutes, required checks available, and the public CI profile. Otherwise the private CI profile, a spending limit or paid plan, and the budget recorded in `docs/TOOLING.md`. |
 | P15 | License | M0.1 | M2.2 | The owner's choice; no default |
 | P16 | Settlement shape | M0.7 | M4.4, M4.7, M4.8 | Decided in M0.7 (README §7.3): (a) per run, `settleRun` with one `verifyRun`, and `settleLevel` as the fallback; season aggregation decided in M4.9. The alternative was (b), per level only. |
 | P17 | Draw check | M0.7 | M1.8, M4.4, M4.7 | Decided in M0.7 (README §8.2): the core returns `drawSlot`; the contract looks up the slot and weight by level id and checks the slot. No Solidity draw. |
@@ -2357,7 +2364,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 
 ### Round F: testnet deployment
 
-- [ ] **F0, critical when it occurs** (M4.8 ready, only if M4.8 asked for a prover credential): approve the prover network's spend cap and set its credential as a cloud-environment variable, and as an Actions secret if a workflow proves, before M4.10 starts.
+- [ ] **F0, critical when it occurs** (M4.8 ready, only if M4.8 asked for a prover credential): approve the prover network's spend cap and set its credential as a cloud-environment variable, and as an Actions secret if a workflow proves, before M4.10 starts. M4.8 proved in the container and on Actions, so it asked for no credential, and F0 has not run. Round G2 runs this step if the owner chooses a prover network for players' runs (M5.5).
 - [ ] **F1, critical** (M4.9, M4.12 ready):
   - Approve D2, or choose the backend if the gate failed with activations open (M4.9).
   - Read `ECONOMY.md` and accept the residual risks (M4.12).
@@ -2365,19 +2372,23 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Create a testnet-only deployer key and a separate tester key, as cloud-environment variables.
   - Fund both with Arbitrum Sepolia ETH.
   - Approve the deployment. M4.14's work continues in a fresh session.
+- [ ] **F3** (M4.14 merged; before G3 recruits testers):
+  - Make the repository public in GitHub's settings, which only you can do (§15, question 18).
+  - Then switch CI to the public profile (§1.3, P14): an agent's follow-up PR changes the workflows' triggers (`docs/TOOLING.md`), and you merge it.
 
 ### Round G: testnet season
 
 - G1, a six-level Challenge run on the Pico, is dropped with M5.4 (D15).
 - [ ] **G2, critical** (M5.5 ready):
+  - Choose the proving route for players' runs from the numbers M5.5 presents: a prover network on a capped account, whose spend cap you approve and whose credential you set (F0's step), or your own machine. The settlement grace follows from it.
   - Approve the testnet-1 parameters.
-  - Add `TESTER_KEY`, and the prover credential if D2 = zk, as Actions secrets.
+  - Add `TESTER_KEY`, and the prover credential if a prover network proves, as Actions secrets.
   - Approve the season-ops schedule.
-  - If the repository is private, name the tester feedback channel (a form or a mailbox).
+  - Testers report through GitHub issues. Only if the repository is still private (F3), name a form or a mailbox instead.
 - [ ] **G3, critical** (M5.6 open):
-  - Recruit testers, and approve opening the season.
+  - Recruit testers once the repository is public (F3), and approve opening the season.
   - Fund your browser wallet from an Arbitrum Sepolia faucet, play at least one run in the browser, keep the tester key funded, and name your run's id.
-  - If D2 = zk, commit or pass on the run files testers hand off, before the cutoff.
+  - If your machine is the proving route (G2), run `season.mjs settle` on it after the season's end, as the runbook says, before end plus grace.
   - After the close, check the report.
 
 ## 14. Risk register
@@ -2387,12 +2398,12 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 | Stylus activations stay paused (since 2026-10-02), so no Stylus referee can be deployed for the testnet season | Gas measured on nitro-devnode, where the pause doesn't apply (M4.2, M4.9); an activation reading from M4.3 on, so ZkReferee starts before D2 (M4.10); zk costs measured (M4.8, M4.9); D2 decided from a live reading (M4.9) | M4.9 |
 | The container has no Docker daemon | nitro-devnode on GitHub Actions runners, triggered and read with the MCP tools (M4.2, M4.16); M0.2 also tries starting `dockerd` | M4.2 |
 | Toolchains fail to install; GitHub API calls and release-note pages are refused | Pinned installers that fetch release assets, sha256-checked direct downloads where an installer insists on the API, versions read from the installed tools (M0.2); npm-hosted tools preferred; the contract toolchain follows the probe (P2) | M0.2 |
-| Actions minutes run out: the organization's private repositories share a metered pool, ethblockdigger included | The private CI profile: merged `ci.yml` jobs, heavy workflows only on dispatch or the `ci:heavy` label, weekly schedules (M0.4); minutes per run and a monthly budget checked before heavy runs (§1.3); a spending limit, a paid plan or a public repository chosen in round A1 (P14) | M0.4 |
+| Actions minutes run out: the organization's private repositories share a metered pool, ethblockdigger included | The private CI profile: merged `ci.yml` jobs, heavy workflows only on dispatch or the `ci:heavy` label, weekly schedules (M0.4); minutes per run and a monthly budget checked before heavy runs (§1.3). In November 2026 the budget ran low: the owner chose local checks only, and M4.10's `e2e.yml` run waits for the 1 December reset. The repository goes public once M4.14 has settled a run, with unmetered minutes and the public CI profile from then on (round F3; §15, question 18) | Round F3 |
 | Runners are too small for proving or the time gates | Time gates measured in the container; runner size recorded (M0.4); proving tried in both environments (M1.16, M1.17, M4.8) | M4.8 |
 | Stylus gas exceeds 1M per level | Provisional numbers on the deployed wasm right after M1.9 (M4.2); the gate defined once on the 16 levels (§4) and measured in M4.9; an optimization item that keeps outcomes unchanged (M4.15); the user chooses if the gate still fails | M4.9 |
 | The Stylus wasm exceeds 24 KB brotli | Size gate in CI from M4.1; `opt-level = "z"` in the `stylus` profile only | M4.1 |
 | No zkVM passes the four checks, or CPU proving or wrapping is impractical | One trial per framework, including a wrapping attempt with peak RAM (M1.16, M1.17); an exit with user options (M1.12); real proofs in the container and on Actions (M4.8); a prover route chosen in round B3, or round F0 before M4.10 | M4.8 |
-| A prover network needs real money on a mainnet chain | Its chain, token, minimum deposit and cost per proof recorded (M1.16, M1.17); a separate account with a spend cap the user approves (rounds B3, F0); other routes offered (question 7) | M4.10 |
+| A prover network needs real money on a mainnet chain | Its chain, token, minimum deposit and cost per proof recorded (M1.16, M1.17); a separate account with a spend cap the user approves (rounds B3, F0, and G2 for players' runs); other routes offered (question 7), and the owner's own machine for players' runs (M5.5) | M4.10; M5.5 for players' runs |
 | Minions get trapped on 2-wide rails (D7) | The coverage property over every cell of the rail component, on 10,000 boards in CI and 100,000 locally and nightly, with one committed count each (M1.7); a replacement or an accepted rate specified and approved before it is built (M1.14, M1.15) | M1.7, or M1.15 |
 | Targets disagree, through `usize` width, overflow, floats or iteration order | The M0.4 gates: lints including `indexing_slicing`, soft-float references in the project crates of a linked probe, no `usize` in state or codecs, overflow checks in every workspace root, four cross builds. Per-tick traces on native and wasm (M1.11); trace digests on the zk executor (M1.12); difffuzz across native, wasm and the executor (M1.13); the native module's outcomes and traces in MicroPython's qemu port, and its check app on a wedgie (M3.8). The Stylus contract code under the TestVM, which runs natively (M4.1). The wasm build itself, deployed on nitro-devnode, on the vectors and the 200 fixed cases (M4.2). | M1.13, M3.8, M4.2 |
 | Spec gaps get resolved silently in code | The M0.5-M0.7 freeze; every rule unit of README §4 tagged or marked as rationale, checked in CI (M0.5, M0.4); every tag mapped to a vector or test, checked by test (M1.9); the `CLAUDE.md` sync table and the PR template for later gaps | M1.9 |
@@ -2408,7 +2419,8 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 | Browser timer lateness or background-tab throttling eats the commit slack | The absolute-deadline loop (M2.1); a hidden-tab warning (M5.7); the slack as a season parameter, sized from measurements (M5.5) | M5.5 |
 | The commit slack is too tight for real players | Level transitions measured in a headless run of the Challenge page (M5.5) and the full commit's inclusion latency on Sepolia (M4.14); the slack set before the season opens (M5.5); deadline margins and misses in the season report (M5.6) | M5.5 |
 | Season deadlines pass while no agent session is running | `season-ops.yml` on a daily schedule, never cancelled mid-run, failing on insolvency; `send_later` reminders for the season checkpoints (M5.5, M5.6) | M5.6 |
-| The settlement grace is too short for zk proving | Grace sized from M4.8's proving time per run and the expected settled runs (M5.5) | M5.5 |
+| Actions cannot prove players' whole runs: a whole six-level run takes about 9 to 11 h to prove on 4 CPUs (M4.14's prep, PR #67), up to 16 to 17 h for the gate set's heaviest (`docs/ECONOMY.md`); GitHub-hosted jobs stop at 6 h (`docs/VERIFICATION.md`), on a public repository's 4-vCPU runners too, and private-repository runners have 2 vCPUs and about 7 GB (§2) | `season-ops.yml` never proves on its runner (M5.5). M5.5 presents the proving route with measured numbers, and the owner chooses in round G2 between a prover network on a capped account (round F0's credential) and the owner's own machine | M5.5 |
+| The settlement grace is too short for zk proving | Grace derived from the proving route the owner chooses in round G2: its proving time per run and the expected settled runs (M5.5) | M5.5 |
 | Close and claim fail on Sepolia when they first matter | `testnet-0` closed and claimed in a rehearsal before `testnet-1` opens (M5.5) | M5.5 |
 | The run commitment computed in Solidity diverges from the core's, or the Solidity run nonce from its fixtures | The ethers fixtures of `vectors/derivations.json`, read by both (M1.2, M4.4); the run nonce in Solidity only, and the draw in the core only (P17) | M4.4 |
 | Inputs copied from public journals or precomputed for every boss start (README §7.4) | D14: seeded boss randomness, so no two runs share a game (M1.18, M1.5) | M1.5 |
@@ -2434,7 +2446,7 @@ Each question has a default in this plan, and the item that settles it unless th
 | 5 | Does the 1M gas gate cover `verify` alone, or settlement overhead too? | `verify` alone, over the gate set of §4; the overhead is recorded separately | M4.9 |
 | 6 | Is a nitro-devnode on a GitHub Actions runner acceptable as README §7.3's "local Arbitrum node"? | Yes | M4.2 |
 | 7 | If Stylus stays paused, "settled on testnet" needs ZkReferee with real proofs, possibly from a paid prover. Is that acceptable, or should M4 accept a settlement on the local node plus measured zk costs? | ZkReferee on Sepolia | M4.9 |
-| 8 | If D2 = zk, proving needs credentials that cannot live in a browser. Who proves, and how do run files reach the prover? | The operator, through `season-ops.yml`. Players hand off their run file through a channel named in `docs/TESTNET.md`, before a cutoff. | M5.5 |
+| 8 | If D2 = zk, proving needs credentials that cannot live in a browser. Who proves, and how do run files reach the prover? | Settled by the owner on 2026-11-08 ("Rebuild from chain (Recommended)"): run files need not reach anyone. The operator's `season.mjs settle` rebuilds every committed run's file from chain data, replays the runs offline, and proves and settles each player's best run (README §7.5). Players do nothing after committing, and any player can still prove and settle their own run until end plus grace. Where the operator proves is chosen in M5.5 (owner, 2026-11-08, "Decide at M5.5"): a prover network on a capped account, or the owner's own machine, since Actions cannot prove whole runs (§14). | Owner, 2026-11-08; built in M5.5 |
 | 9 | A 7-day testnet season, against ethblockdigger's 14 days? | Settled by the owner on 2026-10-28: 14 days on testnet, likely on mainnet too | Owner, 2026-10-28 |
 | 10 | When does `RULES_VERSION` bump during development? | On every behavior change: one that moves a committed vector's outcome, error code or trace, or implements a rule edit made after the rule was first implemented. First implementations of frozen rules don't bump it. M1.9's gate enforces this. | M0.5 |
 | 11 | The 60 × 60 grid fills the whole 240 × 240 screen, which leaves no room for a HUD during play. | Between-level screens, plus a brief overlay at level start | M3.9 |
@@ -2444,7 +2456,7 @@ Each question has a default in this plan, and the item that settles it unless th
 | 15 | `GUIDELINES.md` references Cometh's `AGENTS_COMETH.md`. Copy it from ethblockdigger, or drop the reference? | Copy it | M0.1 |
 | 16 | Neither repository has a license file. Which license applies? | Settled by the owner on 2026-10-28: MIT | Owner, 2026-10-28; committed in M0.1 |
 | 17 | The hat also fits the Pico 2 (RP2350), and the wedgie also comes with one. Is it in scope? | RP2040 only | Not scheduled |
-| 18 | The repository is private, in an organization whose private repositories share 2,000 Actions minutes a month on the free plan, on 2-vCPU runners, with no branch protection or GitHub Pages. Can it be public, or which plan and spending limit apply? | Settled by the owner on 2026-10-28: private, on the free plan's minutes with the private CI profile, until a working version exists; then public, with the public CI profile | Owner, 2026-10-28; recorded in M0.2 (P14) |
+| 18 | The repository is private, in an organization whose private repositories share 2,000 Actions minutes a month on the free plan, on 2-vCPU runners, with no branch protection or GitHub Pages. Can it be public, or which plan and spending limit apply? | Settled by the owner on 2026-10-28: private, on the free plan's minutes with the private CI profile, until a working version exists; then public, with the public CI profile. On 2026-11-08 the owner set the moment ("After M4.14 settles (Recommended)"): once M4.14 has settled a run on Arbitrum Sepolia, before testers are recruited for season 1. | Owner, 2026-10-28; recorded in M0.2 (P14). Owner, 2026-11-08; done in round F3 |
 | 19 | Cloudflare Pages previews are reachable by anyone who has the URL. Is that acceptable while the repository is private? | Settled by the owner on 2026-10-28: yes, previews stay public | Owner, 2026-10-28; applied in M2.2 |
 | 20 | `skills-import.md` lists the ethskills `feedback` skill, which has no `name` field and posts notes to ethskills.com. Import it? | No; it is marked "not imported" | M0.3 |
 | 21 | Settle a run in one transaction, or level by level? | One `settleRun` per run, which on zk means one proof per run as README §7.3 says; `settleLevel` stays as the fallback | M0.7 |
