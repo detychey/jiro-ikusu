@@ -1,6 +1,8 @@
 //! The Recorder (README §6.2): the single input path of every target. A raw mask is journaled
 //! as an event when it changes, and the game then steps with the journaled mask.
 
+use core::mem::MaybeUninit;
+
 use crate::Error;
 use crate::consts::MAX_JOURNAL_LEN;
 use crate::game::{EndReason, Game};
@@ -19,14 +21,43 @@ pub struct Recorder {
 impl Recorder {
     /// A level ready to play, with the journal of `header` and no events yet.
     pub fn new(level: &Level, header: &Header) -> Result<Self, Error> {
-        let game = Game::new(level, &header.run_nonce, header.level_index)?;
-        let mut journal = [0; MAX_JOURNAL_LEN];
-        let journal_len = length(journal::encode(header, &[], &mut journal)?)?;
-        Ok(Self {
-            game,
-            journal,
-            journal_len,
-        })
+        Self::new_in(&mut MaybeUninit::uninit(), level, header).cloned()
+    }
+
+    /// `new`, written into `place` field by field, as `Game::new_in` writes the game: the stack
+    /// never holds a Game or a journal (plan M3.10).
+    #[allow(unsafe_code)]
+    pub fn new_in<'a>(
+        place: &'a mut MaybeUninit<Self>,
+        level: &Level,
+        header: &Header,
+    ) -> Result<&'a mut Self, Error> {
+        let recorder = place.as_mut_ptr();
+        // SAFETY: `recorder` is valid for writes of a Recorder, and until every field is written
+        // only fields are written, each once and whole, never read: the game by `Game::new_in`
+        // through a MaybeUninit of its place, the journal zeroed in place before encode writes
+        // the header into it.
+        let game = unsafe { &mut *(&raw mut (*recorder).game).cast::<MaybeUninit<Game>>() };
+        Game::new_in(game, level, &header.run_nonce, header.level_index)?;
+        let journal = unsafe {
+            let journal = &raw mut (*recorder).journal;
+            journal.write_bytes(0, 1);
+            &mut *journal
+        };
+        let journal_len = length(journal::encode(header, &[], journal)?)?;
+        // SAFETY: as above; this writes the last field, as the pattern below checks.
+        let recorder = unsafe {
+            (&raw mut (*recorder).journal_len).write(journal_len);
+            place.assume_init_mut()
+        };
+        // Lists every field, so that a field added to Recorder fails to compile until it is
+        // written above.
+        let Self {
+            game: _,
+            journal: _,
+            journal_len: _,
+        } = recorder;
+        Ok(recorder)
     }
 
     /// Processes the next tick: journals `raw` if it differs from the mask in force, then

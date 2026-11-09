@@ -6,7 +6,7 @@
 
 #![no_std]
 
-use core::mem::{align_of, size_of};
+use core::mem::{MaybeUninit, align_of, size_of};
 use core::slice;
 
 use jiro_core::Error;
@@ -113,7 +113,7 @@ const LIVE_MARKER: u32 = 0x4a49_524f;
 #[repr(C)]
 pub struct Live {
     marker: u32,
-    recorder: Recorder,
+    recorder: MaybeUninit<Recorder>,
 }
 
 /// The Recorder of a buffer that `jiro_recorder_start` wrote, or `None`.
@@ -122,7 +122,7 @@ pub struct Live {
 /// `live` is valid for `jiro_recorder_size()` bytes, aligned to `jiro_recorder_align()`.
 unsafe fn recorder<'a>(live: *const Live) -> Option<&'a Recorder> {
     // SAFETY: the marker is a u32, valid for any bytes; the Recorder is read only behind it.
-    unsafe { ((*live).marker == LIVE_MARKER).then(|| &(*live).recorder) }
+    unsafe { ((*live).marker == LIVE_MARKER).then(|| (*live).recorder.assume_init_ref()) }
 }
 
 /// `recorder`, mutable.
@@ -130,7 +130,7 @@ unsafe fn recorder<'a>(live: *const Live) -> Option<&'a Recorder> {
 /// # Safety
 /// As `recorder`.
 unsafe fn recorder_mut<'a>(live: *mut Live) -> Option<&'a mut Recorder> {
-    unsafe { ((*live).marker == LIVE_MARKER).then(|| &mut (*live).recorder) }
+    unsafe { ((*live).marker == LIVE_MARKER).then(|| (*live).recorder.assume_init_mut()) }
 }
 
 #[unsafe(no_mangle)]
@@ -183,13 +183,11 @@ pub unsafe extern "C" fn jiro_recorder_start(args: *mut StartArgs) -> u32 {
         level_id: level_id(level_bytes),
         level_index,
     };
-    let result = level::decode(level_bytes).and_then(|level| Recorder::new(&level, &header));
-    match result {
-        Ok(started) => {
-            unsafe {
-                (&raw mut (*live).recorder).write(started);
-                (&raw mut (*live).marker).write(LIVE_MARKER);
-            }
+    // SAFETY: the buffer is valid for a Live, and a MaybeUninit holds any bytes.
+    let place = unsafe { &mut (*live).recorder };
+    match level::decode(level_bytes).and_then(|level| Recorder::new_in(place, &level, &header)) {
+        Ok(_) => {
+            unsafe { (&raw mut (*live).marker).write(LIVE_MARKER) };
             0
         }
         Err(error) => u32::from(error.code()),

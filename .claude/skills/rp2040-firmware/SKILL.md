@@ -9,10 +9,10 @@ The device is a [wedgie](https://wedgie.dev) and Jiro is an app on it (README §
 
 ## Facts
 
-- RP2040: dual Cortex-M0+, 264 KB SRAM, no FPU. The wedgie's firmware (0.3.76) runs MicroPython 1.29.0 and boots into one app. About 137 KB of RAM is free for an app.
+- RP2040: dual Cortex-M0+, 264 KB SRAM, no FPU. The wedgie's firmware (0.3.76) runs MicroPython 1.29.0 and boots into one app. About 137 KB of RAM is free for an app, and about 113.6 KB after a power-up, which also starts the wedgie's USB drive (largest block about 96 KB).
 - Screen: the firmware's 240×240, 16-color framebuffer (4 bits per pixel, 28,800 B). A full-screen push takes about 25 ms. Pin map and key mapping: README §2. On the case, A is green, B and X are grey, Y is red.
 - An app is a folder with `wedgie.json`: at most 30 files and 256 KB, every file name starting with its `mod`. Saves go to `/saves/<mod>/` and survive reinstalls. Install with `python3 wedgie.py install .` and one green press. Holding both grey buttons while plugging in starts the wedgie without its app.
-- The rp2 port's C stack is 8 KB. The core needs about 63 KB (`start` peaks at 62,784 B), so the glue runs it on a 64 KB stack the app allocates.
+- The rp2 port's C stack is 8 KB, so the glue runs the core on a stack the app allocates: 24 KB for `start`, `step` and `state_hash` (the core builds the Recorder in place, `Recorder::new_in`; `start` peaks at 19,404 B), 48 KB for `replay`, which builds its game on the stack as the referees do (peak 46,820 B).
 - Sources for these numbers: [wedgie.dev/skill.md](https://wedgie.dev/skill.md), [code.md](https://wedgie.dev/code.md), [usb.md](https://wedgie.dev/usb.md), and the spike's `spikes/wedgie-natmod/README.md` (PR #42).
 
 ## The native module
@@ -27,7 +27,7 @@ The device is a [wedgie](https://wedgie.dev) and Jiro is an app on it (README §
 - Use floating point in anything that touches game state. Rendering effects may use it if they never feed back.
 - Read inputs outside the tick boundary.
 - Redraw or push the full screen every tick.
-- Allocate per tick, or parse large files at once: the heap fragments, and the 64 KB stack needs one free block.
+- Allocate per tick, or parse large files at once: the heap fragments, and the stack, the Recorder and the module each need one free block.
 
 ## Always
 

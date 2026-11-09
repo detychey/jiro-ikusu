@@ -126,3 +126,63 @@ impl Game {
         self.mask = mask;
     }
 }
+
+impl Game {
+    /// `new`, written into `place` field by field, so that the stack holds the level start's
+    /// grid but never a Game: the wedgie app runs the core on a stack it allocates (plan M3.10).
+    /// `new` stays as it was, since the referees run it and `ZkReferee` pins their image id.
+    #[allow(unsafe_code)]
+    pub fn new_in<'a>(
+        place: &'a mut core::mem::MaybeUninit<Self>,
+        level: &Level,
+        run_nonce: &[u8; 32],
+        level_index: u8,
+    ) -> Result<&'a mut Self, Error> {
+        let game = place.as_mut_ptr();
+        // SAFETY: `game` is valid for writes of a Game, and until every field is written only
+        // fields are written, each once and whole, never read: the capture stack is zeroed in
+        // place before validate uses it, as `new` zeroes its own.
+        let stack = unsafe {
+            let stack = &raw mut (*game).stack;
+            stack.write_bytes(0, 1);
+            &mut *stack
+        };
+        let start = validate(level, stack)?;
+        let boss =
+            Boss::start(level, &level_seed(run_nonce, level_index)).ok_or(Error::SpawnOrder)?;
+        // SAFETY: as above; these write every other field, as the pattern below checks.
+        let game = unsafe {
+            (&raw mut (*game).minions).write(Minions::start(level, &start.grid));
+            (&raw mut (*game).grid).write(start.grid);
+            (&raw mut (*game).player).write(Player::start(level.lives));
+            (&raw mut (*game).boss).write(boss);
+            (&raw mut (*game).mask).write(InputMask::NONE);
+            (&raw mut (*game).ticks_used).write(0);
+            (&raw mut (*game).events_applied).write(0);
+            (&raw mut (*game).captured).write(0);
+            (&raw mut (*game).claimable).write(start.claimable);
+            (&raw mut (*game).target_bp).write(level.target_bp);
+            (&raw mut (*game).time_limit).write(level.time_limit);
+            (&raw mut (*game).end).write(None);
+            place.assume_init_mut()
+        };
+        // Lists every field, so that a field added to Game fails to compile until it is written
+        // above.
+        let Self {
+            grid: _,
+            player: _,
+            boss: _,
+            minions: _,
+            mask: _,
+            ticks_used: _,
+            events_applied: _,
+            captured: _,
+            claimable: _,
+            target_bp: _,
+            time_limit: _,
+            end: _,
+            stack: _,
+        } = game;
+        Ok(game)
+    }
+}

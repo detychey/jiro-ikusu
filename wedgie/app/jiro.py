@@ -1,5 +1,5 @@
 # Jiro Training (README §8.1): the 16 levels, offline, at 15 Hz, with local best scores. The three
-# large blocks come first, largest first, while the heap is least fragmented: the core's 64 KB
+# large blocks come first, largest first, while the heap is least fragmented: the core's 24 KB
 # stack, its 18.5 KB Recorder, then jiro_core's 18 KB of code, before any small allocation can
 # split the space they need (round E1: right after a power-up, which also starts the WEDGIE drive,
 # the code found no block). Then all the app holds from level to level, so that playing allocates
@@ -10,7 +10,7 @@
 # its parse tree over that heap.
 import gc
 
-STACK_BYTES = 65536  # the core needs up to 63 KB of stack; the rp2 C stack is 8 KB
+STACK_BYTES = 24576  # start needs up to 19 KB of stack; the rp2 C stack is 8 KB
 RECORDER_BYTES = 18568  # jiro_core.recorder_size(), which jiro_app checks
 SHADOW_BYTES = 3600  # jiro_core.shadow_size(), which jiro_app checks
 LEVEL_BYTES = 472  # a level's bytes in the level file, which jiro_app checks

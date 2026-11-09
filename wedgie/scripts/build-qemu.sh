@@ -3,7 +3,7 @@
 # Cortex-M0, armv6m) in the clone that `scripts/bootstrap.sh wedgie` makes: native .mpy loading
 # enabled (MICROPY_EMIT_THUMB=1) as on the rp2 port, the VM's stack limit at 8 KB as the rp2
 # port's PICO_STACK_SIZE=0x2000 (a soft limit the VM checks, not a physical stack; the core never
-# runs on the C stack, since call_on_stack moves it to the app's 64 KB buffer, and the wedgie run
+# runs on the C stack, since call_on_stack moves it to the app's 48 KB buffer, and the wedgie run
 # is the real check), a 236 KB heap, and no frozen manifest, which would need the micropython-lib
 # submodule. The board's QEMU_ARGS give the machine 256 KB of RAM: the heap leaves 19 KB for the C
 # stack and 800 bytes of other statics, and holds the app's play test (qemu_app_check.py): its
