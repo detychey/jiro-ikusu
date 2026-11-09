@@ -1433,7 +1433,7 @@ Each entry links at most 4 of its sources, and none to adult storefronts (24 lin
   - with several snakes on screen, all of them must be enclosed at the same time to clear the stage
   - your territory is coloured yellow and green, and touching any other colour on the field kills you
   - `xonix` · corrected · high · [www.vector.co.jp](https://www.vector.co.jp/soft/win95/game/se036346.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/win95/game/se036346.html) · [www.vector.co.jp](https://www.vector.co.jp/vpack/browse/person/an002273.html)
-- **Squarex** (1996) — MS-DOS — Soleau Software; published by Soleau Software (shareware, $12 registration)
+- **Squarex** (1996) — MS-DOS — Soleau Software; published by Soleau Software (shareware, \$12 registration)
   - capture grid squares by going along all four sides (grid capture instead of free cuts)
   - levels are timed
   - orange cubes chase the player around the grid
@@ -1479,7 +1479,7 @@ Each entry links at most 4 of its sources, and none to adult storefronts (24 lin
   - Space bar reverses the direction of the bouncing balls
   - bonus points for every percent filled beyond 75%
   - `xonix` · corrected · high · [gb64.com](https://gb64.com/bolyx.php) · [gb64.com](https://gb64.com/files/bolyx.zip) · [gb64.com](https://gb64.com/downloads.php) · [gb64.com](https://gb64.com/trappy-pixel.php)
-- **Discovera** (2001) — PC — Igor and Dmitry Bukhman (later founders of Playrix); published by self-published shareware ($15)
+- **Discovera** (2001) — PC — Igor and Dmitry Bukhman (later founders of Playrix); published by self-published shareware (\$15)
   - Also known as: Discovera (series)
   - `xonix` · corrected · medium · [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Playrix) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Playrix) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
 - **Panic (Y.O.S.)** (2002) — Windows — Y.O.S.; published by self-published (distributed through Vector)
@@ -3001,7 +3001,7 @@ Each entry links at most 4 of its sources, and none to adult storefronts (24 lin
   - shoot opponents and their towers
   - in-round upgrade points for player speed, bullet speed, bullet range, reload speed, build range, tower shield and tower health
   - modes: FFA, Team, Defuse (a bomb-plant mode), E-FFA, 1v1
-  - 1v1 gear bought before a round from $2000 starting money, with gear plus unspent money capped at $6000 (Shield, EMP Grenade, Tower HP, Tower Shield, Build distance)
+  - 1v1 gear bought before a round from \$2000 starting money, with gear plus unspent money capped at \$6000 (Shield, EMP Grenade, Tower HP, Tower Shield, Build distance)
   - no respawn once a player holds more than 80% of the map; a team cannot be joined once it holds more than 70%
   - `io-territory` · corrected · medium · [defly.io](https://defly.io/)
 - **TileMan.io** (unknown) — Browser — unknown
@@ -4026,7 +4026,7 @@ Each entry links at most 4 of its sources, and none to adult storefronts (24 lin
 - **QLix (Sinclair QL)** (2026) — Sinclair QL — Jgl; published by self-published (itch.io, free)
   - Also known as: QLix
   - `qix` · confirmed · high · [jglev.itch.io](https://jglev.itch.io/qlix) · [itch.io](https://itch.io/games/tag-qix)
-- **Gravity (GBA)** (unknown) — Game Boy Advance — VG Source Game Studio; published by VG Source Game Studio (self-published on itch.io, $3+)
+- **Gravity (GBA)** (unknown) — Game Boy Advance — VG Source Game Studio; published by VG Source Game Studio (self-published on itch.io, \$3+)
   - Also known as: Gravity
   - several enemy types with their own movement patterns instead of one Qix plus Sparx
   - new enemy types appear as the levels progress
