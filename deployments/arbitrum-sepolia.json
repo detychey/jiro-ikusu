@@ -1,0 +1,21 @@
+{
+  "network": "arbitrum-sepolia",
+  "chainId": 421614,
+  "generations": [
+    {
+      "deployedAt": "2026-11-09T12:14:37.563Z",
+      "sourceCommit": "ca76f8f58c3b0bbecf82ac5a13b93726f341d6d4",
+      "backend": "zk",
+      "operator": "0xEfEA68dbE0740982789735D007B14D0D8358d1B3",
+      "treasury": "0xEfEA68dbE0740982789735D007B14D0D8358d1B3",
+      "ArbSys": "0x0000000000000000000000000000000000000064",
+      "ArbBlockhashEntropy": "0xB350552550ff09474692CA688e89873DF336C470",
+      "Referee": "0x1097BDED737146D4A83Cf969a357e504FA028c5a",
+      "Season": "0x0e9BcC5A9DBD9CAD05C531fC12E925164cfaDf6d",
+      "Challenge": "0x585b38c5dEfb601E52613F5FB80F9e3289fF4fAB",
+      "seasons": {
+        "testnet-0": 1
+      }
+    }
+  ]
+}

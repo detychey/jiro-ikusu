@@ -38,7 +38,7 @@
     50590,
     64620
   ],
-  "referee": null,
+  "referee": "0x1097BDED737146D4A83Cf969a357e504FA028c5a",
   "runFee": "50000000000000",
   "rakeBp": 1000,
   "length": 86400,
