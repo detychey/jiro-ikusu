@@ -54,6 +54,7 @@ STATUS_LEN = 23
 LIVE = 1
 STEP_ERROR = 0x100
 END_TITLES = ("", "Committed", "Cleared", "Out of lives", "Time up")
+CLEARED = 2
 # The heap stages jiro.py and the app measure, as the level select shows them: at run(), after
 # jiro.py's buffers, after the imports, after the screen, after the app's start, at the level select
 # and at the last level start.
@@ -181,8 +182,11 @@ class Training:
         while True:
             index = self.choose(index)
             end = self.play(index)
-            if end == 2 and index + 1 < len(self.levels):
+            if end == CLEARED and index + 1 < len(self.levels):
                 index += 1
+            elif end == CLEARED:
+                self.congrats()
+                index = 0
 
     def choose(self, index):
         """The level select, outside play and never journaled: the joystick picks, green plays."""
@@ -349,8 +353,17 @@ class Training:
             if time.ticks_diff(time.ticks_ms(), printed) > PRINT_STALL_MS:
                 break
             start += 48
+        self.wait_for_green()
+
+    def congrats(self):
+        """After the last level's clear, instead of its level select again: the game is won."""
+        ui.page(self.screen, "Congrats!", [("visit jiro-ikusu.win", ui.INK)], "{g} level 1")
+        self.wait_for_green()
+
+    def wait_for_green(self):
+        """Presses made before a screen's first 0.5 s do not skip it."""
         time.sleep_ms(SUMMARY_GUARD_MS)
-        self.keys.pressed()  # presses made before the summary's first 0.5 s do not skip it
+        self.keys.pressed()
         while "A" not in self.keys.pressed():
             time.sleep_ms(30)
 
