@@ -2,7 +2,7 @@
   "apps": [
     {
       "mod": "jiro",
-      "name": "Jiro Training",
+      "name": "Jiro-ikusu",
       "about": "Jiro-ikusu Training: capture the field on 16 levels, at 15 Hz, with your best scores kept on this wedgie.",
       "files": ["jiro.py", "jiro_app.mpy", "jiro_core.mpy", "jiro_levels.bin"],
       "entry": "run",
