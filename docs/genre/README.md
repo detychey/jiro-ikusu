@@ -12,6 +12,7 @@ What the games in the lineages of *Qix* and *Volfied* do, and which of their mec
 | [`catalog.json`](catalog.json) | The catalog's data, with notes and every source |
 | [`TAXONOMY.md`](TAXONOMY.md) and [`taxonomy/`](taxonomy) | 628 mechanic families drawn from the catalog, in 12 axes, with the games that show each |
 | [`IDEAS.md`](IDEAS.md) and [`ideas/`](ideas) | 143 concept ideas for Jiro-ikusu, each judged for feasibility, fairness and play |
+| [`level-design-guide.md`](level-design-guide.md) | The findings summarized for level designers: today's knobs, tools and calibration chain, how the 16 levels ramp, genre lessons, board patterns, pitfalls and fairness checks |
 
 ## How it was built
 
