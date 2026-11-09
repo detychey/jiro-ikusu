@@ -1,4 +1,4 @@
-# Jiro Training's code (README §8.1), which jiro.py runs once it holds the core's buffers. Shipped
+# Jiro-ikusu's code (Training, README §8.1), which jiro.py runs once it holds the core's buffers. Shipped
 # precompiled as jiro_app.mpy (wedgie/scripts/build-app.sh). The core is the referee: each tick's
 # inputs go into the README §6.1 mask and through the core's Recorder, and the app only draws
 # what the core reports. wedgie/scripts/qemu_app_check.py plays it on MicroPython's qemu port.

@@ -1,5 +1,5 @@
-# Jiro Training (README §8.1): the 16 levels, offline, at 15 Hz, with local best scores. The three
-# large blocks come first, largest first, while the heap is least fragmented: the core's 24 KB
+# Jiro-ikusu on a wedgie: Training (README §8.1), the 16 levels, offline, at 15 Hz, with local best
+# scores. The three large blocks come first, largest first, while the heap is least fragmented: the core's 24 KB
 # stack, its 18.5 KB Recorder, then jiro_core's 18 KB of code, before any small allocation can
 # split the space they need (round E1: right after a power-up, which also starts the WEDGIE drive,
 # the code found no block). Then all the app holds from level to level, so that playing allocates

@@ -8,7 +8,7 @@ Jiro on a [wedgie](https://wedgie.dev): jiro-core as a MicroPython native module
 | `natmod/glue/` | The C glue (`jiro.c`), the stack switch (`call_on_stack.S`), the interface (`jiro_api.h`) and the Makefile that links `jiro_core.mpy` |
 | `scripts/` | The builds, the qemu vector run, the app's qemu play test, the stand-in for the wedgie firmware's key IRQ that the play test runs with (`irqsim/`), and the checks of `mpy_ld`'s rules, of the module's header and of the app limits |
 | `check/` | The check app: it replays every golden vector through the module on a wedgie and shows PASS or FAIL per vector |
-| `app/` | The Training app: the 16 levels, offline, at 15 Hz, with local best scores (README §8.1) |
+| `app/` | Jiro-ikusu, the Training app: the 16 levels, offline, at 15 Hz, with local best scores (README §8.1) |
 
 ## Building
 
@@ -54,7 +54,7 @@ The bootstrap puts MicroPython and pyelftools in `~/.cache/jiro-wedgie` (`JIRO_W
 
 `wedgie/scripts/check_app_limits.py` checks the wedgie's app limits on the files `wedgie.json` lists: at most 30 files and 256 KB, every name starting with the `mod`. The check app has 4 files and 231,499 bytes, the Training app 4 files and 36,217.
 
-## The Training app
+## The Training app: Jiro-ikusu
 
 `app/` is a wedgie app (`mod` `jiro`, entry `run`, named Jiro-ikusu). `jiro.py` allocates the core's stack, the recorder buffer and the shadow, imports `jiro_core`, then `jiro_app.mpy`, compiled from `app/jiro_app.py`. `jiro_levels.bin`, which `scripts/make_app_levels.py` writes at build time, holds the 16 levels of `levels/` with the weights of `seasons/calibration-1.json`, in slot order. The app checks that the core runs the calibration's rules version, and, when it starts a level, that the level id in the journal the core began equals the calibration's.
 
