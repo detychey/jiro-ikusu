@@ -117,7 +117,7 @@ The plan's nine steps, as seven, each one or two commands, run in order in one s
 
 ## 3. Results
 
-Round F2 ran §2 on 2026-11-09, its transactions from 12:14 to 13:32 UTC, from the repository at `/home/runner/work/jiro-ikusu/jiro-ikusu`, at this PR's `ca76f8f` (forge 1.8.6, Node 22.23.4, ethers 6.17.0). Arbiscan is `https://sepolia.arbiscan.io/address/<address>` and `https://sepolia.arbiscan.io/tx/<hash>`. Every transaction succeeded, and every receipt reports `gasUsedForL1` 0: Arbitrum Sepolia still prices L1 calldata at 0 (§1). Gas was priced at 0.0200 to 0.0201 gwei. The deployer spent 0.000130 ETH and the tester 0.000127 ETH, of which 0.0001 ETH was the two run fees.
+Round F2 ran §2 on 2026-11-09, its transactions from 12:14 to 13:32 UTC, from the repository at `/home/runner/work/jiro-ikusu/jiro-ikusu`, at this PR's `ca76f8f` (forge 1.8.6, Node 22.23.4, ethers 6.17.0). Arbiscan is `https://sepolia.arbiscan.io/address/<address>` and `https://sepolia.arbiscan.io/tx/<hash>`. Every transaction succeeded, and every receipt reports `gasUsedForL1` 0: Arbitrum Sepolia still prices L1 calldata at 0 (§1). Gas was priced at 0.0200 to 0.0202 gwei (20,000,000 to 20,188,000 wei). Block numbers and times below are read from the transactions' receipts. The deployer spent 0.000130 ETH and the tester 0.000127 ETH, of which 0.0001 ETH was the two run fees.
 
 ### Generation
 
@@ -132,7 +132,7 @@ From `deployments/arbitrum-sepolia.json`: `deployedAt` 2026-11-09T12:14:37.563Z,
 
 - **Image id:** `ZkReferee.imageId()` reads `0xa3013dc48ccd9e8e28c6625a8362a1fde513e1c51ae1e50286445c0eae3702b1`, which `zk-host image-id` printed in the session, the value of M4.8's and M4.10's guests. The happy path checked it again before proving.
 - **`testnet-0`** is season 1 of `Season`, opened at block 327,552,759, 12:14:45 UTC. It accepts runs until 2026-11-10 12:14:45 UTC and settles until 24 h later. `seasons/testnet-0.json`'s `referee` is the ZkReferee above.
-- **Preflight** (step 1): `ready: yes`, the `RISC Zero verifier` row passing: the stop is not paused, over `0x2a09…a84D`, selector `0x73c457ba`. The optional fork rehearsal, run before step 2, passed with §5's gas for every transaction.
+- **Preflight** (step 1): `ready: yes`, the `RISC Zero verifier` row passing: the stop is not paused, over `0x2a09…a84D`, selector `0x73c457ba`. The optional fork rehearsal, run before step 2, passed. Every transaction matched §5's gas except `ArbBlockhashEntropy`'s deployment, 496,217 against §5's 496,229.
 
 ### Gas per transaction
 
@@ -153,7 +153,7 @@ From `deployments/arbitrum-sepolia.json`: `deployedAt` 2026-11-09T12:14:37.563Z,
 | 6 | [`Challenge.commitRun`, six full journals (49,026 bytes)](https://sepolia.arbiscan.io/tx/0x2e3953b9a7e30874dc67c7a223574ce4ea7407e0d9769dd888abde7c35739108) | 49,604 | 864,001 | 0 | 1,940,060 |
 
 - **The full commit cost 864,001 gas**, under half the fork's 1,940,060. That figure was the EIP-7623 calldata floor anvil applied; Arbitrum Sepolia charged less than that floor, so ArbOS does not apply it, and §1's funding table overstates the tester's cost. Both are far below the 32,000,000 cap.
-- **`startRun` and `revealRun`** cost about 4,000 gas less than on the fork. There `ArbBlockhashEntropy` called MockArbSys, a contract, where here it calls the ArbSys precompile. `ArbBlockhashEntropy`'s deployment cost 228 gas less, since its constructor argument `0x64` is mostly zero bytes.
+- **`startRun` and `revealRun`** cost about 4,000 gas less than on the fork. There `ArbBlockhashEntropy` called MockArbSys, a contract, where here it calls the ArbSys precompile. `ArbBlockhashEntropy`'s deployment cost 496,001 gas: 216 less than in this session's rehearsal and 228 less than §5's. Its constructor argument, ArbSys's address, is `0x64` here, and its calldata has more zero bytes than the fork's MockArbSys address.
 
 ### Verify gas per level
 
@@ -172,7 +172,7 @@ From `deployments/arbitrum-sepolia.json`: `deployedAt` 2026-11-09T12:14:37.563Z,
 
 - **Run 1**, settled by [`settleRun`](https://sepolia.arbiscan.io/tx/0x3d329fb05184dad4aba4564801334065bd740f365126224411d1989a01db3e6b) at block 327,569,544, 13:32:09 UTC. Its `RunSettled`: score 20,310, 338 ticks, 1 clear, equal to the native replay. The happy path's first run cleared a level, so no second happy-path run was bought.
 - **Run file and proof:** [`seasons/testnet-0/runs/run-1.json`](../seasons/testnet-0/runs/run-1.json), draw slots 1, 11, 4, 0, 2, 13. With `--short`, the bots' clear is kept whole and the other five levels close at tick 30. Its Groth16 proof is [`run-1.proof.json`](../seasons/testnet-0/runs/run-1.proof.json).
-- **Proving:** the proof of record took about 74.5 min from commit to settlement, from the run file (12:17:36) to the proof file (13:32:09). That covers the executor's check, the segment proofs, the recursion and the Groth16 wrapping, and is well under §6's estimate of 2 to 3 hours. `e2e.mjs` kept `zk-host prove`'s output to read the seal and did not print it, so the session's log lacks its figures; this PR now prints them. They come from a second, offline proof of the same run file with the same `zk-host`, from 13:33 to 14:48 UTC on the same 4 CPUs, which verified (`verified: yes`, selector `0x73c457ba`):
+- **Proving:** the proof of record took about 74.5 min from commit to settlement, from the run file to the proof file (modified at 12:17:36 and 13:32:09). That covers the executor's check, the segment proofs, the recursion and the Groth16 wrapping, and is well under §6's estimate of 2 to 3 hours. `e2e.mjs` kept `zk-host prove`'s output to read the seal and did not print it, so the session's log lacks its figures; this PR now prints them. They come from a second, offline proof of the same run file with the same `zk-host`, from 13:33 to 14:48 UTC on the same 4 CPUs, which verified (`verified: yes`, selector `0x73c457ba`):
   - 13 segments of 2^20 cycles; 13,631,488 proving cycles, of which 12,592,566 user cycles and 430,022 paging cycles;
   - segment proofs 3,831.8 s, recursion to one succinct receipt 561.0 s, Groth16 wrapping 122.5 s: 4,515.3 s in all, 1 h 15 min, with a peak of 9.2 GiB resident in `zk-host`;
   - §6's formula, segments × 467 s + 170 s, gives 6,241 s for 13 segments. This proof's 295 s per segment and 43 s of recursion per segment were faster than M4.10's 410 s and 57 s.
