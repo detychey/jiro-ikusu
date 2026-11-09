@@ -19,11 +19,12 @@ function seasonFileWith(changes) {
   return file;
 }
 
-test("seasons/testnet-0.json holds plan M4.14's provisional season, its referee left to the deployment", () => {
+test("seasons/testnet-0.json holds plan M4.14's provisional season, its referee the deployed ZkReferee", () => {
   const { network, referee, runFee, length, grace, commitSlack, minClears } = readSeasonFile(TESTNET_0);
+  const deployedReferee = JSON.parse(readFileSync(join(REPO_ROOT, "deployments", "arbitrum-sepolia.json"), "utf8")).generations[0].Referee;
   assert.deepEqual(
     { network, referee, runFee, length, grace, commitSlack, minClears },
-    { network: "arbitrum-sepolia", referee: null, runFee: "50000000000000", length: 86_400, grace: 86_400, commitSlack: 120, minClears: 1 },
+    { network: "arbitrum-sepolia", referee: deployedReferee, runFee: "50000000000000", length: 86_400, grace: 86_400, commitSlack: 120, minClears: 1 },
   );
 });
 
