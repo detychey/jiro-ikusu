@@ -7,7 +7,21 @@
       "files": ["jiro.py", "jiro_app.mpy", "jiro_core.mpy", "jiro_levels.bin"],
       "entry": "run",
       "fw": "0.3.36",
-      "label": "#2850ff"
+      "label": "#2850ff",
+      "icon": [
+        "............",
+        ".bbbbbbbbbb.",
+        ".bkkkkkkkkb.",
+        ".bkyyykkwkb.",
+        ".bkyyykkrkb.",
+        ".bkyyykrrbb.",
+        ".bkkkkrrbbb.",
+        ".bkkkrrbbbb.",
+        ".bkkrrbbbbb.",
+        ".bkrrbbbbbb.",
+        ".bbbbbbbbbb.",
+        "............"
+      ]
     }
   ]
 }
