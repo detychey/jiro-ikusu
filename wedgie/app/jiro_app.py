@@ -61,10 +61,10 @@ LIVE = 1
 STEP_ERROR = 0x100
 END_TITLES = ("", "Committed", "Cleared", "Out of lives", "Time up")
 CLEARED = 2
-# The heap stages jiro.py and the app measure, as the level select shows them: at run(), after
-# jiro.py's buffers, after the imports, after the screen, after the app's start, at the level select
-# and at the last level start.
-HEAP_STAGES = ("run", "buf", "imp", "lcd", "app", "sel", "lvl")
+# A changed area at least this wide is pushed as full-width rows, the screen's fast path: a row of
+# show_rect costs about 45 µs plus 0.26 µs a pixel, a row of a full-width band about 75 µs, which
+# also allocates nothing per chunk of rows (wedgie.dev/code.md; the firmware's lcd.py).
+BAND_MIN_PX = 128
 
 
 def main(stack, recorder, shadow, level, level_file, bests, heap, stages):
@@ -127,15 +127,6 @@ def wait_until(due):
         pass
 
 
-def thousandths(n):
-    """n / 1000 to one decimal: µs as ms, bytes as kB."""
-    return "%d.%d" % (n // 1000, n % 1000 // 100)
-
-
-def ms(us):
-    return thousandths(us) + " ms"
-
-
 def store(bests):
     """Stores the bests: None, or the errno of the OSError save.store raised, 0 for its "flash
     full", which has none. A call of its own, so that no reference to the exception outlives it:
@@ -156,6 +147,7 @@ class Training:
         heap(stages, "lcd")
         self.frame = self.screen.buffer
         self.show_rect, self.fill_rect = self.screen.show_rect, self.screen.fill_rect  # bound once, not per tick
+        self.show_band = self.screen.show
         self.status, self.previous = array("H", [0] * STATUS_LEN), array("H", [0] * STATUS_LEN)
         self.rect = array("H", [0] * 4)
         self.levels = read_levels(level_file)
@@ -167,14 +159,6 @@ class Training:
         for key in range(len(self.levels)):
             del bests[key]
         heap(stages, "app")
-
-    def heap_lines(self):
-        """The heap stages, two to a line, in kB: free, then the largest block."""
-        cells = []
-        for stage in HEAP_STAGES:
-            measured = self.stages.get(stage)
-            cells.append(stage + (" -" if measured is None else " %s/%s" % (thousandths(measured[0]), thousandths(measured[1]))))
-        return [(" ".join(cells[i:i + 2]), ui.MUTED) for i in range(0, len(cells), 2)]
 
     def best_key(self, index):
         """As the browser's Training page keys bests: the rules version, the level id and the
@@ -201,7 +185,7 @@ class Training:
             best = self.bests.get(self.best_key(index))
             ui.page(self.screen, "Level %d of %d" % (index + 1, count),
                     [(self.levels[index][0], ui.INK),
-                     ("no best yet" if best is None else "best %d" % best, ui.MUTED)] + self.heap_lines(),
+                     ("no best yet" if best is None else "best %d" % best, ui.MUTED)],
                     "< > {g} play")
             step = 0
             while not step:
@@ -301,7 +285,10 @@ class Training:
                 jc.restore(recorder, frame, CELL_COLORS, previous[slot + 1], previous[slot + 2], 1, 1)
         jc.restore(recorder, frame, CELL_COLORS, max(previous[PLAYER_X] - 1, 0), max(previous[PLAYER_Y] - 1, 0), 3, 3)
         if jc.paint(recorder, self.shadow, frame, CELL_COLORS, self.rect):
-            show(self.rect[0], self.rect[1], self.rect[2], self.rect[3])
+            if self.rect[2] >= BAND_MIN_PX:
+                self.show_band(self.rect[1], self.rect[1] + self.rect[3])
+            else:
+                show(self.rect[0], self.rect[1], self.rect[2], self.rect[3])
         fill(status[BOSS_X] * CELL_PX, status[BOSS_Y] * CELL_PX, status[BOSS_SIZE] * CELL_PX, status[BOSS_SIZE] * CELL_PX, BOSS)
         for slot in range(MINIONS, STATUS_LEN, 3):
             if status[slot] == LIVE:
@@ -325,15 +312,14 @@ class Training:
              min(max(previous[PLAYER_Y], status[PLAYER_Y]) * CELL_PX + CELL_PX + PLAYER_MARGIN_PX, FIELD_PX) - y)
 
     def finish(self, index, end, timing):
-        """The between-level screen: the claim, the score and the lives, the best, and the
-        timing. The score is the core's, with the calibration's weight. The screen comes before
-        the USB output, since a print blocks for about 500 ms when a host holds the port open
-        without reading it; for that host, the journal's lines stop at the first print that
-        takes longer than PRINT_STALL_MS."""
+        """The between-level screen: the claim, the score and the lives, and the best; the
+        timing goes to USB only. The score is the core's, with the calibration's weight. The
+        screen comes before the USB output, since a print blocks for about 500 ms when a host
+        holds the port open without reading it; for that host, the journal's lines stop at the
+        first print that takes longer than PRINT_STALL_MS."""
         name, weight, _, _ = self.levels[index]
         status, recorder = self.status, self.recorder
         score = jc.score(recorder, weight)
-        step_max, render_max, tick_max, overruns = timing
         claim = "%d.%02d %%" % (status[CLAIM] // 100, status[CLAIM] % 100)
         key = self.best_key(index)
         best = self.bests.get(key)
@@ -345,10 +331,7 @@ class Training:
         ui.page(self.screen, END_TITLES[end],
                 [("claim " + claim, ui.INK),
                  ("score %d, %s" % (score, best_line), ui.INK),
-                 ("%d lives, %d ticks" % (status[LIVES], status[TICKS]), ui.MUTED),
-                 ("step %s, draw %s" % (ms(step_max), ms(render_max)), ui.MUTED),
-                 ("worst tick " + ms(tick_max), ui.MUTED),
-                 ("overruns %d" % overruns, ui.GREEN_D if overruns == 0 else ui.RED)], "{g} next")
+                 ("%d lives, %d ticks" % (status[LIVES], status[TICKS]), ui.MUTED)], "{g} next")
         print("jiro: level %d %s end %d claim_bp %d ticks %d lives %d score %d" % (
             index + 1, name, end, status[CLAIM], status[TICKS], status[LIVES], score))
         print("jiro: step max %d us, render max %d us, worst tick %d us, overruns %d" % timing)

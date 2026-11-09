@@ -132,8 +132,10 @@ class LCD(framebuf.FrameBuffer):
   def __init__(s):
     super().__init__(_BUF, 240, 240, framebuf.GS4_HMSB)
     s.buffer = _BUF
-  def show(s, *a):
-    _rows[0] += 240
+  def show(s, y0=0, y1=240):
+    if not 0 <= y0 < y1 <= 240:
+      raise ValueError('show off the screen: %r' % ((y0, y1),))
+    _rows[0] += y1 - y0
   def show_rect(s, x, y, w, h):
     if not (0 <= x and 0 <= y and w > 0 and h > 0 and x + w <= 240 and y + h <= 240):
       raise ValueError('show_rect off the screen: %r' % ((x, y, w, h),))

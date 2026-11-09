@@ -1521,7 +1521,7 @@ On 2026-11-02 the device became a wedgie app that plays Training only (README §
   - **`wedgie/app/`**, a wedgie app (`mod` `jiro`, entry `run`). Its code is precompiled with MicroPython v1.29.0's `mpy-cross` behind a small `jiro.py`, which allocates the core's stack and Recorder before it imports anything else, as the spike's RAM findings require.
     - **The tick:** every 66,667 µs on an absolute schedule. A late tick is late; it is never skipped or stepped twice.
     - **Each tick:** sample the inputs once, into the §6.1 mask per D8, with Y and the joystick press never in it; step the Recorder; redraw the changed cells and the entities; push only the regions that changed.
-    - **Timing:** step time and render time measured separately, with the worst case and an overrun counter, shown on the end screen.
+    - **Timing:** step time and render time measured separately, with the worst case and an overrun counter, shown on the end screen; for wedgie.dev's shelf the app prints them over USB only (owner, 2026-11-09), after round E1 recorded them.
     - **Levels:** the 16 levels' bytes and the weights of `seasons/calibration-1.json`, generated into the app at build time.
     - **Screens (P12):** a level select outside play, with the joystick and green (A), never journaled; between-level screens with claim, score and lives; a brief overlay at level start; after the last level's clear, "Congrats! visit jiro-ikusu.win" (round E1). See §15, question 11.
     - **Training `runNonce`:** from `os.urandom`, since §6.3 allows any value in training (round E1: the firmware's `wedgie.rand` keeps about 13 KB of the heap).
