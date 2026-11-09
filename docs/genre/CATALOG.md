@@ -1,0 +1,4600 @@
+# Territory-capture games: catalog
+
+710 games, ports and clones in the lineages of *Qix* and *Volfied*, with the mechanics that set each apart. [`README.md`](README.md) explains how it was gathered and turns its mechanics into concept ideas for Jiro-ikusu. The data, with notes, lives in [`catalog.json`](catalog.json).
+
+Entries are grouped by category and sorted by year. Each lists its platforms, its developer and publisher, its distinctive mechanics, then its lineage, how it was checked, the confidence of that check (high, medium or low) and its sources. The checks:
+
+- **confirmed** (324): a verifier matched the entry against its sources;
+- **corrected** (376): a verifier fixed facts or mechanics against its sources;
+- **rescued** (10): a verifier flagged it, and a second opinion kept it.
+
+Each entry links at most 4 of its sources, and none to adult storefronts (24 links); [`catalog.json`](catalog.json) keeps them all. Taito's titles appear here as game titles only; they stay out of Jiro's product names (README §13, D13).
+
+## Lineages
+
+| Lineage | Games | What defines it |
+|---|---|---|
+| qix | 231 | Qix (Taito, 1981) and its direct descendants: a marker on the edge draws Stix into the field, an enemy roams the open field, Sparx patrol the edges. |
+| volfied | 26 | Volfied (Taito, 1989) and its descendants: a ship cuts the field, a large boss and smaller enemies, power-up boxes revealed by capture. |
+| xonix | 122 | Xonix (1984) and its descendants, Pac-Xon among them: the player moves freely on claimed land and leaves a trail only in open sea; an enemy touching the trail costs a life, and land enemies roam the claimed area. |
+| jezzball | 81 | JezzBall (1992) and its descendants: walls grow from a click in both directions, bouncing atoms break walls still growing. |
+| gals-panic | 72 | Gals Panic (Kaneko, 1990) and its descendants: a Qix-style capture that reveals a picture, often with a silhouette that decides good and bad captures. |
+| io-territory | 63 | .io territory games (Paper.io, Splix.io and others): many players on one large map; a player whose trail an opponent crosses is eliminated. |
+| amidar-painter | 58 | Amidar (Konami) and painter games: boxes are claimed by walking around their edges on a fixed lattice. |
+| other | 57 | Other territory and area-claiming games that fit no lineage above. |
+
+## Contents
+
+- [Taito releases and official ports](#taito-releases-and-official-ports) (15)
+- [Other arcade games](#other-arcade-games) (11)
+- [Image-reveal games](#image-reveal-games) (74)
+- [Home-computer versions and clones](#home-computer-versions-and-clones) (90)
+- [Commercial console games](#commercial-console-games) (26)
+- [PC shareware and freeware](#pc-shareware-and-freeware) (40)
+- [Open-source games](#open-source-games) (30)
+- [Web and Flash games](#web-and-flash-games) (35)
+- [Mobile games](#mobile-games) (124)
+- [.io and online multiplayer games](#io-and-online-multiplayer-games) (23)
+- [Commercial indie games](#commercial-indie-games) (38)
+- [Free indie and game-jam games](#free-indie-and-game-jam-games) (96)
+- [Homebrew for retro systems](#homebrew-for-retro-systems) (38)
+- [Fantasy consoles, calculators and small handhelds](#fantasy-consoles-calculators-and-small-handhelds) (15)
+- [Minigames inside other games](#minigames-inside-other-games) (6)
+- [Adjacent genres](#adjacent-genres) (49)
+- [Not included](#not-included) (22)
+
+## Taito releases and official ports
+
+- **Qix** (1981) — Arcade, Atari 5200, Atari 8-bit, Commodore 64, Fujitsu FM-7, and 13 more — Taito America (designed by Randy and Sandy Pfeiffer); Pixelated Arcade credits Threshold Research; published by Taito America (Taito in Japan)
+  - Also known as: クイックス, 天蠶變 / 天蚕变 (Chinese), 킥스 (Korean)
+  - reference game: Fast Draw and Slow Draw buttons; areas closed entirely with Slow Draw fill red and score double, Fast Draw areas fill blue
+  - stopping while drawing lights a Fuse that burns along the unfinished Stix toward the marker; trapping yourself also triggers it (the 'Spiral Death Trap')
+  - the Qix wanders the open field without seeking the marker; touching the marker or the unfinished Stix costs a life
+  - Sparx patrol the border and claimed edges but not unfinished Stix; a timer meter releases more Sparx and turns them into Super Sparx that can chase onto unfinished Stix
+  - clear at 75% by default (adjustable between 50% and 90% in the settings); bonus for each 1% above the threshold
+  - two Qix from level 3; splitting them into separate regions ends the level and raises a score multiplier by one per split, up to 9x, kept until a miss
+  - 1-2 players, alternating
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス) · [zh.wikipedia.org](https://zh.wikipedia.org/wiki/天蠶變_%281981年遊戲%29) · [ko.wikipedia.org](https://ko.wikipedia.org/wiki/킥스_%28비디오_게임%29)
+- **Qix II: Tournament** (1982) — Arcade — Taito America
+  - Also known as: Qix II (Tournament)
+  - awards an extra life every time 90% or more of the field is enclosed (repeatable)
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/qix-ii-tournament) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/taito/qix.cpp) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス)
+- **Qix (FM-7)** (1983) — Fujitsu FM-7 — Unknown porter (original game by Taito America; Pixelated Arcade credits Threshold Research); published by Takara (Phoenix label)
+  - Also known as: クイックス (FM-7)
+  - no draw buttons: moving off the border into the field draws a Stix automatically, at close to arcade Fast Draw speed (so no Slow Draw choice)
+  - stopping inside the field spawns the Fuse
+  - the Sparx count rises every few stages and the Qix gradually gets smarter
+  - clear at 75%
+  - `qix` · corrected · high · [akiba-pc.watch.impress.co.jp](https://akiba-pc.watch.impress.co.jp/docs/column/retrosoft/1165049.html) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス) · [pixelatedarcade.com](https://pixelatedarcade.com/games/qix/releases)
+- **Super Qix** (1987) — Arcade, PS2, Xbox, Windows, PS2 — Kaneko; published by Taito (Romstar license in North America)
+  - Also known as: スーパークイックス
+  - 4-way lever and a single draw button: no Fast/Slow Draw choice
+  - each of the 16 rounds hides a keyword picture that claimed territory reveals; completing it plays a celebration demo
+  - the Qix is replaced by a Gremlin-like monster; Sparx still patrol the edges
+  - pausing mid-line spawns a fire that creeps along the line toward the marker
+  - enclosing areas randomly drops items: Barrier (blocks one hit), Harry (speed-up, two levels), Stop (briefly freezes enemies), Warp (skip to the next round), Extra (extra life), Double (two player markers at once)
+  - letters can drop instead of items; spelling the round's keyword earns bonus points
+  - clear at 75%; a Joker card appears whose character depends on the percentage claimed; 98% or more awards a free credit
+  - 16 rounds that loop; after game over you can continue from the current round
+  - `qix` · corrected · high · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/スーパークイックス) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/super-qix) · [www.arcade-history.com](https://www.arcade-history.com/game/2744/) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/taito/superqix.cpp)
+- **Volfied** (1989) — Arcade, PC Engine HuCard, Mega Drive, Amiga, Atari ST, Commodore 64, MS-DOS, ZX Spectrum, and 10 more — Taito (designer Fukio Mitsuji); ports by I.T.L (PC Engine, Mega Drive), Empire Software (computers), Ving (FM Towns); published by Taito
+  - Also known as: ヴォルフィード (Vorufīdo), Ultimate Qix (Genesis, North America), SIMPLE1500 Vol.80 THE 陣取り ～ヴォルフィード1500～ (PlayStation, Japan)
+  - one fixed draw speed (no slow/fast draw as in Qix); score depends only on area claimed; the ship can retrace its own unfinished line
+  - no edge-patrolling Sparx: one boss per stage roams the open field with small minions; minions left on the claimed side are destroyed for bonus points
+  - bosses have their own movement and projectile patterns (some pause, some fire spreads); some later stages reuse earlier bosses with upgrades
+  - an enemy touching the unfinished line sends a spark along it toward the ship; the ship survives if it closes the area first
+  - a shield blocks bullets while the ship is on the border, is down while drawing and drains over time; at zero, any enemy or bullet contact on the border kills
+  - drawing for too long spawns a mine
+  - item blocks pop in and out of existence and block movement; enclosing one while visible opens it: L laser (kills minions, not the boss), S speed (until stage clear or miss), C clears minions, P pauses shield drain, T freezes enemies, star special shot that can kill the boss (100,000 points for obtaining it)
+  - clear by claiming 80% (the side holding the boss is 'outside'); the clear bonus rises toward 99.9%, up to 500,000
+  - enclosing the boss with the very first line at 80% or more awards 1,000,000
+  - the stage-6 boss is two parts; separating them so they cannot rejoin clears the stage (10,000, or 1,000,000 if claimed area is 1% or less)
+  - hidden rule: leaving the enemies unable to move for a set time clears the stage regardless of claimed area (100,000)
+  - claimed area shows the next stage's picture; 16 stages
+  - PC Engine port: 40 rounds, 75% to clear, lines cannot be erased, sparks appear on completed lines instead of a mine, side HUD
+  - Mega Drive port: widescreen field and three selectable rule modes: A (arcade rules), P (lines cannot be erased, item-block contents fixed), Q (lines cannot be erased, no items, separate fast-move button, original-Qix rules)
+  - Ultimate Qix (US) per Sega Does: mode A uses the arcade spark rule under a stage timer; modes B and C kill instantly when an enemy touches the line; in C a button speeds the ship
+  - Qix Neo / Volfied 1500 (PlayStation): Original (arcade) mode plus an Arrange mode of 96 levels with varying attack patterns; easy/normal/expert; top-5 ranking per mode
+  - `volfied` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Volfied) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/%E3%83%B4%E3%82%A9%E3%83%AB%E3%83%95%E3%82%A3%E3%83%BC%E3%83%89) · [zh.wikipedia.org](https://zh.wikipedia.org/wiki/地面大作戰) · [www.timeextension.com](https://www.timeextension.com/news/2024/02/qix-successor-volfied-heading-to-arcade-archives-this-march)
+- **Qix (Game Boy)** (1990) — Game Boy, Nintendo 3DS Virtual Console — Minakuchi Engineering; published by Nintendo
+  - Also known as: クイックス (ゲームボーイ)
+  - 2-player mode over the Game Link Cable, with the players presented as Team Mario and Team Luigi and a win or loss scene after each round
+  - after a 1-player game, a Mario scene chosen by score thresholds (50,000 to 500,000) plays; the top scene shows Mario, Luigi, Peach and Toads
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス) · [themushroomkingdom.net](https://themushroomkingdom.net/games/qix) · [www.mariowiki.com](https://www.mariowiki.com/Qix)
+- **Twin Qix** (1995 (prototype dated 17 Jan 1995; planned for May 1995, never released)) — Arcade — Taito America; published by Taito (unreleased)
+  - Also known as: ついんくいっくす
+  - 4-way lever and a single line button (labelled Draw Faster)
+  - two players play at once on side-by-side fields, and each side reveals a different half of the level's background picture
+  - versus mode: unlimited lives, the first to claim 95% wins the round, best of three
+  - quota starts at 70% in round 1 and rises in later rounds; the 1-player run is 17 rounds
+  - many new enemies and power-ups, including a statue
+  - a boss-type enemy per round, with bosses and enemies reused later in the run
+  - an enemy touching the trail while drawing is not an instant miss
+  - `qix` · corrected · high · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/taito/taito_f3.cpp) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/twin-qix) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/118436-twin-qix)
+- **Qix Adventure** (1999) — Game Boy Color — Coconuts Japan Entertainment (English version: Evolution Entertainment); published by Taito (Japan); Evolution Entertainment (UK)
+  - Also known as: クイックスアドベンチャー
+  - Treasure mode: the treasure hunter Speedy travels a map whose areas hold different monsters
+  - enclosing a monster captures it and releases treasure (chests on the playfield) to claim for items
+  - captured monsters and treasures bring more opponents, bonus items and score multipliers; collected treasure decorates a room
+  - monsters come with backstories; map progress depends on actions the game does not explain
+  - Battle mode: two players on one Game Pak or over the Game Link Cable
+  - Original mode with arcade Qix rules (75% to clear)
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix_Adventure) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix) · [www.honestgamers.com](http://www.honestgamers.com/13689/game-boy-color/qix-adventure/review.html)
+- **Qix 2000** (2000) — PlayStation — Taito; published by Success
+  - Also known as: SuperLite 1500 Series: Qix 2000, クイックス2000
+  - Game mode: faithful original Qix
+  - Arrangement mode: claimed space reveals an anime-style girl illustration
+  - Arrangement mode: psychedelic Qix graphics plus power-ups: speed-up (slow draw becomes fast, fast becomes faster) and speed-down (cancels it, punishing at normal speed)
+  - clear threshold (default 75%) selectable among three settings
+  - `qix` · confirmed · high · [psxdatacenter.com](https://psxdatacenter.com/games/J/S/SLPM-86659.html) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス)
+- **Battle Qix** (2002) — PlayStation — Success (per PSXDataCenter); published by Success
+  - Also known as: SuperLite 1500 Series: Battle Qix, バトルクイックス
+  - battle mode: a strategic contest in which players compete to occupy more territory than the opponent and win coins
+  - clearing levels rewards anime-style girl pictures
+  - includes a remake of the original Qix
+  - `qix` · corrected · medium · [psxdatacenter.com](https://psxdatacenter.com/games/J/S/SLPM-87165.html) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix)
+- **QIX (Japanese mobile)** (2002) — J-Phone Java, KDDI ezplus — Taito
+  - Also known as: Qix (Japanese mobile phones)
+  - J-Phone version: clear at 75%; claiming the maximum 99% earns a special bonus
+  - J-Phone version: each stage adds more Qix and makes them faster
+  - `qix` · corrected · high · [game.watch.impress.co.jp](https://game.watch.impress.co.jp/docs/20020312/qix.htm) · [dengekionline.com](https://dengekionline.com/data/news/2003/2/24/d05b49270b92ebcd411fbfbfef9d2a1f.html) · [ascii.jp](https://ascii.jp/elem/000/000/329/329796/)
+- **Space Invaders / Qix Silver Anniversary Edition** (2003) — Arcade — Taito; published by Taito / Namco America
+  - Also known as: Space Invaders QIX, スペースインベーダー QIX
+  - `qix` · corrected · high · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/taito/invqix.cpp) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/39011-space-invaders-qix-silver-anniversary-edition)
+- **Shakugan no Shana QIX** (unknown (c. 2006-2007)) — Japanese feature phones — unknown; published by Taito
+  - Also known as: 灼眼のシャナQIX
+  - claiming the set area in each stage unlocks that stage's character background image (Shana and others) in a CG viewing mode
+  - `qix` · corrected · medium · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/灼眼のシャナ)
+- **ONLINE QIX** (2007) — SoftBank Yahoo! Keitai 3G phones — BBMF; published by BBMF (Taito licence)
+  - Also known as: オンラインクイックス
+  - real-time online 1v1 versus: one-button Quick Battle matchmaking, or join a friend's room
+  - before a match each player picks a style or character, and each style sends a different attack to the opponent
+  - single-player enemy roster grows from 3 (Qix, Fuse, Spark) to 10, with 7 new enemies that move unpredictably
+  - items such as time stop and attacks on enemies
+  - Collection Trophy long-term goals
+  - `qix` · confirmed · high · [www.inside-games.jp](https://www.inside-games.jp/article/2007/10/30/24645.html)
+- **Retrocade** (2026) — iOS, iPadOS, macOS, tvOS, visionOS — Resolution Games AB; published by Resolution Games AB (Apple Arcade)
+  - licensed QIX is one cabinet in a multi-game Apple Arcade collection
+  - classic goal: enclose at least 75% of the playfield while avoiding the Qix and Sparx
+  - touch control schemes (buttons, joystick, swipe) plus Bluetooth controller support
+  - collection-wide global leaderboards, per-game achievements, daily challenges and friend challenges
+  - `qix` · corrected · medium · [apps.apple.com](https://apps.apple.com/us/app/retrocade/id6746784702) · [www.resolutiongames.com](https://www.resolutiongames.com/retrocade)
+
+## Other arcade games
+
+- **Jin** (1982) — Arcade — Falcon
+  - `qix` · confirmed · high · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/williams/williams.cpp) · [www.thelogbook.com](https://www.thelogbook.com/jin/)
+- **Jolly Jogger** (1982) — Arcade — Taito
+  - run over each maze segment for 1 point
+  - surrounding a boxed-in area scores 10; surrounding a power box scores 100
+  - three bullies chase the player
+  - some blocks hold items that scare the bullies so they can be knocked out for 300/500/700
+  - a burning fuse acts as the time limit; the fuse left at the end of a rack is the clear bonus
+  - `amidar-painter` · confirmed · high · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=jollyjgr) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/jolly-jogger)
+- **Macho Mouse** (1982) — Arcade — Techstar
+  - Also known as: マーチョ・マウス
+  - clear the maze of flags while snakes and cats chase the player
+  - five bombs per life and per level to blast enemies for points
+  - enemies on a dotted pathway when a flag is collected are killed; killing a snake this way also kills every cat on screen
+  - slot-machine bonus round after each level with three chances at bonus points
+  - `amidar-painter` · corrected · low · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=machomou) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/macho-mouse)
+- **Radar Zone** (1982) — Arcade — Century Electronics
+  - Also known as: Outline (re-release)
+  - `amidar-painter` · corrected · low · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=radarzon) · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=outline) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/radar-zone)
+- **Mr. TNT** (1983) — Arcade — Techstar; published by Telko (Mr. TNT licence); Techstar (Gorkans)
+  - Also known as: Gorkans (Techstar original)
+  - the player moves only forward along the lines, erasing them behind it, so the field shrinks as you play
+  - collect flashing or spinning bombs before they explode (1,000/4,000/8,000 for a defuse)
+  - enemy flames also erase lines; touching one costs a life
+  - reaching a dead end with no line left costs a life
+  - erasing lines steers enemies onto fixed paths, into each other or into walls; waiting in a corner lets them burn out
+  - each erased grid section scores 10 times the stage number
+  - `amidar-painter` · corrected · medium · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=gorkans) · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=mrtnt) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/mr-tnt) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/gorkans)
+- **Zeroize** (1983) — Arcade — Data East
+  - `amidar-painter` · corrected · low · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=czeroize) · [en.wikipedia.org](https://en.wikipedia.org/wiki/DECO_Cassette_System)
+- **Do! Run Run** (1984) — Arcade, Amiga, Atari ST, MSX — Universal
+  - Also known as: Super Pierrot
+  - Mr. Do's running line encloses ('inscribes') parts of the maze, and every dot inside goes up one fruit tier: dot, cherry, apple, lemon, pineapple
+  - higher-tier fruit scores more (dot 10 points, pineapple 160) and recharges the powerball faster
+  - inscribing can reveal a flashing EXTRA letter spot; running over it releases that letter's Alpha-monster and three henchmen, and defeating it locks the letter in
+  - all five EXTRA letters give an extra life and 5,000 points
+  - a screen clears when all fruit and dots are eaten or all regular monsters are defeated
+  - logs can be rolled downhill onto chasing monsters
+  - `other` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Do!_Run_Run) · [github.com](https://github.com/mamedev/mame/blob/master/src/mame/universal/docastle.cpp)
+- **Super Model** (1994) — Arcade — Comad & New Japan System; published by Comad
+  - reveal 80% of a silhouetted photographic model within a time limit while avoiding enemies
+  - Gals Panic monster meter: uncovering silhouette pushes the pointer toward a monster image and uncovering background pushes it back; a round finished while the monster shows must be replayed
+  - non-nude 'C' (bikini) grade pictures; Comad sold boards in A/B/C grades that differ in how explicit the pictures are
+  - `gals-panic` · corrected · high · [www.arcade-history.com](https://www.arcade-history.com/game/4853/super-model) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/expro02.cpp) · [www.arcade-history.com](https://www.arcade-history.com/game/1755/)
+- **Time Bokan (cancelled Qix-style arcade game)** (1995) — Arcade — Banpresto; published by Banpresto (unreleased)
+  - Also known as: タイムボカン
+  - a jump button lets the player's marker move across the open field instead of only along borders and Stix
+  - `qix` · corrected · low · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス)
+- **Gals Panic 3D** (1997 (unreleased)) — Arcade — Kaneko
+  - `gals-panic` · confirmed · low · [en.wikipedia.org](https://en.wikipedia.org/wiki/Kaneko)
+- **Panic Street** (1999) — Arcade — Kaneko
+  - Gals Panic S-era silhouette capture without adult content; Gals Panic S3 (2002) reuses most of its gameplay
+  - `gals-panic` · corrected · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/suprnova.cpp) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+
+## Image-reveal games
+
+- **Gals Panic** (1990) — Arcade, Sega Mega-CD — Kaneko; published by Kaneko (export); Taito (Japan); Kaneko USA (US); Inter Trading (Korea); Saint-Fun (Taiwan)
+  - Also known as: ギャルズパニック, 天蠶變 (Taiwan), 写真天蚕变 (mainland China)
+  - claimed areas reveal a hidden picture of a woman instead of a colour fill; the round clears at 80% of her silhouette, not 80% of the field
+  - a 20-step meter (starting at 11) drifts toward a 'monster' side over time and jumps when large silhouette chunks are taken; claiming plain background pushes it back
+  - with the meter low the picture becomes an unrelated monster image and finishing the round forces a replay; meter at 0 costs a life, meter at 20 clears the stage regardless of coverage
+  - one boss per round: a spider that slows the player (round 1), a fireball (round 2), an electrified cuboid that clones itself (round 3), plus small enemies
+  - alternating flip items: an angel raises the meter, a skull slows the player; an asteroid-storm symbol destroys enemies; 'loser' symbols turn the girl into a frog or octopus
+  - a roulette after rounds 1 and 2 grants 1UP, BREAK or a dud for the next round; extra lives also come at score thresholds
+  - 6 girls x 3 rounds; the picture progresses each round and becomes a photo after the third; a 100% reveal shows a special clear screen
+  - `gals-panic` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [www.arcade-history.com](https://www.arcade-history.com/game/922/) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/expro02.cpp)
+- **LadyLove** (1990) — MS-DOS — TPR
+  - Also known as: Lady Love
+  - start menu: pick which of six models to play; each model has three levels whose backgrounds are her photos, uncovered as you cut
+  - finishing a model's three levels unlocks a bonus photo, then returns you to model select with score and lives kept; no ending, play continues until the last life is lost
+  - each of a model's three levels has its own animated main enemy: two different spiders (one fires a large web) and a spinning fire mass that forms a vortex
+  - enemies do not move randomly: they often home toward the player's cutting point
+  - an enemy touching the line being drawn erases that line and costs a life
+  - per-level time limit (three minutes per old-games.ru)
+  - keyboard-only: hold SHIFT while moving along the frame to cut into the picture
+  - uncovering 80% auto-reveals the rest of the photo; larger single cuts score more
+  - `qix` · corrected · medium · [www.old-games.ru](https://www.old-games.ru/game/11896.html) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/390292-ladylove) · [www.abandonwaredos.com](https://www.abandonwaredos.com/abandonware-game.php?abandonware=LadyLove&gid=2801) · [www.mobygames.com](https://www.mobygames.com/game/158483/ladylove/)
+- **Youjuu Club** (1990) — Sharp X68000, NEC PC-98, Windows — D.O.
+  - Also known as: 妖獣クラブ, Youjuu Club Custom (妖獣倶楽部カスタム, PC-98 collection of 1 and 2), Youjuu Club D.O.Classics Vol.2 (Windows)
+  - the player's marker is a lecherous lesser demon uncovering a background image Xonix-style
+  - a stage clears once 80% of the image is revealed
+  - `xonix` · corrected · high · [vndb.org](https://vndb.org/v17306) · [vndb.org](https://vndb.org/r39851) · [vndb.org](https://vndb.org/r145146) · [vndb.org](https://vndb.org/r39854)
+- **Gals Panic II** (1993) — Arcade, Windows 95 / NEC PC-98, Super NES — Kaneko; published by Kaneko (arcade; Karam Trading licence in Korea); Mainichi Communications (Windows 95)
+  - Also known as: ギャルズパニックII, Gals Panic II - Quiz Version, Gals Panic II' - Special Edition (1994)
+  - an 8-way joystick allows diagonal lines
+  - claiming starts from a rectangle inside the field and the player cannot connect to the outer border (kept by later entries)
+  - the meter becomes time-based: revealing area no longer moves it
+  - Quiz Version: each girl asks two-choice questions whose answers move the meter
+  - a break-out mini-game after three rounds; clearing the blocks in time gives an extra life
+  - an optional card dispenser (operator DIP switch)
+  - Special Edition (1994): quiz removed, extra stages after the first clear, enemies that shoot, much harder
+  - Windows 95 version: 30 stages in illustration and live-action modes with pyramid-style stage unlocking
+  - `gals-panic` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [www.arcade-history.com](https://www.arcade-history.com/game/918/) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/galpani2.cpp)
+- **Perestroika Girls** (1993) — Arcade — Promat; published by Promat (Fuuki license for one set)
+  - Super Qix hardware hack whose reward pictures are photos of women that grow more explicit over successive levels
+  - gems give power-ups: shield, speed, time stop and others
+  - bouncing hearts can be collected for points
+  - the player can reverse along the line being drawn to erase it
+  - two draw buttons, fast and slow
+  - standing still too long sets a fire chasing along the player's line
+  - claiming more than 80% reveals the whole picture
+  - `qix` · corrected · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/taito/superqix.cpp) · [arcade-museum.com](https://arcade-museum.com/Videogame/perestroika-girls) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/38075-perestroika-girls)
+- **Cherry Bomb: Chou-ojou-sama Sayaka-chan Nanpa Daisakusen** (1994) — NEC PC-98 — Peppermint Kids
+  - Also known as: チェリーボム 超お嬢さま沙也香ちゃんナンパ大作戦, CHERRY Bomb 超お嬢さま沙也香ちゃんナンパ大作戦
+  - adult adventure story framing with Xonix/Qix-style capture stages; per the VNDB tag, capturing enough of the screen reveals a hidden picture
+  - `gals-panic` · confirmed · medium · [vndb.org](https://vndb.org/v24448) · [vndb.org](https://vndb.org/g1913) · [api.vndb.org](https://api.vndb.org/kana/release)
+- **Fantasia** (1994) — Arcade — Comad & New Japan System; published by Comad
+  - Gals Panic meter: the pointer creeps toward the monster side over time and jumps when big silhouette chunks are revealed; uncovering background pushes it back
+  - a round finished while the monster image shows must be replayed
+  - reveal 80% of the silhouette within a time limit while avoiding enemies
+  - photographic Japanese and Western models instead of drawn art, with celebrity portraits as the bad images
+  - `gals-panic` · confirmed · high · [www.arcade-history.com](https://www.arcade-history.com/game/804/fantasia) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/expro02.cpp)
+- **Paradise** (1994) — Arcade — Yun Sung; published by Yun Sung; Escape (licensed set)
+  - Gals Panic-style silhouette reveal with photographs of nude Western models instead of drawn art
+  - a bonus round triggered by the fill percentage when a stage is beaten
+  - operator settings: fill target 75/80/85/90%, four round-timer settings, 3 or 5 lives, a slide-show mode
+  - `gals-panic` · confirmed · high · [www.arcade-history.com](https://www.arcade-history.com/?n=paradise&page=detail&id=1936) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/yunsung/paradise.cpp)
+- **Paradise Deluxe** (199? (1994 or later)) — Arcade — Yun Sung
+  - any of 12 stages can be picked at the start (16 stages in all)
+  - reveal 80% of the silhouette to clear, 85% in later stages, while avoiding monsters
+  - after each stage, under 90% revealed plays a roulette that can reward or punish; over 90% plays a four-card Monte with no penalty
+  - each cleared stage removes a tile from a meta-picture, fully shown after all 16 stages
+  - operator settings: fill target 75/80/85/90%, four round-timer settings, 3 or 5 lives, a slide-show mode
+  - `gals-panic` · corrected · high · [www.arcade-history.com](https://www.arcade-history.com/?n=paradise-deluxe&page=detail&id=5173) · [www.arcade-history.com](https://www.arcade-history.com/?id=28028&n=paradise-2-deluxe&page=detail) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/yunsung/paradise.cpp)
+- **SeXoniX** (1994) — MS-DOS — Daisy Field Software Development Group
+  - Also known as: Sexonix
+  - each enclosed section reveals part of a picture of a suggestively posed woman, instead of the geometric fill patterns of earlier XoniX versions
+  - `xonix` · corrected · medium · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/97727-sexonix) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Spider** (1994) — Arcade — Buena Vision
+  - the length of the line the player can draw is capped by the 'web power' available
+  - bonus rounds where the player circles numbers as fast as possible
+  - released in two sets, with and without nudity
+  - `qix` · confirmed · medium · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/39071) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/edevices/twins.cpp)
+- **Double Strixx** (1995-1996) — Arcade — CD Express
+  - apparently a Laser Strixx evolution with added mini-games
+  - `qix` · corrected · low · [tilt.it](https://tilt.it/deb/cdexpress-en.html) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/amiga/cubo.cpp)
+- **Gal Pani** (1995) — NEC PC-9801 — Creo I
+  - Also known as: GalPani
+  - Qix-style capture reveals photographs of real models, including nudity, instead of drawn art
+  - `gals-panic` · corrected · medium · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/137217-gal-pani) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Kaneko)
+- **Gals Panic 3** (1995) — Arcade — Kaneko
+  - Also known as: ギャルズパニック3
+  - a scrolling field larger than the screen; once a set share is revealed the view follows the cursor (introduced scrolling to the series)
+  - the player chooses which girl to uncover before each stage
+  - 80% ends the stage; 100% unlocks a series of extra photos of that girl
+  - mini-games between stages give a chance to win another girl's image
+  - tighter time pressure and higher difficulty than the earlier games
+  - uses only photographed (live-action) models
+  - `gals-panic` · confirmed · high · [www.arcade-history.com](https://www.arcade-history.com/game/3488/gals-panic-3) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/galpani3.cpp)
+- **Harem Challenge** (1995) — Arcade — CD Express
+  - 'rogue-qix' capture that uncovers a hidden photo
+  - player energy meter; the operator sets the starting energy supply (100%, 50% or 0%)
+  - operator option makes touching your own line deadly
+  - area to cover: 75/80/85% for one player, 70/75/80% in two-player mode
+  - level timer settable from 1:00 to 1:40
+  - two-player tournament mode: best of 3 or best of 5
+  - nine levels; the operator sets the photo grade (soft, erotic or explicit)
+  - `qix` · confirmed · high · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/amiga/cubo.cpp) · [www.arcade-history.com](https://www.arcade-history.com/game/11288/) · [tilt.it](https://tilt.it/deb/cdexpress-en.html)
+- **Laser Strixx** (1995) — Arcade — CD Express
+  - Also known as: Lucky Strixx
+  - photo uncovered fragment by fragment
+  - skilled players unlock a striptease clip by a male or female performer
+  - `qix` · confirmed · medium · [tilt.it](https://tilt.it/deb/cdexpress-en.html) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/amiga/cubo.cpp) · [www.arcade-history.com](https://www.arcade-history.com/game/11288/)
+- **Laser Strixx 2** (1995) — Arcade — CD Express
+  - fence off territory to reveal a model photograph piece by piece
+  - player energy meter; the operator sets the starting energy supply
+  - operator option makes touching your own line deadly
+  - nine levels
+  - capturing a special 'mouth' object that appears during the level triggers a live-strip sequence at the end of the level
+  - five performers (Ann, Eva, Jo, Sue, Bob) with 4 to 6 strip phases each
+  - `qix` · confirmed · high · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/amiga/cubo.cpp) · [tilt.it](https://tilt.it/deb/cdexpress-en.html)
+- **Zip & Zap** (1995) — Arcade — Barko Corp
+  - Also known as: Zip & Zap (Explicit), Zip & Zap (Less Explicit)
+  - Gals Panic-style silhouette capture that reveals a picture
+  - optional 'Additional Obstacles' setting adds four blocker/bumper objects to the playfield
+  - selectable player skill mode (Amateur, Normal, Excellent)
+  - sold in two nudity grades: 'A' (Explicit) and 'B' (Less Explicit) ROM sets
+  - character/stage select screen
+  - `gals-panic` · confirmed · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/expro02.cpp)
+- **Dancing Eyes** (1996) — Arcade — Namco
+  - Also known as: ダンシングアイ
+  - the field is the surface of a 3D polygon model covered in a grid of panels; clear every panel to finish the stage
+  - player and enemies move only along fixed grid lines, so the player can be trapped between two enemies
+  - touching an enemy that is on your own drawn line is not a miss
+  - enemy types: slow mice and rabbits favouring different axes, fast squirrels, fish that shoot, snakes that charge, turtles that split, spiders that drop offspring, periodic starfish
+  - items from glowing panels or flashing enemies: S speed, E extra time, T freezes enemies and the timer for 6 s, A giant invincible form, P stuns enemies touching your line, X/Y widen clearing horizontally or vertically, D clears many random panels and all enemies, W clears panels next to enclosed areas, R swaps cleared and uncleared panels, 1UP doll
+  - time limit; fast clears earn a bonus reward scene
+  - after each stage choose one of three next stages (41 stages in all)
+  - most stages strip clothing from a woman model; others destroy UFOs, cardboard boxes or a cobra; the model poses and can be rotated after the clear
+  - KIDS mode skips the undressing stages
+  - `gals-panic` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Dancing_Eyes) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ダンシングアイ) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/namco/namcos11.cpp)
+- **Gal Pani II** (1996) — Windows 95, NEC PC-98 — Scio (per LaunchBox); based on Kaneko's arcade Gals Panic II; published by Mainichi Communications (Mycom)
+  - Also known as: ギャルパニII, Gals Panic II (PC)
+  - 30 stages in two switchable modes, illustration and live-action, with 15 stages each
+  - illustration mode: five characters with three stages each
+  - each mode has a five-tier pyramid stage-select map; clearing a stage opens the two stages below it
+  - live-action mode reveals photographs of a single actress (Misako Maeda)
+  - story frame: rescue girls held captive by monsters (the enemy bosses)
+  - `gals-panic` · corrected · medium · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/137218-gal-pani-ii)
+- **Gals Panic 4** (1996) — Arcade — Kaneko
+  - Also known as: Gals Panic for you, Gals Panic 4 Yuu, ギャルズパニック4遊
+  - bombs attack enemies and can wipe out the minor enemies on screen; revealing a large area in one capture awards more bombs
+  - bombing an enemy in rapid succession adds status effects: slowed after the 3rd bomb, frozen in place after the 4th
+  - 2-player split-screen versus on separate pictures, where a bomb sends a sub-enemy to the opponent's side instead of attacking
+  - 7 girls x 3 stages (21 stages); 80% clears the stage, 100% plays a 'Showtime' interlude
+  - two free mini-games playable during the attract demo
+  - lower difficulty than earlier entries; rewards stop at swimsuits, with no nudity
+  - `gals-panic` · corrected · high · [www.arcade-history.com](https://www.arcade-history.com/game/919/gals-panic-4-yuu) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/suprnova.cpp) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic)
+- **Paparazzi** (1996) — Arcade — Yun Sung
+  - described by Arcade History as a rip-off of Mitchell's Lady Killer, itself a Gals Panic imitator; no detailed gameplay description found
+  - round time limit set by operator (MAME 'Time' DIP: 80/100/120/150)
+  - operator-selectable enemy set (MAME 'Enemies' DIP: Type 1 or Type 2)
+  - two players simultaneous, 8-way joystick, one button
+  - `gals-panic` · corrected · low · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=paprazzi) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/yunsung/yunsun16.cpp) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic)
+- **Pocket Gals V.I.P** (1996) — Arcade — ACE International / Afega; published by ACE International
+  - Also known as: Pocket Gal VIP
+  - Gals Panic-style silhouette capture that reveals a picture (MAME groups it with the EXPRO-02 Gals Panic clones)
+  - per-round play timer set by operator (70/80/100/120 seconds) with 6-10 lives (shared Gals Hustler input settings)
+  - `gals-panic` · confirmed · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/expro02.cpp)
+- **Sex Xonix (ZX Spectrum)** (1996) — ZX Spectrum 128K — Tankard (Belarus), Doc, Kamikaze; published by Tankard
+  - Also known as: Sex Xonix \[CENSORED\]
+  - Xonix-style capture with an adult picture theme
+  - `xonix` · confirmed · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/13046)
+- **Gals Hustler** (1997) — Arcade — ACE International (ROMs also seen with Afega labels); published by ACE International
+  - Gals Panic-style silhouette capture that reveals a picture
+  - per-round play timer set by operator (70/80/100/120 seconds) with 6-10 lives
+  - `gals-panic` · corrected · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/expro02.cpp)
+- **Gals Panic S - Extra Edition** (1997) — Arcade — Kaneko
+  - Also known as: Gals Panic S, ギャルズパニックS
+  - 'P' items power up the player, 'S' items raise movement speed
+  - picking up a P item or claiming a large area in one capture lets the player shoot at the boss
+  - attacking the boss too much enrages it: it then destroys already-claimed territory, and its attack kills even when the player is not drawing
+  - all five EXTRA coins, which appear during captures, unlock an alternate, more risqué picture
+  - 80% clears the stage, 90% shows a nude still, 100% plays an animated 'SHOW TIME DX'
+  - scrolling playfields, with some girls on fixed single screens
+  - 2-player versus on left and right halves: the first to claim 80% of the silhouette wins
+  - 11 women and one male character selectable, 12 stages; the male character moves around the select screen at random, so he is hard to avoid
+  - `gals-panic` · corrected · high · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [www.arcade-history.com](https://www.arcade-history.com/game/920/gals-panic-s-extra-edition) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/suprnova.cpp)
+- **Innai Kansen ~Mayonaka no Nurse Call~** (1998) — Windows, DVD player — ZyX
+  - Also known as: 淫内感染 ～真夜中のナースコール～
+  - Xonix-style action stages (VNDB 'Xonix Game' tag); clearing a stage reveals an image and a short story scene
+  - runs alongside the original Innai Kansen visual novel and adds two new characters
+  - `gals-panic` · confirmed · medium · [vndb.org](https://vndb.org/v3164) · [vndb.org](https://vndb.org/g1913)
+- **Lovely Girls** (1998) — Windows — Digital Nightmares; published by Lomax Software
+  - claimed monster-free areas fill with part of a hidden photo of a model (75% target)
+  - touching your own trail while drawing costs a life (respawn at top centre)
+  - several monster types patrol both claimed and unclaimed areas: some follow the blue boundary lines, others hunt the line being drawn
+  - extra life every 5,000 points (up to five lives at start)
+  - per-level time limit that shrinks in later stages, with more aggressive enemies and new monster types
+  - clearing a level shows the full high-resolution photo with manual or automatic pan and zoom
+  - `qix` · corrected · medium · [retro-replay.com](https://retro-replay.com/db/windows/lovely-girls) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Vivid Dolls** (1998) — Arcade — Visco
+  - the player starts with a small claimed square inside a blurred image and draws lines outward from it, returning to claimed area to capture, instead of starting from the screen border
+  - enemies act like 2D shooter enemies, each reacting differently, and some fire projectiles at the player; enemies break the line they touch
+  - eight women with three images each; the last image is the most revealing
+  - 1-2 players
+  - `qix` · corrected · medium · [n-europe.com](https://n-europe.com/features/all-n64-games-182-vivid-dolls) · [www.arcade-history.com](https://www.arcade-history.com/game/11028/vivid-dolls) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/nintendo/aleck64.cpp)
+- **Wonder Stick** (1998) — Arcade — Yun Sung
+  - Amidar-style grid: the penguin draws a line only while the trace button is held, enclosing grid blocks; enclosed blocks vanish to reveal the image
+  - each line starts with a tag that returns to the player when the button is released, or circles fully enclosed blocks to remove them
+  - the moving tag kills enemies, which drop power-ups or food
+  - a second button spends a 'help' (fish icon) to stun enemies briefly so you can pass them
+  - enemy-free bonus stage every five levels to collect food and extra lives against a timer
+  - operator DIP switch sets 3 or 5 helps
+  - `amidar-painter` · corrected · medium · [www.arcade-history.com](https://www.arcade-history.com/game/4713/) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/yunsung/nmg5.cpp)
+- **Gals Panic S2** (1999) — Arcade — Kaneko
+  - Also known as: ギャルズパニックS2, Gals Panic SU (Korea, S2 version)
+  - bosses get more attack patterns, so it is harder than S
+  - some stages have two bosses at once, including the hidden character's stage
+  - 'Super Kaneko Dial': a phone icon appears on the stage and moves every so often; enclosing it gives that character's phone number after the stage
+  - special phone numbers for clearing all stages, and for clearing all stages at 100%
+  - 12 women plus the hidden android character Nanako (775), 12 stages
+  - 2 players simultaneous, competitive
+  - `gals-panic` · corrected · high · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/suprnova.cpp) · [arcade-museum.com](https://arcade-museum.com/Videogame/gals-panic-s2)
+- **Land Breaker** (1999) — Arcade — Eolith
+  - Also known as: Miss Tang Ja Ru Gi (Korea), Miss Ttang Jjareugi (미스땅짜르기)
+  - the player device moves freely inside the field instead of on its border
+  - one button switches the cut between horizontal and vertical, and the other fires a laser both ways; the device can move again right after firing
+  - a laser that crosses the field divides it, but the picture is revealed only in a part with no enemies; cuts with enemies on both sides stay as walls for herding enemies into smaller spaces
+  - enemies are bouncing balls of several sizes, with more and smaller balls and less predictable movers in later stages
+  - reveal at least 80% of the background against a timer; bonus points for the clear, for going above 80%, and for time left
+  - items that are hit or trapped give immortality, faster beams, a magnet that freezes enemies, or an extra life
+  - 4 levels of 8 stages (32 stages)
+  - `jezzball` · corrected · high · [arcade-museum.com](https://arcade-museum.com/Videogame/land-breaker) · [www.arcade-history.com](https://www.arcade-history.com/game/1347/) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/37132-land-breaker) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/eolith/eolith.cpp)
+- **WOW Fantasia** (2001) — Arcade — Comad
+  - captured areas reveal a picture, as an entry in Comad's adult Qix-style Fantasia series (no title-specific gameplay details found)
+  - `gals-panic` · confirmed · low · [adb.arcadeitalia.net](http://adb.arcadeitalia.net/dettaglio_mame.php?game_name=fantsia2) · [www.arcade-history.com](https://www.arcade-history.com/game/805/) · [www.arcade-history.com](https://www.arcade-history.com/game/32393/) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/expro02.cpp)
+- **Gals Panic S3** (2002) — Arcade — Kaneko; published by Kaneko (English Wikipedia credits Able Corporation)
+  - Also known as: ギャルズパニックS3
+  - stage select: girls fly in from the four corners to the centre until one is chosen
+  - monsters attack with weapons; the enemy AI was changed and is harder than in S2
+  - 80% clears the stage; 90% shows a SHOWTIME image, 100% a static SHOWTIME DX image
+  - 8 stages
+  - the Super Kaneko Dial phone feature was removed
+  - gameplay largely reused from Panic Street (1999)
+  - `gals-panic` · corrected · high · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [www.arcade-history.com](https://www.arcade-history.com/game/4550/gals-panic-s3) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/suprnova.cpp)
+- **Miss World 2002** (2002) — Arcade — Comad; published by Comad; a Daigom-licensed set also exists
+  - Also known as: Miss World 2002 (Daigom license)
+  - Gals Panic-style silhouette capture revealing a picture; MAME rates the set at nudity grade 'A', the most explicit
+  - two players simultaneously
+  - `gals-panic` · corrected · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/kaneko/expro02.cpp) · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=missw02) · [www.arcade-history.com](https://www.arcade-history.com/game/1642/)
+- **女宇宙人触手陵○地獄** (2002) — Windows — L.T.T
+  - Qix-type game in 3D (DLsite calls it a 'Qix-type 3D action puzzle')
+  - story frame: Galactic Federation trainee Mizuho Kazami recovers her spaceship
+  - 10 stages
+  - the reward CG tier depends on how well each stage is cleared
+  - `qix` · confirmed · high
+- **Happy Tour** (2005) — Arcade — GAV Company
+  - Also known as: Happy Tour (V1.12)
+  - `other` · confirmed · low · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/eolith/ghosteo.cpp) · [raw.githubusercontent.com](https://raw.githubusercontent.com/AntoPISA/MAME_SupportFiles/main/catver.ini/catver.ini) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_arcade_video_games:_H)
+- **Yuukuri Panic Dokidoki Oyakodon** (2008) — Windows — Shining Star
+  - Also known as: ゆーくりパニック どきどき親子丼, ゆ～くりパニック　どきどき親子丼
+  - Xonix-style area capture (VNDB tag 'Xonix Game'): enclosing areas reveals the game's images
+  - capture stages are set inside a visual-novel (ADV) frame, alongside other fast mini-games (VNDB tag 'Fast Mini-games')
+  - `gals-panic` · corrected · medium · [vndb.org](https://vndb.org/v7488) · [vndb.org](https://vndb.org/g1913) · [vndb.org](https://vndb.org/p766)
+- **Yuukuri Panic Escalation** (2008) — Windows — Rolling Star; published by Rolling Star (JP, 2008); Peach Princess (EN package, 2011) / JAST USA (EN download, 2011)
+  - Also known as: ゆーくりパニック エスカレーション, Yukkuri Panic: Escalation, ゆ～くりパニック エスカレーション
+  - Xonix-style territory-capture stages (VNDB 'Xonix Game' tag) between ADV scenes, retelling Rolling Star's Escalation ~Kyouai no Fugue~ as a capture game
+  - `gals-panic` · corrected · medium · [vndb.org](https://vndb.org/v4905) · [vndb.org](https://vndb.org/g1913)
+- **Yuukuri Panic: Choukyou Diary** (2008) — Windows — Rolling Star
+  - Also known as: ゆーくりパニック 調教ダイアリー, Yukuri Panic - Training Diary
+  - 21 territory-capture action stages (7 stages x 3 rounds) with fully voiced heroines talking during play
+  - winning a capture leads to an adult scene (7 event CGs, scene recall)
+  - post-clear 'GAME-MODE' added
+  - bundled patch fully unlocks the scene-recall mode of the previous Yuukuri Panic title (a cross-title unlock)
+  - `gals-panic` · corrected · high · [vndb.org](https://vndb.org/v4903)
+- **Yuukuri Panic: Miwaku no Mahoujin** (2008) — Windows — Rolling Star
+  - Also known as: ゆーくりパニック 魅惑の魔法陣, Yukuri Panic - The Magic Corps of Attraction
+  - 21 territory-capture fields (7 stages x 3 rounds)
+  - fully voiced heroines who talk during the capture action
+  - winning a capture round unlocks a story/adult scene, with CG and scene-recall galleries
+  - story frame: a revived Demon Lord sets traps for four witches (heroine Alicia)
+  - `gals-panic` · corrected · high · [vndb.org](https://vndb.org/v3580)
+- **Touhou QIX** (2010) — Windows — Daiojyo (大往生)
+  - Also known as: 東方QIX, 咲夜QIX (Sakuya QIX, 2010), 綾波QIX (Ayanami QIX, 2010)
+  - enclose area while dodging enemies in the field; each clear unlocks the next, more explicit CG of the featured character
+  - later entries reskin the field enemies to the theme (witches in Mami QIX, monsters in DragonQIX)
+  - `qix` · confirmed · high
+- **Crawlco Block Knockers** (2019) — Windows, Nintendo Switch — CosmiKankei; published by Shady Corner Games (PC); Eastasiasoft (Switch); Funbox Media (EU physical Switch, 2021)
+  - territory is won by match-3 block clearing instead of line drawing: pull or kick blocks that enter the field to line up three or more of one colour
+  - cleared blocks reveal the hidden image and shrink the board (Famitsu, via Wikipedia: a Pengo/Sokoban mix with a Qix-like territory capture system)
+  - enemies kill on touch and some shoot bullets; sliding a block into an enemy defeats it
+  - option to switch enemies off
+  - four boss fights
+  - 'modesty' setting controls the adult content
+  - `other` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Crawlco_Block_Knockers)
+- **Re: Gals Panic** (2019) — Windows — Peach Beach; published by Raging Usagi Corporation
+  - Charm or Conquer choice, with each route revealing different results and granting a different special skill
+  - Charm skill 'Stone Gaze' freezes all enemies on the field
+  - Conquer skill 'Cyclone Speed' raises movement speed
+  - dedicated skill button (right mouse/X/Enter) separate from the draw button (left mouse/Z/Space)
+  - memory mode to rewatch unlocked CGs of six characters
+  - `gals-panic` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1154720) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1154720)
+- **エロルドさん、いらっしゃい** (2019) — Windows, Browser — ワタベ (Watabe); published by ワタベ (Watabe), self-published on Freem!
+  - Also known as: Erold-san, Irasshai, ～17歳 夏 幼馴染～ (tagline)
+  - obstacle stones placed on a single map must be cleared while claiming territory, and clearing them reveals a one-image illustration
+  - wandering nuisance characters to avoid
+  - option to set always-dash or always-walk
+  - post-clear EX bonus stage, which the author says he cannot clear himself
+  - `gals-panic` · corrected · medium · [www.freem.ne.jp](https://www.freem.ne.jp/win/game/19770) · [www.freem.ne.jp](https://www.freem.ne.jp/win/game/19990)
+- **Borderus** (2020) — Windows — DIG Games
+  - per-level record times: beating them earns stars
+  - 15 levels with an unlockable gallery of revealed images
+  - `xonix` · corrected · medium · [store.steampowered.com](https://store.steampowered.com/app/1262100) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1262100) · [store.steampowered.com](https://store.steampowered.com/apphoverpublic/1262100) · [steamspy.com](https://steamspy.com/api.php?request=appdetails&appid=1262100)
+- **Borderus: Angels & Demons** (2020) — Windows — DIG Games; published by DIG Games (Sinnera series)
+  - balls bounce in the open field instead of a Qix (Xonix style); fencing off areas uncovers a picture
+  - beating a level's record time earns stars
+  - 15 levels, with unlocked pictures viewable in a gallery
+  - `xonix` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/1459720) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1459720)
+- **Comixxx Strip** (2021) — Windows — DIG Games; published by DIG Games (Sinnera series)
+  - balls bounce in the open field instead of a Qix (Xonix style); fencing off areas reveals a comic-style picture
+  - beating a level's record time earns stars
+  - earning every star unlocks a bonus level
+  - a level that has not been beaten after more than 10 minutes can be skipped, and its picture is unlocked anyway
+  - 15 levels
+  - `xonix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1805970) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1805970)
+- **Cuties Hacked: Oh no someone stole my photos!** (2022) — Windows, macOS, Linux — Somequest
+  - boosts to use during play
+  - beating target times unveils progressively more revealing pictures
+  - a limited number of attempts
+  - obstacles and opponents on the field
+  - 12 girls, each a separate picture set to uncover
+  - `xonix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1970160) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1970160)
+- **Gold Wiper** (2022) — Windows, Linux — Edge Games
+  - time limit to clear each stage
+  - each of 30 stages has a boss and minions with unique skills that interfere with the player
+  - player skills to avoid or counter the interference
+  - restored pictures unlock video rewards (three 3D characters)
+  - `gals-panic` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1926870) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1926870)
+- **Mokoko X** (2022) — Windows, macOS, Linux/SteamOS — NAISU
+  - Also known as: Mokoko (earlier 2020 game), Mokoko X: The First Date (separate 2024 Steam release)
+  - shield protects the player on owned territory but drains over time and drops while drawing; unless the player claims land often enough it burns out and owned territory is no longer safe
+  - 32 levels, each with a unique boss and minions; 8 characters to rescue from the bosses
+  - traps, towers, crates and bonus effects on the field
+  - three difficulties change enemy behaviour, shield strength and the required capture percentage
+  - Arcade Mode with live high-score leaderboards
+  - `volfied` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1785000/Mokoko_X/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=2886660) · [dvd-fever.co.uk](https://dvd-fever.co.uk/mokoko-on-pc-the-dvdfever-review-gals-panic-style-ecchi-anime)
+- **Secret Camera** (2023) — Windows — 78 Games; published by 78 Games (self-published; Steam credits 'Secret Camera')
+  - Also known as: 姦視カメラ (DLsite)
+  - move along the edges and hold Space to draw a line; enemies are themed as tenants whose notice must be avoided
+  - pickup items briefly enhance the player's abilities
+  - each stage captures a tenant once a set enclosure percentage is reached
+  - captures unlock story text (120,000+ words), CGs (some in Live2D) and character profiles
+  - `qix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1928500) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1928500)
+- **Waifu Space Conquest** (2023) — Windows, Linux — Sweet Banana Games; published by Gamuzumi
+  - a level passes only when all the space is conquered ('Conquer all the space to pass the level')
+  - aliens confined inside claimed space are killed
+  - six enemy types that grow stronger as you progress; six power-up types
+  - 50 levels; unlocked images go to a gallery
+  - `gals-panic` · confirmed · medium · [store.steampowered.com](https://store.steampowered.com/app/2314050/Waifu_Space_Conquest/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=2314050)
+- **Celebrities Hacked** (2024) — Windows, macOS, Linux — Somequest
+  - power-ups to deploy during play
+  - ticking-clock (timed) challenges
+  - a limited number of retries
+  - obstacles on the field
+  - 12 celebrity picture sets: 2 in the base game, 10 more as DLC
+  - `xonix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/2554820) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=2554820)
+- **Gals Panic (Android)** (2024 or earlier (earliest visible review Feb 21, 2024; listing updated Sep 1, 2026)) — Android — Kaneko (original 1990 arcade game; package prefix com.knko); Android release listed by H-index (백갑순, South Korea); published by H-index
+  - Also known as: Gals Panic, Gal's Panic
+  - emulated Kaneko Gals Panic arcade game (INSERT COIN / CREDIT HUD)
+  - claim area by cutting lines in from the border to reveal a hidden picture
+  - 80% claim target with live percentage counter
+  - level time limit (TIME 2:52 style countdown)
+  - boss enemy (giant spider, fire demon) plus smaller roaming minions
+  - gal select screen: pick one of six girls whose picture is revealed
+  - skull-to-V-sign gauge above the playfield
+  - extra life (EXTEND) award
+  - one-button control, gamepad support
+  - 2-player NETPLAY over the same local Wi-Fi
+  - ad-supported: rewarded ads grant credits, limited free plays
+  - `gals-panic` · rescued · high · [play.google.com](https://play.google.com/store/apps/details?id=com.knko.galpanic&hl=en_US&gl=US) · [play.google.com](https://play.google.com/store/apps/developer?id=H-index)
+- **Hentai Girls Panic** (2024) — Nintendo Switch — 17Studio LLC; published by 17Studio
+  - time limit per level
+  - collectable bonuses that help clear a level
+  - bosses; defeating all of them unlocks every image
+  - 40+ images in a gallery
+  - `gals-panic` · corrected · medium · [www.nintendo.com](https://www.nintendo.com/en-gb/Games/Nintendo-Switch-download-software/Hentai-Girls-Panic-2541354.html) · [www.nintendo.com](https://www.nintendo.com/us/store/products/hentai-girls-panic-switch/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=3833460)
+- **Hot Slice: Lust Exposed** (2024) — Windows — Predict
+  - adds a dash move alongside the line-cutting
+  - claiming 70% of the area clears the stage
+  - 14 unlockable reward scenes spread across levels
+  - `qix` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/3303420) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=3303420)
+- **LewdQix** (2024) — Browser, Windows, Linux — grimagrima (GrimaGrima Games); published by grimagrima (self-published on itch.io)
+  - three stages per picture, with clear goals rising from 60% to 70% to 80%
+  - 28 reveal pictures, each a character from a different adult visual novel, supplied by several developers as cross-promotion
+  - avatar selection before play
+  - `qix` · corrected · high · [grimagrima.itch.io](https://grimagrima.itch.io/lewdqix)
+- **Uncensor Quest** (2024) — Windows — Thatcher Productions
+  - power-ups: explosive attack, freeze, speed boost
+  - boss fights
+  - bonus puzzle mode
+  - relaxed no-pressure mode
+  - 35+ levels of rising difficulty
+  - `gals-panic` · confirmed · medium · [store.steampowered.com](https://store.steampowered.com/app/2794620) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=2794620)
+- **Kawaii Girls Panic** (2025) — Windows — 17Studio
+  - time limit per level
+  - deadly traps alongside enemies
+  - collectable bonuses and improvements
+  - boss battles
+  - six heroines, 40+ images
+  - `gals-panic` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/3833460) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=3833460)
+- **Re: Gals Panic 2** (2025) — Windows — Bang Bang King; published by Raging Usagi Corporation
+  - Domination Stage skill 'Soul Scythe Tempest' boosts all speeds so you can slash through enemies
+  - Extermination Stage skill 'Evil Eye Stare' freezes all enemies
+  - 'Dual Paths of Tactics': choose a sneaky breakthrough or a brute-force assault for each stage
+  - drawn lines clear a mist to reveal the image; animated CG rewards, CG gallery and memory mode
+  - `gals-panic` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/3673900) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=3673900)
+- **Seqix** (2025) — Windows — Studio Dejima (スタジオでじま)
+  - self-described 'nostalgic QIX-like game'; specific rules undocumented
+  - `qix` · corrected · medium
+- **Spellbound Beauties** (2025) — Windows — Lunar Kiss Games
+  - line cutting themed as a hero slashing cursed paintings with a legendary sword
+  - enemies, traps and patterns escalate in difficulty per level
+  - five maidens to free, each rewarded with frame-by-frame animation; gallery unlocks
+  - `qix` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/4003210) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=4003210)
+- **Star Panic: Cosmic Queens** (2025) — Windows — Euphoria Studios; published by Euphoria
+  - six boss captains, each with its own attack patterns, themed stage and special mechanics
+  - enemy projectiles and roaming hazards to dodge while drawing
+  - varied level layouts
+  - one hit destroys the ship
+  - `gals-panic` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/4065610) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=4065610)
+- **Gals Borderline: Daily Life of the Battle Princesses** (2026) — Browser, Windows — zanaerrgms
+  - Also known as: ギャルズボーダーライン 闘姫達の日常, ギャルズボーダーライン 闘姫達の日常【陣取りアクション】
+  - stage select by picking a spot on a city map
+  - fence in a glowing blue silhouette on a dark screen
+  - 75% clears; 90% or more unlocks a bonus video
+  - four special stages in the Windows version (4 characters x 9 scenes + 4 specials = 40 scenes; the web trial has 16 scenes)
+  - `gals-panic` · corrected · high · [zanaerrgms.itch.io](https://zanaerrgms.itch.io/gals-borderline)
+- **Jintori Fighters!!** (2026) — Windows, Android — moyasix; published by moyasix (DLsite)
+  - Also known as: ジントリファイターズ!!
+  - drag (mouse or touch) to claim territory, framed as a fight against a female character
+  - three bundled series, each with stages up to level 10, with more series planned
+  - album mode to view the images of cleared levels
+  - `qix` · confirmed · high
+- **Kanojo Panic** (2026) — Windows, Linux — Kukuri Soft
+  - support items such as Speed Up and Invincibility
+  - time limit per stage
+  - enemy patterns grow trickier in later stages; bosses with challenging skills
+  - some stages feature several characters
+  - 18 stages; full voice acting
+  - `gals-panic` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/4605700) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=4605700)
+- **Otokonoko Quix!** (2026) — PC download — ふぇざぁりんく; published by ふぇざぁりんく (DLsite exclusive, AI-generated works floor)
+  - Also known as: 男の娘クイックス！
+  - 13-stage structure
+  - full voice acting with music
+  - `qix` · corrected · medium
+- **PigTail Territory!!** (2026) — Windows, Android — moyasix; published by moyasix (DLsite)
+  - drag (mouse or touch) to fill territory
+  - three stages, each tied to one Live2D animation that unlocks when that stage is cleared up to level 3
+  - `qix` · corrected · high
+- **Project Uncover** (2026) — Windows, macOS, Linux — KUANG
+  - line drawing ('silhouette cutting') is automatic when leaving the safe zone; Space is a dash that escapes danger or captures territory instantly
+  - roguelike level-up upgrades: Dash, an auto Shield that blocks one hit, and Motor (permanent base speed increase)
+  - the boss evolves through three phases as the capture rate rises, with stronger bullet-hell patterns and neon colour shifts that warn of each phase
+  - an enemy touching the line in progress erases it
+  - 80% capture to clear; Easy/Normal/Hard presets; S-ranks, a trophy room and Steam leaderboards
+  - Custom Mode turns the player's own PNG/JPG images into stages
+  - `qix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/4575140) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=4575140)
+- **Shota Quix!** (2026) — PC download — ふぇざぁりんく; published by ふぇざぁりんく (DLsite exclusive, AI-generated works floor)
+  - Also known as: ショタクイックス！
+  - 12-stage structure
+  - full voice acting
+  - `qix` · corrected · medium
+- **Xonix Girls** (2026) — Browser — LiteBit; published by LiteBit (self-published on itch.io)
+  - a ship paints over territory to reveal a picture of a girl underneath (Gals Panic-style reveal on Xonix rules)
+  - hostile balls fly inside the unclaimed area, and touching one costs a life
+  - revealing 75% of the picture with 3 lives clears the level
+  - each higher level adds more balls
+  - `xonix` · corrected · high · [litebit.itch.io](https://litebit.itch.io/xonix-girls) · [itch.io](https://itch.io/games/newest/by-litebit.xml)
+- **Beauty Territory - Qix Fantasy** (unreleased (Steam: coming soon)) — Windows — Team AO
+  - hold Space and move with the arrow keys to draw; a single line can flip a large part of the board
+  - 85% clears the stage; 100% unlocks a special illustration and video
+  - claiming a huge area in one move strikes the boss directly; enough hits stun it, opening a window to expand safely
+  - gold earned from clears buys gear for harder stages
+  - 63 stages across six heroines, each stage with a regular and a special illustration; gallery replay
+  - `gals-panic` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/5470490/Beauty_Territory_Qix_Fantasy/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=5470490)
+- **Magic Lust Girls** (unreleased (announced; Steam 'Coming soon')) — Windows — Lunar Kiss Games
+  - levels filled with enemies and traps to dodge while claiming territory
+  - visual-novel scenes with characters met between levels
+  - journey structure toward the king's castle in a fantasy kingdom
+  - unlockable frame-by-frame animations and an art gallery
+  - `qix` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/4457760) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=4457760&l=english)
+
+## Home-computer versions and clones
+
+- **Zoid** (early 1980s (unpublished; written while Cohen was in high school, which he finished in 1984)) — Apple II Plus — David X. Cohen; published by unpublished (Broderbund rejected it)
+  - `qix` · corrected · low · [spectrum.ieee.org](https://spectrum.ieee.org/the-truth-about-benders-brain) · [en.wikipedia.org](https://en.wikipedia.org/wiki/David_X._Cohen) · [www.mobygames.com](https://www.mobygames.com/game/qix) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Graphic QIX** (1982) — NEC PC-8001 — Y.S. (initials only); published by Compaq (as listed by MAME); published in 'Maikon Game no Hon 3' (Kohgakusha)
+  - Also known as: グラフィック　ＱＩＸ
+  - `qix` · confirmed · low · [github.com](https://github.com/mamedev/mame/blob/master/hash/pc8801_cass.xml)
+- **Jeepers Creepers** (1982) — Atari 8-bit — James Albanese; published by Quality Software
+  - irregular grid of rectangles of varying sizes; recolouring all lines around a rectangle captures it, and the level ends when every line is coloured
+  - four named mazes: Number One, Scrambler, Brick Wall, Skull Run
+  - power-ups hidden in some rectangles and gained on capture: a jump that teleports the bug to a random point of the maze
+  - Beetle power-up: a beetle hunts one wasp and removes it on contact
+  - Super Beetle: 1-3 unmarked rectangles per level hide a faster beetle that eats several wasps
+  - optional 'coast' movement keeps the bug sliding along its path after the joystick is released
+  - wasps patrol the grid as enemies
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Jeepers_Creepers_%28video_game%29)
+- **Kid Grid** (1982) — Atari 8-bit, Commodore 64 — Arti Haroutunian (Tronix); published by Tronix
+  - capture all 35 squares of a fixed grid by turning all four of their sides from dotted to solid
+  - four pursuers (Moose, Squashface, Muggy, Thuggy) that look different but behave identically
+  - question marks appear at random in squares and give bonus points when that square is captured
+  - limited stun button briefly freezes the enemies so the player can pass through them (stand-in for Amidar's jump)
+  - selectable 3, 5 or 7 stuns per game and five difficulty levels
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Kid_Grid) · [gb64.com](https://gb64.com/game.php?id=4095&d=18&h=0)
+- **Night Flight** (1982) — Tomy Pyuta, MSX — Tomy
+  - Also known as: ナイトフライト, Qix (Italian MSX pirate rename, 1988)
+  - a plane flies over a city leaving a trail, and closing a rectangle fills it
+  - a lightning bolt sent by a thunder god chases you, and trapping it inside your filled area clears the level
+  - shooting stars cross the screen now and then as extra hazards
+  - an enemy touching the unfinished trail destroys the plane
+  - parachute bonus scene: steer a passing plane to catch your falling pilot for an extra life
+  - 2 players alternating
+  - `qix` · corrected · medium · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/96576-night-flight) · [generation-msx.nl](https://generation-msx.nl/software/tomy-company-ltd/night-flight/239) · [msx.org](https://msx.org/wiki/Linguaggio_Macchina_MSX_09) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Tomy_Tutor)
+- **Time Runner** (1982) — TRS-80, Atari 8-bit, Commodore 64 — Yves Lempereur; C64 port by Scott Maxwell and Troy Lyndon; published by Funsoft
+  - claim 20 rectangular boxes on a checkerboard field by tracing their edges
+  - two grid types alternate by phase: in one, a bonus counter drains while you trace and you keep what remains when every line is covered
+  - in the other grid type each box has its own point value, which starts draining once two of its sides are traced and stops when the box is closed
+  - the number of chasers grows with each phase
+  - three uses per game of a key that briefly paralyses all pursuers
+  - at set moments the chasers go blind and can be run into for extra points
+  - extra life every 10,000 points
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Time_Runner_%28video_game%29) · [archive.org](https://archive.org/stream/80-microcomputing-magazine-1983-04/80Microcomputing_0483_djvu.txt) · [gb64.com](https://gb64.com/game.php?id=7958&d=18&h=0)
+- **Colour Clash** (1983) — ZX Spectrum 16K — Ian Morrison, David J. Anderson; published by Romik Software (Microbyte re-release in Spain)
+  - Also known as: Rodillo, Pennellix
+  - Amidar-style grid painting; no source describes its mechanics in detail
+  - `amidar-painter` · confirmed · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/1019) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Crazy Painter (Superior Software)** (1983) — BBC Micro — Adrian Stephens; published by Superior Software
+  - Also known as: Amidar (pre-release)
+  - Amidar-style grid painting; no source describes its mechanics in detail
+  - `amidar-painter` · confirmed · medium · [bbcmicro.co.uk](https://bbcmicro.co.uk/game.php?id=131) · [bbcmicro.co.uk](https://bbcmicro.co.uk/game.php?id=2372)
+- **Crazy Tracer** (1983) — BBC Micro, Acorn Electron, 1984 — Walter Mansell; published by Acornsoft (catalogue G26)
+  - Amidar clone: the player traces the edges of a fixed rectangular lattice instead of cutting free-form areas, and a rectangle fills once its whole perimeter is traced
+  - `amidar-painter` · corrected · high · [bbcmicro.co.uk](https://bbcmicro.co.uk/game.php?id=132) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Acornsoft) · [bbcmicro.co.uk](https://bbcmicro.co.uk/game.php?id=224) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Cuthbert Goes Walkabout** (1983) — Dragon 32/64, TRS-80 Color Computer, Atari 8-bit, Commodore 64 — Steve Bak; published by Microdeal
+  - fill every square of a grid while avoiding monsters
+  - each level has a time limit; the grid must be finished before time runs out
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Cuthbert_Goes_Walkabout) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Damper** (1983) — ZX81 16K — M.P. Crane; published by Quicksilva
+  - Also known as: Damper/Glooper
+  - move around a power grid filling in squares; the database likens it to Zolyx with fixed pathways
+  - `amidar-painter` · confirmed · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/28796/ZX81/Damper) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/list?license_id=317)
+- **Demon Decorator** (1983) — BBC Micro — unknown; published by Micro Power (Program Power)
+  - Also known as: Painter (Program Power)
+  - Amidar-style grid painting; no source describes its mechanics in detail
+  - `amidar-painter` · confirmed · medium · [bbcmicro.co.uk](https://bbcmicro.co.uk/game.php?id=4)
+- **Fill 'Er Up!** (1983) — Atari 8-bit — Tom Hudson; published by ANALOG Computing (type-in, issue 10, Feb/Mar 1983); Calisto Software and A1 (Electric Starfish, UK); QuelleSoft (Starkstrom Seestern, Germany, 1984)
+  - Also known as: Electric Starfish, Starkstrom Seestern
+  - no border-running sparks at all
+  - a single drawing speed, without Qix's two-speed, two-point drawing
+  - `qix` · confirmed · high · [www.atarimania.com](https://www.atarimania.com/games/atari-400-800-xl-xe-games-fill-er-up-1963) · [www.atarimania.com](https://www.atarimania.com/games/atari-400-800-xl-xe-games-electric-starfish-1815) · [www.atarimania.com](https://www.atarimania.com/list_games_atari-400-800-xl-xe-arcade-qix_genre_39_8_G.html)
+- **Fill 'Er Up! II** (1983) — Atari 8-bit — Tom Hudson; published by ANALOG Computing (The ANALOG Compendium book, ISBN 0-914177-00-1)
+  - adds enemy sparklers that burn like fuses along the walls, which the first version lacked
+  - `qix` · confirmed · medium · [www.atarimania.com](https://www.atarimania.com/games/atari-400-800-xl-xe-games-fill-er-up-ii-1964) · [www.atarimania.com](https://www.atarimania.com/games/atari-400-800-xl-xe-games-fill-er-up-1963)
+- **Gridder** (1983) — VIC-20, Commodore 64 — R.W. Stevens; published by Microdigital
+  - trace the edges of each square to recolour it; the whole grid must be coloured
+  - some areas start already coloured solid and hide the player from chasers, so they work as shields
+  - chasers see the player only when on the same line, or when crossing the line the player is crossing
+  - fire button leaves a hole in the player's wake, which does not work when a chaser is right behind
+  - each grid has a time limit, and remaining time is added to the score
+  - 3 lives per grid, with extra lives carried over up to 9; 256 grids
+  - `amidar-painter` · corrected · high · [archive.org](https://archive.org/stream/Electronic_Games_Volume_02_Number_13_1984-07_Reese_Communications_US/Electronic_Games_Volume_02_Number_13_1984-07_Reese_Communications_US_djvu.txt) · [gb64.com](https://gb64.com/game.php?id=15983&d=18&h=0) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Oh Mummy** (1983) — Amstrad CPC, ZX Spectrum 16K, MSX, Tatung Einstein, Camputers Lynx — Gem Software; published by Gem Software; Amsoft (CPC)
+  - the player leaves a footprint trail, and fully enclosing a tomb box with footprints reveals its content: scroll, mummy, key, tomb, or nothing
+  - a level is cleared only after both the key and the tomb are uncovered
+  - a scroll lets the player kill one mummy on that level
+  - an uncovered mummy chases the player and carries over to the next level
+  - speed and difficulty rise each level
+  - turn-based multiplayer where players alternate levels
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Oh_Mummy) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/list?license_id=317)
+- **Painter (A'n'F Software)** (1983) — ZX Spectrum 48K, BBC Micro — ZX Incorporated (Spectrum); Doug Anderson (BBC Micro); published by A'n'F Software
+  - maze painting after Make Trax / Amidar; no source describes its mechanics in detail
+  - `amidar-painter` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/3588/ZX-Spectrum/Painter) · [bbcmicro.co.uk](https://bbcmicro.co.uk/game.php?id=86)
+- **Potty Painter** (1983) — ZX Spectrum 48K, Commodore 64, VIC-20 — J.F. Cain; published by Rabbit Software
+  - Also known as: Potty Painter in the Jungle
+  - join dotted lines around squares of different sizes; each square is worth different points
+  - 5 lives and 3 freezes; each freeze stops the enemies for about 10 seconds
+  - levels alternate between two themes: a monkey vs tribesmen and a paint roller vs teddy bears
+  - bonus round after a level: guide a teddy bear to a banana for 1,000 points
+  - `amidar-painter` · confirmed · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Potty_Painter) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/list?license_id=317)
+- **Qix (VIC-20, Wizardsoft)** (1983) — Commodore VIC-20 — Wizardsoft
+  - Also known as: Squeeze
+  - `qix` · confirmed · low · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_VIC-20_games)
+- **RollerBall** (1983) — Commodore 64 — David Selwood; published by Ocean
+  - the Qix is a single bouncing ball, trapped by claiming 75% or more of the field
+  - two 'Squeezer' enemies patrol the outlines of filled areas
+  - touching your own trail costs a life
+  - `qix` · corrected · medium · [gb64.com](https://gb64.com/game.php?id=6458) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/89251-rollerball) · [api.regvault.org](https://api.regvault.org/api/v1/game/c64/c6bc158d37f19b95fe117dc0b7bfb011) · [github.com](https://github.com/mamedev/mame/blob/master/hash/c64_cass.xml)
+- **Rollin** (1983) — Commodore 64 — Micke Nordström; published by Scand Soft (1983 original); Atlantis Software Ltd. (UK release, 1984 per GameBase 64)
+  - Amidar-model grid capture: the player traces the edges of a fixed rectangular lattice instead of cutting free-form areas, and a cell fills once its whole perimeter is traced (inferred from the GameBase 64 genre 'Arcade - Amidar'; no gameplay text found)
+  - `amidar-painter` · corrected · medium · [gb64.com](https://gb64.com/game.php?id=6464&d=18) · [gb64.com](https://gb64.com/game.php?id=6465&d=18) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Stix** (1983) — Commodore 64, BBC Micro — Andrew Trott; published by Supersoft (C64, BBC); Audiogenic (BBC); Keypunch Software (Kwixx, C64, 1985)
+  - Also known as: Qix, Quix, Kwixx
+  - Quark and anti-quark enemies walk the inner border of finished fields and destroy the synthesizer on contact
+  - stopping too long while drawing builds up energy until the synthesizer explodes
+  - finite fuel supply for the synthesizer
+  - holding fire draws slower and scores 20 points per 1% instead of 2
+  - leaving less area to Stix at level end scores more
+  - 75% clears a level
+  - a timer: running out ends the game regardless of lives, and losing a life refills it
+  - caught while drawing, you restart where the line began, and a nearby quark can cost another life at once
+  - player-adjustable movement speed (cursor up/down slower, left/right faster)
+  - `qix` · corrected · high · [www.c64-wiki.com](https://www.c64-wiki.com/wiki/Stix_%28Supersoft%29) · [gb64.com](https://gb64.com/game.php?id=7432) · [gb64.com](https://gb64.com/game.php?id=24672) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=393)
+- **Styx** (1983) — IBM PC/XT — Windmill Software
+  - Also known as: Styx Remastered (1998 Andrew Jenner port)
+  - 8-way movement: Stix can be drawn diagonally, not only orthogonally
+  - stopping or leaving a line unfinished is fatal (HOTU: the Fuse catches you)
+  - the border enemy is a dotted 'caterpillar' (Sparx equivalent) that is faster than in the arcade; a second one runs the opposite way from level 2
+  - from level 4 the caterpillars grow longer continuously; one trapped in a filled area, or a lost life, resets them to small size
+  - from level 3 there are two smaller, slower Styx, and separating them makes one disappear
+  - the score multiplier cycles over time by colour (blue 1x, red 5x, green 10x points per 0.1% filled), so timing a claim matters
+  - 80% clears a level, with a 1,000-point bonus per full percent above 80%
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Styx_%28Windmill_game%29) · [homeoftheunderdogs.net](https://homeoftheunderdogs.net/game.php?name=Styx) · [www.digger.org](https://www.digger.org/styx/) · [www.digger.org](https://www.digger.org/styx/howplay.htm)
+- **Super Gridder** (1983) — Commodore 64 — R.W. Stevens; published by Terminal Software
+  - Amidar-style grid capture (GameBase 64 genre tag); no source describes its mechanics in detail
+  - `amidar-painter` · corrected · medium · [gb64.com](https://gb64.com/game.php?id=7582&d=18&h=0) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_Commodore_64_games_%28N–Z%29)
+- **Traxx** (1983) — VIC-20, ZX Spectrum 48K — Salamander Software (designed by Jeff Minter); published by Quicksilva
+  - paint every section of a rectangular grid by moving along it; the level ends when the whole grid is painted
+  - unlike Amidar, rectangles are not filled when surrounded, so only line coverage counts
+  - options set the game speed and the number of enemies on screen
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Traxx_%28video_game%29) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Jeff_Minter)
+- **Xonix (Apple II, Matthias Gerhardt)** (1983 (in-game copyright line)) — Apple II — Matthias Gerhardt (the disk spells it 'MATTHIAS GERHARDT' and 'M.GERHARDT'; Wikipedia's 'Matthais' is a typo); published by none credited on the disk (no commercial publisher found; it circulated on compilation disks)
+  - Also known as: XONIX
+  - area capture tracked by an AREA counter on the HUD ('SCORE 00000 -- AREA 000 - STICKS 2')
+  - lives shown as 'STICKS', a possible nod to Qix's Stix
+  - high-score table ('HISCORE TRY IT !!')
+  - `xonix` · rescued · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_Apple_II_games) · [www.apple.asimov.net](https://www.apple.asimov.net/site_files.txt) · [www.apple.asimov.net](https://www.apple.asimov.net/images/games/file_based/Xonix,%20Pooyan.dsk) · [www.apple.asimov.net](https://www.apple.asimov.net/images/non-english/italian/games/adventure/Lucrezia_Xonix_RasterBlaster.dsk)
+- **Doodlebug** (1984) — BBC Micro — Scott Maxwell; published by A&B Computing (Argus Specialist Publications), January/February 1984 type-in
+  - you draw rectangles up from the filled bottom of the screen; a finished rectangle fills its whole bounding box down to the floor, and the level is won when the fill reaches the top of the screen
+  - score per rectangle grows with its height and width and is multiplied by the level number
+  - the Bug bounces around the open area and kills you only if it touches the line of an unfinished rectangle; at higher levels it turns towards your cursor more often
+  - Blips (from level 2): a 10-step countdown (about 2.5 s) starts at random, more often at higher levels, and you lose if you do not finish a rectangle before it ends
+  - no lives: a failure divides the score by 1.5 and replays the level, and a cleared screen multiplies the score by 1.5 and moves you up a level
+  - `qix` · confirmed · high · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=1336) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/gameimg/discs/1336/Disc075-Doodlebug.ssd)
+- **Frenzy** (1984) — BBC Micro, Acorn Electron, Commodore 64 — Walter Mansell (BBC); N.J. Hallas (C64); published by Micro Power
+  - Also known as: Fotone (Italian C64 rename, 1986)
+  - the smaller enclosed area is always the one filled, so Leptons trapped there are killed
+  - levels usually end by killing all Leptons rather than by reaching a percentage; all count as captured once 95% of the screen is filled
+  - Leptons move in regular, deterministic patterns
+  - Chasers on higher levels kill the craft on contact
+  - the craft can pause briefly
+  - 2x score multiplier for areas filled using only the slow speed
+  - extra craft after screens 3, 6 and 9
+  - up to five Leptons and five Chasers; levels 12 and 14 have fewer but much faster Leptons and no Chasers
+  - 14 unique levels, after which the last two screens repeat indefinitely
+  - `qix` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Frenzy_%281984_video_game%29) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=224) · [gb64.com](https://gb64.com/game.php?id=2927) · [gb64.com](https://gb64.com/game.php?id=21207)
+- **Hooper** (1984) — Commodore 64 — Mak Jukic; published by Calisto Software Ltd.
+  - Amidar-model grid capture: trace the edges of a fixed rectangular lattice, and a cell fills once its whole perimeter is traced (inferred from the GameBase 64 genre 'Arcade - Amidar'; no gameplay text found)
+  - `amidar-painter` · corrected · medium · [gb64.com](https://gb64.com/game.php?id=3580&d=18&h=0) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Painting Joe** (1984) — ZX Spectrum 16K/48K — J.P. Le Clezio; published by ERE Informatique
+  - Amidar-inspired grid painting (Spectrum Computing lists Amidar as its inspiration; no gameplay description found)
+  - `amidar-painter` · confirmed · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/42073/ZX-Spectrum/Painting_Joe) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/list?license_id=317)
+- **Pesky Painter** (1984) — Commodore 64 — John Twiddy; published by Supersoft
+  - Also known as: Amigo Painter
+  - Amidar-model grid capture: trace the edges of a fixed rectangular lattice, and a cell fills once its whole perimeter is traced (inferred from the GameBase 64 genre 'Arcade - Amidar'; no gameplay text found)
+  - `amidar-painter` · corrected · medium · [gb64.com](https://gb64.com/game.php?id=5641&d=18) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Qiks** (1984) — TRS-80 Color Computer — Ryan Olsen; published by Spectral Associates
+  - Also known as: QIKS
+  - `qix` · corrected · high · [lcurtisboyle.com](https://lcurtisboyle.com/nitros9/qiks.html) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix)
+- **Qixi** (1984) — Sharp MZ-700 — "AS" (author initials on the title screen); published by BBG-Software (Ahrensburg, West Germany)
+  - Also known as: QUIXI
+  - player marker moves along the border of a walled rectangular playfield (seen on the bottom edge in the in-game screenshot)
+  - player draws a dotted trail from the border into the open field (Qix-style stix)
+  - Qix-like enemy made of bouncing coloured line segments roams the open field
+  - Sparx-like creature patrols the border near the player
+  - controls: cursor keys plus space bar or Z, apparently Qix's draw buttons
+  - `qix` · rescued · medium · [github.com](https://github.com/mamedev/mame/blob/master/hash/mz700_cass.xml) · [www.sharpmz.net](https://www.sharpmz.net/mz-700/dldgames.htm) · [www.sharpmz.net](https://www.sharpmz.net/mz-700/quixi.html) · [www.sharpmz.net](https://www.sharpmz.net/mz-700/images/quixis1.gif)
+- **Quix (CoCo)** (1984) — TRS-80 Color Computer — Claude R. Gagnon (original prototype by Steve Ostrom); published by Tom Mix Software
+  - Also known as: Quix
+  - `qix` · corrected · high · [lcurtisboyle.com](https://lcurtisboyle.com/nitros9/quix.html) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix)
+- **Squares (BBC Micro, Your Computer type-in)** (1984) — BBC Micro — Keith Miles; published by Your Computer (IPC Electrical-Electronic Press Ltd.), magazine type-in, vol. 4 issue 4, April 1984
+  - Amidar-genre grid capture (bbcmicro.co.uk secondary genre 'Amidar'; no gameplay description found)
+  - `amidar-painter` · confirmed · medium · [bbcmicro.co.uk](https://bbcmicro.co.uk/game.php?id=1383)
+- **Statix** (1984) — BBC Micro — Psion (programmer uncredited); published by Psion
+  - areas drawn at slow speed score triple points (Qix gives double)
+  - `qix` · confirmed · high · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=647) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/gameimg/discs/647/Disc036-Statix.ssd)
+- **Xonix** (1984) — MS-DOS — Dani Katz and Ilan Rav (spelled 'Ilan Raab' in English Wikipedia); published by none (non-commercial; spread by copying)
+  - Also known as: סוגר שטחים (Hebrew nickname: 'area closer'), Ксоникс (Russian spelling)
+  - the grid is split into claimed 'land' and open 'sea'; the cursor moves freely on land and leaves a trail only in the sea
+  - sea balls move diagonally and bounce off land and off each other; a ball touching the trail costs a life
+  - land enemies (a square 'spider') roam the claimed land, so the player is not safe there either
+  - returning to land turns the trail into land and fills every sea pocket that holds no ball; pockets with a ball stay sea, and only the trail is converted
+  - a set land percentage clears the level (75% per old-games.ru; Hebrew Wikipedia says the required share rises by level)
+  - each new level adds one more ball, and balls get faster
+  - `xonix` · corrected · high · [he.wikipedia.org](https://he.wikipedia.org/wiki/Xonix) · [uk.wikipedia.org](https://uk.wikipedia.org/wiki/Xonix) · [kaweah.freedombox.rocks](https://kaweah.freedombox.rocks/kiwix/wikipedia_en_all_maxi_2023-10/Xonix) · [archive.org](https://archive.org/details/msdos_Xonix_1984)
+- **Antix** (1985) — Elektronika 60, MS-DOS — Dmitry Pavlovsky (English Wikipedia adds Vadim Gerasimov; Hebrew Wikipedia credits Alexey Pajitnov); published by none (non-commercial)
+  - Also known as: AntiXonix, Antixonix
+  - inverted Xonix: the field starts filled, and the goal is to clear a set percentage of it
+  - balls bounce through the field and cost a life if they hit the player's line or the player
+  - diamond-shaped enemies move hidden beneath the still-filled surface, invisible until they emerge, and kill on contact
+  - level 1 starts with two balls and one diamond, and another diamond spawns after a while, which punishes stalling
+  - later levels add enemies (MobyGames: one more ball per level), and ball speed rises over time
+  - speed 1-9 chosen before play; the HUD shows score, percent cleared, lives and enemy count; high-score table
+  - `xonix` · corrected · medium · [archive.org](https://archive.org/details/msdos_AntiXonix_1985) · [www.old-games.ru](https://www.old-games.ru/game/5041.html) · [kaweah.freedombox.rocks](https://kaweah.freedombox.rocks/kiwix/wikipedia_en_all_maxi_2023-10/Xonix) · [he.wikipedia.org](https://he.wikipedia.org/wiki/Xonix)
+- **Aree** (1985) — Commodore 64 — Andrew Trott (original Stix, Supersoft 1983); published by Pubblirome (Super Game 2000 no. 3, April 1985; also on Top 30 no. 2 and Top 100 no. 1)
+  - Also known as: Stix
+  - `qix` · corrected · medium · [gb64.com](https://gb64.com/game.php?id=15412) · [gb64.com](https://gb64.com/game.php?id=7432)
+- **Blade Runner (C64, WizardSoft)** (1985) — Commodore 64 — Scott Maxwell and Troy Lyndon; published by WizardSoft
+  - Time Runner's grid capture, claiming boxes by tracing their edges; it is listed as a clone of Time Runner
+  - `amidar-painter` · corrected · medium · [www.gb64.com](https://www.gb64.com/game.php?id=17214&d=18&h=0) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Hefro-Karo** (1985) — ZX Spectrum 48K — Alex Henrich; published by Happy Computer (German magazine type-in, issue #20, June 1985, p. 83)
+  - Amidar-inspired grid capture (Spectrum Computing lists Amidar as its inspiration; no gameplay description found)
+  - `amidar-painter` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/44174/ZX-Spectrum/Hefro-Karo) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/list?license_id=317)
+- **Qix (ZX Spectrum, PCW type-in)** (1985) — ZX Spectrum 16K/48K — Y. Yu; published by Personal Computer World (type-in, February 1985 issue, p. 250)
+  - Also known as: Spectrum Qix
+  - the Qix is a five-segment line that wanders at random early on but homes in on the player while drawing, more often as claimed area grows, and always from screen 4 onwards
+  - one life is restored after each cleared screen, up to a maximum of 3
+  - `qix` · confirmed · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/42449/ZX-Spectrum/Qix) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/zxdb/sinclair/entries/0042449/Qix.tzx.zip)
+- **Squares (Computronic type-in)** (1985) — ZX Spectrum 48K — Zuheir Urwani; published by Computronic (German magazine type-in, Nov 1985 special issue '11 & 12')
+  - Amidar-inspired grid capture (Spectrum Computing lists Amidar as its inspiration; no gameplay description found)
+  - `amidar-painter` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/4796/ZX-Spectrum/Squares) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/list?license_id=317)
+- **Territoire** (1985) — Thomson MO5 — unknown; published by Logimicro (France)
+  - two snakes each mark out their own terrain; whoever encloses the most area wins
+  - `io-territory` · confirmed · medium · [dcmoto.free.fr](http://dcmoto.free.fr/programmes/territoire/index.html)
+- **Kix (BBC Micro)** (1986) — BBC Micro — Alwin Adolf (credited in-game as AGA); published by Superior Software (Superior Collection Volume 2)
+  - Also known as: Kix
+  - 20 quadrants (scenes), each needing 75% coverage
+  - in two-Sparkler scenes, a line that separates the Sparklers wins the quadrant at once and earns a split bonus (100 quick or 1000 slow)
+  - each screen has a time limit shown as a bar, and the time left is paid out as a bonus
+  - slow drawing is worth 10x quick drawing (30 vs 3 points per percent)
+  - up to four Tracers patrol the lines, and some scenes have two fast-moving Sparklers
+  - `qix` · corrected · high · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=458) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/gameimg/discs/458/Disc026-Kix.ssd)
+- **Panel Panic** (1986) — MSX — Aackosoft
+  - Also known as: Panel Panique
+  - grid capture (listed by Wikipedia under Amidar-style 'grid capture games'; no gameplay description found)
+  - `amidar-painter` · confirmed · medium · [www.msxgamesworld.com](https://www.msxgamesworld.com/software.php?id=1273) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Squixx** (1986) — Atari ST — Michael Kolb; published by none (public domain/freeware)
+  - `qix` · confirmed · medium · [www.atarimania.com](https://www.atarimania.com/games/atari-st-games-squixx-39402) · [www.atarimania.com](https://www.atarimania.com/list_games_atari-st-arcade-qix_genre_39_S_G.html)
+- **Torch 2081** (1986) — Amiga — Digital Concepts
+  - a fuel gauge limits flight time, and leftover fuel turns into points at the end of the level
+  - you cannot travel along edges shared by two built panels, only along the outer perimeter and panel edges that face open space
+  - stopping while building a panel makes the construction line unstable and destroys the glider (this replaces Qix's Fuse)
+  - the Fireball (the Qix) changes speed and course to evade you
+  - the Fireball releases Spitfires that fly straight at you and become more dangerous in later levels
+  - every fifth level is a bonus level with two identical Fireballs: separating them raises the bonus multiplier, while capturing both gives a bonus glider and points but no multiplier
+  - the starting difficulty rank is chosen on the title screen
+  - `qix` · confirmed · high · [www.gamesdatabase.org](https://www.gamesdatabase.org/Media/SYSTEM/Commodore_Amiga/Manual/formated/Torch_2081_-_1988_-_Digital_Concepts.htm) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix)
+- **Omidar** (1987) — Commodore 64 — Profiteam (programmers Thomas H. Kolbe and Zuheir Urwani); published by Markt & Technik (Happy Computer magazine type-in, issue 1987/12)
+  - Amidar-model grid capture: trace the edges of a fixed rectangular lattice, and a cell fills once its whole perimeter is traced (Wikipedia lists it as an Amidar clone; GameBase 64 genre 'Arcade - Amidar')
+  - `amidar-painter` · corrected · medium · [gb64.com](https://gb64.com/game.php?id=5382&d=18) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Amidar)
+- **Qix (Tilt type-in)** (1987) — ZX Spectrum 48K — M. V. Elias, refined by Erick Caberia; published by Tilt magazine (France), issue 3, March 1987 listings special '240 pages de listings', p. 188
+  - Also known as: Qix (ZX Spectrum, Tilt type-in), Fool-Line
+  - there is no line drawing: one key per side pushes each of the four playfield walls inward 2 pixels, scoring 1 point per push
+  - a bouncing 'crazy line' (ligne folle) moves inside the box, and if it touches the wall you last moved you lose 0-19 points at random; there are no lives
+  - a level is cleared at 150 points, and the line speeds up each level
+  - `qix` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/37171/ZX-Spectrum/Qix) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/zxdb/sinclair/entries/0037171/Qix.tap.zip)
+- **Xonix (A. Surna)** (1987) — ZX Spectrum 48K — A. Surna (Lithuania); published by A. Surna (self-published freeware)
+  - `xonix` · confirmed · high · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/5799/ZX-Spectrum/Xonix)
+- **Xonix (Radio-86RK / Mikrosha)** (c. 1987) — Radio-86RK, Mikrosha — unknown
+  - Also known as: Ксоникс, XONIX
+  - `xonix` · confirmed · medium · [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Радио-86РК) · [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Микроша) · [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Диверсант_%28игра%29) · [github.com](https://github.com/mamedev/mame/blob/master/hash/radio86_cass.xml)
+- **Zolyx** (1987) — Commodore 64, Commodore 16/Plus-4, Amstrad CPC, ZX Spectrum — Zoltán Tass (design and C64/C16 code; Plus/4 page also credits Gábor K. Kádas); ZX Spectrum version by Pete Cooke; CPC conversion by Lynsoft UK (B.J. Polausca); published by Firebird
+  - Also known as: Line Out! (Plus/4, Edisoft compilation, 1988), X-lines, Crazy Lines
+  - no Qix: several balls bounce inside the unclaimed area, and a ball touching the cursor or an unfinished line costs a life
+  - enemy dots also roam the claimed area and kill on contact (Pelit: 2 in the open area and 2 in the claimed area at the start; Sinclair User: a larger blob chases you round the perimeter)
+  - touching your own unfinished trail is fatal
+  - at least 75% must be filled within a time limit, with bonus points for every percent above 75%
+  - one extra ball is added each level
+  - ZX Spectrum only: if an open line is kept going too long, a chaser ball comes up behind the cursor, capping line length
+  - a limited stock of 'reverses' (a Plus/4 trainer offers unlimited reverses; the effect is undocumented)
+  - `xonix` · corrected · high · [plus4world.powweb.com](https://plus4world.powweb.com/software/Zolyx) · [plus4world.powweb.com](https://plus4world.powweb.com/software/Line_Out) · [gb64.com](https://gb64.com/game.php?id=8892) · [www.cpc-power.com](https://www.cpc-power.com/index.php?page=detail&num=1250)
+- **Maniax** (1988) — Atari ST, Amiga, Commodore 64, Commodore 16/Plus-4 — Marc Ebner, with graphics by Wagner Bros (Atari ST); Jörg Dierks (C64, Plus/4); published by Kingsoft; Anco Software (European Atari ST release)
+  - fenced-off areas reveal parts of photographs of cities around the world
+  - letters fly around the field, and catching them (through a 'W' bonus tile) is meant to spell out the pictured location; this feature was left unfinished on Plus/4
+  - death's-head and flame hazards (Plus/4)
+  - two-player mode (C64)
+  - `qix` · corrected · high · [www.atariuptodate.de](https://www.atariuptodate.de/de/12482/maniax) · [plus4world.powweb.com](https://plus4world.powweb.com/software/Maniax) · [gb64.com](https://gb64.com/game.php?id=4579) · [www.atarimania.com](https://www.atarimania.com/list_games_atari-st-arcade-qix_genre_39_S_G.html)
+- **Power Styx** (1988) — Amiga — unknown; published by Magic Bytes / Axxion
+  - Also known as: Powerstyx
+  - closing shapes with the energy trail uncovers a hidden picture; 15 levels with a 75% target
+  - monsters roam both the uncovered and the unrevealed areas
+  - bonus symbols appear in newly uncovered space and give an extra life, more time, points or speed, or instant death
+  - letters collected along the bottom of the screen win the level outright once they spell the full word
+  - `qix` · corrected · medium · [dazeland.com](https://dazeland.com/en/Amiga/Power_Styx.html) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/109689-powerstyx)
+- **Shocker** (1988) — BBC Micro — Michael Goodchild; published by Brilliant Computing
+  - the player moves only around the edge of the tank, using two switches (left and right)
+  - the fire button sends a straight line across the tank to bisect it (the screenshot shows the line part-way across)
+  - after a cut, every eel left in the smaller half is deactivated, scoring 100 points each, so the game discards the smaller part instead of the part without the enemy
+  - electric eels swim in the open water and their bite is lethal
+  - an optional 'blue reptile' creeps along the water's edge, like Sparx (switched on or off in the options)
+  - per-player settings for game speed (fast, medium or slow) and how fast the eel moves compared with the man (same or faster)
+  - 1 player, or 2 players with the same or different settings
+  - three-input accessible controls: Space, Z and X keys, or switches wired to the user port or the analogue port
+  - `qix` · corrected · high · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=4102) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=4079) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/gameimg/discs/4102/Disc164-ShockerArcadeAdventure.ssd) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/gameimg/screenshots/4102/Disc164-ShockerArcadeAdventure.jpg)
+- **Skyx** (1988) — Amstrad CPC — Legend Software (code Alain Dubois, Eric Jourdan; graphics Alain Dubois, Didier Quentin; scenario Olivier Moraze); published by Legend Software
+  - Zolyx-style capture combined with a Gauntlet-inspired adventure mode
+  - choose one of four characters with their own traits (warrior, mage, elf, acrobat): the elf is very fast and the mage has a protective shield
+  - a spark chases you as soon as you start drawing and catches you if the area you draw is too large
+  - a green alien (or mask) moves fast across the screen and kills instantly if it touches the line you are drawing
+  - other enemies travel along the lines you have already drawn
+  - a witch works to limit your territory
+  - pickups: apples regenerate you or give more time, 'Flums' give an extra life, and harmful 'Gnaps' potion bottles make you behave strangely, so not every pickup should be taken
+  - 20 different screens
+  - `xonix` · corrected · medium · [www.cpc-power.com](https://www.cpc-power.com/index.php?page=detail&num=1958) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/125814-skyx) · [www.cpcgamereviews.com](https://www.cpcgamereviews.com/s/12/)
+- **Striker (MicroHobby type-in)** (1988) — ZX Spectrum 48K — Octavio Campos Barroso; published by MicroHobby (Spanish magazine type-in, issue #166, March 1988); reissued on the compilation Spectrum Collection 1 (Ignacio Prini Garcia, 1989)
+  - Amidar-inspired grid capture (Spectrum Computing lists Amidar as its inspiration; no gameplay description found)
+  - two players taking turns
+  - `amidar-painter` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/17825/ZX-Spectrum/Striker)
+- **Trix** (1988) — Amiga — G. Hales; published by none (public domain/shareware)
+  - the required fill level (60% at first) rises as the game goes on, and points are scored for filling beyond it
+  - `qix` · corrected · medium · [amigaboing.net](https://amigaboing.net/2021/03/04/trix/) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix)
+- **Zoom!** (1988) — Amiga, Commodore 64, MS-DOS, Sega Genesis / Mega Drive — Discovery Software; published by Discovery Software (Genesis: Sega)
+  - edge painting instead of area cutting: skate along the gridlines of 36 faux-3D isometric boards; each skated line changes colour, and a tile flashes once all its edges are coloured
+  - clear condition is 100%: a board ends only when every line has been skated
+  - Spiler enemies erase lines the player has already coloured, undoing progress
+  - some enemy contacts slow the player instead of costing a life (Space Phantoms, Rowdy Fingers)
+  - limited ammunition: a supply of rubber balls to shoot enemies
+  - pickups: hourglass freezes all enemies, sun gives temporary invincibility, bananas slow some enemies, ribbon candy gives points
+  - completing a board kills all its enemies
+  - two players at once
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Zoom!) · [gb64.com](https://gb64.com/game.php?id=8904&d=18)
+- **Alien Blockade** (1989) — Atari ST — David Scantlebury (The Bombout Brothers); published by none (public domain / freeware)
+  - enclosed areas reveal part of a background picture
+  - the background pictures are external Degas or Neochrome files, so players can swap in their own; the number of pictures is limited only by memory and disk space
+  - 'tracers' that move along the border are added on later levels
+  - a countdown timer runs, and letting it run out costs a life
+  - one large area scores more than several small ones
+  - bonus for enclosing the alien energy field or a tracer
+  - time bonus at the end of each level; an extra life every 10,000 points
+  - `qix` · confirmed · high · [www.atarimania.com](https://www.atarimania.com/games/atari-st-games-alien-blockade-11026)
+- **Bally III** (1989) — Amiga — Oliver Wagner; published by none (freely distributable; Fish collection)
+  - `qix` · corrected · low · [aminet.net](http://aminet.net/package/game/misc/BallyIII) · [aminet.net](http://aminet.net/game/misc/BallyIII.readme) · [aminet.net](http://aminet.net/package/game/misc/Bally) · [www.lemonamiga.com](https://www.lemonamiga.com/game/bally-3)
+- **Electro Bingo** (1989) — ZX Spectrum 48K — unknown; published by Sinclair User (covertapes: issue 87 Megatape 16, June 1989; issue 88 Megatape 17, July 1989; issue 89 Megatape 18)
+  - Also known as: Electro Bingo 2, Electro Bingo 3
+  - maze painting in the Make Trax model (Spectrum Computing lists Make Trax as its inspiration; no gameplay description found)
+  - `amidar-painter` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/1590/ZX-Spectrum/Electro_Bingo) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/1591/ZX-Spectrum/Electro_Bingo_2) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/list?license_id=624)
+- **Graffity** (1989) — ZX81 16K — Carlo Delhez
+  - Amidar-style grid capture: surround every square with paint to clear the board
+  - cleaner enemies wipe paint off already-painted edges, undoing the player's progress
+  - `amidar-painter` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/28936/ZX81/Graffity) · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/list?license_id=624)
+- **Illgen** (1989) — Commodore 64 — Sebastian Broghammer (Byteriders); graphics Phillip Bergmann & D. Oppelt; music Stefan Hartwig; published by Markt & Technik / 64'er (magazine disk, 1990)
+  - two players claim territory at the same time on one field, each with their own score, lives and 'power' bar
+  - the HUD shows a 'time pointer' bar beside a 'screen filled' bar
+  - `qix` · corrected · medium · [gb64.com](https://gb64.com/game.php?id=3715) · [csdb.dk](https://csdb.dk/release/?id=148499) · [hiddenpalace.org](https://hiddenpalace.org/Illgen_%28demo%29) · [videogamegeek.com](https://videogamegeek.com/videogame/160777/illgen)
+- **FANCY QIX** (1990) — Sharp X68000 — A.H.S.; published by A.H.S. (doujin / homebrew)
+  - Also known as: Fancy Qix
+  - claimed sections reveal a hidden background picture
+  - the marker has a strength meter: each enemy collision drains it instead of costing a life outright, and the marker is destroyed when it runs out
+  - barriers block some areas, so Stix cannot be drawn through them
+  - target percentage to clear, with score added for every percent beyond it
+  - `qix` · corrected · medium · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/140099-fancy-qix)
+- **Tokimeki Cherry Box** (1990) — unknown — D.O.
+  - Also known as: ときめきチェリーボックス
+  - `qix` · confirmed · low · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ディーオー)
+- **XONIX (Spektr-001)** (c. 1990) — Spektr-001 — unknown
+  - `xonix` · confirmed · low · [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Спектр-001_%28компьютер%29)
+- **Strong Lines** (1991) — Atari ST — WSP (Horst Weidle, Andreas Epple); published by ST Deluxe Disk Magazine (coverdisk)
+  - claimed areas reveal a digitised photograph (animals such as a monkey and a rabbit)
+  - the difficulty setting is the fill target to clear a level: 75%, 80%, 85% or 90%
+  - a countdown timer runs in the HUD next to the fill %, score, lives and level
+  - `qix` · confirmed · medium · [www.atarimania.com](https://www.atarimania.com/games/atari-st-games-strong-lines-36055) · [www.atarimania.com](https://www.atarimania.com/st/screens/strong_lines_st_deluxe_disk_magazine.png)
+- **Xonix (C&C)** (1991) — ZX Spectrum 48K — C&C (Russia); published by C&C (self-published freeware)
+  - `xonix` · confirmed · high · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/13137/ZX-Spectrum/Xonix)
+- **Bally Five** (1992) — Amiga — unknown (probably Oliver Wagner)
+  - `qix` · confirmed · low · [aminet.net](http://aminet.net/package/game/actio/BallyFive) · [aminet.net](http://aminet.net/game/actio/BallyFive.readme) · [aminet.net](http://aminet.net/package/game/misc/BallyIII)
+- **Smiley** (1992) — Atari ST — Yeti Software (Hermann Friedhoff); published by PD Pool
+  - an options menu sets the number of players, 'Smileys' (probably lives), monsters, speed, and the starting fill target (65% shown)
+  - a 'random pictures' option shuffles the order of the level pictures; the HUD counts pictures ('Bild 1/…')
+  - `qix` · confirmed · medium · [www.atarimania.com](https://www.atarimania.com/games/atari-st-games-smiley-39168) · [www.atarimania.com](https://www.atarimania.com/st/screens/smiley_1_6_pd_pool.png)
+- **Mega Xonix** (1994) — ZX Spectrum 128K — Dimitry Volvach (Ukraine); published by Dimitry Volvach (self-published freeware)
+  - `xonix` · confirmed · high · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/12945/ZX-Spectrum/Mega_Xonix)
+- **Robo Xonix** (1994) — ZX Spectrum 128K — Chemist Soft (Russia); published by Chemist Soft (self-published freeware)
+  - `xonix` · confirmed · high · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/13033/ZX-Spectrum/Robo_Xonix)
+- **Xonix (Vlad Corp)** (1994) — ZX Spectrum 48K — Vlad Corp (Russia); published by Vlad Corp (self-published freeware)
+  - `xonix` · confirmed · high · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/13138/ZX-Spectrum/Xonix)
+- **Kwiks** (1995) — Atari Falcon030 — Digital Nightmares (Michael Haar); published by none (public domain)
+  - claimed areas reveal a true-colour photograph (e.g. a desert landscape); the HUD shows level, fill %, lives and points
+  - up to four players, chosen with F1-F4 on the title screen (turn order not described)
+  - `qix` · confirmed · medium · [www.atarimania.com](https://www.atarimania.com/games/atari-st-games-kwiks-falcon030-28648) · [www.atarimania.com](https://www.atarimania.com/st/screens/kwiks_[falcon030]_[no_publisher].png)
+- **Kumquat** (1996) — Amiga — Dave Schofield; published by self-published shareware (demo on an Amiga Format coverdisk)
+  - clone of the C64 game Zolyx: fill a set amount of the screen without being hit by any of the enemy dots
+  - `qix` · corrected · high · [aminet.net](http://aminet.net/package/game/misc/Kumquat) · [aminet.net](http://aminet.net/game/misc/Kumquat.readme) · [aminet.net](http://aminet.net/game/misc/kumquat_demo.readme)
+- **AQuix** (1997) — Amiga — Heiko Mueller (RelaySoft); published by none (AFD-Mailware, Aminet)
+  - the player dot moves freely on the frame and on claimed area; when it leaves, it turns into a 'Quix' that draws a trail
+  - red star-shaped enemy Quixes bounce in the open area and destroy the player or trail on contact (one life); one more each level
+  - pressing SPACE reverses every enemy Quix's direction, the player's only defence
+  - only regions with no enemy Quix are filled; separating two enemy Quixes with one cut gives a 500-point bonus
+  - points by the size of each area cut off; extra points and an extra life for finishing a level with more than 75% filled
+  - a level is complete at 75%
+  - runs in a MUI window on any public screen; the real-time high-score list scrolls the current position upward as the score rises
+  - game state can be saved and loaded; colours of game elements are configurable
+  - `xonix` · corrected · high · [aminet.net](http://aminet.net/package/game/wb/AQuix) · [aminet.net](http://aminet.net/game/wb/AQuix.readme) · [aminet.net](http://aminet.net/game/wb/AQuix.lha)
+- **Lady in Love** (1998) — ZX Spectrum 48K — Bolivar di Griz and dr. Stanley; published by Crystal Dream (Ukraine)
+  - Also known as: Lady in Love \[CENSORED\] (ZXDB display title)
+  - `volfied` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/21065/ZX-Spectrum/Lady_in_Love)
+- **3Quarter** (unknown) — NEC PC-8001 — unknown
+  - Also known as: 3Qurter
+  - `qix` · confirmed · medium · [hachibitto.com](https://hachibitto.com/jvcc/articles/view_article.php?id=377)
+- **Atock** (unknown (198x)) — Commodore 64 — Ducksoft (Ingo Massalski, Heiko Schröder); published by S+S Soft Vertriebs GmbH
+  - `qix` · confirmed · medium · [gb64.com](https://gb64.com/game.php?id=24576) · [gb64.com](https://gb64.com/Screenshots/A/Atock.png)
+- **Colour Qix** (198x) — EACA Colour Genie EG2000 — Veit Wagner
+  - `qix` · confirmed · low · [github.com](https://github.com/mamedev/mame/blob/master/hash/cgenie_cass.xml)
+- **Ksoniks** (unknown) — Partner 01.01 — unknown
+  - Also known as: Xonix (Partner 01.01)
+  - `xonix` · confirmed · low · [github.com](https://github.com/mamedev/mame/blob/master/hash/partner_cass.xml) · [github.com](https://github.com/mamedev/mame/blob/master/hash/radio86_cass.xml)
+- **Qix (KC 85/2-4)** (unknown) — Robotron KC 85/2-4 — unknown
+  - Also known as: Qix (KC 85)
+  - `qix` · confirmed · low · [de.wikipedia.org](https://de.wikipedia.org/wiki/Qix)
+- **Xonix (Elektronika BK-0010)** (unknown) — Elektronika BK-0010 — unknown
+  - Also known as: XONIX1, XONIX5
+  - `xonix` · confirmed · low · [github.com](https://github.com/mamedev/mame/blob/master/hash/bk0010.xml)
+- **Xonix (Lviv PK-01)** (unknown) — Lviv PK-01 — unknown
+  - `xonix` · confirmed · low · [github.com](https://github.com/mamedev/mame/blob/master/hash/lviv.xml)
+- **Xonix (Micron)** (unknown) — Mikrosha — unknown; published by Micron
+  - `xonix` · confirmed · low · [github.com](https://github.com/mamedev/mame/blob/master/hash/mikrosha_cass.xml) · [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Спектр-001_%28компьютер%29)
+- **XONIX (Robotron 1715)** (unknown) — Robotron 1715 — unknown
+  - `xonix` · confirmed · low · [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Robotron_1715) · [uk.wikipedia.org](https://uk.wikipedia.org/wiki/Robotron_1715) · [commons.wikimedia.org](https://commons.wikimedia.org/wiki/File:Xonix.gif)
+- **Xonix (Specialist)** (unknown) — Specialist — unknown
+  - `xonix` · confirmed · low · [github.com](https://github.com/mamedev/mame/blob/master/hash/special_cass.xml)
+- **XONIXZM** (unknown) — Radio-86RK, Apogee BK-01, Mikrosha — unknown
+  - `xonix` · confirmed · low · [github.com](https://github.com/mamedev/mame/blob/master/hash/apogee.xml) · [github.com](https://github.com/mamedev/mame/blob/master/hash/radio86_cass.xml) · [github.com](https://github.com/mamedev/mame/blob/master/hash/mikrosha_cass.xml)
+
+## Commercial console games
+
+- **Demolition Herby** (1982 (some sources 1983)) — Atari 2600 — Telesys
+  - Amidar-model grid capture: drive a car around square outlines and leave a trail; a square fills once its perimeter is complete
+  - chaser cars erase perimeter lines the player has already drawn
+  - ram a chaser from behind to knock it off the board for a while
+  - accelerator button: speed up to ram, but the player cannot paint while speeding unless every chaser is off the track; chasers can speed up too
+  - fuel gauge drains steadily and is refilled by completing squares (a timer refilled by capturing)
+  - two-player variant in which player two controls the chaser cars
+  - `amidar-painter` · corrected · high · [archive.org](https://archive.org/details/atari_2600_demolition_herby_1983_telesys_don_donyo_ruffcorn_1006) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Telesys) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Paint Roller (Gakken)** (1982) — Gakken tabletop electronic game — Gakken
+  - Also known as: ペイントローラー
+  - Crush Roller-style maze painting: cover every path
+  - two control levers on opposite sides of the screen allow a versus mode: one player is the brush, the other controls the monsters
+  - tapping the lever moves the brush faster than holding it
+  - `amidar-painter` · corrected · medium · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クラッシュローラー)
+- **Spiderdroid** (1987) — Atari 2600 — unknown; published by Froggo
+  - `amidar-painter` · confirmed · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Amidar) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games) · [atariage.com](https://atariage.com/software_page.php?SoftwareLabelID=480)
+- **Brush Roller** (1990) — Famicom/NES — Hwang Shinwei; published by RCM Group; NTDEC (Bookyman on Caltron 6-in-1 / Asder 20-in-1 multicarts)
+  - Also known as: Bookyman (NTDEC hack)
+  - `amidar-painter` · confirmed · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Crush_Roller)
+- **Xonix (Krokha)** (1990) — Krokha TV game — SKB Kontur
+  - Also known as: Xonix (Кроха)
+  - `xonix` · corrected · medium · [github.com](https://github.com/mamedev/mame/blob/master/src/mame/ussr/krokha.cpp)
+- **Cacoma Knight in Bizyland** (1992) — Super Famicom, Super NES — Affect; published by Datam Polystar (JP), SETA (NA)
+  - Also known as: カコマ☆ナイト, Kakoma Knight
+  - each screen starts as a corrupted version of a landscape; enclosing an area with Magical Chalk restores ('purifies') the original image there
+  - closing a shape purifies the smaller of the two sections (per Wikipedia), not the side without the enemy
+  - a 'Qualify' percentage per screen to advance; clearing more than that earns more points and rewards
+  - cleared areas can hold power-ups and point items
+  - three selectable characters (Jack, Jean, RB93)
+  - some enemies move only along borders and chalk lines, others roam freely
+  - enemies trapped in chalk are destroyed only temporarily and respawn quickly
+  - boss screens (Wikipedia shows a Boss 3 screenshot)
+  - several hits allowed before a continue (the number depends on difficulty); each continue costs a credit
+  - between rounds, a larger picture fills in as rounds are completed
+  - two players, co-operative against the CPU or head-to-head (per a retail listing)
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Cacoma_Knight_in_Bizyland) · [www.engadget.com](https://www.engadget.com/2007/12/20/virtually-overlooked-cacoma-knight-in-bizyland/) · [www.ebay.com](https://www.ebay.com/p/4362)
+- **2nd Space** (1993) — Game Boy, Mega Duck — Sachen (Thin Chen Enterprise); published by Sachen
+  - grid capture on the Amidar model: the player can only move along rectangle borders and fills a rectangle by going all the way around it
+  - filling rectangles uncovers a hidden picture underneath (a picture-reveal reward on a grid-capture board)
+  - `amidar-painter` · corrected · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Sachen) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Mega_Duck) · [www.gamesdatabase.org](https://www.gamesdatabase.org/game/nintendo-game-boy/2nd-space)
+- **Super Gal's Panic (Mega-CD)** (unreleased (Wikipedia's Kaneko game list gives "1994?")) — Sega Mega-CD / Sega CD — Kaneko
+  - Also known as: Super Gals Panic
+  - `gals-panic` · corrected · medium · [www.arcade-history.com](https://www.arcade-history.com/game/922/) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Kaneko) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_cancelled_Sega_CD_games)
+- **Gals Panic SS** (1996) — Sega Saturn — Kaneko; published by Mainichi Communications
+  - Also known as: ギャルズパニックSS
+  - versus mode, added in the home port (not in the arcade Gals Panic 4)
+  - the player can attack enemies, also new in the port
+  - the clear goal is uncovering a glowing character silhouette, not a share of the whole field
+  - `gals-panic` · confirmed · high · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic) · [www.honestgamers.com](https://www.honestgamers.com/17951/saturn/gals-panic-ss/game.html)
+- **Silhouette Stories** (1996) — PlayStation, PlayStation 3 / PSP — Kaneko; published by Kaneko (GungHo Online Entertainment for the 2014 Game Archives release)
+  - Also known as: シルエット☆ストーリィズ
+  - story mode: pick one of 12 town locations to meet a girl; dialogue choices and stage results branch her story, and her true ending unlocks only after all her other endings
+  - each stage has a random side objective (for example collect every item, or capture 30% of the area in one cut); failing it switches the story branch instead of ending the run
+  - clear by uncovering 80% of the silhouette region, not of the whole field, so keeping the boss in a part with no silhouette is a valid strategy
+  - one life and limited continues; a continue resets the current silhouette
+  - pickup items such as a speed booster and a time stop
+  - 1-2 players
+  - gallery of cleared images; finishing all of a girl's routes unlocks a dress-up mode
+  - `gals-panic` · confirmed · high · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/シルエット☆ストーリィズ) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ギャルズパニック) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic) · [psxdatacenter.com](https://psxdatacenter.com/games/J/S/SLPS-00374.html)
+- **Live Wire!** (1999) — PlayStation, Windows — The Code Monkeys; published by Sales Curve Interactive (SCi)
+  - up to 4 players compete for the same grid at once (competitive territory instead of solo clearing)
+  - claim a tile by drawing all four of its sides
+  - power-ups steal tiles that opponents already own
+  - a level ends when the timer runs out or every tile is captured
+  - end-of-level score counts tiles held, tiles stolen and kills; the highest score wins the level
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Live_Wire!) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games)
+- **Dino Master** (2005) — Nintendo DS — Office Create; published by Taito (Japan); Majesco (North America, Europe)
+  - Also known as: 恐竜対戦 ダイノチャンプ 最強DNA発掘大作戦, Kyouryuu Taisen Daino Chanpu: Saikyou DNA Hakkutsu Daisakusen
+  - trace a line across a dig site; any fossil inside the closed line is uncovered (fossil reveal replaces the area quota)
+  - an enemy that touches your open line sends a bullet along it toward you until it hits you or you reach a safe area (an enemy-triggered Fuse)
+  - enemies enclosed by your line are destroyed
+  - each level has a boss enemy that you must defeat to win the level
+  - revived fossils become collectable dinosaurs with trade-offs (larger ones are stronger but have more weak points; the strongest are rarer) for a Battle Mode where you choose one of your dinosaur's parts to guard and one of the opponent's parts to attack
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Dino_Master)
+- **Critter Round-Up** (2008) — Wii — Epicenter Studios; published by Konami
+  - Also known as: Saku Saku Animal Panic
+  - the farmer lays fences around a field to pen escaped animals and separate them by species
+  - incompatible animals must be kept apart or they eat each other (e.g. a crocodile and a chicken in one pen)
+  - aggressive animals and predators attack the farmer, so touching them must be avoided
+  - presents fall from the sky with power-ups such as food that attracts animals or a spray that repels them
+  - Adventure mode has 50 levels across five environments, each with its own species
+  - endless Marathon mode for up to 4 players, co-operative or competitive
+  - minigames: Snowball Soccer, Predator Rampage, Chicken Catch, Fence Trap
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Critter_Round-Up) · [www.nintendolife.com](https://www.nintendolife.com/games/wiiware/critter_round_up) · [www.engadget.com](https://www.engadget.com/2008/04/18/konami-rounding-up-critters-for-u-s-wiiware-launch/) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Cubixx** (2009) — PSP — Laughing Jackal
+  - the field is a cube: you cut segments off its six faces instead of a flat rectangle
+  - each face has a droid that starts chasing your trail when you cut across its territory
+  - from stage 2, light nodes run along the cube's edges and along cut edges (a Sparx analogue); a node trapped in a cut-off section disintegrates and reappears elsewhere
+  - holding L or R while crossing a vertex chains faces into one cut; multi-face cuts multiply the score (risk/reward)
+  - score comes from trail length, area claimed and faces crossed per run; enough points earn extra lives
+  - you lose a life when a droid hits you or when you run into your own trail
+  - the required percentage starts at 50% and rises every few levels; 20 levels
+  - `qix` · corrected · high · [www.pocketgamer.com](https://www.pocketgamer.com/cubixx/review/) · [www.pushsquare.com](https://www.pushsquare.com/10516/cubixx-minis-on-pspps3-review/) · [blog.playstation.com](https://blog.playstation.com/?p=30309)
+- **Cubixx** (2009) — PSP, PS3, Windows — Laughing Jackal; published by Laughing Jackal; Ghostlight (Windows release of Cubixx HD)
+  - Also known as: Cubix, Cubixx HD
+  - Qix-style capture moved onto the faces of a 3D cube
+  - player robot (Cubot) fires a laser line across the cube to cut away and erase its sides
+  - goal is to erase the cube's sides; enemies roam the cube and power-ups appear as levels progress
+  - HD version: 50 arcade levels, 50 challenges, Score/Line/Time Attack modes
+  - HD version: local co-op multiplayer and a Deathmatch versus mode
+  - `qix` · rescued · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Cubixx_HD) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Laughing_Jackal) · [store.steampowered.com](https://store.steampowered.com/app/420570) · [de.wikipedia.org](https://de.wikipedia.org/wiki/Qix)
+- **Patchwork Heroes** (2010) — PlayStation Portable — Acquire / Japan Studio; published by Sony Computer Entertainment
+  - Also known as: 100万トンのバラバラ, 100 Man-Ton no BaraBara, A Million Tons of Pieces
+  - the field is an enemy warship: hold the cut button and draw a line fully across it, and the smaller severed side falls off
+  - the HUD shows the percentage of the ship that remains
+  - stage time limit; the timer pauses briefly in proportion to the share of the ship cut away
+  - grey sections can only be destroyed with a mojo attack
+  - the mojo gauge fills from cutting off parts, from items, or from using a bomb at the cost of allies; once triggered, a mojo attack slows your movement and lasts until the gauge empties
+  - each bomb item blasts in its own direction
+  - the R button blocks enemy attacks
+  - allies are held in prisons on the ship: touch a prison to rescue them, and cutting it off before rescue loses them
+  - game over when all allies are killed, when you are hit with no allies left, or when you enter a bomb's blast range
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Patchwork_Heroes)
+- **Urbanix** (2010) — PSP, Wii, iOS — Nordcurrent
+  - Also known as: Urbanix Arcade
+  - the player is a tractor that builds a town (houses) on the land it claims
+  - the player's own trail is lethal: touching it costs a life, as does an enemy hitting it
+  - capture takes a different number of passes per world: Town needs one, North Pole needs the snow cleared and then the land conquered (two), Moon Base needs three
+  - Landrunners run from side to side without ever changing direction
+  - Helisharks fly after the player; once caught, the player breaks free by mashing L and R (PSP) or shaking the Wii Remote (Wii), or loses a life
+  - Housecrashers are harmless to the player but destroy the houses already built and must be chased away quickly
+  - bonuses can be good or bad; the Wii review names speed boost, shield, extra lives and slowed time
+  - a stage is cleared by filling a points gauge before a time limit runs out, and bigger enclosures score more
+  - two-player co-op (WiiWare)
+  - 3 worlds of 50 levels each (150 in total)
+  - `xonix` · corrected · high · [blog.playstation.com](https://blog.playstation.com/archive/2010/10/19/introducing-urbanix/) · [www.nintendolife.com](https://www.nintendolife.com/reviews/2011/01/urbanix) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Nordcurrent) · [toucharcade.com](https://toucharcade.com/games/urbanix-arcade)
+- **Cubixx HD** (2011) — PlayStation 3 — Laughing Jackal; published by Laughing Jackal (presumed self-published; not stated in the review)
+  - new hazards on the cube-cutting base: Cubixx (small orange beings, the main early threat), Homers that latch onto your beam and cut its acceleration, asteroid showers, and Chasers that make the safe edge lines dangerous over time
+  - Arcade mode of 50 stages unlocked in blocks of five, with the score carried through one session
+  - Challenge mode replays each stage with alternative goals: score attack, line attack and timed challenges
+  - competitive and co-op multiplayer for up to 7 players (split-screen)
+  - `qix` · corrected · high · [www.pushsquare.com](https://www.pushsquare.com/reviews/psn/cubixx_hd)
+- **Dancing Eyes HD (cancelled)** (2011 (announced; cancelled)) — PlayStation 3 — unknown (Namco Generations line); published by Namco Bandai Games
+  - the playfield is a grid wrapped around a 3D character model; a monkey cuts panels away while avoiding enemies (from the 1996 arcade original)
+  - PlayStation Move support announced
+  - three announced character models: Crisitia Saietta, Francoise Mystere and Musaki Kikka
+  - `gals-panic` · confirmed · medium · [www.unseen64.net](https://www.unseen64.net/2019/03/29/dancing-eyes-hd-ps3-move-cancelled/) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic)
+- **Poison Control** (2020) — PlayStation 4, Nintendo Switch — Nippon Ichi Software; published by Nippon Ichi Software (Japan); NIS America (West, 2021)
+  - Also known as: 少女地獄のドクムス〆, Shōjo Jigoku no Doku Musume
+  - Qix-style enclosure inside a third-person shooter / action RPG: areas of poison swamp must be encircled ('rounded off') to purify and beat them
+  - `qix` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Poison_Control) · [www.nintendo.com](https://www.nintendo.com/us/store/products/poison-control-switch/)
+- **Ink & Paper: DoodleCut** (2023) — Nintendo Switch — naptime.games
+  - a doodle bug draws a line behind it on a notebook page; enclosed areas get doodled (claimed)
+  - capture more than three-quarters of the page to win
+  - levels add special areas and several enemy types
+  - enemies kill you by catching you or by cutting your open line
+  - 2-player local co-op, scored on most space in the shortest time
+  - unlockable expert speed and endless mode
+  - `qix` · confirmed · medium · [www.nintendo.com](https://www.nintendo.com/en-gb/Games/Nintendo-Switch-download-software/Ink-Paper-DoodleCut-2347109.html)
+- **XPOSED SWITCHED** (2023) — Nintendo Switch — Mass Creation
+  - captures are drawn as rectangles only, uncovering the hidden background; expose enough of it to clear the level
+  - 3 terrain types, each with its own hazards
+  - 4 power-ups that appear at random during play
+  - 8 enemy types
+  - 48 levels
+  - `qix` · corrected · high · [www.nintendo.com](https://www.nintendo.com/us/store/products/xposed-switched-switch/) · [www.nintendo.com](https://www.nintendo.com/en-gb/Games/Nintendo-Switch-download-software/Arcade-Fusion-Bundle-2562172.html)
+- **Pet Show** (2025) — Nintendo Switch — LUKAVERSE (co-copyright holder with QubicGames; no developer credit on store pages); published by QubicGames
+  - closing your line reveals part of a hidden pet picture
+  - flying foes and bugs that hit your open line before you close it cost you a life
+  - screen-edge teleporting (wrap-around) and speed boosts help you dodge
+  - 48 stages, each with 3 difficulty options
+  - 2-player local co-op uncovering the same picture
+  - `qix` · corrected · medium · [www.nintendo.com](https://www.nintendo.com/en-gb/Games/Nintendo-Switch-download-software/Pet-Show-2864596.html) · [www.nintendo.com](https://www.nintendo.com/us/store/products/pet-show-switch/)
+- **Invincible Little Warrior** (unknown) — unnamed 'DDR' dance-mat plug & play consoles — Shenzhen Niutai Technology Development Co., Ltd (China)
+  - Gals Panic-style picture reveal whose backgrounds show anime characters such as Luffy and Doraemon
+  - `gals-panic` · confirmed · medium · [bootleggames.fandom.com](https://bootleggames.fandom.com/wiki/Shenzhen_Niutai_Technology_Development_Co.,_Ltd)
+- **Jintori Action! Taikōkenchi: Karakuri Shiro no Nazo** (unknown) — Wii — Perpetuum
+  - Also known as: Jintori Action! Taikoukenchi - Karakuri Shiro no Nazo
+  - gameplay details unverified; 'jintori' (陣取り) is the Japanese genre term for Qix-style territory-taking games, and 'Taikō kenchi' (Hideyoshi's land survey) suggests a land-claiming theme
+  - `qix` · confirmed · low · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_WiiWare_games) · [github.com](https://github.com/libretro/libretro-database/blob/master/metadat/no-intro/Nintendo%20-%20Wii%20%28Digital%29.dat)
+- **Protean Girl** (unknown) — VT168 plug & play consoles — Fuzhou Waixing Computer Science & Technology Co., Ltd (China)
+  - Also known as: Discover
+  - Gals Panic-style picture reveal whose backgrounds are eroge characters, mostly clothed
+  - `gals-panic` · corrected · medium · [bootleggames.fandom.com](https://bootleggames.fandom.com/wiki/Fuzhou_Waixing_Computer_Science_%26_Technology_Co.,_Ltd./Plug_%26_Play_console_games)
+
+## PC shareware and freeware
+
+- **Boxer Rebellion** (1982) — MS-DOS — K. L. Carpenter; published by K. L. Carpenter (self-published freeware)
+  - fill pre-set score boxes by tracing their complete outline while avoiding enemies (box outlining rather than free-form Qix cuts)
+  - nine levels
+  - `amidar-painter` · corrected · medium · [www.dosgames.com](https://www.dosgames.com/game/boxer-rebellion) · [www.abandonwaredos.com](https://www.abandonwaredos.com/abandonware-list.php?tp=1&kword=270&ord=5)
+- **QIX (Bartlein & Chin, DOS)** (1985) — MS-DOS — R. Bartlein, S. Chin
+  - Also known as: QIX
+  - gameplay details unknown (dat listing only: QIX.EXE, genre Action)
+  - `qix` · confirmed · low · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/DOS.dat)
+- **Gapper** (1986) — MS-DOS — unknown (no credit in the executable; the libretro DOS database lists "Anonymous"); published by freeware (no publisher known)
+  - grid line painting: walk the player (Gapper) over the blue lines of a rectangular grid to turn every line red; the screen is cleared when all lines are coloured (Amidar model)
+  - box capture scoring: 50 points for each grid square whose four sides are all red; 100 points for enclosing a flashing extra-point box while it is lit
+  - temporary gap: Space or Return cuts a short-lived gap in the lines that neither the player nor the enemy can cross, used to shake off the pursuer; each gap costs 5 points
+  - single pursuer (the Seeker) that takes the shortest route to intercept the player; it starts in the opposite corner (player top left, Seeker bottom right)
+  - level ramp: each level speeds up the Seeker, shortens the gap duration and adds more boxes to the grid
+  - lives: 2 extra men at the start, plus 1 every 5000 points
+  - `amidar-painter` · rescued · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_maze_video_games) · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=List_of_maze_video_games&diff=prev&oldid=541561097) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Wikipedia:Articles_for_deletion/Gapper_%28video_game%29) · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=Special:Log&page=Gapper+%28video+game%29)
+- **Cobweb** (1989) — MS-DOS — Tsarkov I. & Son; published by PO 'Iskra' (ПО «Искра»)
+  - a second enemy type moves outside the open field and kills on contact, alongside the diagonal bouncers inside it
+  - a countdown timer runs to the end of the session
+  - a bonus makes the trail temporarily invulnerable to enemies
+  - theme: the player is a spider webbing over a garbage bin with flies inside, while a garbage spider-eater named Domino hunts it
+  - levels grow harder as they progress
+  - `xonix` · corrected · medium · [www.old-games.ru](https://www.old-games.ru/game/11485.html)
+- **Kicks** (1989) — MS-DOS — TranSoft (France); published by TranSoft
+  - 70% capture target to advance
+  - three enemy types to avoid or wall off: Rollers, Suiveurs (followers) and the Kicks
+  - `qix` · corrected · medium · [www.old-games.ru](https://www.old-games.ru/game/4121.html) · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/DOS.dat)
+- **Araña** (1990) — MS-DOS — PC Disc (Spain); published by PC Disc
+  - Also known as: ARAÑA, Spider (gloss)
+  - 90% capture target instead of 75%
+  - a single enemy patrols the border, so the border is not a safe zone and that enemy cannot be trapped
+  - field enemies start at three and gain one per level; you can isolate them in prepared pockets so the rest fills more easily
+  - retracing your path or crossing your own trail costs a life
+  - larger single captures score more; extra life every 3,000 points
+  - one of four difficulty levels, fixed at launch, sets the enemy count (up to six) and the speed of both player and enemies
+  - `xonix` · corrected · medium · [www.old-games.ru](https://www.old-games.ru/game/13633.html) · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/DOS.dat)
+- **Ballistyx** (1990s (original); V1.10 re-release on itch.io undated) — Windows, macOS, iOS, Windows 10/11 x86/x64/ARM64 — Jason Brooks (muckypaws)
+  - bouncing balls in the open field plus enemies that travel along tracks
+  - adjustable player, ball and enemy speeds, with score multipliers by difficulty
+  - graphical level editor: draw the playfield, tracks and obstacles; place balls, enemies and the player; validate and test before saving; import and export levels as PNG images
+  - user-made levels alongside the built-in ones
+  - `qix` · corrected · high · [muckypaws.itch.io](https://muckypaws.itch.io/ballistyx)
+- **陣取りゲーム (Matsuo & Takagi)** (1990) — NEC PC-98 — 松尾啓志 (Hiroshi Matsuo), 高木浩光 (Hiromitsu Takagi); published by none (freeware, distributed via Vector)
+  - Also known as: Jintori Game
+  - programming game: each player writes a program that controls several 'bugs' instead of steering by hand
+  - moving bugs draw trails on the field, and any closed region formed by a player's trails becomes that player's territory
+  - score is the total enclosed area
+  - `other` · confirmed · medium · [www.vector.co.jp](https://www.vector.co.jp/soft/dos/game/se002077.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dos/game/se002172.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/dos/game/se002077.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/dos/game/se002172.html)
+- **Mamba** (1991) — Windows 3.x — Rüdiger Appel (Germany); published by Data Becker
+  - the player is a spider spinning webs; the only enemy is one long snake that moves fast at right angles and tends to chase the spider
+  - the snake crossing your unfinished web erases only that web, without a kill
+  - the snake touching the spider costs a life, erases the web and resets the spider to the top-left corner; captured areas stay
+  - on closing a web, the spider gets the part of the field the snake is not in
+  - 80% target; three lives that cannot be restored
+  - no level time limit, but each capture after the first has a 30-second allowance, which counters waiting for the snake to wander into a trap (the penalty for exceeding it is not described)
+  - `xonix` · corrected · medium · [www.old-games.ru](https://www.old-games.ru/game/12300.html)
+- **JezzBall** (1992) — Windows 3.x, Windows — Dima Pavlovsky; published by Microsoft (Microsoft Entertainment Pack 4)
+  - no edge-walking avatar: the player clicks anywhere to start a horizontal or vertical wall that grows both ways from the pointer; right-click switches orientation
+  - atoms bounce around the room; an atom touching a wall still being built stops it and costs a life
+  - a wall that reaches the edges unbroken fills every region with no atom
+  - capture at least 75% of the room within a time limit
+  - level 1 has 2 atoms and each level adds one; from level 49 on, every level has 50
+  - lives at the start of a level equal the number of atoms
+  - `jezzball` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/JezzBall) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Microsoft_Entertainment_Pack) · [github.com](https://github.com/atsb/JezzBall)
+- **Mamba 2** (1992) — Windows 3.x — Rüdiger Appel (Germany); published by Data Becker
+  - Also known as: Mamba II, Mamba: Version 2.00
+  - ten selectable starting levels: level 1 starts with pre-built web sections, level 10 starts with no web and three fast snakes
+  - option to reveal a full-screen picture in claimed areas instead of the plain grey web pattern
+  - (inherited from Mamba 1991, which Mamba 2 updates mostly cosmetically) a snake that crosses an unfinished web line erases only that line; touching the spider costs one of three lives and sends it back to the top-left corner, while claimed areas stay
+  - (inherited from Mamba 1991) the snake moves fast on right-angled paths and tends to chase the spider
+  - (inherited from Mamba 1991) 80% capture target; no level timer, but each further capture must be made within 30 seconds
+  - `qix` · confirmed · medium · [www.old-games.ru](https://www.old-games.ru/game/13239.html) · [www.old-games.ru](https://www.old-games.ru/game/12300.html)
+- **Gotcha** (1993) — MS-DOS — Don Herring; published by Don Herring (self-published shareware)
+  - 50% claim threshold to advance (instead of Qix's 75%)
+  - enemies ('meanies') include a bouncing wavy-line creature
+  - mouse control as an alternative to the arrow keys
+  - + and - keys change the game speed during play
+  - `qix` · confirmed · high · [www.dosgames.com](https://www.dosgames.com/game/gotcha)
+- **VGA Kix** (1993) — MS-DOS — Edward Mueller; published by Edward Mueller (self-published freeware)
+  - Also known as: Kix
+  - two-player mode on one computer (per old-games.ru; DOSGames.com lists the game as single-player)
+  - `qix` · corrected · high · [www.dosgames.com](https://www.dosgames.com/game/kix) · [www.dosgamesarchive.com](https://www.dosgamesarchive.com/download/vga-kix) · [www.old-games.ru](https://www.old-games.ru/game/13664.html)
+- **陣取り (Evio)** (1993) — PC-98 — Evio; published by none (freeware distributed via Vector)
+  - Also known as: Jintori
+  - the player (a light-blue dot) grows its own territory: leaving it lays a yellow line, and returning adds the enclosed part
+  - the only enemy is a red snake moving diagonally; touching it kills, and so does the snake touching the player or the yellow line
+  - red line segments appear at random times, places and lengths; touching one kills, and so does one striking the player or the yellow line
+  - the big red outer frame kills on contact, so moving along the wall needs careful key handling
+  - enclosing the snake ends the round as a win: every part of the screen without the snake becomes the player's
+  - scoring ignores the share of area claimed: 100 fixed hidden points on a 10x10 grid each score 1 if covered by territory or the yellow line when the round ends (by death or by enclosing the snake), so memorising their positions is the route to 100
+  - `xonix` · confirmed · high · [www.vector.co.jp](https://www.vector.co.jp/soft/dos/game/se006014.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/dos/game/se006014.html)
+- **Strong Lines** (1994) — MS-DOS — Schröder und Epple (Germany); published by BVM Produktion, Mad Data
+  - claimed sections are cut out of digitized city-landscape backgrounds
+  - more enemy balls (white dots) are added as the player progresses
+  - per-level timer (100 s on level 1); running out costs a life
+  - four difficulty settings that differ in the fill percentage needed to advance
+  - `qix` · confirmed · medium · [www.old-games.ru](https://www.old-games.ru/game/12564.html)
+- **Y** (1994) — MS-DOS — P. Strangler
+  - an enemy ball patrols the claimed border (like Qix's Sparx) alongside the ball bouncing in the open field; both grow in number and speed as the game progresses
+  - a level is cleared by claiming at least 75% of the field
+  - each level has a three-minute time limit
+  - temporary bonuses appear in the open field for a while, among them instant level clear, destroy enemies and extra life
+  - `xonix` · confirmed · medium · [www.old-games.ru](https://www.old-games.ru/game/7964.html)
+- **Hidden Fields** (1995) — MS-DOS — LOMAX Software
+  - claimed boxes uncover a hidden picture; the DOSGames.com reviewer identifies the pictures as Frank Frazetta fantasy paintings
+  - 14 enemy types, with different enemies on each level
+  - 90% claim target (per FILE_ID.DIZ)
+  - four difficulty levels
+  - `qix` · corrected · high · [www.dosgames.com](https://www.dosgames.com/game/hidden-fields)
+- **Barrack** (1996) — Classic Mac OS — Greg Lovette; published by Ambrosia Software
+  - a shooter fires walls across the field to fence in bouncing balls (JezzBall rules), instead of an edge-walking marker drawing lines
+  - several ball types that behave differently; a fan remake's author names this variety as its main difference from JezzBall
+  - `jezzball` · corrected · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Barrack_%28video_game%29) · [nextquest.dev](https://nextquest.dev/games/barrack) · [kittenm4ster.itch.io](https://kittenm4ster.itch.io/barrack) · [www.macworld.com](https://www.macworld.com/article/175551/cosmobots-2.html)
+- **Queeks** (1996) — Windows 95, Windows NT — Evio (Norio Kato / 加藤紀夫); published by Evio (self-published shareware via Vector)
+  - Also known as: ヘビを閉じ込める陣取りゲーム
+  - the goal is to enclose the roaming snake enemies inside your territory plus your expedition line, instead of reaching a percentage
+  - with several snakes on screen, all of them must be enclosed at the same time to clear the stage
+  - your territory is coloured yellow and green, and touching any other colour on the field kills you
+  - `xonix` · corrected · high · [www.vector.co.jp](https://www.vector.co.jp/soft/win95/game/se036346.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/win95/game/se036346.html) · [www.vector.co.jp](https://www.vector.co.jp/vpack/browse/person/an002273.html)
+- **Squarex** (1996) — MS-DOS — Soleau Software; published by Soleau Software (shareware, $12 registration)
+  - capture grid squares by going along all four sides (grid capture instead of free cuts)
+  - levels are timed
+  - orange cubes chase the player around the grid
+  - reaching a pink cube turns the tables: the player can then capture the orange cubes (a Pac-Man-style power-up)
+  - `amidar-painter` · corrected · high · [www.dosgames.com](https://www.dosgames.com/game/squarex)
+- **Super Xonix** (1996) — MS-DOS — Aaron Brand; published by Aaron Brand (self-published freeware)
+  - Also known as: sxonix
+  - a full picture shows at the start and each claimed area covers part of it, the reverse of the usual Qix reveal
+  - optional 2-player mode against a friend (stated in the bundled FILE_ID.DIZ; the DOSGames metadata says single player)
+  - `xonix` · corrected · high · [dosgames.com](https://dosgames.com/game/super-xonix) · [he.wikipedia.org](https://he.wikipedia.org/wiki/Xonix)
+- **Coach Tzabar** (1997) — MS-DOS — pmd; published by Tzabar (Israeli food brand; promotional game)
+  - Also known as: כח צבר (Koach Tzabar)
+  - clearing the field reveals a hidden picture (landscapes, vegetable still lifes); the target is usually 70%, varying by level
+  - the player is safe on the border even if touched; Space must be held to leave it and draw into the field
+  - dying loses the current cut only; cleared sections stay; lives are limited for the whole game
+  - on medium and hard, bonus boxes appear briefly and block movement; cut so the box sits on the new border, it bursts and its item must be collected: temporary speed, freeze monsters, or destroy all small monsters (no boxes on easy)
+  - on easy a trapped monster prevents its area from clearing; on hard trapped monsters self-destruct
+  - hard difficulty adds a large toothy monster that roams the field with long jumps; medium and hard add a strict time limit
+  - clearing more than required can award an extra life
+  - `xonix` · corrected · medium · [www.old-games.ru](https://www.old-games.ru/game/8096.html) · [he.wikipedia.org](https://he.wikipedia.org/wiki/Xonix)
+- **Prometheus** (1997) — Mac OS — Quarter Note Software
+  - Also known as: Qrax
+  - `qix` · confirmed · low · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix)
+- **Xonix32** (1997) — Windows, Android — unknown (Windows original); GythaOgg (Android version); published by freeware (Windows); GythaOgg (Android)
+  - Also known as: Xonix 32
+  - Android version: swipe anywhere on the screen to set the player's direction
+  - Android version: black rectangular 'black holes' on the board are sealed and vanish when enclosed with no enemy inside (absent from Classic mode)
+  - claim at least 75% of the area
+  - `xonix` · corrected · medium · [shelvely.com](https://shelvely.com/en/games/xonix32) · [play.google.com](https://play.google.com/store/apps/details?id=gythaogg.games.xonix32) · [play.google.com](https://play.google.com/store/apps/details?id=gythaogg.gamesplus.xonix32)
+- **AirXonix** (2000) — Windows, iOS — AxySoft; published by AxySoft; eGames; Greenstreet Software; X3D Technologies
+  - Also known as: Aironix, Air Xonix, Воздушный ксоникс
+  - isometric 3D field; the player is a spinning helicopter-like craft flying above it
+  - mines roam the already-claimed area and kill on contact
+  - striped balls destroy territory you have already claimed
+  - spiked balls roll over claimed land and block level completion
+  - collectible bonuses: extra life, extra score, extra time, temporary slowdown of all balls and mines, plus speed-up/slow-down modifiers
+  - each level has a time limit
+  - 5 game types and 80+ levels; higher difficulty settings add more stages
+  - shareware trial is limited until registered
+  - `xonix` · corrected · high · [www.axysoft.com](https://www.axysoft.com/airxonix/) · [bestoldgames.net](https://bestoldgames.net/airxonix) · [www.myabandonware.com](https://www.myabandonware.com/game/airxonix-iid) · [tasvideos.org](https://tasvideos.org/Games/4378)
+- **Bolyx** (2001) — Windows — James Burrows (Waterbiscuit Games); published by Waterbiscuit Games (freeware, hosted by GB64)
+  - three colour stages in sequence (blue, then green, then red); each must be restored before the next
+  - Space bar reverses the direction of the bouncing balls
+  - bonus points for every percent filled beyond 75%
+  - `xonix` · corrected · high · [gb64.com](https://gb64.com/bolyx.php) · [gb64.com](https://gb64.com/files/bolyx.zip) · [gb64.com](https://gb64.com/downloads.php) · [gb64.com](https://gb64.com/trappy-pixel.php)
+- **Discovera** (2001) — PC — Igor and Dmitry Bukhman (later founders of Playrix); published by self-published shareware ($15)
+  - Also known as: Discovera (series)
+  - `xonix` · corrected · medium · [ru.wikipedia.org](https://ru.wikipedia.org/wiki/Playrix) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Playrix) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Panic (Y.O.S.)** (2002) — Windows — Y.O.S.; published by self-published (distributed through Vector)
+  - enclose a masked area while avoiding enemies; capturing 80% of the masked area clears the stage
+  - a bonus stage after every three stages; 16 stages in total (13 regular and 3 bonus)
+  - `gals-panic` · confirmed · high · [www.vector.co.jp](https://www.vector.co.jp/soft/win95/game/se249378.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/win95/game/se249378.html)
+- **Space Xonix** (2002) — Windows — XDGames
+  - Also known as: Space Xonix (2002)
+  - enemies are presented as mines in an alien minefield (theme; from a database summary only)
+  - `xonix` · corrected · low · [retro-replay.com](https://retro-replay.com/db/windows/space-xonix) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Cartoon Xonix** (2004) — Windows — Arcade Games Download
+  - Also known as: Cartoon Xionix
+  - player cuts a trail (a chain of dots) from the claimed area into the covered area; closing the trail claims the enclosed region
+  - each claimed region uncovers part of a full-screen cartoon background picture, with a 'Revealed %' counter in the HUD
+  - enemies roam both the covered area and the already-revealed area, as in Xonix
+  - a different cartoon picture on each level (level 12 seen in screenshots), with score, level and lives HUD
+  - `xonix` · rescued · medium · [ag.ru](https://ag.ru/games/cartoon-xonix) · [cdn.ag.ru](https://cdn.ag.ru/media/screenshots/34e/34eb7ecabf98a61085133a52e5b60f23.jpg) · [cdn.ag.ru](https://cdn.ag.ru/media/screenshots/732/732eb8b89dbf82001ccc3e99aa72177c.jpg) · [www.arcade-game-download.com](http://www.arcade-game-download.com/cartoon-xonix.php)
+- **Cosmic Bugs** (2004) — Windows — Retro64
+  - carve the field with dividing lines to claim a required share; enemies trapped in a closed area are destroyed
+  - enemies on the border shoot at the player while a line is being drawn
+  - most enemies move randomly, but some track the cursor to block lines
+  - destroyed enemies can drop power-ups (missiles, bombs, line enhancers) or power-downs that make play harder
+  - `jezzball` · corrected · medium · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/160809-cosmic-bugs) · [www.gamespot.com](https://www.gamespot.com/reviews/cosmic-bugs-review/1900-6158737/)
+- **Cosmo Bots** (2004) — Mac OS, Windows — Retro64; published by Cornerstone TSP Games (Mac); Retro64
+  - instead of drawing with an edge-walking marker, a shooter fires beams that grow into walls; a key switches them between vertical and horizontal
+  - fill 85% of the frame to clear a level
+  - enemies inside an enclosed area are destroyed, and destroyed enemies sometimes drop power-ups
+  - power-ups: fast shot, enemy slow motion, score multipliers, time bombs, missiles and bombs, line enhancers
+  - power-downs: slower shooter, faster enemies, shorter line, inverted controls
+  - some enemies track the cursor to cut lines off; border sentinels fire at the player while a line is being built
+  - a time limit on each level, with a bonus for clearing it in time
+  - 500+ levels in 9 worlds; any reached world can be chosen as a start point
+  - `jezzball` · confirmed · medium · [www.macworld.com](https://www.macworld.com/article/175551/cosmobots-2.html) · [retro-replay.com](https://retro-replay.com/db/macintosh/cosmo-bots) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/160809-cosmic-bugs)
+- **Jezzball Deluxe** (2004) — Windows — TERMINAL Studio; published by TERMINAL Studio (shareware)
+  - area-fill percentage goal (91% to win a round)
+  - bouncing balls as hazards
+  - picture reveal as area is claimed
+  - lives
+  - per-round time limit
+  - points penalty/score counter
+  - round-based progression (8 rounds in unregistered version)
+  - multiple difficulty levels
+  - `jezzball` · rescued · medium · [archive.org](https://archive.org/details/jezzball_201810) · [archive.org](https://archive.org/download/jezzball_201810/Clipboard-20181026-04.png) · [archive.org](https://archive.org/details/cmycha-200405) · [archive.org](https://archive.org/details/twilight-dvd087)
+- **Styx Reloaded** (2004) — Windows — unknown; published by none (freeware)
+  - pickups for score, higher avatar speed and extra lives
+  - `qix` · confirmed · medium · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=Qix&oldid=215004705) · [wikipedia.classicistranieri.com](https://wikipedia.classicistranieri.com/en/articles/q/i/x/Qix.html)
+- **Stix (2005)** (2005) — Windows — pahammond; published by self-published (now on itch.io, pay-what-you-want)
+  - Also known as: Stix (BlitzMax)
+  - `qix` · corrected · high · [pahammond.itch.io](https://pahammond.itch.io/stix-2005) · [pahammond.itch.io](https://pahammond.itch.io/)
+- **Jezz Cubed** (2006) — Windows — Silverware Games (Michael Silverman); published by Silverware Games
+  - 3D version: balls bounce inside a cube, and the player grows planes instead of lines to cut down its volume
+  - `jezzball` · confirmed · medium · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=Jezz_Cubed&oldid=137811108) · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=Jezz_Cubed&action=history)
+- **SINTOU 〜侵闘〜** (2007) — Windows XP — 神戸電子専門学校 (Kobe Denshi Senmon Gakko / Kobe Institute of Computing student project); published by none (freeware, distributed via Vector)
+  - Also known as: SINTOU
+  - 3D action: place blocks on the field to wall in ground and expand your territory
+  - taller block stacks make sturdier walls
+  - players hinder rival enclosures while expanding their own
+  - LAN versus multiplayer
+  - `other` · corrected · high · [www.vector.co.jp](https://www.vector.co.jp/soft/winnt/game/se435686.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/winnt/game/se435686.html)
+- **Water Bugs** (2007) — Windows — Retro64; published by PopCap Games
+  - each level has a different field shape instead of a fixed rectangle
+  - new enemy types beyond those in Cosmic Bugs
+  - a large set of power-ups
+  - `jezzball` · corrected · medium · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/136995-water-bugs)
+- **YOUR GAME** (2023) — Windows — サンドバック (Sandback); published by none (freeware, distributed via Vector)
+  - walking leaves a red floor trail that nobody, player or enemy, can walk on
+  - enemies are killed by enclosing them in red floor with no gaps
+  - enemies walk toward the player, so you lure them into dents in your trail, and several can be made to kill each other
+  - turn-based: enemies move right after each player move
+  - game over when the player is enclosed on all four sides
+  - killing an enemy while another is still exploding chains a high-scoring combo
+  - online score ranking, conditions that unlock new elements, and an ending
+  - `other` · confirmed · high · [www.vector.co.jp](https://www.vector.co.jp/soft/winnt/game/se525685.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/winnt/game/se525685.html)
+- **QEX64 (Excel VBA)** (2025) — Microsoft Excel — dotsuru; published by self-published (freeware via Vector)
+  - Also known as: QEX64
+  - `qix` · corrected · medium · [www.vector.co.jp](https://www.vector.co.jp/soft/winnt/game/se527363.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/winnt/game/se527363.html)
+
+## Open-source games
+
+- **quix (QIX on Unix)** (c. 1982-1984) — UNIX V7, CP/M, Atari ST, Unix-like — Unknown author of the original UNIX V7 C version. William 'Chomp' King ported it to CP/M (BDS C) in 1983/84. Anthony C. Howe (SirWumpus) later did a CP/M port (1985) and an Atari ST port, and maintains the source.; published by none (public domain; the GitHub mirror lists 0BSD)
+  - Also known as: QUIX, Quix v2.0 (Atari ST, PD)
+  - text-mode playfield with '@' as the player
+  - the Qix kills only by crossing the open trail and cannot touch the player on the border; Sparx kill only on the border
+  - a Fuse appears if the player stops off the border or crosses or doubles back on their own trail
+  - bonus for each percent above 75%, and each new screen adds one more Qix
+  - points for capturing a Qix by cutting it off from the others
+  - extra man every 10,000 points
+  - `qix` · corrected · high · [github.com](https://github.com/SirWumpus/quix) · [raw.githubusercontent.com](https://raw.githubusercontent.com/SirWumpus/quix/master/README.md) · [codeberg.org](https://codeberg.org/SirWumpus/quix) · [github.com](https://github.com/libretro/libretro-database/blob/master/metadat/tosec/Atari%20-%20ST.dat)
+- **Xonix (X11/Macintosh reimplementation)** (1995) — X11, Classic Mac OS — Torsten Schönitz (Mac original); Jörg Wunsch with Alfredo Herrera Hernández (X11); published by none (free software, BSD-2-Clause)
+  - Also known as: xonix (X11)
+  - flyers bounce only in the unfilled area and kill by touching the player or the open trail; one more flyer each level
+  - eaters also bounce across filled land and kill by touching the player; one more eater every fifth level
+  - when the trail reaches filled land, the trail and every adjacent unfilled region with no flyer are filled
+  - a level ends at 75% of the originally unfilled area
+  - an extra life every second level
+  - step timeout configurable (default 50 ms, 20 moves per second)
+  - machine-wide top-ten score file; a compile-time option emails the previous leader when they lose first place
+  - `xonix` · corrected · high · [github.com](https://github.com/dl8dtl/xonix) · [raw.githubusercontent.com](https://raw.githubusercontent.com/dl8dtl/xonix/master/xonix.man) · [www.freshports.org](https://www.freshports.org/games/xonix/) · [launchpad.net](https://launchpad.net/ubuntu/jammy/+package/xonix)
+- **IceBreaker** (2000) — Linux, Windows, BeOS, Mac OS X, TI-Nspire — Matthew Miller (Win32 port help from Enrico Tassi); published by self-published (open source)
+  - Also known as: nIceBreaker (TI-Nspire port)
+  - bouncing penguins on an Antarctic iceberg replace the balls
+  - a click starts two line halves growing in opposite directions; a penguin hitting a growing half removes it and costs a life (both halves = two lives)
+  - clearing 80% of the iceberg completes the level
+  - exponentially growing score bonus for clearing beyond 80%, plus a smaller bonus per remaining life
+  - score drains by about one point per second while a level is played
+  - each new iceberg adds one penguin and one life
+  - deliberately letting a line break can leave small trap areas that make penguins easier to catch
+  - `jezzball` · corrected · high · [github.com](https://github.com/mattdm/icebreaker) · [mattdm.org](https://mattdm.org/icebreaker/) · [packages.debian.org](https://packages.debian.org/sid/icebreaker) · [www.ticalc.org](https://www.ticalc.org/pub/nspire/asm/games/)
+- **KBounce** (2000) — Linux, Windows, macOS, iOS/iPadOS — Stefan Schimanski (original author); KDE (KDE4 port and maintenance by Tomasz Boczkowski); published by KDE (KDE Gear); Stefan Schimanski (App Store port)
+  - Also known as: KJezzball
+  - a left click starts two walls growing in opposite directions from the clicked square; a right click toggles the axis between horizontal and vertical
+  - a ball hitting the body of a growing wall removes the whole new wall and costs a life
+  - a ball meeting a wall's head head-on stops the wall there and makes it permanent with no life lost; hitting the head from another side just bounces
+  - level n has n+1 balls, n+1 lives and a 30x(n+2) second time limit; running out of time ends the game
+  - cover 75% of the field to clear; score is 15 points per remaining life plus a bonus from ball count and the share above 75%
+  - the 2026 iOS port adds global leaderboards
+  - `jezzball` · corrected · high · [invent.kde.org](https://invent.kde.org/games/kbounce/-/raw/master/src/main.cpp) · [docs.kde.org](https://docs.kde.org/stable_kf6/en/kbounce/kbounce/how-to-play.html) · [docs.kde.org](https://docs.kde.org/stable_kf6/en/kbounce/kbounce/rules_and_tips.html) · [apps.kde.org](https://apps.kde.org/kbounce/)
+- **Barrack (QBASIC)** (2005) — MS-DOS — kittenm4ster; published by self-published (itch.io)
+  - Also known as: Barrack (DOS fan remake)
+  - varied ball types, modelled on Ambrosia Software's Mac game Barrack (implied by the author's motivation; the types are not documented on the page)
+  - configurable keyboard and mouse controls
+  - `jezzball` · corrected · medium · [kittenm4ster.itch.io](https://kittenm4ster.itch.io/barrack) · [itch.io](https://itch.io/games/tag-jezzball)
+- **Xobox (Rockbox plugin)** (2006) — Rockbox firmware — Eli Sherer (2006), Antoine Cellerier (2007); published by Rockbox project (GPL v2+)
+  - Also known as: xobox
+  - Xonix rules: the player leaves filled land to draw a trail, and on return every enclosed region with no qix is filled
+  - starts with 2 bouncing qixes and adds one per level; levels stop at 10 (12 qixes at most)
+  - the fill target is a menu setting from 5% to 95% in steps of 5 (default 75%)
+  - speed setting from 1 to 10 (loop period (11-speed)\*10 ms)
+  - a qix touching the open trail erases the trail, sends the player back to the start and costs one of 3 lives
+  - each level clear adds the filled percentage to the score; top-5 high scores
+  - a game in progress can be saved and resumed from the menu
+  - `xonix` · confirmed · high · [github.com](https://github.com/rockbox/rockbox/blob/master/apps/plugins/xobox.c) · [raw.githubusercontent.com](https://raw.githubusercontent.com/rockbox/rockbox/master/apps/plugins/xobox.c)
+- **Xonix (KolibriOS)** (2006) — KolibriOS — Rabid Rabbit; published by KolibriOS project (bundled)
+  - Also known as: XONIX (C) MMVI by Rabid Rabbit
+  - two enemy kinds: at level n, n+1 balls bounce in the unclaimed area and n balls bounce over claimed land; land balls kill only when the player is on land with no trail, unclaimed-area balls kill by touching the trail or the player while a trail is open
+  - the clear condition is a remaining-cell budget that grows with the enemy count: the level ends when unclaimed cells fall to 30 x (level+1) + level
+  - catch-up pickups appear at random on claimed land: a red bonus (fewer than 3 lives, over 50% done) gives a life, and a green bonus (fewer than 2 lives, over 75% done) gives 250 ticks in which the player passes through enemies and eats them for 100 points each
+  - an extra life at the start of a level if the previous level was cleared without dying
+  - field size adjustable from 48x28 to 96x56 cells in steps of 2 (default 64x32)
+  - score per claimed cell (trail included); top-10 table with 12-character names saved to xonix.t10
+  - `xonix` · corrected · high · [wiki.kolibrios.org](https://wiki.kolibrios.org/wiki/Xonix/) · [git.kolibrios.org](https://git.kolibrios.org/KolibriOS/kolibrios/src/branch/main/programs/games/xonix) · [git.kolibrios.org](https://git.kolibrios.org/KolibriOS/kolibrios/raw/branch/main/programs/games/xonix/main.cpp)
+- **BobBall** (2015 (on F-Droid)) — Android — bobthekingofegypt (GitHub); published by self-published (F-Droid)
+  - infinite levels
+  - local top-scores table
+  - `jezzball` · confirmed · high · [apt.izzysoft.de](https://apt.izzysoft.de/fdroid/index/apk/org.bobstuff.bobball?repo=main) · [f-droid.org](https://f-droid.org/en/packages/org.bobstuff.bobball/) · [github.com](https://github.com/bobthekingofegypt/BobBall)
+- **Assorted open-source tutorial clones** (various (2016-2026)) — Terminal, Browser, Windows, Linux, Android — various; published by none (GitHub)
+  - a terminal play field sized by the window, styled like an old green text terminal (CheshirCa/Xonix, Python curses)
+  - enemies move in linear, zig-zag or circular patterns; local 2-player; a Continuous mode adds enemies over time (tahreem7926/Xonix)
+  - a 3-second time-freeze power-up; 2-player co-op or competition in which crossing the other player's trail is a collision; a bonus for 10 or more tiles in one capture (KanwalAi)
+  - Pac-Xon style: a destroyer enemy erases claimed tiles, and a hunter chases the player while off land (Eques72/Xonix)
+  - claimed area reveals a pet picture, 80% to clear (VladaMamutova/PetsArtXoniX)
+  - a 50-level Godot 4 Android JezzBall remake: swipe to start a wall, 70% target, level N has N atoms and max(3, N+2) lives, restart refills lives (Matswm86/jezzball)
+  - `xonix` · confirmed · medium · [github.com](https://github.com/CheshirCa/Xonix) · [github.com](https://github.com/CheshirCa/Xonix-PB) · [github.com](https://github.com/tahreem7926/Xonix) · [github.com](https://github.com/KanwalAi/Xonix-Game-Development-Project)
+- **qixxy** (2016) — Desktop — thenanisore (oeshiro); published by none (MIT-licensed university project)
+  - Also known as: Qixxy
+  - fast draw plus a slow draw at 0.3x speed; slow-drawn areas get their own colour and are scored separately
+  - goal: fence off a 'supermajority' of the playfield
+  - a difficulty setting changes the ship's speed
+  - polygon-based playfield: claimed areas are vector polygons, not grid cells
+  - `qix` · corrected · high · [github.com](https://github.com/thenanisore/qixxy) · [raw.githubusercontent.com](https://raw.githubusercontent.com/thenanisore/qixxy/master/README.md) · [raw.githubusercontent.com](https://raw.githubusercontent.com/thenanisore/qixxy/master/core/src/com/oeshiro/qixxy/Gameplay/Objects/Player.scala)
+- **kux.io** (2017) — Browser — tylerolson; published by self-published (GitHub)
+  - online multiplayer Splix.io-style territory game on self-hostable Node.js servers
+  - players pick a name and colour and join a server by URL
+  - `io-territory` · corrected · medium · [github.com](https://github.com/tylerolson/kux.io) · [github.com](https://github.com/tylerolson/kux.io/commits/master) · [github.com](https://github.com/topics/paperio)
+- **caffeinatedsheep** (2018) — Android, Desktop, iOS — Nomadjackalope; published by self-published (GitHub)
+  - the bouncing hazards are sheep to be caught: build fences to pen them, and sheep break fences that are not finished in time
+  - coins from caught sheep buy food (attracts sheep) or dogs (repels them), placed on the field to herd sheep and open space for fences
+  - score goal: catch the most sheep, not reach an area percentage
+  - `jezzball` · corrected · low · [github.com](https://github.com/Nomadjackalope/caffeinatedsheep) · [github.com](https://github.com/Nomadjackalope/caffeinatedsheep/commits/master)
+- **Boundarpy** (c. 2019) — Desktop — Mokuichi147; published by none (source on GitHub; license not stated)
+  - one bouncing enemy and no Sparx or Fuse
+  - the player leaves the border only by moving perpendicular to it, into the field
+  - the enemy touching the line being drawn ends the game (one life)
+  - win by boxing the enemy in until it can no longer move, not by reaching a percentage target
+  - keyboard or gamepad, with instant restart
+  - `qix` · corrected · medium · [github.com](https://github.com/Mokuichi147/Boundarpy) · [raw.githubusercontent.com](https://raw.githubusercontent.com/Mokuichi147/Boundarpy/master/main.py) · [github.com](https://github.com/topics/qix)
+- **PetsArtXoniX** (2019) — Windows — Vlada Mamutova (VladaMamutova); published by none (GitHub)
+  - claimed area reveals a hidden pet picture; 80% clears the round and shows the whole picture, with a different picture each round
+  - enemies hitting the trail cost a life, and so does the player's own ball crossing its own trail
+  - lives do not refill between rounds; losing them all restarts the game
+  - settings for the number of enemies, ball speed and lives, plus a sound toggle
+  - results saved under a player name
+  - `xonix` · corrected · high · [github.com](https://github.com/VladaMamutova/PetsArtXoniX) · [github.com](https://github.com/topics/xonix)
+- **Corbynball** (2020) — Windows, macOS, Linux — Liam O'Connor (liamoc); published by Liam O'Connor (self-published on itch.io, name your own price)
+  - Also known as: Micro Entertainment: Corbynball
+  - three selectable speed settings
+  - Micro Mode: the game uses only a small part of the screen and can be shown at half size on high-DPI displays
+  - `jezzball` · corrected · high · [liamoc.itch.io](https://liamoc.itch.io/mep-corbynball) · [github.com](https://github.com/liamoc/desktop_games) · [itch.io](https://itch.io/games/tag-jezzball)
+- **xonix-js** (2020) — Browser — Michele Bucelli; published by self-published (itch.io, GitHub Pages)
+  - `xonix` · corrected · high · [buch.itch.io](https://buch.itch.io/xonix-js) · [github.com](https://github.com/michelebucelli/xonix-js) · [github.com](https://github.com/topics/xonix)
+- **Quick Impulse Xpansion** (2021) — Browser — D8H; published by D8H (self-published on itch.io)
+  - Also known as: QIX (backronym)
+  - freehand path drawn by holding the left mouse button from the screen border, instead of moving a marker in four directions
+  - the hazard is lava, not a Qix
+  - the captured area is computed with GDevelop's Marching Squares (scalar field) extension; press D to show the hit-boxes
+  - `qix` · confirmed · high · [d8h.itch.io](https://d8h.itch.io/quick-impulse-xpansion)
+- **Xonix (Pac-Man hybrid, Eques72)** (2022) — Desktop — Eques72; published by none (GitHub)
+  - Also known as: Pac-xon version
+  - a destroyer enemy bounces diagonally and erases inner claimed tiles it bounces off (the outer border is safe)
+  - a hunter enemy spawns in the middle of the map and chases the player in straight lines while the player is off claimed land, then goes back to its spawn point once the player is on land
+  - the destroyer and hunter play alongside default bouncing enemies
+  - `xonix` · corrected · medium · [github.com](https://github.com/Eques72/Xonix) · [raw.githubusercontent.com](https://raw.githubusercontent.com/Eques72/Xonix/main/src/DestroyerEnemy.cpp) · [raw.githubusercontent.com](https://raw.githubusercontent.com/Eques72/Xonix/main/src/HunterEnemy.cpp) · [github.com](https://github.com/topics/xonix)
+- **vixanix** (2025) — Desktop, Browser — spytheman; published by none (GitHub)
+  - `xonix` · corrected · high · [github.com](https://github.com/spytheman/vixanix) · [github.com](https://github.com/spytheman/vixanix/commits/master) · [github.com](https://github.com/topics/xonix)
+- **Xonix-Game-Development-Project / xonic-game-cpp-sfml** (2025-2026) — Desktop — KanwalAi (Kanwal Fatima, Ayesha Faryal); Dawood3838 (Muhammad Dawood); published by none (GitHub)
+  - two players on one keyboard, either cooperating or competing for space; crossing the other player's trail counts as a collision (KanwalAi)
+  - Continuous mode: one more enemy every 30 seconds and a speed increase every 20 seconds (KanwalAi)
+  - a power-up key freezes enemies and the opponent for 3 seconds (KanwalAi)
+  - bonus points for capturing 10 or more tiles in one move (KanwalAi)
+  - enemies move in circular and zig-zag patterns (KanwalAi)
+  - power-ups are earned at score milestones and give temporary advantages; score, time and moves are tracked (Dawood3838)
+  - `xonix` · corrected · high · [github.com](https://github.com/KanwalAi/Xonix-Game-Development-Project) · [github.com](https://github.com/Dawood3838/xonic-game-cpp-sfml) · [github.com](https://github.com/topics/xonix)
+- **Containment** (2026) — Browser — mikezupper; published by self-published (GitHub)
+  - 3D-lit chamber (Three.js) over a deterministic 2D rules engine at 120 fixed ticks per second
+  - walls grow in two halves; a ball hitting a growing half breaks only that half and costs a life, and a completed half stays
+  - claim 75% of the chamber before time or lives run out; each new chamber adds a ball
+  - keyboard aim with a 4-cell fast move, plus mouse and touch placement
+  - Slow pace option
+  - `jezzball` · corrected · high · [github.com](https://github.com/mikezupper/containment) · [github.com](https://github.com/mikezupper/containment/commits/main)
+- **Ink Fill** (2026) — Browser — simpleusername96; published by simpleusername96 (open source on GitHub)
+  - instead of steering a marker, the player drags and releases to launch a ball that bounces off walls; its trail seals off enemy-free areas
+  - an unfinished trail can be broken by enemies and must be protected until it closes
+  - 'tool marbles' hit by the ball freeze, move or defeat enemies
+  - 52 stages in 7 worlds, each with its own coverage target; later stages add terrain combinations and boss fights
+  - stars for finishing a stage in fewer shots, which rewards planned shots over volume
+  - `qix` · corrected · high · [github.com](https://github.com/simpleusername96/ink-fill) · [raw.githubusercontent.com](https://raw.githubusercontent.com/simpleusername96/ink-fill/main/README.md) · [github.com](https://github.com/simpleusername96/ink-fill/commits/main)
+- **JezzBall (Matswm86 Godot Android remake)** (2026) — Android, Desktop — Matswm86; published by self-released on GitHub
+  - swipe gestures replace mouse clicks to launch a horizontal or vertical wall
+  - 70% of the field must be walled off to clear a level, where Microsoft's JezzBall needs 75%
+  - level N has N atoms and max(3, N+2) lives; 50 levels, then the game loops back to level 1
+  - a RESTART button replays the current level with lives refilled
+  - `jezzball` · corrected · medium · [github.com](https://github.com/Matswm86/jezzball) · [github.com](https://github.com/Matswm86/jezzball/releases) · [github.com](https://github.com/topics/jezzball)
+- **looprush** (2026) — Browser — HavokSahil; published by self-published (GitHub)
+  - Also known as: Looprush
+  - online multiplayer: rooms of up to 16 members, matches of up to 8 players started by the host once all are ready; no bots
+  - continuous movement on a square board (48 to 384 cells, default 256), steered by cardinal keys or a free heading with a turn-rate limit
+  - heart-shaped starting territory at a random spawn kept a minimum distance from other players
+  - returning home flood-fills from the board edges: every cell unreachable from the edge becomes yours
+  - a cell claimed by two players in the same tick becomes neutral
+  - you die by leaving the board, hitting your own trail, having your trail cut (the cutter gets the kill, split among several cutters), a head-on collision or swapped cells, or 12 s without input
+  - pickups spawn every 3 s, up to 18: speed (1.6x for 5 s), shield (new trail uncuttable for 3 s), frost (rivals within 14 cells slowed to 0.55x for 3 s), teleport (resets dash cooldown)
+  - dash ability: 4x speed for 0.18 s on a 12 s cooldown, usable only while not drawing a trail
+  - no timer: the match ends when nobody is alive; score is peak board share, points are owned cells plus 100 per kill
+  - accounts, top-20 leaderboard, last-10 match history and uploaded face-image avatars
+  - `io-territory` · corrected · high · [github.com](https://github.com/HavokSahil/looprush) · [github.com](https://github.com/HavokSahil/looprush/commits/main) · [raw.githubusercontent.com](https://raw.githubusercontent.com/HavokSahil/looprush/main/server.py)
+- **Paper Loop** (2026) — Android — Eve-146T; published by Eve-146T (distributed via F-Droid)
+  - grid-based movement, square by square in four directions
+  - leaving your territory draws a trail; closing it back into your territory claims the enclosed ground
+  - running over a rival's trail knocks it out; your own trail is your weak spot
+  - sealing a rival's trail inside your capture also eliminates it
+  - opponents are on-device neural bots trained by self-play, plus a hand-written scripted bot
+  - live minimap and local high score
+  - `io-territory` · corrected · high · [f-droid.org](https://f-droid.org/en/packages/paper.loop/)
+- **Paper Loop 2** (2026) — Android — Eve-146T; published by Eve-146T (distributed via F-Droid)
+  - free continuous steering with a real heading and gradual turns instead of grid steps
+  - circular arena; steering too steeply into the wall eliminates you
+  - loop out from your territory and close a shape to claim the area inside
+  - slicing a rival's tail knocks it out; your own tail is your weak spot
+  - opponent modes: AI HARD (self-play trained net), EASY SCRIPTED or NO BOTS; optional respawn toggle
+  - local high score per mode
+  - `io-territory` · corrected · high · [f-droid.org](https://f-droid.org/en/packages/paper.loop2/)
+- **Photo Slice** (2026) — Android — azartsov (Valery Azartsov)
+  - Also known as: Photo Slice Native, photo-slice-native
+  - each level's hidden image is a random photo from the device's own media library (demo backdrop when access is denied)
+  - tap-to-steer cursor: a tap launches the cut into the image, then each tap turns it 90 degrees toward the tapped side
+  - closing a cut reveals the SMALLER of the two areas instead of the side without the enemy
+  - hazards caught inside a revealed area are removed; clearing all hazards opens the whole photo and the run continues with a new photo
+  - a hazard touching the open cut fails the attempt
+  - five difficulties set the hazard count: Sunny 3, Cloudy 4, Stormy 5, Blizzard 6, Apocalypse 8; per-difficulty counters of opened photos
+  - `xonix` · corrected · high · [github.com](https://github.com/azartsov/photo-slice-native) · [github.com](https://github.com/azartsov/photo-slice-native/commits/main) · [github.com](https://github.com/topics/xonix)
+- **Territory Raider** (2026) — Browser, Windows, macOS, Linux — xgeekover; published by self-published on GitHub
+  - shield mode: invulnerable while walking the claimed border; hold Space to draw into the dark
+  - flood fill from the boss: the side holding the boss stays dark, everything else is claimed
+  - Sparks race along the open trail toward the player; touching an enemy or being reached by a spark costs a life and rolls the trail back
+  - minions chase the player; enclosing them destroys them for a trap bonus
+  - 60-second timer per life: enemies speed up +25% at 20 s and +50% at 10 s left; time-out costs a life
+  - boss fight every 5 stages: aimed shots on cooldown, faster above 40% claimed, 3-shot spreads above 65%; shots vanish on claimed land, which works as cover; the boss only wanders on other stages
+  - power-up tiles collected by enclosing them: T time stop, S speed, L laser charge, P score, C clear minions
+  - laser (X) fired from shield mode: hitting the boss instantly claims the whole field with a large bonus
+  - from stage 2, unclaimable rock clusters block trails and enemy shots and are excluded from the 80% target
+  - from stage 11, fire, ice and lightning themes rotate every 10 stages: fire burns the trail back and must be surrounded; ice halves speed for 3 s and makes you slide; lightning freezes you for 1 s but stuns nearby minions for 2.5 s; enclosing a hazard patch removes it
+  - endless stages with an 80% clear target
+  - `volfied` · corrected · high · [github.com](https://github.com/xgeekover/territory-raider) · [github.com](https://github.com/xgeekover/territory-raider/releases) · [github.com](https://github.com/xgeekover/territory-raider/commits/main) · [github.com](https://github.com/topics/volfied)
+- **BlocklyIO** (unknown) — Browser, Node.js server — theKidOfArcrania; published by none (open-source GitHub project)
+  - Paper.io clone (trail out of your territory, loop back to enclose land)
+  - sets out to add real online multiplayer, which the single-player-vs-bots Paper.io lacked; the README calls it a demo
+  - `io-territory` · corrected · medium · [github.com](https://github.com/theKidOfArcrania/BlocklyIO) · [github.com](https://github.com/topics/paper-io)
+- **jezzball-kazzmir** (unknown) — Windows, Linux — Jon Rafkind (Kazzmir); published by self-published (Allegro.cc depot)
+  - Also known as: Jezzball (Kazzmir)
+  - walls covering 80% of the screen clear the level
+  - each level adds one extra life and one more ball
+  - left click builds a wall, right click toggles its direction
+  - `jezzball` · corrected · high · [slackbuilds.org](https://slackbuilds.org/repository/14.2/games/jezzball-kazzmir/) · [slackbuilds.org](https://slackbuilds.org/slackbuilds/14.2/games/jezzball-kazzmir/README) · [slackbuilds.org](https://slackbuilds.org/slackbuilds/14.2/games/jezzball-kazzmir/jezzball-kazzmir.info)
+
+## Web and Flash games
+
+- **似非クイックス** (2003) — Java applet — カノエ (Kanoe); published by self-published freeware (distributed on Vector)
+  - Also known as: QwIX, Ese Qix ('pseudo-Qix')
+  - each stage uses a before/after image pair: claimed areas switch from the 'before' picture to the 'after' picture, and the site owner can supply any images
+  - site owners embed it in their own web pages and set each stage through applet parameters: stage count, lives, goal % (1-99, default 75), Qix tail length, maximum Sparx count, Sparx spawn and speed-up intervals, game speed and colours
+  - after a hit, the cursor blinks and is invulnerable to every enemy except the Qix while blinking
+  - a fuse-like 'ignition' enemy appears on the line if you stall mid-cut, as in Qix
+  - `qix` · corrected · high · [www.vector.co.jp](https://www.vector.co.jp/soft/other/java/se301664.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/other/java/se301664.html) · [ftp.vector.co.jp](https://ftp.vector.co.jp/39/50/1141/qwixv115.zip)
+- **Qix (Flash, Drunk Men Work Here)** (2004 or earlier) — Browser — Drunk Men Work Here; published by self-published (drunkmenworkhere.org)
+  - Also known as: qix2.swf
+  - `qix` · corrected · high · [games.jayisgames.com](https://games.jayisgames.com/review/qix.php) · [wikipedia2007.classicistranieri.com](https://wikipedia2007.classicistranieri.com/q/i/x/Qix.html)
+- **王子天蚕变** (2006) — Flash — flashgame.co.kr (Korean Flash game site); published by flashgame.co.kr; rehosted on 4399.com (uploaded by a 4399 user, 2007-01-05)
+  - Also known as: Wangzi Tiancanbian, Prince Qix (unofficial English gloss)
+  - draw only while holding Space; the line must return to your own area to close a region
+  - claim 80% of the map within a time limit to advance
+  - online high-score ranking that needs a flashgame.co.kr login (Korean UI strings in the SWF)
+  - `qix` · corrected · medium · [www.4399.com](https://www.4399.com/flash/4118.htm) · [sda.4399.com](https://sda.4399.com/4399swf/upload_swf/ftp/20070105/8.swf)
+- **Filler** (2008) — Flash — SimianLogic; published by SimianLogic (hosted on Kongregate)
+  - Also known as: filler
+  - hold the mouse to grow a filler ball and release to freeze it; it also stops growing when it touches another filler ball
+  - a bouncing ball running into a growing filler ball ends it, and collisions while growing cost lives
+  - fill two-thirds of the level
+  - limited lives and filler balls per level
+  - a bouncing ball squashed by filler balls respawns in a top corner on the side away from where you are building
+  - `jezzball` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/games/SimianLogic/filler) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **xonixand 2.0** (2008) — Browser — maks_chip; published by Kongregate (portal; self-uploaded)
+  - `xonix` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/maks_chip/xonixand-2-0)
+- **Filler 2** (2009) — Browser — SimianLogic; published by SimianLogic (self-published on Kongregate)
+  - hold the mouse to grow a filler ball until it touches a bouncing ball or another filler, release to fix it in place
+  - fill two thirds of the area to clear a level
+  - a bouncing ball touching a still-growing filler costs a life
+  - Normal difficulty: Space freezes the bouncing balls, draining a freeze meter
+  - later levels add more balls and obstacles
+  - three difficulties and 100 challenges
+  - `jezzball` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/games/SimianLogic/filler-2) · [www.kongregate.com](https://www.kongregate.com/games/SimianLogic/filler)
+- **Fishonix** (2009) — Browser — maks_chip; published by Kongregate (portal; self-uploaded)
+  - inverted goal: cut away parts of a rectangular picture until less than 20% of the original remains
+  - a cut-off part disappears only if no moving fish is inside it
+  - the player is a fish steered with the arrow keys, and enemy fish can eat it (per player comments)
+  - `xonix` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/maks_chip/fishonix)
+- **Kritter Krawler** (2009) — Browser — Arkadium; published by Arkadium (Great Day Games portal)
+  - Also known as: 蜘蛛圈地 (4399.com re-upload)
+  - player is a spider claiming area against a per-level percentage goal and a level timer
+  - a main enemy with a timed transformation state
+  - a laser enemy that telegraphs with a sonar pulse before firing a laser beam
+  - saw enemies
+  - power-ups that appear at intervals for a limited time and give bonus points
+  - `qix` · corrected · medium · [www.4399.com](https://www.4399.com/flash/78145.htm)
+- **圈地运动** (2009) — Browser — unknown; published by unknown (uploaded to 4399.com by a user)
+  - Also known as: Enclosure Movement, Quan Di Yundong
+  - click to extend a growing line that claims ground; Space toggles its direction
+  - three-pointed stars, gears and odd-shaped objects roam the field and must not touch the growing line
+  - claim 80% of the field to advance
+  - only five hits allowed for the whole run
+  - `jezzball` · confirmed · medium · [www.4399.com](https://www.4399.com/flash/17023.htm)
+- **Fill it! (Vvalter)** (2010) — Browser — Vvalter; published by Vvalter (self-published on Kongregate)
+  - Also known as: Fill it!
+  - hold the left mouse button to grow a white ball; it stops on release or when it hits a wall
+  - a black bouncing ball touching your growing ball costs a life and destroys that ball
+  - fill 66% of the field to clear
+  - bigger balls score more
+  - `jezzball` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/Vvalter/fill-it)
+- **Neo Xonix** (2010) — Browser — Altarsoft; published by Kongregate (portal; self-uploaded)
+  - four enemy types: AntiXoni moves inside the field and cannot cross captured territory; Jumper jumps from side to side; Twins circle the field clockwise and counter-clockwise; Hunter chases the player everywhere
+  - a life is lost on touching a creature, crossing your own trail, an AntiXoni crossing your trail, or the level timer running out
+  - bonus S doubles speed; the Clock bonus freezes all creatures; other bonuses give points
+  - need 75% to pass; extra life every 5,000 points
+  - `xonix` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/Altarsoft/neo-xonix)
+- **Pac-Xon** (by early 2010 (first release date unknown); HTML5 portal version dated Dec 2014) — Windows, Browser — unknown; published by GameTop (Windows freeware download); many web portals host the browser version
+  - Also known as: Pacxon, Pac Xon
+  - Pac-Man is the player and ghosts are the bouncing enemies
+  - fill 75-80% of the board to advance (varies by version)
+  - ghosts touching the player or the unfinished trail cost a life
+  - ghosts can be captured by enclosing them with walls
+  - fruit power-ups: cherries speed the player up, bananas slow the ghosts; some bonuses freeze the ghosts
+  - later levels add faster ghosts, ghosts on straight paths, big ghosts, and enemies that eat finished walls
+  - `xonix` · corrected · medium · [kiz10.com](https://kiz10.com/pac-xon) · [lebottinlinux.vps.a-lec.org](https://lebottinlinux.vps.a-lec.org/Bottin_P-Q_files/Pacxon__to_play_with_wine_-12239.html) · [www.cs.columbia.edu](https://www.cs.columbia.edu/~sedwards/classes/2010/4840/designs/pac-xon.pdf) · [www.pacxon.net](https://www.pacxon.net/)
+- **Reclamation** (2010) — Browser — Globotix; published by self-published (Newgrounds portal, MochiAds distribution)
+  - Also known as: 可怕的圈地 (4399.com re-upload)
+  - enemies are a flocking swarm of insects that pour out of a trans-dimensional portal in the field; touching any insect or the portal destroys the ship
+  - some insects follow the claimed edges, as Sparx do
+  - a February 2010 update made the ship invincible on the edges, so only drawing is dangerous
+  - sector (level) select from the menu
+  - `qix` · corrected · high · [www.newgrounds.com](https://www.newgrounds.com/portal/view/525633) · [www.4399.com](https://www.4399.com/flash/24011.htm) · [www.4399.com](https://www.4399.com/flash/74555.htm)
+- **Reclamation** (2010) — Browser — Globotix; published by self-published (Newgrounds/MochiAds); re-hosted by 4399.com
+  - Also known as: 可怕的圈地, 可怕的圈地无敌版 (invincible cheat build, 4399.com, 2011-11-11)
+  - enemies are a flocking swarm of insects that pour out of a trans-dimensional portal in the field; touching any insect or the portal destroys the ship
+  - some insects follow the claimed edges, as Sparx do
+  - a February 2010 update made the ship invincible on the edges, so only drawing is dangerous
+  - sector (level) select from the menu
+  - `qix` · corrected · high · [www.4399.com](https://www.4399.com/flash/24011.htm) · [www.4399.com](https://www.4399.com/flash/74555.htm) · [www.newgrounds.com](https://www.newgrounds.com/portal/view/525633)
+- **色球圈地** (2010 (4399 upload, 2010-03-28)) — Web browser — unknown (uploaded by a 4399 user); published by 4399.com (portal host)
+  - Also known as: Colour Ball Enclosure (literal translation)
+  - click anywhere on the field to place a ball, and hold the button to keep it growing
+  - a growing ball that touches the border or one of the bouncing small balls costs a life
+  - each level gives a limited number of balls and lives; the level is cleared when the balls' combined area passes a target
+  - `jezzball` · corrected · medium · [www.4399.com](https://www.4399.com/flash/25972.htm)
+- **3D天蚕变** (2011) — Browser — Ed 'ryzed' Ryzhov (credited in game; 'Thomasso corporation'); published by unknown (re-hosted by 4399.com)
+  - Also known as: Xonix3D (title string inside the SWF)
+  - 3D-rendered field (AirXonix style): the player ball cuts parts off the field
+  - crossing your own trail costs a life
+  - an enemy ball that touches the player or crosses the open trail costs a life
+  - enemies on two layers: several ball types in the open field and a separate star-like enemy on the claimed surface (from code class names)
+  - bonus pickups; asset names point to extra life, slow, speed, extra time, warp, points and a harmful 'death' pickup
+  - per-level percentage target under a time limit (level 1 asks for 60%)
+  - `xonix` · corrected · medium · [www.4399.com](https://www.4399.com/flash/62396.htm)
+- **Xonix 3d (myplayyard)** (2011) — Browser — myplayyard; published by Kongregate (portal; self-uploaded)
+  - Also known as: Xonix 3D - Levels pack
+  - 3D-rendered field whose camera does not always show the whole field (per a player comment)
+  - crossing your own trail, or a ball touching it, costs a life at once
+  - frequent bonus pickups
+  - mines that appear at random spots (per a player comment)
+  - a ball enemy that eats your trail back until it hits the border (per a player comment)
+  - separate 2012 Levels pack with new levels
+  - `xonix` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/myplayyard/xonix-3d) · [www.kongregate.com](https://www.kongregate.com/en/games/myplayyard/xonix-3d-levels-pack)
+- **JezzPaul** (2012) — Browser — phantompaulbooth; published by phantompaulbooth (self-published on Kongregate)
+  - walling off JezzBall areas uncovers a hidden picture (always a cat in a sink)
+  - Space switches the direction of the next line
+  - `jezzball` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/phantompaulbooth/jezzpaul)
+- **Sloppy Ninja** (2013) — Browser — mrjonesgl; published by self-published on Kongregate
+  - Also known as: Sloppy Ninja - Demo, Sloppy Ninja - Fate, Sloppy Ninja - Destiny
+  - Space bar is a dedicated claim key: arrows move, Space claims area
+  - double-tapping Space throws a shuriken, an attack on enemies (Destiny)
+  - each level has its own enemy roster, with distinct abilities and special attacks
+  - `volfied` · corrected · medium · [www.kongregate.com](https://www.kongregate.com/en/games/mrjonesgl/sloppy-ninja-demo) · [www.kongregate.com](https://www.kongregate.com/en/games/mrjonesgl/sloppy-ninja-fate) · [www.kongregate.com](https://www.kongregate.com/en/games/mrjonesgl/sloppy-ninja-destiny) · [www.kongregate.com](https://www.kongregate.com/en/games/mrjonesgl)
+- **Xonix 3D 2** (2013) — Browser — Buxle; published by Kongregate (portal; self-uploaded)
+  - drive a ball across the field to draw a line; the side cut off rises up in 3D as the capture
+  - power-ups that switch the game into timed bonus states (per a player comment)
+  - `xonix` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/Buxle/xonix-3d-2)
+- **Fezball** (2014) — Browser — Ginik; published by Ginik (self-published on Kongregate)
+  - mouse-only: click and hold to create a divider arrow, drag to aim it, release to start it
+  - adds an easy mode the original lacked
+  - clear 70% of the board (instead of JezzBall's 75%)
+  - `jezzball` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/Ginik/fezball)
+- **Jezzball Jam** (2014) — Browser — FrakReality; published by FrakReality (self-published on Kongregate)
+  - Classic Mode: limited lives for the whole run; running out ends the game
+  - Arcade Mode: lives set per level; running out costs your score but keeps you on the same level
+  - right-click or Ctrl toggles horizontal or vertical lines; clear 75% to pass a level
+  - a post-launch update lets the red and blue halves of a line start independently in some situations
+  - tutorial
+  - `jezzball` · confirmed · high · [www.kongregate.com](https://www.kongregate.com/en/games/FrakReality/jezzball-jam)
+- **Space Cropper** (2014) — Browser — Thomas John (open-design.be); published by Self-published on Flash portals (Newgrounds, Y8)
+  - Player ship travels the border and cuts into space while the action key is held (Shift or J), tracing a dotted line. Y8 lists the controls as Move and Crop
+  - 20 levels. Levels 1-3 are a tutorial, and level 4 is the 'first mission in enemy territory'
+  - Boss at level 10, and a final boss at level 20 (the Red Snake): it fires missiles in threes, and every third missile spawns a sentinel
+  - Sentinels guard the map border, Sparx-style. A shield protects the player from them
+  - Central turret that fires whenever the player leaves the border
+  - Monster factories keep spawning enemies ('crabs') while they run
+  - Neutral stones in the field can be used as cover against aggressive enemies
+  - 'Circler' balls orbit an object and pass over everything
+  - Segment-follower monsters chase the player's trail
+  - Pickups: shield, slow-game, point items, and a timed gift in the middle that vanishes after 20 seconds
+  - About 17 monster classes in the code (bee, blue, green, red, metallic, confused metallic, canister, electric, factory, circler, followers, ship, tower and more)
+  - `volfied` · rescued · high · [www.newgrounds.com](https://www.newgrounds.com/portal/view/644942) · [www.y8.com](https://www.y8.com/games/space_cropper) · [img.y8.com](https://img.y8.com/cloud/y8-flash-game/contents/item_versions/flash_games/61007/original/space_cropper.swf) · [www.y8.com](https://www.y8.com/games/space_cropper_2)
+- **QIX Spider Quest** (2015) — Browser — Szpan; published by self-published (Kongregate)
+  - one hold-to-speed-up button (Space) in place of arcade Qix's separate fast/slow draw buttons
+  - `qix` · confirmed · medium · [www.kongregate.com](https://www.kongregate.com/en/games/szpan/qix-spider-quest)
+- **PacXon New Realms** (2024) — HTML5 browser — Azerion Casual Games; published by GameDistribution (Azerion)
+  - Also known as: Pac-Xon 2: New Realms, Pacxon New Realms
+  - 192 levels across 4 locations
+  - 4 to 6 unlockable character skins per location
+  - fill at least 80% of the area to finish a level
+  - arrow-key or swipe controls
+  - `xonix` · corrected · high · [html5.gamedistribution.com](https://html5.gamedistribution.com/727e29ac2f7a40e69a17dc7ff7f4c306/) · [www.pacxon.net](https://www.pacxon.net/pacxon2.php) · [hahagames.com](https://hahagames.com/game/pac-xon-2-new-realms)
+- **Cats Panic!** (2026) — Browser — Chris (Newgrounds author); published by self-published on Newgrounds
+  - cat-themed Gals Panic-style claiming, rated E (Everyone): draw a trail around territory to claim it while avoiding enemies
+  - `gals-panic` · corrected · low · [www.newgrounds.com](https://www.newgrounds.com/portal/view/1028693)
+- **Claim (DaNuTree)** (2026) — Browser — DaNuTree; published by self-published (itch.io)
+  - Also known as: Claim
+  - guards have facing and visible vision cones (yellow when unaware, red once they spot you), chase only what they see, and search your last known position; pillars block sight
+  - guard types: Wanderer (random), Hunter (narrow, longest cone, hunts you), Guardian (lurks deep in the open field), Nervous (wide short cone, twitchy) and Cutter (ignores you and cuts your trail)
+  - touching your own trail or having it cut by a guard costs a life; 3 lives
+  - the player can shoot in the facing direction: shoot guards for points, or shoot your own trail to blast an exit block at a score cost
+  - from level 2: pillars that block you and guards, pits that stop only you, and a golden zone that pays triple; from level 4: roaming pillars that cut any line they cross
+  - mystery orbs spin and then reveal a power-up (Speed, Shield, Freeze, Chain Guard, Rapid Fire, Spikes) or a power-down (Confuse, Fog, Alarm, Slow, Reinforcements, Drunk)
+  - gadget chosen before each run, on a cooldown: Grapple Hook (pulls you two cells across open ground) or Smoke Bomb (invisible to guards for a few seconds)
+  - after each level, pick one of three random upgrade cards that last the rest of the run
+  - after claiming 75% you may cash out at any time or push on for a growing risk bonus that one catch wipes out
+  - modes: Normal, Chaos (orbs everywhere) and Zen (guards stand still); cameras: fixed, follow, and mirrored-control
+  - `xonix` · confirmed · high · [danutree.itch.io](https://danutree.itch.io/claim)
+- **Containment (hau-game-studio)** (2026) — Browser — hau-game-studio; published by hau-game-studio (self-published on itch.io)
+  - Also known as: Containment
+  - click and drag a horizontal or vertical barrier that grows across open space
+  - one hit: an anomaly touching an unfinished barrier ends the whole run
+  - capture 75% to clear a wave; endless waves with more and faster anomalies
+  - visual theme changes every five cleared waves
+  - local personal-best tracking with fast restarts
+  - `jezzball` · confirmed · high · [hau-game-studio.itch.io](https://hau-game-studio.itch.io/containment)
+- **Glimmer: Capture the Light** (2026) — Browser, Telegram — NeGovoriGame (kzonyx studio); published by self-published (Game Jolt, Telegram)
+  - Also known as: Огонёк (Ogonyok)
+  - each captured piece reveals part of a hidden painting (non-adult picture reveal): 60 paintings across 6 worlds
+  - lure shadow enemies into Supernova traps
+  - weekly leagues
+  - asynchronous ghost challenges: friends race your recorded ghost
+  - swipe controls on touch screens (arrows/WASD on PC)
+  - `qix` · confirmed · high · [gamejolt.com](https://gamejolt.com/games/glimmer-capture-the-light/1116486)
+- **Neon Xonix** (2026) — Browser — AS (AhmedSaid; itch.io 'ahmed-as7', Game Jolt 'AhmedSaid_92fd'); published by self-published (itch.io, Game Jolt)
+  - Also known as: neon-xonix-20
+  - claim 80% or more of the board
+  - bouncing enemies
+  - touch and keyboard controls with adjustable settings
+  - `xonix` · confirmed · high · [ahmed-as7.itch.io](https://ahmed-as7.itch.io/neon-xonix) · [gamejolt.com](https://gamejolt.com/games/neon-xonix-20/1104334) · [gamejolt.com](https://gamejolt.com/site-api/web/discover/games/1104334)
+- **Territory Action** (2026 (estimated)) — Browser — Torai Games (programming assisted by OpenAI Codex / ChatGPT); published by self-published (itch.io)
+  - `qix` · corrected · medium · [torai-games.itch.io](https://torai-games.itch.io/territory-action)
+- **Territory Arrow** (2026) — Browser, Mobile browser — hzw2006101; published by hzw2006101 (self-published on itch.io)
+  - one-button control: hold to move the arrow along a glowing closed shape, release to stop
+  - the trail carved by the arrow claims territory; fill 90% before the timer runs out or rivals get there first
+  - hazards: pink gears end the run on contact, and red enemy arrows hunt you
+  - twin linked arrows move in lockstep, so you must plot a path that avoids a collision
+  - non-rectangular fields: squares, locks, stars and winding curves
+  - `qix` · corrected · high · [hzw2006101.itch.io](https://hzw2006101.itch.io/territory-arrow)
+- **VoidCutter** (2026) — Browser — Makeskin; published by self-published (itch.io)
+  - each capture restores part of a Turkish landmark (Cappadocia, Pamukkale, Ephesus, Hagia Sophia, Mount Nemrut) hidden under the Void
+  - enemy roster of Drifting Shadows, Border Followers (Sparx analog) and Hunters, plus a mechanical phoenix boss guarding the final level
+  - Time Fracture: spend charged Void Energy to slow everything down
+  - up to three stars per level for bonus goals
+  - Daily Map: one shared layout per day for every player
+  - mouse-drag, swipe and on-screen D-pad controls
+  - `qix` · confirmed · high · [makeskin.itch.io](https://makeskin.itch.io/voidcutter)
+- **Xonix Wars Territory Capture** (2026) — Browser — 7thReactor; published by self-published (itch.io)
+  - the player is a tank; enemies include drones, jets, flying mines, missiles and heavy bombers
+  - some enemies track the tank and destroy it by hitting its trail
+  - driving back along your own trail is allowed with no penalty
+  - capture 80% of the map to win; capturing over 90% gives an extra life
+  - 5 war zones, with progress saved after each completed stage
+  - `xonix` · confirmed · high · [7threactor.itch.io](https://7threactor.itch.io/xonix-wars-territory-capture)
+- **Quick Paper Game** (unknown) — Browser — DecagonBrother; published by self-published (itch.io)
+  - glide across the board leaving a trail and close the loop to claim territory
+  - closing a loop over opponents' land steals it; getting hit while drawing ends the run
+  - `io-territory` · corrected · medium · [decagonbrother.itch.io](https://decagonbrother.itch.io/quick-paper-game) · [decagonbrother.itch.io](https://decagonbrother.itch.io/quick-paper-game/data.json)
+
+## Mobile games
+
+- **Erix** (c. 2000-2001) — Ericsson mobile phones — unknown (built into Ericsson phone firmware); published by Ericsson
+  - `qix` · corrected · medium · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=Qix&oldid=215004705) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Ericsson_T39) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **JezzBall (Softex, J2ME)** (unknown (MIDP-1.0 era, early-to-mid 2000s)) — Java ME — Softex, Inc.
+  - Also known as: JezzBall
+  - `jezzball` · confirmed · low · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/Mobile%20-%20J2ME.dat)
+- **Nyamida Monogatari** (2002) — Mobile phone — unknown
+  - Also known as: にゃみだ物語
+  - `amidar-painter` · confirmed · medium · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/アミダー)
+- **Megami Tensei QIX Persona 3** (2007) — Japanese feature phones: i-appli, S!appli, EZappli — unknown (not named; copyright credits ATLUS and TAITO); published by Atlus and BBMF (via the 'Megaten α' mobile site)
+  - Also known as: 女神転生QIX ペルソナ3, ペルソナ3 QIX, Megami Tensei QIX PERSONA3
+  - Enemies are Persona 3 Shadows drawn as their masks.
+  - Clearing a stage takes 80% instead of 75%.
+  - Each stage has 3 lives. Touching an enemy, or your own line while drawing outside your territory, costs one.
+  - The player is invincible while inside their own claimed territory.
+  - Enclosing an area defeats the enemies inside it, but the large white-masked boss Shadow cannot be killed by enclosure.
+  - Pickups are collected by enclosing them: a red card gives a temporary speed-up, a blue card temporarily slows enemies, and a yellow card gives an extra life.
+  - Enclosed areas reveal official Persona 3 illustrations by Shigenori Soejima, set to Persona 3 BGM.
+  - Clearing a stage unlocks a phone wallpaper, and replaying a cleared stage at 86% or more unlocks another.
+  - `qix` · corrected · high · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/女神転生QIX_ペルソナ3) · [dengekionline.com](https://dengekionline.com/data/news/2007/5/11/c14cd8d12272b5cc814a74a92787f8a4.html) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス)
+- **Bix** (2008) — iOS — Padadaz; published by Padadaz SARL
+  - Also known as: Bix Challenge, Bix - 陣地取り
+  - Swiping anywhere on the screen steers the tracer in that direction, and a double-tap pauses.
+  - Closing a line fills the side with fewer balls, a JezzBall-style rule replacing Qix's 'side without the Qix'.
+  - 2008 ball types: normal, bouncing, respawning (survives being enclosed), slow-down (pauses, then slows all balls) and 1-up. Trapping a special ball triggers its power.
+  - Fill 75% to clear, with 3 lives.
+  - Bix Challenge (2015 onward) has 100 levels in 10 galaxies, each with its own twist: ball traps, line limits, dark zones, time trials, giant balls, ice walls or hunters.
+  - The Rift: a hidden endless climb after level 100.
+  - Up to three stars per level, plus chests, gold balls and coins.
+  - Boosters: Slow Start and Shield.
+  - Weekly Race: one shared board a week, raced to 75% for medals.
+  - A continue option for stuck players, and a 'Classic version' toggle that restores the 2008 game.
+  - `qix` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/bix/id294842200) · [apps.apple.com](https://apps.apple.com/us/app/bix-challenge/id294848792) · [www.appbank.net](https://www.appbank.net/2008/10/31/iphone-application/1161.php) · [gamedeveloper.com](https://gamedeveloper.com/game-platforms/best-of-fingergaming-from-i-bix-i-to-burning-monkeys)
+- **BurnBall** (2008) — iOS — unknown (official page was ims.co.nz/BurnBall)
+  - `jezzball` · corrected · low · [gamicus.fandom.com](https://gamicus.fandom.com/api.php?action=parse&page=JezzBall&prop=wikitext&format=json) · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=JezzBall&action=history&offset=20090101000000) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Eyestorm** (2009) — iOS — Vivid Apps (Jens Egeblad); published by Vivid Apps (App Store seller: Jens Egeblad)
+  - Also known as: Eyestorm Lite (Jezzball clone)
+  - swipe across the screen to build walls of blocks
+  - several eye enemy types: some bounce like JezzBall balls, some move randomly or in patterns, some spawn more eyes
+  - UFO enemies
+  - boss fights
+  - puzzle levels
+  - power-ups
+  - story campaign against Dr. Eyequeue
+  - easy, normal and hard difficulty (added in a January 2010 update)
+  - 28 levels plus a secret level (the Lite version has 12)
+  - `jezzball` · corrected · medium · [apps.apple.com](https://apps.apple.com/us/app/id310090179) · [itunes.apple.com](https://itunes.apple.com/search?term=eyestorm&entity=software&limit=10)
+- **Jezz** (2009) — iOS — Menial
+  - claim 70% of the field per level (JezzBall asks for 75%)
+  - each level adds more balls
+  - `jezzball` · corrected · medium · [menial.co.uk](https://menial.co.uk/blog/2009/03/21/jezz-iphone-game-released/)
+- **Spider: The Secret of Bryce Manor** (2009) — iOS, iPad, Android — Tiger Style (David Kalina, Randy Smith); published by Tiger Style
+  - Also known as: Spider: The Secret of Bryce Manor Director's Cut, Spider HD
+  - the spider trails silk when it jumps between surfaces, and a strand breaks if the gap is too wide
+  - closing a triangle of strands forms a web that catches the insects inside it
+  - a per-level insect quota opens the exit portal, and play may continue after it
+  - hornets (added in the Director's Cut) cannot be webbed and must be killed by jumping into them
+  - modes: Adventure, Feeding Frenzy (time limit), Hunger (endless), Precision (limited silk)
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Spider:_The_Secret_of_Bryce_Manor) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Trap!** (2009) — Android — unknown
+  - Also known as: Trap
+  - `jezzball` · corrected · low · [gamicus.fandom.com](https://gamicus.fandom.com/api.php?action=parse&page=JezzBall&prop=wikitext&format=json) · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=JezzBall&action=history&offset=20090901000000) · [www.androidfreeware.net](http://www.androidfreeware.net/download-trap.html)
+- **iSlash** (2010) — iOS, Android — Duello; published by Duello (Duello Iletisim Hizmetleri A.S.)
+  - swipe across the shape to cut it at any angle; the cut is instant, with no marker walking the edge
+  - the cut-off part without ninja stars is removed; each level asks you to trim away most of the shape, and the amount grows over time
+  - bouncing ninja stars at different speeds, near-invisible ghost stars, and later bamboo stars, comet stars and mother stars that release babies
+  - a saw enemy that kills on touch but can itself be slashed
+  - metal edges that cannot be cut (a paid Power Blade lets you cut them)
+  - trap the stars in as few cuts as possible
+  - paid power-up packs: Skip Master, Star Killer, Time Bender, Power Blade
+  - real-time multiplayer: simultaneous slashing races on 50 multiplayer levels (added in a later version)
+  - 240 levels in the current listing (70 at launch, per an October 2010 review)
+  - `jezzball` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/id388130466) · [www.148apps.com](http://www.148apps.com/islash/islash-review/) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix)
+- **XonixAttack** (2010) — Android — unknown (package com.oidapps.xonixattack; announced by forum user mandrazhoid)
+  - Also known as: Xonix Attack
+  - `xonix` · confirmed · medium · [forums.androidcentral.com](https://forums.androidcentral.com/threads/xonixattack-classic-arcade-game.33289)
+- **Curvebot Evolved** (2011) — iOS, Android, Windows Phone — Elpixo
+  - A robot runs along the edges of 3D planes. Pressing both touch buttons sends it straight across, drawing an edge-to-edge cut.
+  - Each cut removes the part on one side. The aim is to shrink the plane to a target fraction (about 20%) instead of claiming 75%.
+  - Enemies learn to spot your cut lines and try to cut across them.
+  - Energy-zapping robots and other obstacles.
+  - Later planes have awkward shapes.
+  - 72 levels.
+  - `qix` · confirmed · medium · [www.148apps.com](https://www.148apps.com/reviews/curvebot-evolved-review/)
+- **JezzBall Classic** (2011) — iOS, Android, Windows — Marcus Bjuhr (Winterdust); published by Winterdust
+  - Also known as: JezzBall Classic Lite
+  - 83 rule mods usable alone or combined, some changing play (for example two wallbuilders at once), with separate high scores per combination
+  - 22 preset mod combinations
+  - 100 puzzle rooms solved by well-timed wall placement
+  - missions that challenge personal bests
+  - optional real photos (700) placed into the built walls each level, so captured area reveals a picture
+  - `jezzball` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/jezzball-classic/id463237404) · [apps.apple.com](https://apps.apple.com/us/app/jezzball-classic-lite/id466383476) · [itch.io](https://itch.io/t/20890/jezzball-classic-has-been-released-for-pc) · [www.moddb.com](https://www.moddb.com/games/jezzball-classic)
+- **Tarantula vs Snake** (2011) — iOS, macOS, tvOS, visionOS — Leszek Szary
+  - A spider claims area by spinning a web, and each level needs a 'sufficiently large' web instead of a fixed percentage.
+  - A hungry snake hunts the spider instead of Qix and Sparks.
+  - Endless levels of rising difficulty, with a global leaderboard.
+  - Two-player co-op on one device, working together against the snake.
+  - Tilt control in early versions (1.1-1.2.1), and later gamepad support (PlayStation, Xbox, MFi).
+  - `qix` · corrected · medium · [apps.apple.com](https://apps.apple.com/us/app/tarantula-vs-snake/id483584037)
+- **Sweet Split** (2012) — iOS — Jan Niklas Hasse
+  - walls can be drawn at any angle by dragging, not only horizontally or vertically
+  - each level adds one more bouncing sweet; a wrong line costs a life
+  - fill 75% of the free space
+  - 4 power-up items to grab at the right moment (Arcade mode)
+  - unlockable Zen mode with infinite lives and no rules
+  - Level Mode: 140+ handmade levels in packs with 3-star ratings; Arcade mode has an online global high-score list
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/app/id588571983) · [itunes.apple.com](https://itunes.apple.com/lookup?id=588571983)
+- **Xonix Blast** (2012) — Android — OmegaLabs
+  - Also known as: Xonix Blast Free
+  - blue balls leave mines behind them
+  - red balls split chunks off already-filled territory and turn them back into dangerous area
+  - missiles (double tap) calm enemies
+  - teleport (long press) jumps through the enemy area to a safe region, collecting bonuses on the way
+  - bonuses that slow or stop enemies or speed up the player
+  - extra points for fast clears and overfills buy bonuses or an assistant bot in an 'Ammunition' shop
+  - a purchasable assistant bot plays alongside you and fills part of the field
+  - reversing into the dangerous area is not allowed (flick controls)
+  - filled areas show colourful landscape images
+  - 32 levels free, 96 in the full version
+  - `xonix` · corrected · medium · [forums.androidcentral.com](https://forums.androidcentral.com/threads/game-xonix-blast.164545)
+- **Dig!** (2013) — iOS — Crescent Moon Games
+  - Digging replaces line drawing: an archaeologist digs lines through his backyard and must dig out 75% of each level.
+  - Nigel the mummy roams the level, and if he touches your dig line, more enemies are unleashed (for example, moles with fezzes).
+  - Artifacts dug up earn money for power-ups and perk-giving hats.
+  - Exhibit pieces fill museum collections, which pay the hero a salary (a meta-progression loop).
+  - Levels go deeper and deeper toward the centre of the earth.
+  - `qix` · confirmed · medium · [apps.apple.com](https://apps.apple.com/app/id626192197) · [itunes.apple.com](https://itunes.apple.com/search?term=qix&entity=software&limit=50)
+- **Kids Xonix** (2013) — Android — unknown (package kidsxonix.game.sp; announced by forum user tihan)
+  - the claimed area is themed as a girl (Lily) sowing seeds that turn bare ground into grass and flowers
+  - bug enemies
+  - 24 levels; clears earn 12 collectible animal rewards
+  - `xonix` · confirmed · medium · [forums.androidcentral.com](https://forums.androidcentral.com/threads/free-game-kids-xonix.320296)
+- **The Filling** (2013) — iOS — Carlos García
+  - Also known as: The Filling Intro
+  - touching your own line costs a life
+  - Episodes mode: 80 levels in 5 episodes with several enemy kinds
+  - on some Episodes levels the perimeter is not a safe zone
+  - Arcade mode: the enemy count keeps rising, with three difficulty levels
+  - swipe-anywhere gesture steering that can chain direction changes
+  - `qix` · corrected · high · [apps.apple.com](https://apps.apple.com/app/id592452146) · [apps.apple.com](https://apps.apple.com/app/id942129020) · [itunes.apple.com](https://itunes.apple.com/search?term=xonix&entity=software&limit=25)
+- **Line Knight Fortix** (2014) — iOS — Nemesys Games; published by Bulkypix
+  - Enclosing an enemy's position cuts it out of the map and captures it: dragons, ogres and turrets.
+  - Larger enclosures capture several targets at once for more points, but take longer and carry more risk.
+  - Blood bats and bone dragons seek out the player and disrupt drawing.
+  - Fire-breathing dragons and turrets that fire projectiles.
+  - Collected keys unlock new areas of a stage.
+  - Power-ups, and unlockable weapons such as catapults that remove enemies permanently.
+  - Steered by dragging anywhere on screen, with a zoomable camera.
+  - 45 levels.
+  - `qix` · confirmed · high · [www.148apps.com](https://www.148apps.com/reviews/line-knight-fortix-review/) · [www.148apps.com](https://www.148apps.com/line-knight-fortix/) · [www.cultofmac.com](https://www.cultofmac.com/reviews/line-knight-fortix-alright-stops-fighting-review)
+- **Qix Galaxy: Space Adventure** (2014) — iOS — zGames
+  - Also known as: Qix Galaxy
+  - Dragging a finger steers a spaceship, which replaces the Qix cursor.
+  - Each stage is cleared by fencing off a set percentage of the screen around a planet.
+  - Coins earned in play buy gradual ship upgrades.
+  - Obstacles, plus homing missiles that chase the ship if it doesn't keep moving, which punishes stalling.
+  - Freemium structure: a lives system, ads after each level, and a separate currency for continues.
+  - `qix` · corrected · medium · [www.148apps.com](https://www.148apps.com/reviews/qix-galaxy-review/) · [www.148apps.com](https://www.148apps.com/qix-galaxy-space-adventure/)
+- **Split: Ball Trap Arcade** (2014) — Android — Hamdi's Tech
+  - Also known as: Split
+  - swipe vertically or horizontally to start a partition wall that expands toward both edges
+  - a ball hitting the wall before it reaches both edges destroys it
+  - reach the target percentage to clear the level
+  - `jezzball` · corrected · medium · [play.google.com](https://play.google.com/store/apps/details?id=com.split.android&hl=en_US&gl=US)
+- **国盗り Returns with 閃乱カグラ NewWave** (2014) — Android, iOS — LitQoo (South Korea); published by NHN Entertainment
+  - Also known as: Drawgirls with Sumran Kagura NewWave, Drawgirls with Senran Kagura NewWave
+  - a virtual pad replaces swipe controls so a finger does not cover the art
+  - single-player, a harder Hell Mode, and PvP against friends' replay data
+  - each stage's score unlocks up to four illustration cards; the 3rd and 4th are 18+ images in a separate code-gated "Diary" viewer
+  - free-to-play with an omikuji-style gacha whose cost doubles each pull and that guarantees every item within 12 pulls
+  - `gals-panic` · corrected · high · [game.watch.impress.co.jp](https://game.watch.impress.co.jp/docs/news/677277.html) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/閃乱カグラ_NewWave)
+- **Cool Xonix** (2015) — iOS, Android — DoJoy (dojoy.ru); published by DoJoy
+  - `xonix` · corrected · low · [uk.wikipedia.org](https://uk.wikipedia.org/wiki/Xonix)
+- **Pix Panic** (2015 or earlier (Google Play version updated 8 December 2015)) — Android, Windows, Linux — Space City Games
+  - capture lines are drawn at any angle ("360 degrees of freedom"): tap and drag outside the border to set waypoints for the capture path
+  - tap inside the revealed border to move along its edge while sparks patrol it
+  - a boss fires lasers, and the boss or its lasers hitting the line in progress loses it
+  - reveal 80% of the silhouetted image to clear
+  - `gals-panic` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.spacecitygames.qix.android) · [spacecitygames.itch.io](https://spacecitygames.itch.io/pix-panic) · [spacecitygames.itch.io](https://spacecitygames.itch.io/)
+- **Spider Web: Akai's Journey** (2015) — iOS — Isaac Gallarzagoitia; published by Isaac Gallarzagoitia (copyright line: Nook Games)
+  - swipe to move and weave a thread; returning to the edge closes an area, and the smaller part is revealed
+  - uncover the whole postcard to finish a level; 80 levels in 4 worlds each unlock a postcard and an animated scene
+  - enemies catch you by touching the thread; new enemy types in almost every level, up to giant bosses
+  - up to three stars per level (240 in total)
+  - `gals-panic` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/spider-web-akais-journey/id1047180363) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1047180363)
+- **Xonix Assault** (2015) — Android — Digi10 Soft
+  - soldier theme: the enemies are artillery that you destroy by trapping them
+  - clear 80% within a per-level time limit; running out of time costs a life
+  - `xonix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.digi10soft.game.xonixassaulta) · [play.google.com](https://play.google.com/store/search?q=xonix&c=apps)
+- **Zombie Brain Seizure** (2015) — iOS — Steve Scott
+  - Also known as: Zombie Brain Seizure: Slash Arcade
+  - slice the field with lines; if a bouncing brain touches a line before it is finished, you lose
+  - bigger slices score more, rewarding risk over safe small cuts
+  - claim 75% to clear a level; 50 levels with new brain patterns and behaviours
+  - power-ups: slow time, make brains vanish briefly, skip a level
+  - 3-star rating per level, with replays to improve
+  - `jezzball` · corrected · medium · [apps.apple.com](https://apps.apple.com/app/id973276352) · [itunes.apple.com](https://itunes.apple.com/lookup?id=973276352)
+- **Animal Volfied** (2016) — iOS, Android — Senkronix Kurumsal Çözümler
+  - shrinking the open area traps and destroys enemies
+  - bonuses speed up the player or stop enemies
+  - claim more than 80% to pass a level
+  - `volfied` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/animal-volfied/id1160134567) · [play.google.com](https://play.google.com/store/apps/details?id=com.senkronix.volfied) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1160134567)
+- **Pakal** (2016) — iOS — Alessandro Ornano
+  - planets split into areas, each with three gold-leaf objectives: reach the minimum capture percentage, destroy all enemies, destroy all bases and obstructions
+  - gold leaves unlock later planets
+  - each round has a time limit
+  - completing an area shows a photo of the uncovered territory
+  - 5 lives, refilled by watching ads or made unlimited by a purchase
+  - `volfied` · confirmed · high · [apps.apple.com](https://apps.apple.com/app/id1147168402) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1147168402)
+- **Stealin** (2016) — iOS — Binary Banana LLC
+  - the player steers a tank around the field (swipe and hold) and divides the field with horizontal or vertical lines (swipe)
+  - enemy soldiers bouncing off the walls cannot touch the tank while it is capturing
+  - capture a supermajority of the field
+  - 15+ enemy types plus land obstacles
+  - 36 story levels, each with several possible solutions
+  - `jezzball` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/stealin/id971978289) · [itunes.apple.com](https://itunes.apple.com/lookup?id=971978289)
+- **Volfield** (2016) — Android, iOS — Umut Isik (Play Store name: Penguen Umut); published by Umut Isik
+  - bonus boxes: +1000 points, extra shield time, freeze enemies, destroy all small enemies, extra ship
+  - penalty boxes: -1000 points, reduced shield time, lose a ship, which makes opening boxes a gamble
+  - the player can set a custom background image for each level
+  - Arcade Mode plus a 36-level Level Mode; claim at least 80% to pass
+  - different enemies in each level
+  - leaderboards for 24 hours, 7 days and all time, plus by country
+  - `volfied` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/volfield/id1078031736) · [play.google.com](https://play.google.com/store/apps/details?id=pro.umut.volfield) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1078031736)
+- **Code: Xonix** (2017) — iOS — Pierre-Loup Barazzutti (icklesius); published by Pierre-Loup Barazzutti
+  - clear 80% of the dark area within a time limit
+  - several enemy types
+  - Level mode with 25 stages of rising difficulty
+  - Random mode that builds games from the enemy types met in Level mode
+  - `xonix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/code-xonix/id1197892718) · [itunes.apple.com](https://itunes.apple.com/search?term=xonix&entity=software&limit=25)
+- **Mr Super Fish: Hero Fill Block** (2017) — iOS — Phuong Pham; published by Classic Arcade Games (copyright holder on the App Store listing)
+  - Also known as: Mr Super Xon
+  - four enemy classes, each tied to a terrain: Ms Jelly Fish roams only open space, Pac Crab roams only filled (captured) blocks, Sea Snails Xon travel along the walls, Ball Fish Man roams open space and eats wall blocks (un-fills captured ground)
+  - item drops: Blue Fish freezes enemies, Green Leaf slows enemies, a pink item lets the player eat enemies, a Pill speeds the player up
+  - a level clears at more than 80% filled
+  - 50-level mode plus an endless mode
+  - swipe controls in four directions
+  - `xonix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/mr-super-fish-hero-fill-block/id1301913911)
+- **String.io** (2017 (Google Play release 19 Jun 2017)) — Android — Metajoy
+  - map made of hexagon blocks; enclose an area with your string to capture it
+  - hitting another player's tail eliminates them
+  - up to 4 selectable control modes
+  - `io-territory` · corrected · medium · [play.google.com](https://play.google.com/store/apps/details?id=io.hexargame.stringpaperio)
+- **ChetBall** (2018) — iOS — Chet Corcos Inc.
+  - draw lines to close off regions of the canvas around bouncing balls
+  - close 75% of the canvas to advance
+  - each level adds more balls and more speed
+  - `jezzball` · confirmed · medium · [apps.apple.com](https://apps.apple.com/us/app/chetball/id1350257118) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1350257118)
+- **Qiks!** (2019) — iOS — unknown (Voodoo is the seller; the listing's copyright line credits Pangolapp / App Advisory); published by Voodoo
+  - the field is a board of blocks; swipe to send the player across and fill blocks, revealing a hidden pixel-art image
+  - touching an enemy ends the attempt
+  - limited lives that refill over time (per user reviews)
+  - `gals-panic` · corrected · medium · [apps.apple.com](https://apps.apple.com/us/app/qiks/id1463376016) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1463376016)
+- **Split Area - Brain Arcade game** (2019) — iOS — Genioworks Consulting & IT-Services UG (haftungsbeschränkt); published by Genioworks Consulting & IT-Services UG (self-published)
+  - draw a slicer line that cuts the board; a ball touching the line before the cut completes costs a life
+  - score by trapping the balls in the smallest possible areas
+  - stars to collect on the board
+  - Endless mode with worldwide leaderboards, plus a level map where more balls appear as levels get harder
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/split-area-brain-arcade-game/id1473264123) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1473264123&country=us)
+- **SPLITRON** (2019) — iOS, Android — KAEGUREE
+  - Also known as: Splitron: Split and Shatter
+  - drag a finger to draw a line; it becomes a border only when the finger is lifted
+  - black tiles in an enclosed ball-free area shatter to reveal a landscape picture
+  - each landscape spans five stages, each adding balls and difficulty
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/splitron/id1455925006) · [play.google.com](https://play.google.com/store/apps/details?id=com.kaeguree.inclose) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1455925006)
+- **Xonix Worlds Iceland** (2019) — iOS — TwistedTamarin ltd
+  - theme swap: a penguin reclaims melted parts of Iceland, and sharks and orcas are the enemies
+  - one-touch controls
+  - levels get progressively harder
+  - `xonix` · confirmed · medium · [apps.apple.com](https://apps.apple.com/us/app/xonix-worlds-iceland/id1462679019)
+- **Air Xonix: Remastered** (2020) — Android — Delico Games; published by Andrii Serba (current Google Play developer account)
+  - Also known as: Xonix 3D - Classic Arcade Game, Air Xonix Qix Arcade Game
+  - 3D remake of the look and music of the 2001 PC game Air Xonix: a craft cuts off sections of a 3D board
+  - main episodes plus Challenge levels and Daily Events, with different layouts and enemy combinations
+  - bouncing enemies and hazards
+  - PvP mode and unlockable skins (Nov 2026 update notes)
+  - `xonix` · corrected · medium · [play.google.com](https://play.google.com/store/apps/details?id=com.DelicoGames.Xonix) · [www.bluestacks.com](https://www.bluestacks.com/apps/casual/xonix-3d-classic-arcade-game-on-pc.html)
+- **Air Xonix: Remastered** (2020) — Android — Delico Games (Google Play account: Andrii Serba); published by Delico Games (self-published)
+  - Challenge levels and Daily Events on top of the main episodes, with different layouts and enemy combinations
+  - hazards in addition to bouncing enemies
+  - PvP mode (per the update notes)
+  - unlockable skins (per the update notes)
+  - touch controls designed for short mobile sessions
+  - `xonix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.DelicoGames.Xonix)
+- **Area of Pirates** (2020) — iOS — KAEGUREE
+  - You set a sailing route by touch, and completing a voyage charts that sea area. The goal is to complete the whole map.
+  - Pirates must not notice you: their sight is the threat, not only contact.
+  - Pirates carry a variety of weapons.
+  - `qix` · confirmed · medium · [apps.apple.com](https://apps.apple.com/us/app/area-of-pirates/id1498026499)
+- **FillBottom** (2020) — Android, iOS — KAEGUREE
+  - drag to draw a line marking where a row of blocks will be built; releasing starts building it
+  - a guarding ball ends the game if it detects the line while it is being built
+  - once the line completes, blocks pile up to fill it, filling the floor; a ball they hit bursts
+  - keep filling the floor as blocks collapse, playing for distance
+  - `jezzball` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.kaeguree.bottom&hl=en_US&gl=US) · [apps.apple.com](https://apps.apple.com/us/app/id1536327723) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1183810155&entity=software&limit=200&country=us) · [play.google.com](https://play.google.com/store/apps/developer?id=KAEGUREE)
+- **Jezz (Max Lund)** (2020) — Android — Max Lund
+  - Also known as: Jezz
+  - drag and hold to place a horizontal or vertical wall
+  - the wall starts building only when the finger is released
+  - a ball hitting the wall while it builds destroys it
+  - `jezzball` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.jezz.game&hl=en_US&gl=US)
+- **Paper.io 3D** (2020 (Google Play release 8 Jan 2020)) — Android — Voodoo
+  - territory is drawn over the surfaces of 3D shapes instead of a flat board
+  - stars to collect during play
+  - level-based: reach 100% coverage to clear a level and unlock new levels and bonuses
+  - `io-territory` · corrected · medium · [play.google.com](https://play.google.com/store/apps/details?id=io.voodoo.paper3)
+- **Sneak Peeling** (2020) — iOS — KAEGUREE
+  - You draw a freehand closed shape anywhere instead of tracing from the border. On release, the board is cut along it over time.
+  - A fire demon guards the board, and if it detects the cut in progress, the attempt fails. Stealth replaces line collision.
+  - The fire demon interferes in several other ways.
+  - An undetected cut peels away the black board to reveal part of the background image, and the stage is cleared by occupying all of it.
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/sneak-peeling/id1515940185)
+- **Xonix32 (Android)** (unknown (Play listing last updated 28 Nov 2020)) — Android — GythaOgg; published by GythaOgg (self-published)
+  - Also known as: Xonix32
+  - swipe anywhere on the screen to set the player's direction; there is no need to touch the player square
+  - enemies move diagonally at a constant speed and change direction when they hit an obstacle
+  - black holes on the board: enclose one with no enemy inside and it is sealed and disappears (not present in 'Classic' mode)
+  - block at least 75% of the area to clear a level
+  - `xonix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=gythaogg.gamesplus.xonix32) · [gythaogg.github.io](https://gythaogg.github.io/privacy/) · [www.wishdown.com](https://www.wishdown.com/xonix32/gythaogg.gamesplus.xonix32/5.81)
+- **Jezz Mania: Better Jezzball** (2021) — iOS — Xiang Dong; published by Xiang Dong (copyright Dong Digital)
+  - swipe to set a wall: a marker previews its position, building starts when the finger lifts, and dragging above the field cancels it
+  - each wall has two halves; an atom hitting a half while it builds destroys it and costs a life
+  - atom types: Regular; Speeding (accelerates on every bounce); Fast (starts fast, slows on every bounce); Random (changes direction mid-flight); Breaking (destroys any wall it touches, moves slower); Sniper (flies at double speed toward a wall as soon as you start building it); Father (spawns up to three Baby atoms at set fill percentages); Baby (small, breaks walls easily)
+  - per-level power-ups, some harmful: extra life, temporary immunity to losing lives, wall protection from Breaking atoms, atoms at half speed, faster wall building; slower wall building as a harmful pickup
+  - pre-built walls that help, and spike walls that destroy any wall built across them
+  - scoring from time, lives left, isolated atoms, largest captured area and area above the target, times a level multiplier; tighter packing earns more credits; up to three stars per level
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/jezz-mania-better-jezzball/id1549274135) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1549274135&country=us)
+- **King.io: Conquer The World** (2021 (Google Play release 28 Dec 2021)) — Android — Tumb Games
+  - Also known as: King.io
+  - touch-and-drag drawing to expand territory; rivals attack your exposed tail
+  - offline level progression with no time limit and free restarts
+  - `io-territory` · corrected · medium · [play.google.com](https://play.google.com/store/apps/details?id=com.TumbGames.King.IO)
+- **Area 99.9%** (2022) — iOS — Hidehiko Nagano
+  - the green barrier line (border) is safe from normal enemies and their bullets
+  - enemies fire bullets; a hit while drawing costs a life
+  - impassable blocks appear on the field; surrounding one can rarely yield an item
+  - an enemy touching your line spawns fast sparks that chase the ship
+  - after a set time a red spark appears that runs only on the barrier, an anti-stalling device
+  - square field; 75% to clear
+  - version 1.2 changed enemy movement from random to patterned so it can be planned around
+  - `volfied` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/area-99-9/id1605064913) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1605064913) · [blog.xranker.info](https://blog.xranker.info/blog/2022/05/17/%E3%82%A2%E3%83%97%E3%83%AA-area-99-9/)
+- **Ghost Chaser Xonix** (2022) — Android — IFSoft Studio; published by IFSoft Studio (self-published)
+  - ghosts replace the usual bouncing-ball enemies (Pac-Man-style theme)
+  - collectable bonuses that help against the ghosts
+  - `xonix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=pac.xonix.lite)
+- **Memories100 with JooA** (2022) — iOS — JCPlanet Co., Ltd.
+  - silhouette reveal over photos of a real model (JooA)
+  - perfect stage clears unlock touch-responsive moving photos, collected as "SHOW TIME"
+  - some play requires watching ads
+  - `gals-panic` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/memories100-with-jooa/id6443842849) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6443842849)
+- **Narrow the Siege** (2022) — iOS — KAEGUREE
+  - Also known as: Narrow the Siege: Confine Monster
+  - tap a spot and a wall builds itself from there automatically
+  - monsters sense a wall being built and run away from it
+  - shrinking a monster's free area far enough bursts its bubble and captures it
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/narrow-the-siege/id1642912104) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1642912104&country=us)
+- **Paper.io 4** (2022 (Google Play release 27 Jun 2022)) — Android — Voodoo
+  - territory capture on a 3D map instead of a flat board
+  - goal of conquering 100% of the map while avoiding other players
+  - `io-territory` · corrected · medium · [play.google.com](https://play.google.com/store/apps/details?id=com.pilgrimsgames.p4)
+- **Qix Panic - Draw Lines** (2022) — Android — UNIT5
+  - Also known as: Qix Panic
+  - swipe to draw lines
+  - closing an area uncovers that part of a picture hidden under a black mask
+  - moving enemies must not touch the line
+  - no time limit and no penalties: play at your own pace
+  - `qix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.unit5soft.paintpanic&hl=en&gl=US)
+- **Realm of Tile** (2022) — iOS — KAEGUREE
+  - no avatar: drag a finger across tiles to convert them; each touch starts a conversion and converted tiles become ground monsters cannot enter
+  - limited number of touches per stage, so long continuous drags are favoured
+  - enclosing a region with converted tiles claims all of it; larger enclosures give larger rewards
+  - claimed tiles turn transparent and reveal the background picture
+  - convert tiles without being noticed: each monster type has its own behaviour, and they react when they spot a conversion
+  - `other` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/realm-of-tile/id1605418048) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1605418048)
+- **Xonix (RuStore)** (2022) — Android — Dmitry Izaak (Изаак Дмитрий Давыдович); published by Dmitry Izaak
+  - Also known as: Ксоникс, Игра Ксоникс — Аркады
+  - the player is a yellow smiley and the enemies are smileys that 'eat' it
+  - cutting out sections reveals a hidden picture, and the picture theme depends on the game mode
+  - after each series of five games the score can be sent to the developer's online server for worldwide rankings
+  - an account on the developer's server allows ranked play from a PC or any Android device
+  - `xonix` · confirmed · medium · [www.rustore.ru](https://www.rustore.ru/catalog/app/ru.dizaak.xonix)
+- **Xonix (Taranau Aliaksei)** (2022) — Android — Taranau Aliaksei; published by Taranau Aliaksei (self-published)
+  - Also known as: Xonix
+  - goal framed as trapping creatures to limit their movement
+  - free at least 75% of the area to pass a level
+  - `xonix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.ulkaden.xonix)
+- **Pumping Square** (2023) — iOS — KAEGUREE
+  - touch and hold to grow a rectangle centred on the touch point; it grows only while the touch is held
+  - any number of rectangles can be placed, and placed rectangles can be grown further
+  - a ball touching a rectangle while it grows fails the attempt
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/id1663577354) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1183810155&entity=software&limit=200&country=us) · [itunes.apple.com](https://itunes.apple.com/search?term=volfied&entity=software&limit=25)
+- **Pix Qix - Cute Girls Panic** (2024) — iOS, Android — UNIT5 (UNIT5 Inc); published by UNIT5
+  - a diamond-shaped cursor draws lines; revealing 80% of the silhouette clears a level
+  - each level earns up to three stars, and three stars unlock that image in the gallery
+  - capturing larger areas drops coins and speed boosts
+  - enemy types: small spiders, monsters and maces
+  - bonus stages for collecting coins, and boss stages with giant enemies
+  - skills bought with coins: speed up, ice (freezes all enemies), extra life and time extension
+  - `gals-panic` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/pix-qix-cute-girls-panic/id6484593212) · [play.google.com](https://play.google.com/store/apps/details?id=com.unit5soft.qix.panic) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6484593212)
+- **ArcField: Neon Territory** (2025) — iOS — App-Tech
+  - screen-filling bosses that move, pause or shoot, each with distinct behaviours and weak spots
+  - enemies bounce, chase and react to the player; getting too close triggers a 0.3 s chain-shock
+  - power-ups claimed by enclosing their tile, e.g. Shield, Speed, Star, Zap
+  - a spark chases along the red line instead of instant death on contact
+  - 80% capture target per level; longer cuts capture more but are riskier
+  - lives carry over between rounds
+  - 15 handcrafted levels with new boss shapes
+  - `volfied` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/arcfield-neon-territory/id6751299116) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6751299116)
+- **Bubble.Fill: Retro Area Arcade** (2025) — iOS — MK Productions LLC
+  - hold to grow a bubble and release to lock it; locked bubbles are permanent and safe
+  - an enemy square touching a growing bubble pops it
+  - fill 70% of the arena to clear a level
+  - power-up loadout: bank nine and bring three per game: Freeze, Shield, +10% fill, Slow Field, Banish (removes an enemy), Lifeline (drops a catchable heart for a free life), Harvest (grows a bubble each time an enemy bounces off it), Double Fill (next bubble counts twice), Undo (removes a placed bubble)
+  - boss levels every fifth stage change the arena
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/bubble-fill-retro-area-arcade/id6742468046) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6742468046&country=us)
+- **Cherry Gals: Qix Arcade Retro** (2025) — Android — LittleRoom (package com.VaganiStudio.CherryGals); published by LittleRoom
+  - Also known as: Cherry Gals
+  - Qix crossed with Pac-Man: draw lines to capture zones while enemies chase you
+  - each enemy type uses a different chase AI
+  - pickups include positives (speed boost, invincibility, extra time) and negatives such as inverted controls
+  - per-level timer
+  - coins buy gameplay upgrades or new cards
+  - clearing levels unlocks collectible holographic 3D character cards
+  - `gals-panic` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.VaganiStudio.CherryGals&hl=en) · [play.google.com](https://play.google.com/store/apps/developer?id=LittleRoom)
+- **SNAPIXEL: Infinite Universe** (2025) — iOS — SYLO Corp
+  - start from a base and draw lines to expand a safe territory while protecting the player marker
+  - choose which 'PIXY' photo to unlock each stage; it starts as a silhouette and is revealed as the territory grows
+  - later stages bring bosses with attacks and minions
+  - stars earned in stages upgrade active skills
+  - `gals-panic` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/snapixel-infinite-universe/id6740606352) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6740606352)
+- **Arcade Land Grab: Line Game** (2026) — Android — Sonnim Lab
+  - Also known as: 오락실 땅따먹기: 선긋기 땅따먹기 게임
+  - one life: an enemy touching the line you are drawing ends the game
+  - enclosed land reveals part of a hidden picture; clear at a goal percentage
+  - five difficulty tiers with themed enemies: Rookie (ladybug), Amateur (spider), Pro (mosquito), Master (ghosts plus sparks), Boss (skulls plus sparks); higher tiers add more and faster enemies
+  - fastest-clear rankings per tier (daily, monthly, all-time) and a win/loss history
+  - `gals-panic` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.sonnimlab.ttangtta&hl=en) · [play.google.com](https://play.google.com/store/apps/details?id=com.sonnimlab.ttangtta&hl=ko) · [ttangtta.sonnimlab.com](https://ttangtta.sonnimlab.com)
+- **Ballfence** (2026) — iOS — Helie Sanghavi
+  - tap to start a fence at any point and toggle it between horizontal and vertical; it grows both ways until it meets a wall
+  - a ball touching a growing fence shatters it and costs a life
+  - a sealed region with no ball inside is claimed instantly; claiming 75% clears the level
+  - each level adds balls and raises their speed
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/ballfence/id6789648789) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6789648789&country=us)
+- **Cosmo Xonix: Space Arcade** (2026) — iOS, Android — NYOTA CREATIVE (NYOTA CREATIVE Bilisim Yazilim Faaliyetleri Pazarlama ve Ticaret Ltd. Sti.); published by NYOTA CREATIVE
+  - a terraforming probe cuts from the safe edge and encloses ground; the level map is a spinnable 3D planet
+  - hand-built campaign where each level has its own capture target, par time and hazard mix (Google Play: 63 levels in 7 worlds; current iOS listing: 90 levels in 10 worlds)
+  - a titan guardian ends each world: it cannot be hit and is beaten only by taking its ground, and closing territory while it winds up an attack staggers it
+  - five enemy types: ricocheting meteors, hunters that lock onto your trail, edge walkers patrolling the border, spiked rocks roaming captured ground, and breakers that chew through captured ground; iOS adds a basilisk that crosses the whole board
+  - mini-boss creatures (12 on iOS) are trapped by enclosing them in captured ground and added to a collection
+  - escalation: survive long enough and the level speeds up and adds hunters
+  - 12 pickups, 7 helpful (e.g. freeze the swarm) and 5 harmful (e.g. six seconds of blindness)
+  - pre-level boosters: shield, extra life or slow start (iOS)
+  - selectable heroes with the same rules but a different feel, at least one of which fires back (CosmoBot; iOS also lists Vela with twin lasers)
+  - an orbital countdown dial times each level (2-4 minutes), and the trail heats orange when you push too far from home
+  - breakable terrain
+  - backing up along your own trail instead of dying on it (iOS)
+  - captured ground uncovers hand-painted world art
+  - a leaderboard for each level, monthly seasons, daily quests and a day streak
+  - `xonix` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/cosmo-xonix-space-arcade/id6803584529) · [play.google.com](https://play.google.com/store/apps/details?id=com.nyotacreative.cosmoxonix)
+- **CUT Arcade** (2026) — Android — Akseki Games
+  - 30 stages, each with a different boss
+  - bosses fire projectiles from stage 2 onward
+  - power-ups: Laser, Freeze, Slow
+  - mystery boxes hidden across the grid
+  - from stage 17, special power-up boxes glow in unique colours
+  - enemies destroy your trail
+  - capture 80% to clear
+  - story mode with animated cutscenes; global high-score leaderboard
+  - `volfied` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.mha.cutarcade)
+- **Fill It! Arcade** (2026) — iOS — Great Time Apps
+  - doodle-to-move: sketch a route with a finger and the ship flies it
+  - the sketched dotted route ahead is harmless; only the trail already drawn can be hit
+  - lifting the finger near an edge auto-flies the rest of the route
+  - turn assist snaps the ship onto nearby lanes
+  - claim 80% to clear; greedy cuts give big bonuses
+  - 10 stages of escalating swarm pressure
+  - one global Game Center leaderboard plus local top-5 scores
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/fill-it-arcade/id6787281423) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6787281423&country=us)
+- **Fill Qix: Block Fill Puzzle** (2026) — Android — IRUSU
+  - Also known as: Fill Qix - Block Fill Puzzle
+  - claim 80% to clear the level
+  - 'Demon' enemies, 'Walkers' and chaotic enemies roam the void; any touch on your open line ends the attempt
+  - closing a loop can trap enemies inside
+  - larger single captures score more
+  - power-ups including speed boosts and time freeze
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.Irusu.FillQix)
+- **Fly Trap: Territory Game** (2026) — Android, iOS — Kend (kend.app); App Store seller Yunus Yurduseven; published by Kend / Yunus Yurduseven
+  - safe while walking your own border; while you draw, the whole bug swarm hunts your line
+  - closing the loop takes everything the bugs can no longer reach (the side without the swarm)
+  - captured ground reveals a painted storybook garden
+  - 28 enemy species, including web-spinning weavers, ambush mantises, flying artillery, venom pools, strike cones and rival trappers who steal your ground; every enemy telegraphs before it strikes
+  - 600 levels across 60 worlds, each world ending in a boss
+  - The Rumble: a 120-second land grab against three rival trappers
+  - Endless mode, a Zen Garden with no clock and no enemies, a daily challenge on the same board for everyone, and racing the ghost of your best run
+  - stars become seeds to rebuild 20 ruined gardens of 8 pieces each, with chests
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.yy.flytrap) · [apps.apple.com](https://apps.apple.com/us/app/fly-trap-territory-game/id6800037568) · [kend.app](https://kend.app/fly-trap/)
+- **Gotta Xonix** (2026) — Android — Gotta Play (gottaplay); published by Gotta Play
+  - clearing a level needs both the capture target and the required energy nodes collected
+  - 7 sci-fi worlds and 70 campaign levels, with bosses
+  - later worlds add gravity fields and a 'living network' that grows territory back
+  - Endless mode: pick an upgrade every five waves
+  - a daily challenge with a special rule that changes each UTC day, plus optional public score rankings
+  - abilities: slowdown, shield and boost
+  - `xonix` · corrected · high · [gottaplay.itch.io](https://gottaplay.itch.io/gotta-xonix) · [play.google.com](https://play.google.com/store/apps/details?id=com.gottaplay.xonix)
+- **GraviNix: Tilt Xonix Arcade** (2026) — Android — ER Game Studio; published by ER Game Studio (self-published)
+  - Also known as: GraviNix
+  - phone tilt rolls the player orb instead of direct steering (an on-screen joystick is optional)
+  - terrain changes movement: the orb rolls on grass, drags in water, sinks in snow and slides on ice without stopping
+  - each region has its own creatures, each with a warning before it attacks: horned hares hop, bulls aim then charge, jellyfish drift in pulses, a bear hears your trail, penguins on ice slide faster than the wolf
+  - claim 75% of each region; three stars for clearing it, losing no tries, and beating par time
+  - a big single capture grows a crystal that gives back a try or adds time
+  - boss 'Blue Giant' at the end of the second planet, Helmar
+  - endless 'Neon Trainer' mode: eleven insect enemy types, rising difficulty, high scores, or free roaming
+  - `xonix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.ERGameStudio.GraviNix)
+- **HeartFlix - Waifu Saver** (unknown (probably 2026)) — Android — shadev-345; published by shadev-345 (self-published on itch.io)
+  - Also known as: HeartFlix - Waifu Saver-Free
+  - traps as a hazard alongside the roaming enemies and the Qix
+  - a timer alongside lives and score
+  - each cleared level unlocks a new anime 'waifu' wallpaper as a reward
+  - `qix` · corrected · medium · [shadev-345.itch.io](https://shadev-345.itch.io/heartflix-waifu-saver)
+- **Kingdom Cutter: Cut & Conquer** (2026) — Android — Agatio Games
+  - ride out from the castle walls, cut through land and reconnect to safety to claim it
+  - roaming monsters can cut off the exposed line; longer lines are riskier
+  - choose when to bank progress or risk one more run
+  - resources brought home upgrade the castle: recruit soldiers to defend lines, forge shields, upgrade the mount's speed, permanent research and abilities
+  - Ladder mode: compact skill levels with escalating objectives
+  - Daily Challenges with changing objectives and modifiers
+  - Legends challenges in which the player becomes the monster
+  - `volfied` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.kingdomcutter.game)
+- **Landgrab - Line Cutting Arcade** (2026) — Android — MNORI
+  - Also known as: 땅따먹기 - 선 긋기 아케이드
+  - hold a CUT button to draw; releasing it retreats back along the unfinished line, and you can still be hit on the way
+  - bosses have their own attack patterns and fire bullets that can hit the player or the open line
+  - revealing 80% of the character's silhouette lets you clear; pushing on for 90% or 100% risks the cut, since a hit or timeout loses that cut's clear, its points and a life
+  - trapping the boss outside the picture makes 100% possible
+  - BIG CUT bonus for one large claim; linked claims build COMBOs; items
+  - online races for 2-4 players on separate copies of one field: first to 80% wins, big claims send attacks to rivals; a practice rival for solo play
+  - eight characters with a seven-cut stage each; gallery, stars and bond levels that unlock lines and art
+  - daily cut, daily missions, streaks, weekly leagues and a season track
+  - `gals-panic` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.mnori.landgrab&hl=en) · [play.google.com](https://play.google.com/store/apps/details?id=com.mnori.landgrab&hl=ko) · [mnori.com](https://mnori.com)
+- **LandSlicer: Slice & Conquer** (2026) — iOS — Suat Erken; published by TricodeLabs
+  - both enemies and self-crossings break your trail
+  - four enemy types: Bouncer (unpredictable movement), Chaser (pathfinding pursuit), Destructor (damages claimed territory), Driller (cuts through safe land)
+  - power-ups: invincibility, freeze, slow motion, damage shield
+  - HP and upgradable stats (HP, Damage Reduction, Speed, Trail Armor, Powerup Duration) replace one-hit deaths
+  - 100 handcrafted timed levels with a 1-3 star rating
+  - `qix` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/landslicer-slice-conquer/id6759227227)
+- **Neon Capture** (2026) — Android — LALL STUDIOS; published by LALL STUDIOS (self-published)
+  - one-touch control: press and hold to extend a cut from the wall, release to close the area and capture it
+  - double tap to reverse direction along the run
+  - an enemy that hits the line before it closes destroys the line ('you lose it')
+  - power-ups that speed up capture
+  - endless ladder of levels that get harder as you climb
+  - 5 game archetypes (per the update notes): Classic, Swarm, Speed Run, Zone and Guardian Boss
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.thelall.capturearea&hl=en&gl=US)
+- **Neon Fill** (2026) — Android — KAYAC Inc.
+  - tap and hold to draw a neon line inward from the edge of the shape
+  - when the line reaches another edge, the side without enemies fills
+  - bouncing enemies
+  - reach 90% to clear the stage
+  - one-thumb control
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.kayac.NeonFill&hl=en&gl=US)
+- **NEON PANIC: Neon Arcade** (2026) — Android — ProContentLab; published by ProContentLab (self-published)
+  - Also known as: NEON PANIC
+  - a spider is the main enemy (cinematic intro: 'a spider descends')
+  - Story mode with 70 levels plus an endless Arcade high-score mode
+  - combos for chained captures, with screen-shake feedback
+  - unlockable premium ships (Spectre, Leviathan, Omega), each with its own feel
+  - daily challenge with streaks
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=store.neonpanic&hl=en&gl=US)
+- **Neon Slice & Fill** (2026) — Android — Ballu Games; published by Ballu Games (self-published)
+  - Also known as: Neon Slice & Fill: Arcade Game
+  - 1000 handcrafted levels
+  - 36 enemy types, each with its own movement and attack pattern (chase, bounce, block)
+  - 4 power-ups bought with Neon Coins earned in play
+  - a fresh Daily Challenge puzzle every day
+  - limited lives
+  - one-touch controls
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.ballugames.sliceandfill&hl=en&gl=US)
+- **NoSpace Arena** (2026) — Android, iOS — Tuğra Hekimoğlu (tugrahek); published by unreleased
+  - Also known as: NoSpace: Arena
+  - 'living territory': captured ground gives defensive effects (Pulse, Drag, Halt)
+  - each unlockable character brings its own territory effect
+  - Daily mode: a date-based arena with boosts disabled and local personal bests
+  - Endless mode: successive arenas with rising enemy pressure and capture targets
+  - Campaign: 12 authored stages with up to 3 stars each
+  - pre-run boosts: Extra Life, Coin Bonus, Slow Start
+  - meta-progression: coins, rotating missions, daily login rewards, unlockable arenas and characters
+  - portrait touch controls: swipe, tap-to-turn or on-screen D-pad
+  - `qix` · corrected · high · [github.com](https://github.com/tugrahek/nospace_arena) · [raw.githubusercontent.com](https://raw.githubusercontent.com/tugrahek/nospace_arena/main/README.md)
+- **Orbis: Bubble Fill Reflex Game** (2026) — iOS — Nicolas Zanette; published by Nicolas Zanette (copyright Appcraft)
+  - hold to grow a bubble and release to anchor it; cover 75% before a ball touches a growing bubble
+  - an enemy bouncing off an anchored bubble is stunned; trapping it inside your bubble absorbs its power (freeze, repulsion, shockwave, bonus area)
+  - holding after a block turns the bubble into a shockwave
+  - Survival mode: endless waves, and placed circles wear down over time so idling is fatal
+  - The Vise mode: the walls close in every 12 seconds, and covering 75% pushes them back
+  - Rhythm mode: enemies move on the beat, and releases on the beat score x1.5
+  - Bomb mode: 60-second rounds where releasing detonates the bubble to destroy as many enemies as possible
+  - enemy types: Hunter (tracks your bubble), Splitter (divides into smaller enemies), Pulsar (pulses rhythmically)
+  - night levels lit only around your bubble; rocks and currents vary from run to run
+  - 90-second Daily Challenge
+  - `jezzball` · confirmed · high · [apps.apple.com](https://apps.apple.com/app/id6763065365) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6763065365&country=us)
+- **Paper Land: Territory Grab** (2026) — Android — The Creative App Studio
+  - Also known as: Paper Land
+  - fully offline: every match is against computer rivals
+  - level ladder with timed targets (capture 10%, 15%, 20% of the map) before the clock runs out; up to three stars for speed; endless levels with bigger maps and smarter, greedier rivals
+  - surround a rival to take its land; crossing a rival's trail knocks it out, and anyone crossing yours knocks you out
+  - Classic mode: one life, big arena, ten rivals, play for a personal best
+  - continue a lost match with all land kept, or with 30 more seconds on the clock; 'Big Start' boosters begin with more land
+  - `io-territory` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.paperland.game)
+- **Paper Realm 3D** (2026) — Android — Shreyash Shaurya; published by Shreyash Shaurya (self-published on itch.io)
+  - Also known as: Paper Realm
+  - 3D presentation with a paper-cube avatar
+  - having your trail touched sends you back to the start
+  - cut rivals' trails to eliminate them and chain eliminations into streaks
+  - Sudden Death mode in which the map keeps shrinking
+  - power-ups to recover from bad moments
+  - spin-wheel rewards of coins and skins; rounds of about 90 seconds
+  - `io-territory` · corrected · high · [shreyash-shaurya.itch.io](https://shreyash-shaurya.itch.io/paper-realm-3d) · [itch.io](https://itch.io/games/tag-paper-io)
+- **Pixect: Retro Pixel Arcade** (2026) — iOS — Selcuk Kaya; published by Selcuk Kaya (KayaMobileApps)
+  - bouncing cores and fired bullets try to intercept the line being drawn
+  - claiming 75% of the board clears the level and unlocks a pixel-art city postcard with travel trivia
+  - virtual D-pad controls
+  - live global leaderboard
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/pixect-retro-pixel-arcade/id6789269508)
+- **Plotta: Walking Map Game** (2026) — Android — JIYULMOM
+  - Also known as: Plotta
+  - real-world GPS: drop an anchor, walk a closed loop on real streets, return near the anchor and close it to claim the area inside
+  - walk a loop over a neighbour's land to take the overlap; surround it completely to take all of it
+  - shared live map with global, country and neighbourhood leaderboards
+  - only closed land polygons are shared, not raw GPS paths
+  - `io-territory` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.ootssu.plotta) · [play.google.com](https://play.google.com/store/apps/developer?id=JIYULMOM)
+- **Qix - Territory Capture** (2026) — iOS, macOS, visionOS — 晓 郭 (Guo Xiao)
+  - 30 levels of rising difficulty, with level select to replay them.
+  - Steered with an on-screen touch D-pad.
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/qix-territory-capture/id6771368794) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6771368794)
+- **Qix Cover Football** (2026) — Android — Adwaytech India
+  - capture at least 50% of the field to clear a level
+  - lightning-style Qix enemy with particle effects
+  - an enemy touching your trail costs a life
+  - a rewarded ad grants an extra life
+  - difficulty rises each level
+  - optional CRT filter
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=in.adwt.qixgame)
+- **QixArt** (2026) — Android — LittleRoom
+  - captured zones reveal fragments of a famous painting; clearing the level unlocks the full artwork
+  - completed paintings become holographic collectible cards in a personal museum
+  - a single free-roaming Qix enemy to dodge
+  - paintings grouped into galleries of rising difficulty, each with short facts about the work and its artist
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.LittleRoom.QixPicture)
+- **Qurvix** (2026) — iOS — MdB (Maarten de Boer); published by Maarten de Boer
+  - tilt or swipe controls: swipe launches the marker, a tap stops it
+  - a health bar replaces instant death: the morphing Qurvix crossing your trail drains health and destroys the trail
+  - Sparx patrol the border and get faster on later levels, punishing lingering
+  - power-ups vanish if not collected in time: heart (restores health), shield (no health damage), freeze (stops all enemies)
+  - claim 75% of the playfield to clear a level
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/qurvix/id6768311341)
+- **RetroQix** (2026) — iOS — Juan Manuel Bravo; published by The Indie Legacy
+  - Also known as: RETROQIX: Territory Conquest
+  - capture 80% of the field; slicing large areas at once earns bonus points, and levels carry a time bonus
+  - power-ups: Slow Motion, Freeze, Shield, Blaster (shoot enemies down); an Extra Life is guaranteed on milestone levels
+  - premium power-ups: Bomb, Laser, Downgrade, Aura, and a stationary auto-targeting Minigun Turret that lasts 3 levels
+  - flying into your own trail costs 500 points and resets the line (v1.7)
+  - anti-exploit scoring: tiny micro-cuts and deliberately returning to the starting wall each cost 50 points (v1.6)
+  - Wall-Walker enemies on the border spawn away from the player's start
+  - endless procedurally generated levels of rising difficulty
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/retroqix/id6757398688)
+- **Space Cutter** (2026) — iOS — Naim Yurek
+  - cut 80% of the arena; deeper cuts give bigger rewards
+  - some enemies bounce and others hunt you; Hunters, Titans and a segmented Serpent (from level 10, whole body lethal) appear as levels rise
+  - the cut continues after the finger lifts and stops by itself when the cut completes
+  - chaining perfect cuts builds a combo and recharges a combo shield
+  - purchasable skills; after a defeat you restart at the last level that introduced a new enemy (at most 3 levels back)
+  - daily lives system
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/space-cutter/id6760222527)
+- **Spider Panic** (2026) — iOS — Bertan Uraler
+  - 10+ spider enemy types; a spider touching your trail costs a life
+  - power-ups
+  - boss battles
+  - 100 levels across 10 worlds
+  - leaderboard ranks cumulative score across all levels (v1.0.1)
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/spider-panic/id6760016715)
+- **Starcutter: Space Arcade** (2026) — iOS, iPadOS — Amir Meir
+  - an enemy touching the line while it is drawn starts a fuse racing toward the player
+  - closing a line claims the area the boss cannot reach; each cut reveals more of a painted world
+  - 10 bosses, each with one trick: dashing, hunting the line, hatching drones, sowing mines, teleporting, shockwaves, eating claimed land, sweeping a light beam, a dangerous reflection; the final boss (Void Crown) uses all of them
+  - 'Cage the Boss' large bonus for finishing a sector at 90% or 95%
+  - crates: boost, freeze, laser, purge, extra time, Nova (destroys the boss outright)
+  - daily challenge: the same three sectors for everyone, with a shared leaderboard
+  - Expedition: three sectors in a row with an upgrade chosen between them
+  - relaxed mode without the clock
+  - versus: two players on one iPad or with controllers, or online quick match and private rooms
+  - 10 worlds, 40 sectors, 120 stars
+  - `volfied` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/starcutter-space-arcade/id6824494684) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6824494684)
+- **TerraFill: Territory Capture** (2026) — Android — Yand
+  - touching your own unfinished line costs a life
+  - spider enemies learn new tricks as levels climb
+  - hand-built levels with rising target percentages
+  - 'leaves' currency buys an extra life, a shield or a freeze
+  - Mystery Crates every 6 hours give leaves, spare lives, head starts or skins (Oct 2026 update)
+  - daily missions and streaks
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.yanidv.terrafill)
+- **Territory Arcade** (2026) — iOS, Android — JIYULMOM
+  - a line can start anywhere on the edge of your territory
+  - a closed cut keeps the enemy-free side: with enemies on both sides you keep the smaller half, and on a clear field the larger half
+  - a speed cap on the cutter makes long cuts risky
+  - three bouncing enemy types with steady, readable paces: Dasher (smallest, fastest), Reflector (baseline), Heavy (nearly twice the size at a little over half the speed)
+  - Slow Time and Shield pickups on the board trigger on touch
+  - 100 hand-crafted stages in themed acts, with per-stage targets rising from 60% to 90%
+  - each stage earns 1-3 stars from completion percentage, time and lives remaining
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/territory-arcade/id6772587904) · [play.google.com](https://play.google.com/store/apps/details?id=com.ootssu.territoryarcade)
+- **Territory Run: Arcade Capture** (2026) — Android — Set BT Software; published by Set BT Software (self-published)
+  - Also known as: Territory Run
+  - a 'SCAN' percentage: each captured area reveals more of a hidden image
+  - Bonus Levels with different backgrounds and visual challenges
+  - multiple worlds of progressively harder levels, with stars and lives
+  - Core Reward crates that grant power-ups: Shield, Freeze, Speed Boost and Enemy Elimination
+  - enemies with different movement patterns; an enemy touching the active trail costs a life
+  - swipe controls
+  - `qix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.setbt.evg.territoryrun&hl=en&gl=US)
+- **Territory: Claim & Conquer** (2026) — iOS — Shoaib Mansoor; published by Shoaib Mansoor (copyright Wemode Technologies)
+  - once off safe land the trail cannot be stopped; releasing the thumb does not save you
+  - closing a loop claims every pocket the enemies can no longer reach, and enemies sealed inside are destroyed
+  - six enemy types: Drifter (occupies space), Hunter (commits to your trail and accelerates), Orbiter (arcs wide), Chaos (no fixed direction), Shadow (fades out and moves fastest while invisible), Sentinel (walks the edge of your own land, so the border is never safe)
+  - score scales with the area taken in one loop, how long the line was exposed and the number of loops closed without dying; one long pass is worth about six times a small claim
+  - modes: Classic (three lives, levels introduce new behaviour rather than bigger numbers), Endless (one ever-tightening board), Time Attack (beat the clock with one life), Zen (no enemies, no failure, no timer)
+  - Daily Challenge: the same board for every player each day
+  - `qix` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/territory-claim-conquer/id6814616663)
+- **Volfi: Cyber Territory Arcade** (2026) — Android — Attara Web Solutions
+  - non-rectangular arenas: Octagon, Diamond, Cross, Star, Citadel
+  - the clear target varies from 75% to 85% per arena; reaching it destroys the guardian boss
+  - minions trapped inside a cut give large bonus points
+  - named bosses (Crimson Crab, Laser Viper, Iron Scarab, Plasma Mantis, Arachno Core, Quantum Eye) across 20+ galaxy episodes and 200+ stages
+  - 4 power-ups: Cryo Freeze, Overdrive Speed, Aegis Shield, EMP Crush Wave
+  - permanent hangar upgrades: thrusters, shield reactor, trail insulator, score multiplier
+  - 30-tier season pass and 48-hour star tournaments with a win-streak score multiplier up to 10x
+  - `volfied` · corrected · medium · [play.google.com](https://play.google.com/store/apps/details?id=com.attara.volfi) · [play.google.com](https://play.google.com/store/apps/developer?id=Attara+Web+Solutions)
+- **VolfieD (3Dmobiles)** (unknown (Play listing last updated 2026-09-27)) — Android — 3Dmobiles
+  - `volfied` · confirmed · medium · [play.google.com](https://play.google.com/store/search?q=volfied&c=apps) · [play.google.com](https://play.google.com/store/apps/details?id=com.volfied.volfied&hl=en_US&gl=US)
+- **Voltcore** (2026) — iOS — Burak Erol
+  - Also known as: Voltcore: Power the Core
+  - 7 enemy types: Wanderers, Trackers, Edge Hunters, Splitters, Spikes, Stalkers, Bosses
+  - 12 map patterns, including walls, fortresses, spirals and scattered obstacles
+  - 100 levels across 6 difficulty tiers; up to 3 stars per level
+  - boss battles at levels 30, 50, 70, 80, 90, 95 and 100
+  - enemies can be crushed by trapping them in corners (added in 1.0.1)
+  - Shield and Timewarp power-ups
+  - `volfied` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/voltcore/id6770787318) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6770787318)
+- **VOLTFIELD: 80s Classic Arcade** (2026) — iOS — Hasan Turken
+  - the ship never stops; swipe to turn
+  - claiming enough opens an exit gate; the player may leave or keep carving for more stars
+  - enemies hunt the live wire and grow more aggressive the deeper you cut; one touch ends the run
+  - hazards: burning walls, moving fire bars, rotors, arc gates and currents that push the ship
+  - 10 boss fights against the Wardens, each in its own arena
+  - boosters: homing bolt, pulse bomb, mines, ghost wire, breaker, overdrive
+  - Daily Volt: one new field per day, identical for every player, 3 attempts, with shared leaderboards
+  - 100 handmade levels across 10 sectors
+  - `volfied` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/voltfield-80s-classic-arcade/id6787507847) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6787507847)
+- **World Tour Qix** (2026) — iOS, Android — FFZ srl
+  - Also known as: Qix - World Tour
+  - each level starts as a black-and-white landmark postcard that captured territory reveals in colour
+  - levels are world cities reached by flying an airplane across an illustrated world map
+  - four seasons (Spring, Summer, Autumn, Winter), each with its own colours, visual effects and gameplay variations
+  - pink spiders crawl along the borders and electric spheres bounce across the open field
+  - unlocked postcards carry historical facts, and each capital adds a passport stamp
+  - online leaderboard for runs played without continues, plus a daily leaderboard (v1.2)
+  - `qix` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.ffz.qixworldtour) · [apps.apple.com](https://apps.apple.com/us/app/world-tour-qix/id6791214174)
+- **XonixMinimal** (2026) — iOS — Alexander Savelyev
+  - Also known as: Cats vs. Bricks
+  - themed around cats and bricks, with several cats starting from different sides of the screen
+  - 10 curated realms with a hint shown before each
+  - Inverse Mode: eliminated cats respawn after a 3-second delay
+  - seasonal Easter Bunny mode with bunny-styled bricks
+  - `xonix` · corrected · low · [apps.apple.com](https://apps.apple.com/us/app/xonixminimal/id6756616306)
+- **YiNe - Territory Capture** (2026) — Android — USC Game Studio
+  - draw lines edge to edge to secure zones
+  - trap the main enemy while avoiding moving obstacles
+  - claim at least 80% of the map
+  - grid maps with per-level visual themes and custom enemies
+  - bonus stages: navigate dark paths to collect useful items
+  - medals for higher stages
+  - `qix` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.yine.app)
+- **Zoooo: Classic Area Capture** (2026) — Android — slowant.dev; published by slowant.dev (self-published)
+  - Also known as: Zoooo
+  - captures restore a grey illustration to colour
+  - rescue the animal hidden in each picture by restoring the area around it; its card goes into a collectible album
+  - items: Speed Boost, Shield, Enemy Freeze
+  - no time pressure; each mission sets a target area to restore
+  - swipe controls
+  - `qix` · corrected · high · [slowantdev.itch.io](https://slowantdev.itch.io/zoooo) · [play.google.com](https://play.google.com/store/apps/details?id=dev.slowant.game.areacapture&hl=en&gl=US)
+- **땅따먹기 (GLORIOGO)** (2026) — Android — GLORIOGO
+  - Also known as: Territory Capture
+  - clear at a target share of 75% or more
+  - 50 stages, each revealing a themed photo shoot (racing models, K-pop idols, pilots, baristas, orchestra conductors); cleared photos go to a gallery
+  - booster items: Freeze, Shield, Speed
+  - bosses and minions get faster as stages progress
+  - choice of virtual D-pad or touch-drag controls
+  - `gals-panic` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.ttalkkag.ddangda&hl=en)
+- **땅따먹기왕 : 꼬리로 둘러싸는 땅따먹기** (unknown (Play listing dated 2026-10-25)) — Android — 우당탕탕달토끼
+  - Also known as: Land Grab King
+  - character slides across a slightly tilted board following the finger
+  - leaving your land grows a tail; returning claims the enclosed area, including opponents' land
+  - stepping on a robot's tail destroys it; stepping on your own tail or having yours stepped on ends the game
+  - CPU robot rivals (named after old machines) range further and chase your tail as rounds progress
+  - eight boards, each cleared by exceeding a target percentage, ending in a 'King of Kings Tournament'
+  - nine unlockable outfits bought with copper coins; the ground colour changes with the outfit
+  - `io-territory` · confirmed · high · [play.google.com](https://play.google.com/store/apps/details?id=com.gwanggo.landgrabking)
+- **Cartoon Kamasutra Xonix** (unknown) — Java ME — Inlogic Software
+  - `xonix` · confirmed · low · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/Mobile%20-%20J2ME.dat)
+- **Color Conquest** (unknown) — Android — NovaArcade7; published by self-published (itch.io)
+  - connect dots to form enclosed shapes that claim territory in your colour
+  - real-time simultaneous play against an AI with no turns, a live dots-and-boxes
+  - enclosing shapes can steal the opponent's territory
+  - `other` · corrected · medium · [novaarcade7.itch.io](https://novaarcade7.itch.io/color-conquest) · [novaarcade7.itch.io](https://novaarcade7.itch.io/color-conquest/data.json)
+- **Hot Xonix (Palm OS)** (unknown) — Palm OS — unknown
+  - Also known as: Hot Xonix
+  - `xonix` · confirmed · medium · [github.com](https://github.com/libretro/libretro-database/blob/master/metadat/no-intro/Mobile%20-%20Palm%20OS.dat) · [palmdb.net](https://palmdb.net/app/hot-pipes) · [palmdb.net](https://palmdb.net/app/hot-lines)
+- **Mobi Xonix 3D** (unknown) — Java ME — 7Seas Entertainment Limited
+  - `xonix` · confirmed · low · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/Mobile%20-%20J2ME.dat)
+- **mobiQix** (unknown) — Java ME — ChumpChop (www.ChumpChop.com)
+  - `qix` · corrected · low · [raw.githubusercontent.com](https://raw.githubusercontent.com/libretro/libretro-database/master/dat/Mobile%20-%20J2ME.dat)
+- **Pet Xonix** (unknown) — Java ME — unknown
+  - `xonix` · confirmed · low · [www.mobiles24.co](https://www.mobiles24.co/downloads/tag/Xonix/free-mobile-games)
+- **Qixxx** (unknown) — Java ME — Mediaplazza (MIDlet vendor string)
+  - `qix` · corrected · low · [raw.githubusercontent.com](https://raw.githubusercontent.com/libretro/libretro-database/master/dat/Mobile%20-%20J2ME.dat)
+- **SimpleXonix** (unknown) — Java ME — SoftAspects
+  - `xonix` · confirmed · low · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/Mobile%20-%20J2ME.dat)
+- **Xonix (Gergely Herenyi, J2ME)** (unknown) — Java ME — Gergely Herenyi
+  - `xonix` · confirmed · low · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/Mobile%20-%20J2ME.dat)
+- **Xonix (Palm OS)** (unknown) — Palm OS — unknown
+  - `xonix` · confirmed · medium · [github.com](https://github.com/libretro/libretro-database/blob/master/metadat/no-intro/Mobile%20-%20Palm%20OS.dat)
+- **Xonix (Telma LTD, J2ME)** (unknown) — Java ME — Telma LTD
+  - `xonix` · confirmed · low · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/Mobile%20-%20J2ME.dat)
+- **Xonix Assault (Gameneeti, J2ME)** (unknown) — Java ME — Gameneeti
+  - Also known as: Xonix Assault
+  - `xonix` · confirmed · medium · [github.com](https://github.com/libretro/libretro-database/blob/master/dat/Mobile%20-%20J2ME.dat)
+- **ZooQix** (unknown) — Java ME — Mediaplazza (MIDlet vendor string)
+  - Also known as: ZooQuix
+  - `qix` · corrected · low · [raw.githubusercontent.com](https://raw.githubusercontent.com/libretro/libretro-database/master/dat/Mobile%20-%20J2ME.dat)
+
+## .io and online multiplayer games
+
+- **Paper.io** (2016) — iOS, Android, Browser — Voodoo
+  - arena territory capture: leave your land to draw a tail, return to your land to claim the loop
+  - your tail is your weak spot: an enemy touching it eliminates you
+  - stealing rivals' territory is allowed; victory requires owning the whole map
+  - `io-territory` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Paper.io) · [itunes.apple.com](https://itunes.apple.com/lookup?bundleId=io.voodoo.paperio&country=us) · [play.google.com](https://play.google.com/store/apps/details?id=io.voodoo.paperio) · [iogames.space](https://iogames.space/paper-io)
+- **Splix.io** (c. 2016 (unconfirmed)) — Browser — Jesper van den Ende (jespertheend); published by Jesper van den Ende (self-published)
+  - Also known as: Splix
+  - grid territory: leave your area, draw a line, and reconnect to claim the enclosed shape
+  - crashing into a rival's line while it is being drawn kills them; the killer sees a +500 score indicator
+  - a killed player's whole claimed area is removed
+  - 60-90 players per lobby, two lobbies per server
+  - P key freezes your player, but a frozen player can still be killed, even on their own land
+  - spectator mode; a teams mode exists but is currently unavailable
+  - MIT-licensed client and server, self-hostable; community servers can be chosen from a server dropdown
+  - `io-territory` · corrected · high · [splix.io](https://splix.io/) · [iogames.space](https://iogames.space/splix-io) · [github.com](https://github.com/jespertheend/splix) · [github.com](https://github.com/jespertheend)
+- **Clash.io** (2017) — iOS — Ketchapp
+  - online multiplayer arena: capture blocks by closing them with your coloured trail
+  - hit enemies and defend your territory against other players
+  - `io-territory` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/clash-io/id1253027907) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1253027907&country=us)
+- **Hexar.io** (2017) — iOS, Android, Browser — MochiBits, LLC
+  - Also known as: Hexar.io - #1 in IO Games
+  - hexagon-block grid: capture blocks by enclosing an area and reconnecting to your base
+  - running into a rival's trail eliminates them
+  - power-ups during play; coins upgrade a jetpack
+  - missions with rewards; customisable avatar skin and base
+  - `io-territory` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/hexar-io-1-in-io-games/id1175871181) · [hexar.io](https://hexar.io/) · [iogames.space](https://iogames.space/hexar-io)
+- **Superhex.io** (2017 or earlier (site changelog dated 27 March 2017)) — Browser — unknown
+  - Also known as: Super-hex.io
+  - hex-tile map: territory captured by drawing shapes and reconnecting to your land
+  - an enemy touching your line eliminates you
+  - rivals' hexagons can be stolen by enclosing them
+  - private party via shareable link; match results report score, map percentage, kills and blocks
+  - `io-territory` · corrected · medium · [iogames.space](https://iogames.space/superhex-io) · [super-hex.io](https://super-hex.io/)
+- **Paper.io 2** (2018) — iOS, Android, Browser, Windows — Voodoo; published by Voodoo (mobile); QubicGames and Gamersky Games (Steam)
+  - claim land by gliding over white space or rivals' colour and reconnecting to your own colour, which steals rival land
+  - outside your colour your tail is exposed: a rival hitting it eliminates you, and crossing your own tail is game over
+  - hitting a rival's exposed tail eliminates them and erases their whole territory
+  - power-ups spawn during play to attack rivals and claim their former space
+  - Steam: a map for every country plus 45 differently shaped custom maps; local split-screen for up to 4 players
+  - skins change your terrain's look and are unlocked by objectives and eliminations; online multiplayer on mobile and web
+  - `io-territory` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/2751310/Paper_io_2/) · [apps.apple.com](https://apps.apple.com/us/app/paper-io-2/id1423046460) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Paper.io) · [www.crazygames.com](https://www.crazygames.com/game/paper-io-2)
+- **画线圈地2** (2018 (Paper.io 2); 4399 upload 2026-09-15) — HTML5, original: iOS, Android, Browser — Voodoo (HTML5 build; its config names Merci-Michel); published by Voodoo; rehosted on 4399.com by a user
+  - Also known as: Paper.io 2, Draw Line Enclosure 2
+  - draw loops out of your area to fill territory with your colour
+  - surround opponents and cut their trails before they cut yours
+  - optional start bonus via rewarded ad: x5 bigger starting territory or x3 speed
+  - skins unlocked by achievements: cover 10-100% of the map, cover with 0 kills, kill streaks, 'kill the king', stay 5-15 s outside your area
+  - `io-territory` · corrected · medium · [www.4399.com](https://www.4399.com/flash/265668.htm) · [sxiao.4399.com](https://sxiao.4399.com/4399swf/upload_swf/ftp55/zmj/20260910/07/index.html)
+- **圈地大乱斗** (2019) — Browser — unknown; published by 4399 (hosted; submitted by a 4399 user)
+  - Also known as: Enclosure Brawl
+  - matchmade battle-royale ('chicken dinner') territory capture: enclose land to expand your territory and eliminate enemies
+  - `io-territory` · confirmed · medium · [www.4399.com](https://www.4399.com/flash/208794.htm)
+- **Slide.io - Free Style Games** (2020) — iOS, iPadOS — Akbari Bhaveshbhai; published by Avon Games
+  - Also known as: Slide.io
+  - 3D arena: colour unique 3D shapes by enclosing areas from your zone
+  - level-based progression: reach 100% coverage to unlock the next level and bonuses; stars are collected during play
+  - new characters unlocked by killing enemies or growing your territory
+  - enemies kill you by touching your open tail
+  - `io-territory` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/slide-io-free-style-games/id1499333158) · [itunes.apple.com](https://itunes.apple.com/lookup?id=1499333158&country=us)
+- **Hexanaut.io** (2022) — Browser, CrazyGames app — Exodragon; published by CrazyGames (web portal)
+  - Also known as: Hexanaut
+  - hex grid: leave your territory and loop back to capture the hexes inside
+  - capturing hexes levels you up and grants a speed bonus
+  - capturable map totems: speed boost, teleport gate that drops you near your border, slowing zone for enemies, spy tower that reveals the whole minimap
+  - win by reaching 20% of the map to become king, then holding the crown for 3 minutes while everyone can see and target you
+  - eliminated players cannot respawn
+  - `io-territory` · confirmed · high · [iogames.space](https://iogames.space/hexanautio) · [www.crazygames.com](https://www.crazygames.com/game/hexanaut-io)
+- **Pap.io: Zone Battle** (2025) — iOS, iPadOS — Hariom Sharma; published by RR Game Labs
+  - Also known as: Zone Brawl.io
+  - draw a trail out of your zone and capture land before opponents cut it
+  - offline (bots) and online play
+  - unlockable skins and leaderboards
+  - `io-territory` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/pap-io-zone-battle/id6754379552) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6754379552&country=us)
+- **DroneXtreme: Territory Capture** (2026) — iOS, iPadOS — Furkan Kaynar
+  - real-world map split into 221 city regions (Iceland to Iran, Mediterranean to Caspian)
+  - owning more than half of a city region also gives you its remaining open land
+  - cutting a rival's trail wipes that rival's land in that area; both drones respawn about 3 seconds later
+  - water acts as a wall except at dotted sea lanes leading to islands and across straits
+  - 90-second match vs six rival drones; most land at the whistle wins
+  - regions you win are kept in a permanent collection
+  - no-timer, no-rival practice mode
+  - `io-territory` · corrected · high · [apps.apple.com](https://apps.apple.com/us/app/dronextreme-territory-capture/id6794614385) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6794614385&country=us)
+- **Kingpins.io** (unknown (likely 2026, inferred from itch.io game ID)) — Browser — kingpins-io; published by kingpins-io (self-published on itch.io)
+  - server-based online turf war: drive out of your turf through a neon city, carve new land, return to lock it in
+  - rival crews can intercept your trail and trap overextended players
+  - shooting (left mouse or J) to defend turf or eliminate rivals before they expand
+  - Space boost
+  - leaderboard by territory size; bigger turf is harder to defend
+  - `io-territory` · corrected · high · [kingpins-io.itch.io](https://kingpins-io.itch.io/kingpins-io)
+- **Loop Nook: Territory Capture** (2026) — iOS, iPadOS — Yuri Andryushin
+  - Solo mode: last hero standing on an island
+  - Blitz mode: claim the most land in one minute; defeated heroes respawn until the round ends
+  - Team Battle: 5v5 with a shared team territory
+  - Capture the Flag: 3v3 over three minutes; carry the enemy flag to your base and recover your own
+  - bonus-sphere pickups in Solo and Team Battle
+  - varied island-shaped maps
+  - all opponents are computer-controlled; plays offline
+  - `io-territory` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/loop-nook-territory-capture/id6809967674) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6809967674&country=us)
+- **Marble Land Grab** (2026) — Browser, Android — yamoda
+  - flick a marble out of your land and return within 3 flicks to claim everything inside its path
+  - enclosing a rival's land takes all of it
+  - a marble crossing your open path cuts you and you lose everything; you can cut rivals the same way
+  - obstacles: rocks bounce, puddles trap, sand slows
+  - modes: 5-player 60-second survival (last standing or biggest land); daily challenge on one board shared by everyone; endless io map with 40 rivals; classic turn-by-turn playground rules with 2-player hot-seat
+  - every few claims, pick 1 of 3 upgrade cards (harder flick, longer roll, heavier or bouncy marble, one more flick, shield, rain boots)
+  - coins and achievements unlock marble skins
+  - `io-territory` · confirmed · high · [yamoda.itch.io](https://yamoda.itch.io/marble-land-grab)
+- **Paint.io - Territory Wars** (2026) — iOS, iPadOS — Gary Trung Lam
+  - `io-territory` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/paint-io-territory-wars/id6816446861) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6816446861&country=us)
+- **PaperCraft: Territory Capture** (2026) — iOS, iPadOS — Ilya Mudry
+  - modes: Classic; Blitz (highest territory % in 2 minutes); Battle royale with a shrinking zone; Team Battle 5v5 over 3 minutes
+  - Paper Atlas: 20 levels on shaped maps (heart, star, cloud) that unlock a 6-tier league
+  - origami heroes with unique abilities (bot games only; online keeps everyone equal)
+  - a boss starts hunting you when you take the lead
+  - double-tap dash and a speed boost while running along walls
+  - speed, shield and coin pickups
+  - online rooms of up to 4 via Game Center, where joining players replace bots
+  - `io-territory` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/papercraft-territory-capture/id6822451275) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6822451275&country=us)
+- **Snake Conquest** (2026) — Android — Mezeey
+  - snake length sets how far your trail can reach; grow longer to attempt bigger captures
+  - an unfinished route can disappear
+  - world-map board: cross seas, encircle islands; securing countries grants bonuses
+  - Classic mode: control 85% of the world
+  - Battle Royale mode: shrinking safe zone, last snake standing
+  - 24 snakes per match; all rivals are AI
+  - short shield, boost with regenerating energy, and Adrenaline (a brief boost that uses no energy)
+  - `io-territory` · corrected · high · [play.google.com](https://play.google.com/store/apps/details?id=com.snakeconquest.conquest)
+- **Starlasso: Territory Arena** (2026) — iOS, iPadOS — Jose Reynoso
+  - live online matches of up to six pilots
+  - two-minute timed matches
+  - cutting a rival's trail before it gets home eliminates it
+  - seasonal ranked ladder with tiers from Dust to Nova (seasons end each calendar month)
+  - guided first arena teaches flying, closing loops and cutting rivals
+  - parties of up to four friends enter the same arena
+  - `io-territory` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/starlasso-territory-arena/id6812146804) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6812146804&country=us)
+- **Zone Clash: Territory Wars 3D** (2026) — iOS, iPadOS — Maksym Mykhailenko
+  - 3D arena; close a loop back to your zone to capture the area inside
+  - cutting a rival's open trail eliminates it; largest territory wins
+  - `io-territory` · confirmed · high · [apps.apple.com](https://apps.apple.com/us/app/zone-clash-territory-wars-3d/id6767659669) · [itunes.apple.com](https://itunes.apple.com/lookup?id=6767659669&country=us)
+- **圈地大作战** (2026) — HTML5 — unknown (4399 user upload, tagged 原创游戏 'original game'); published by 4399.com (portal)
+  - Also known as: Enclosure Battle
+  - a neon ship on a grid trails a glowing line outside its land; returning claims the enclosed area
+  - hitting another's trail or your own kills you
+  - killing a rival annexes all of their land
+  - daily check-in, local leaderboard, achievements, skin colours, kill-streak effects
+  - `io-territory` · confirmed · medium · [www.4399.com](https://www.4399.com/flash/265578.htm)
+- **Defly.io** (unknown) — Browser — unknown
+  - a helicopter places towers that join with walls; enclosed regions become your territory, shown as a map-control percentage
+  - claimed territory raises your level; level 20 unlocks a superpower (Dual Fire, Speed Boost, Clone, Shield, Flashbang, Teleport)
+  - shoot opponents and their towers
+  - in-round upgrade points for player speed, bullet speed, bullet range, reload speed, build range, tower shield and tower health
+  - modes: FFA, Team, Defuse (a bomb-plant mode), E-FFA, 1v1
+  - 1v1 gear bought before a round from $2000 starting money, with gear plus unspent money capped at $6000 (Shield, EMP Grenade, Tower HP, Tower Shield, Build distance)
+  - no respawn once a player holds more than 80% of the map; a team cannot be joined once it holds more than 70%
+  - `io-territory` · corrected · medium · [defly.io](https://defly.io/)
+- **TileMan.io** (unknown) — Browser — unknown
+  - Also known as: Tileman.io
+  - grid territory capture: leave your land with a trail and loop back to claim; touching your own trail kills you
+  - score from tiles owned plus eliminations
+  - modes: Classic, Extreme speed (players move 8x faster), No kills, Rats (many players on a small map), Arena (very small fight map)
+  - can stop in place (E or P); quick-chat keys (Space, Z, X); swipe controls on touch devices
+  - `io-territory` · corrected · high · [iogames.space](https://iogames.space/tileman-io-game) · [tileman.io](https://tileman.io/)
+
+## Commercial indie games
+
+- **Fortix** (2009) — PSP, Windows — Nemesys Games; published by Nemesys Games (PC); VGChartz lists Complete-IT for the PSP minis release
+  - stage goal is to capture all of the enemy forts' area, not a screen percentage
+  - towers guarding the forts shoot at the player once a line is started; a hit on the open line kills
+  - capturing a crossed-swords trigger point fires a single-use catapult at a tower; the player cannot pick the target
+  - a tower can be captured directly: bait it into wasting a shot, then loop round it while it reloads
+  - anything enclosed by a capture (tower or dragon) dies permanently
+  - three dragon types (fire-breathing, randomly flying, one that attacks once you start drawing); bats run along drawn lines like Sparx
+  - capturing a key opens gates of the same colour; captures can trigger effects elsewhere on the map
+  - rivers, mountains and cliffs slow movement and drawing; crossing a fort wall is very slow
+  - walls block movement and cannot be used to close a line
+  - randomly appearing power-ups
+  - the line in progress can be retracted
+  - drawing starts automatically on entering unclaimed land (no draw button)
+  - a crown on the level map for a no-death clear, and optional time bonuses
+  - `qix` · corrected · high · [www.wurb.com](https://www.wurb.com/stack/?p=2312) · [www.gamepressure.com](https://www.gamepressure.com/games/fortix/zf3165) · [www.vgchartz.com](https://www.vgchartz.com/game/39519/fortix/) · [www.vgchartz.com](https://www.vgchartz.com/game/39519/fortix/reviews/6722/)
+- **Fortix 2** (2011) — Windows, Mac, Linux — Nemesys Games
+  - 'reverse turret defence' framing: storm castles while dodging tower turrets and roaming monsters
+  - maze-like level layouts
+  - castle-to-castle campaign of 30 levels across 3 lands, ending against the mage Xitrof
+  - Steam leaderboards
+  - `qix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/45450) · [gamingonlinux.com](https://gamingonlinux.com/2013/09/fortix-2-released-for-linux-on-steam)
+- **Lightfish** (2011) — Windows — Eclipse Games; published by Eclipse Games (self-published; Steam lists no publisher)
+  - Also known as: LightFish
+  - goal is to destroy every monster in the zone by enclosing it, not to reach a percentage
+  - enclosed enemies die but respawn after a delay, so speed matters
+  - any enemy touching the fish itself kills it instantly
+  - 10 enemy types
+  - lava squares act as walls and kill on touch
+  - ice blocks (late game) slow the player but not the enemies
+  - walls block movement and cannot be used to close a line; capturing them removes them
+  - randomly appearing power-ups
+  - the line in progress can be retracted
+  - 45 levels, 2 game modes and per-level score challenges
+  - `qix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/116120/Lightfish/) · [www.wurb.com](https://www.wurb.com/stack/?p=2312)
+- **Space Xonix** (2015) — Windows, macOS, Linux/SteamOS — SRF Games
+  - the player is a UFO claiming territory in space
+  - a choice of upgrades is offered at each level
+  - local co-op on one shared screen
+  - online leaderboards and achievements
+  - hazards include lasers, fireballs and lava (from a review quoted on the Steam page, not the official description)
+  - `xonix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/382270/Space_Xonix/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=382270) · [www.wikidata.org](https://www.wikidata.org/wiki/Q31980739) · [uk.wikipedia.org](https://uk.wikipedia.org/wiki/Qix)
+- **Cosmonix** (2016 (beta)) — Windows — unnamed (itch.io account name); published by self-published (itch.io; Steam Greenlight entry)
+  - space setting: clear enclosed areas while avoiding enemies
+  - enemies and obstacles include asteroids, mines and missiles
+  - bonuses that grant extra abilities
+  - 18 levels in the beta
+  - `xonix` · corrected · medium · [unnamed.itch.io](https://unnamed.itch.io/cosmonix)
+- **Pretty Girls Panic!** (2016) — Windows, macOS, Nintendo Switch, PlayStation 4, PlayStation 5, and 1 more — Zoo Corporation; published by Zoo Corporation (PC); Eastasiasoft (consoles); Sticky Rice Games (Android)
+  - a water-filled barrier hides the girl; remove 75% or more of it to clear
+  - the edge is normally safe, but crab enemies can catch the player there
+  - an enemy touching the tool or the cut line costs a tool (life); enemies grow stronger stage by stage
+  - bigger cut pieces score more points
+  - 13 girls over 50 stages; the girls undress gradually, with no nudity in the Steam version
+  - each cleared stage adds a photo to a gallery; Steam leaderboards
+  - `gals-panic` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/565720/Pretty_Girls_Panic/) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Pretty_Girls_%28video_game_series%29) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Gals_Panic)
+- **Frontiers.io** (2017) — Windows — Dusty Rocket Games
+  - single life: you die if anyone, including you, crosses your trail before the area is enclosed
+  - steal land by running through opponents' territory and closing it off
+  - destroying opponents yields gems; selectable heroes for your profile
+  - `io-territory` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/721670/Frontiersio/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=721670)
+- **Quirky Crook** (2018) — Windows — Ludo Land
+  - you play a crook grabbing bags of money while cops chase you
+  - high-score play with a score multiplier to push up
+  - per a user review, the player moves along borders, and leaving a border can kill you (details unclear)
+  - `qix` · corrected · low · [store.steampowered.com](https://store.steampowered.com/app/765350/Quirky_Crook/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=765350) · [steamcommunity.com](https://steamcommunity.com/app/765350/reviews/?browsefilter=mostrecent&p=1)
+- **Bishoujo Battle Cyber Panic!** (2020) — Windows — Zoo Corporation
+  - remove 75% of a 'communications barrier' to rescue each girl
+  - clearing larger areas faster scores more
+  - enemies are bugs and computer viruses
+  - 40 regular stages plus 10 special stages showing alternate costumes; rescued characters go to a gallery
+  - `gals-panic` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/1330170)
+- **Delta Light** (2020) — Windows — FlapBox Studios
+  - fruit pickups give stackable stat boosts (Cherries for super speed, Melons for toughness)
+  - 11 unlockable characters (10 plus 1 added in v1.1), each with a passive effect, switchable per map
+  - Infinite mode (v1.1): pseudo-randomly generated maps with affixes and a rank-up system
+  - level editor whose maps are shared as a text string
+  - 75+ campaign maps
+  - `qix` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/1406150/Delta_Light/)
+- **Get Your Klix on Route 66** (c. 2020) — Windows, Browser — gameswarp; published by gameswarp (self-published on itch.io)
+  - the roaming Qix-like KLIX is a Route 66-sign-shaped beast, different in each of 12 cities from Chicago to Los Angeles
+  - HAX road-sign hazards and BRIX police-officer enemies
+  - blue BRIX trap the player and erase drawn lines; CTRL-X self-destructs to escape a trap
+  - no lives: start with 10,000 points and lose escalating points per death
+  - claim more than each level's stated threshold to advance
+  - `qix` · corrected · medium · [gameswarp.itch.io](https://gameswarp.itch.io/get-your-klix-on-route-66) · [gameswarp.itch.io](https://gameswarp.itch.io/get-your-klix-on-route-66/data.json)
+- **Magical Stock Princess** (2020) — Windows — IFCATS
+  - Gals Panic-inspired action stages: clear the floor while avoiding monsters
+  - action stages alternate with adventure stages with light RPG elements and character interaction
+  - collecting food is the run's core goal
+  - saves are not free: they are earned by completing mini-quests
+  - three endings plus a special bad ending; secrets and references
+  - `gals-panic` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/1361430/Magical_Stock_Princess/)
+- **Pretty Girls Panic! PLUS** (2021) — Windows, Nintendo Switch, PlayStation 4, PlayStation 5 — Zoo Corporation; published by Zoo Corporation (PC); Eastasiasoft (consoles)
+  - choose a partner (Yu or Asahi); clearing stages with her raises friendship and unlocks partner costumes
+  - enemies have attacks to dodge, not only bodies
+  - clear by securing a set percentage of the area; each stage also unlocks special costumes
+  - 40 stages; 22 voiced characters; gallery; Steam leaderboards
+  - `gals-panic` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1518630/Pretty_Girls_Panic_PLUS/) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Pretty_Girls_%28video_game_series%29)
+- **Fillit** (2022) — Windows — 11Sheep
+  - competitive local multiplayer: up to 4 players claim territory in the same arena on one screen (PvP)
+  - 40+ two-player local co-op levels
+  - power-ups that affect all players and can disrupt opponents
+  - 90+ single-player levels whose new enemies attack from all directions
+  - `volfied` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1446540) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1446540) · [steamspy.com](https://steamspy.com/api.php?request=appdetails&appid=1446540)
+- **JezzBall Atomic** (2022) — Windows — Cracked Atom
+  - Classic mode keeps the original rules and chamber size
+  - Arcade mode: 40 levels in much larger chambers, with Jezz atom types that each behave differently
+  - Survival mode: start with 10 lives and gain 1 at the start of each level
+  - `jezzball` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/1547620/JezzBall_Atomic/)
+- **Xonix Casual Edition** (2023) — Windows — HapGames
+  - Also known as: Qix Xonix Casual Edition, Qix: Xonix Casual Edition
+  - 3D Xonix in which the player flies a copter that leaves a trail of straight lines
+  - enemy drones with different abilities roam the field; hitting a drone, having a drone hit your trail, or crossing your own trail ends the attempt
+  - each level has about a one-minute time limit, which bonuses can extend
+  - pickups: speed boost, enemy slower, coins, extra time and extra life; some pickups are harmful
+  - 90 levels with unique layouts and rising difficulty
+  - `xonix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/2534060/Xonix_Casual_Edition/) · [hapgames.itch.io](https://hapgames.itch.io/qix-xonix-casual-edition) · [www.wikidata.org](https://www.wikidata.org/wiki/Q135034517) · [idcgames.com](https://idcgames.com/en/qix-xonix-casual-edition)
+- **Gensou -Yumegokochi- Illusion -Dreamlike-** (2024) — Nintendo Switch, Windows, TapFun cloud gaming — Purmoe Design Lab. Inc.
+  - Also known as: 幻想～ゆめごこち～
+  - HP and defence, upgraded with money collected each stage, replace one-hit deaths
+  - Unrivaled Barrier: a temporary shield ability
+  - Transcendence Mode: fast, invincible free movement for a time
+  - enemies fire waves of attacks that must be dodged while drawing
+  - no item power-ups and no time limit
+  - 114 stages including hidden ones; post-game HELL Mode (attacks cannot be blocked) and Boss Rush
+  - Bullet Hell mode (Mar 2026 update): about 5x enemy attacks, timed race to a 100% clear
+  - clearing a stage above a quota unlocks a timed 'tawamure' touch mode with the stage's yokai character (Japan/Asia builds; free patch for Steam and Epic; absent from Western Switch)
+  - `qix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/4110250/) · [www.gensou-yumegokochi.com](https://www.gensou-yumegokochi.com/news) · [www.gensou-yumegokochi.com](https://www.gensou-yumegokochi.com/patch) · [purmoe-design-lab.co.jp](https://purmoe-design-lab.co.jp/)
+- **Delta Light 2** (2025) — Windows — FlapBox Studios
+  - 35+ handcrafted campaign maps, nearly each introducing new mob types, with many bosses
+  - visual-novel segments between stages
+  - 7 unlockable characters with passive abilities and distinct playstyles
+  - stackable fruit stat boosts (Cherries, Melons, Bananas and more)
+  - after the campaign, a mostly procedural Infinite Mode seeded by the player's Steam ID
+  - Arcade Mode (patch 1.13): no story, nothing saved, aimed at cabinets and speedrunners
+  - `qix` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/3013670/Delta_Light_2/) · [flapboxstudios.itch.io](https://flapboxstudios.itch.io/delta-light-2)
+- **Jezzball Classic Deluxe Edition** (2025) — Windows, macOS — Martin Edmaier
+  - points awarded for each enclosed area, with a leaderboard to climb (the page gives no details)
+  - `jezzball` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/3281200/Jezzball_Classic_Deluxe_Edition/)
+- **LiM Grid Wars** (2025) — Windows — Less is More
+  - Also known as: Grid Wars
+  - alien ships hunt the player while you claim area (Qix-style lines drawn from the border, shown in store screenshots)
+  - temporary upgrades shown in an 'Active Bonus' panel
+  - enemy AI said to adapt to your moves
+  - conquer target rises per level (55% on level 1, 75% on level 5 in screenshots); capturing beyond the target is allowed
+  - 10 levels of rising difficulty with a high-score table
+  - `qix` · corrected · medium · [store.steampowered.com](https://store.steampowered.com/app/3881940/LiM_Grid_Wars/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=3881940)
+- **Vertex (Komodor)** (2025) — Windows — Komodor Games
+  - Also known as: Vertex
+  - player droid moves along new or existing orthogonal lines to capture a percentage of the screen
+  - enemy droids patrol, some predictable and some erratic; over 20 droid types
+  - 60 levels, 5 gameplay modes, 3 difficulty levels on Steam (itch page says 4)
+  - `qix` · corrected · high · [komodor.itch.io](https://komodor.itch.io/vertex) · [store.steampowered.com](https://store.steampowered.com/app/3807790/Vertex/) · [komodor.itch.io](https://komodor.itch.io/vertex/devlog/1015517/vertex-released)
+- **Domain Expansion** (2026) — Windows — 虚真
+  - 3D territory capture (Steam tags: 3D, Third Person)
+  - choose NORMAL (safer) or DEEP (riskier, higher-scoring) before each cut
+  - enemies roam inside the board and patrol the boundary
+  - timed acceleration and 'territory eaters' that take back captured ground
+  - some stages also clear by separating two interior enemies
+  - 24 stages, then a second loop with a higher capture target
+  - checkpoint continues and a local score ranking
+  - `qix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/5421220/Domain_Expansion/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=5421220)
+- **Dream Snake Adventure** (2026) — Browser, Mobile — dreamsnake; published by dreamsnake (self-published)
+  - cut rectangles into the arena to win territory while dodging enemies
+  - story worlds
+  - Create mode for building arenas, with an online browser of created levels
+  - Local Battle against bots (local multiplayer)
+  - Daily Challenge high-score mode
+  - shop with head props; optional PG-16 DLC picture content
+  - `gals-panic` · confirmed · medium · [gamejolt.com](https://gamejolt.com/games/dream-snake-adventure/1079388) · [www.dreamsnake.app](https://www.dreamsnake.app/press/) · [www.dreamsnake.app](https://www.dreamsnake.app/)
+- **Filltopia** (2026) — Windows — Innopede GmbH
+  - turn-based: tap a trigger button to extend a wall to the next obstacle; the enclosed area fills with the current player's color, then the turn passes
+  - whoever has the largest colored area at the end wins
+  - hazards: walking bombs, flying mines and UFOs
+  - local multiplayer on one device (vs the computer or 'up to 4 friends')
+  - over 99 handcrafted levels plus computer-generated levels
+  - `jezzball` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/4438300/Filltopia/)
+- **Glowfield** (2026) — Windows — appstogrow; published by self-published (itch.io)
+  - anything that touches the open trail breaks it
+  - captures reveal glowing pictures: 31 across 5 worlds, kept in a gallery
+  - short levels with instant retry; three stars per level
+  - powers: dash along your trail, snare an enemy in a pocket of light, shield, seeds of light (extra time and a freeze), Nova, hold-to-focus slow motion
+  - enemies: Drifters, Seekers that bend toward your trail, Crawlers that move along the shore, Giants that cannot be snared, Dashers that charge
+  - Infinity endless mode: rising difficulty, lives carry over, top-10 hi-scores
+  - local multiplayer: Two Sparks co-op, Claim War (two tints, more light wins), Hunt (one player claims while the other steers the dark, then swap); a bot can play the second spark
+  - `qix` · corrected · high · [appstogrow.itch.io](https://appstogrow.itch.io/glowfield)
+- **In My Imagination** (2026) — Windows — Zhongzhi Studio
+  - Also known as: 幻想中_In my imagination
+  - after a cut, only enclosed areas with no monster inside become territory
+  - the player can reposition through already-claimed territory
+  - releasing the draw button retraces your path at double speed; you cannot turn during the retrace and can still be hit
+  - monster patterns: drifting, chasing your trail, signaled turns, charged dashes, route patrols
+  - Normal mode: reveal 85% within a time limit with 3 lives; a no-damage clear records your fastest flawless time
+  - Area Challenge: past 85% the run continues until a single hit, aiming for the highest percentage
+  - Endless Dreams: random collected images at 3 minutes each, auto-advance at 85%, 3 shared lives, monsters rising to ten
+  - 70 image stages; Dream Gallery
+  - `gals-panic` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/5453230/)
+- **Line Fight** (unreleased (Steam 'coming soon' as of Nov 2026)) — Windows — jiang youming
+  - Also known as: 圈地之王 (per EULA name)
+  - touching any line, yours or a rival's, eliminates you
+  - 4 monsters, from a wandering bouncer to a pathfinding boss that targets your unfinished line; touching a monster or its line is fatal, but monsters can be trapped or blown up
+  - 7 items (Stealth, Jump, Freeze, Mine, Revive, Speed, Double); some lie on the map, others are hidden in land and gained when it is claimed
+  - rivals can be forced into your line or trapped inside your territory
+  - 19 shaped maps (star, heart, gear, crescent) whose outlines change how claiming works
+  - online 4/6/8-player matches with bots filling empty seats; private rooms by 6-digit code; ranked play with 7 tiers and 28-day seasons
+  - `io-territory` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/5281510/Line_Fight/)
+- **Paper IO Game** (c. 2026) — Browser — Abhishek89sh; published by Abhishek89sh (self-published on itch.io)
+  - Also known as: Paper IO Game (Abhishek89sh)
+  - start from a small base and claim empty space by looping a trail back to it; the trail is vulnerable outside the safe zone and one hit eliminates you
+  - real-time online play: the listing declares server-based networked multiplayer
+  - `io-territory` · corrected · medium · [abhishek89sh.itch.io](https://abhishek89sh.itch.io/paper-io-game) · [itch.io](https://itch.io/games/tag-paper-io)
+- **point line surface** (2026 (Early Access)) — Windows — 月海
+  - the character moves only along its own network of drawn lines
+  - line segments are a resource: collect energy to earn new segments
+  - a line that reconnects to your territory captures the enclosed area
+  - ranged shooting (manual or auto) and a grab hook that pulls certain enemies in to capture and absorb them
+  - absorbing enemies drives a card-based level-up system
+  - enemies keep entering and new types appear as territory grows; the run ends if territory is destroyed or HP runs out
+  - a mid-run boss must be beaten before you can safely expand
+  - permanent meta upgrades between runs; planned: a Hex Shop where line segments buy rule mutators, and a 'Car Legion' of recruited captured enemies
+  - `qix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/4971140/point_line_surface/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=4971140)
+- **RPG Maker MZ Territory Action Plugin** (2026) — RPG Maker MZ, Browser — Media Faust; published by Media Faust (sold on DLsite)
+  - Also known as: 【RPGツクールMZ】陣取りアクションプラグイン, MF_TerritoryAction
+  - FAST and SLOW drawing, each with its own speed and score value
+  - the side of the cut without enemies is claimed
+  - field enemies with configurable chase strength, random turns and speed changes; border enemies chase the player along the safe edge
+  - field enemies fire bullets, including 3-way and 5-way spreads and shots that ricochet off borders
+  - items that spawn over time, on capture or at fixed spots: speed up, extra life, score, timed invincibility
+  - hidden illustration revealed region by region; per-stage clear percentage
+  - bonus score for area claimed beyond the clear threshold
+  - on-screen virtual controller for touch and browser play
+  - `qix` · corrected · high · [plicy.net](https://plicy.net/GamePlay/235694)
+- **Rusty Robot Wants to Cry** (2026 (planned 17 Nov 2026)) — Windows — Andrei Fomin
+  - 100+ levels whose rules switch between platforming, digging, dodging, bouncing and Xonix-style territory claiming (remixes Arkanoid, Xonix, Digger and Snake)
+  - every level's goal is to grab the key and reach the door
+  - glitch bosses that you sometimes fight and sometimes need help from
+  - three stars per level for collecting everything
+  - `xonix` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/2484460/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=2484460)
+- **Stake That Claim** (2026) — macOS — Neo Tap Studios (Virgil Locklair); published by Neo Tap Studios, LLC
+  - two line speeds: a quick line escapes danger, a careful line earns triple territory points
+  - rivals that reach your unfinished line cut it
+  - clear by claiming 75% or by splitting the rival balls into separate areas
+  - 20 rival ball types with different movement, mixed in new combinations as you progress
+  - extra lives and bonuses; results screen with time bonus and combo multiplier
+  - 3D stadium presentation with crowd, cheerleaders and announcer reacting to big moves
+  - `qix` · corrected · high · [neotapstudios.itch.io](https://neotapstudios.itch.io/stakethatclaim) · [www.neotapstudios.com](https://www.neotapstudios.com/stake-that-claim/) · [apps.apple.com](https://apps.apple.com/us/app/stake-that-claim/id6815054931?mt=12) · [itch.io](https://itch.io/games/tag-qix)
+- **TERR1T0RY** (2026) — Browser, Windows — Mutant Shark; published by Mutant Shark (self-published on itch.io, account enkeria)
+  - hazards: bouncing spikes, erratic triangles, precision lasers, chompers
+  - power-ups: speed boost, time slowdown, Green Blast Mines, board-clearing chomper wipe
+  - risk-reward bonus points for near-miss evasions, defusing timed bombs, and large single captures
+  - completing stages reveals retrowave background art
+  - 15 levels with dynamic hazard spawns; Timed Trial mode alongside classic progression
+  - `qix` · confirmed · high · [enkeria.itch.io](https://enkeria.itch.io/terr1t0ry) · [itch.io](https://itch.io/games/tag-qix)
+- **TERRITORY SCRAMBLE** (2026 (planned November; not yet released)) — Windows — tomo games
+  - hex tiles are claimed simply by stepping on them, not by drawing a trail
+  - a closed loop of your team's tiles captures every tile inside it at once (option, can be switched off)
+  - shooter layer: machine guns, shotguns, mines, and plasma cannons whose shots pass through obstacles
+  - pickups: healing, armor, speed, and a radar that shares intel with the team
+  - enemy bases are respawn points that can be captured; Base Capture mode is won by taking every base
+  - capturable cannons whose shells claim the tiles they hit
+  - team play: up to 16 players online in 2-4 teams; solo or co-op against AI teams with Easy/Normal/Hard bots
+  - match length selectable at 1, 3, 5, 7 or 10 minutes; three map layouts, toggleable obstacles, items, enclosure capture, bases and cannons
+  - `io-territory` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/5186230/TERRITORY_SCRAMBLE/)
+- **Tint Turf** (2026 (published 17 Oct 2026)) — Browser, Windows, macOS, Linux — Fsdubson; published by Fsdubson (self-published on itch.io)
+  - Also known as: Wet Paint Wars (story mode)
+  - paint a loop off your turf and return to claim it; any opponent crossing your wet trail knocks you out
+  - story mode 'Wet Paint Wars': a five-job campaign against rival bot crews (Smudge, Drip, Rollo)
+  - modes: 90-second Turf War (most turf wins), endless Free Paint, Daily arena with pillars and a 150-second clock
+  - unlocks: Drop Cloth (survives the first cut each round), Turbo Roller, larger starting lot, mint and gold paints
+  - `io-territory` · confirmed · high · [fsdubson.itch.io](https://fsdubson.itch.io/tint-turf)
+- **Unveil (Qix-style picture reveal plugin)** (2026) — RPG Maker MZ, GameMaker — CSAF (Core Systems Asset Factory); published by CSAF (self-published on itch.io)
+  - Also known as: Unveil - Qix-Style Picture Reveal Minigame for RPG Maker MZ, Unveil - Reveal Any Picture, a Qix-Style Minigame for GameMaker
+  - configurable 1-4 field creatures and 0-6 edge sparks, target share (10-95% in the GameMaker version) and lives
+  - closing a cut claims every creature-free region at once
+  - seeded scenes: the same seed always plays the same game (GameMaker version)
+  - veil materials drawn in code over any picture (3 in MZ, 8 in GameMaker)
+  - percent revealed and win state returned to the host game (MZ variable and switch; GameMaker result with share, cuts and hits)
+  - scripted input supported for tutorials and replays (GameMaker version)
+  - `qix` · corrected · high · [csaf.itch.io](https://csaf.itch.io/unveil) · [csaf.itch.io](https://csaf.itch.io/unveil-gamemaker) · [csaf.itch.io](https://csaf.itch.io/unveil/devlog/1697217/unveil-10-a-qix-style-picture-reveal-minigame-for-rpg-maker-mz)
+- **VoidMania** (2026 (itch.io v1.0.0); Steam release planned March 2027) — Windows, Linux — Peakr Games (peakr.io); published by Peakr Games
+  - Also known as: Voidmania
+  - fuse: an enemy touching your open line lights a fuse that burns toward you; hold SPACE to retrace to safety before it arrives or lose a life
+  - two clear conditions: claim 80% of the field, or trap the boss; cutting a boss off from the rest of the field collapses the level around it
+  - each level has a roaming boss, and a tougher sector boss ends each sector; sector bosses get angry once half their field is taken
+  - boss attacks: hunting, bullet spreads, teleporting, splitting, serpent bodies, tentacle sweeps, minion hatching, beams across the field
+  - 21 enemy behaviours, including hunters that come for you as soon as a line starts, wall crawlers, orbiters, zigzaggers, wanderers, mine layers, pulsing speeders and dividers
+  - power-up crate per level with 10 power-up types, including speed, shield, freeze, laser, slow-mo, 2x score and bombs
+  - 4 sector modifiers: fog, rush, mirror, dark void
+  - chain multiplier for captures made in quick succession
+  - three stars per level: clear, claim a high percentage or trap the boss, and finish without dying
+  - claimed territory reveals a hidden picture
+  - modes: 48-level campaign over 8 sectors, endless, daily challenge with a shared seed, time attack on cleared levels
+  - synthwave soundtrack intensifies while an enemy has touched your open line
+  - `volfied` · corrected · high · [peakrio.itch.io](https://peakrio.itch.io/voidmania) · [store.steampowered.com](https://store.steampowered.com/app/1966090/VoidMania/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=1966090&l=english) · [itch.io](https://itch.io/games/tag-volfied)
+- **Warix** (TBA (unreleased; demo on Steam)) — Windows, SteamOS / Linux — Star-snuffing Black
+  - 1v1 top-down twin-stick fighter: leave your base to draw a trail, return to enclose and claim area
+  - while capturing you are exposed to enemy fire; an opponent crossing your trail breaks it and deals heavy damage
+  - instant win at 50% of the map
+  - combat layer: shoot bullets or melee swipe; a well-timed swipe parries bullets in flight
+  - glowing spores, driven over or enclosed in captured turf, fill an energy ring; boost spends it to dodge, expand faster or chase
+  - online private and quick matches, plus training vs AI (Easy, Normal, Beast Mode)
+  - `io-territory` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/4950190/Warix/)
+
+## Free indie and game-jam games
+
+- **Gal Pani X** (2002 (demo 2000)) — Windows — D5; published by D5 (freeware)
+  - Also known as: GalPaniX, Gal Panic X
+  - each stage starts in a randomly sized claimed rectangle at the centre and expands outward; the player moves freely inside claimed land instead of being locked to edges
+  - bullet-hell bosses: bullet waves, giant lasers, homing missiles, falling projectiles; enemy fire kills at any time, not only while drawing
+  - bosses shrink as the free space around them shrinks; regular enemies do not
+  - three ways to clear: surround the boss for an instant win, reveal 80%, or reveal 100% to open a harder EX stage with a skimpier picture
+  - limited bombs turn every on-screen bullet into point items
+  - enclosing regular enemies can drop power-ups, mainly Speed; on death, speed items scatter and bounce around and can be re-collected before they vanish
+  - grazing enemies and bullets builds a combo multiplier
+  - per-stage timer; after each stage a choice of two routes, leading to multiple final stages and bonus levels
+  - unlockable hitbox display; Mission, Score Attack and Ranking modes; saved replays
+  - `gals-panic` · corrected · high · [blackfalcongames.net](https://blackfalcongames.net/?p=242) · [gog.com](https://gog.com/dreamlist/game/gal-pani-x-2002) · [www.g4g.it](https://www.g4g.it/2012/05/28/galpanix-gals-panic-remake/) · [games.softpedia.com](https://games.softpedia.com/get/Freeware-Games/GalPaniX.shtml)
+- **Tetrangle** (2012) — Windows — 大熊猫; published by 大熊猫 (freeware on Vector)
+  - areas cut out of the field become blocks
+  - the blocks are stacked Tetris-style to score points
+  - `qix` · confirmed · medium · [www.vector.co.jp](https://www.vector.co.jp/soft/winnt/game/se494765.html) · [www.vector.co.jp](https://www.vector.co.jp/soft/dl/winnt/game/se494765.html)
+- **Boxer (lowrezjam)** (2014) — Browser — mysteriosum; published by mysteriosum (self-published on Game Jolt)
+  - Also known as: Boxer
+  - very low-resolution playfield (made under #lowrezjam's pixel limit)
+  - `jezzball` · corrected · medium · [gamejolt.com](https://gamejolt.com/games/boxer/27456) · [gamejolt.com](https://gamejolt.com/site-api/web/discover/games/27456)
+- **CYBER FIELD-K** (2014) — Windows — ZAP; published by ZAP (freeware via Freem! and Vector)
+  - Also known as: CYBER FIELD-K Re-Boost
+  - five stages with branching routes; about 20 minutes per full run
+  - Ver 2.00 'Re-Boost' update adds a Boost Mode and rebalances for easier play
+  - `volfied` · corrected · medium · [www.freem.ne.jp](https://www.freem.ne.jp/win/game/7926) · [www.vector.co.jp](https://www.vector.co.jp/soft/winnt/game/se508764.html)
+- **xXIXx** (2015) — Browser — pjimmy; published by pjimmy (self-published on Game Jolt)
+  - win target lowered to 30% of the screen
+  - `qix` · corrected · high · [gamejolt.com](https://gamejolt.com/games/xxixx/51022) · [gamejolt.com](https://gamejolt.com/site-api/web/discover/games/51022)
+- **Bunnyix** (c. 2016-2017) — Windows, Linux — HangedBunnyStudio; published by self-published (itch.io)
+  - Also known as: Bunnyix - Game jam
+  - 3D presentation of arcade Qix, played with keyboard and mouse
+  - `qix` · corrected · medium · [hangedbunnystudio.itch.io](https://hangedbunnystudio.itch.io/bunnyix) · [hangedbunnystudio.itch.io](https://hangedbunnystudio.itch.io/bunnyix/data.json)
+- **Love Me** (c. 2018) — Windows, Android — gbayles; published by self-published (itch.io)
+  - slash 'bad' objects Fruit Ninja-style and circle 'good' ones Qix-style
+  - short (5-6 minute) narrative about self-worth framed by positive psychology
+  - `qix` · confirmed · medium · [gbayles.itch.io](https://gbayles.itch.io/love-me) · [gbayles.itch.io](https://gbayles.itch.io/love-me/data.json)
+- **Qix (alobker, Ludum Dare 42)** (2018) — Browser — alobker; published by alobker (self-published on Kongregate)
+  - Also known as: Qix
+  - `qix` · corrected · high · [www.kongregate.com](https://www.kongregate.com/en/games/alobker/qix) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Ludum_Dare)
+- **Xonitix** (2018) — Windows, macOS, Linux — wildgaru (garu); published by self-published (itch.io)
+  - one-dimensional Xonix: claim space on a single terminal line while avoiding moving dots
+  - ASCII text-mode presentation
+  - `xonix` · corrected · high · [wildgaru.itch.io](https://wildgaru.itch.io/xonitix) · [github.com](https://github.com/garu/Xonitix)
+- **Conquerors** (c. 2019) — Windows — dmitryvolgin; published by dmitryvolgin (self-published on itch.io)
+  - Also known as: Conquerors (dmitryvolgin)
+  - two bugs start from small corner bases and leave trails; looping back to their own land fills the enclosed area (Paper.io-style)
+  - local 2-player on one keyboard (WASD vs arrow keys) with per-player area counters and a round timer
+  - `io-territory` · corrected · medium · [dmitryvolgin.itch.io](https://dmitryvolgin.itch.io/conquerors)
+- **Nova Xonix 3D** (2019 or earlier (earliest dated item: devlog of 12 Jan 2019)) — Windows, Android, Browser — VixaGame; published by self-published
+  - 3D-rendered Xonix flown with a hi-tech flying craft
+  - bonuses that can help or harm
+  - `xonix` · corrected · medium · [vixagame.itch.io](https://vixagame.itch.io/nova-xonix-3d) · [vixagame.itch.io](https://vixagame.itch.io/nova-xonix-3d/devlog)
+- **Tablix** (2020) — Windows, macOS, Linux — Jadebrew; published by Jadebrew (self-published on itch.io)
+  - the boss ('big bad') spawns green balls; capturing a green ball switches you to colour paint
+  - two-tier scoring: white paint 1 point per square, colour paint 2 points per square
+  - win at 75% or more painted
+  - `qix` · corrected · high · [jadebrew.itch.io](https://jadebrew.itch.io/tablix) · [itch.io](https://itch.io/jam/paint-jam-2020)
+- **Virtual Bug Catcher** (2020) — Browser — Ralph Talesman; published by Ralph Talesman (self-published on itch.io)
+  - Also known as: VBC
+  - enclosing 'bugs' inside the red safe zone removes them for good
+  - direct contact with a bug 'crashes' the software (game over)
+  - endless play (tagged Endless)
+  - `qix` · corrected · high · [ralphtalesman.itch.io](https://ralphtalesman.itch.io/vbc) · [ralphtalesman.itch.io](https://ralphtalesman.itch.io/vbc/devlog/157395/added-sound-effects)
+- **J-Ball 2021** (2021) — Browser, Windows — Newbie Indie Game Dev; published by Newbie Indie Game Dev (self-published on itch.io, name your own price)
+  - faithful JezzBall remake: left-click starts a wall at the pointer, right-click rotates the next wall, capture 75% to clear
+  - `jezzball` · corrected · medium · [newbie-indie-game-dev.itch.io](https://newbie-indie-game-dev.itch.io/j-ball-2021)
+- **Metal Stuck** (2021) — Browser — macklorange (itch.io); CanUgur (Game Jolt); published by self-published on itch.io / Game Jolt
+  - captured areas reveal artwork by Berlin underground graphic designers from STUCK magazine, drawn in DOS-era pixel art
+  - after the large monsters are defeated, the player can keep uncovering the artwork at their own pace with no threat
+  - `volfied` · confirmed · medium · [macklorange.itch.io](https://macklorange.itch.io/metal-stuck) · [gamejolt.com](https://gamejolt.com/games/metalstuck/555895) · [gamejolt.com](https://gamejolt.com/site-api/web/discover/games/555895)
+- **The Last Plast** (2021) — macOS — Gilad Schreiber; published by self-published (itch.io)
+  - `xonix` · confirmed · medium · [giladschreiber.itch.io](https://giladschreiber.itch.io/the-last-plast)
+- **Spherical Qix** (2022) — Browser — ilbarbogio; published by ilbarbogio (self-published on itch.io)
+  - playfield projected onto a shaded sphere; drag to rotate the view
+  - reveal a target percentage of the surface before time runs out
+  - enemies only interfere while you draw, and only set you back a bit (no lives)
+  - HUD sits on the back of the sphere, so you rotate it to read progress
+  - `qix` · corrected · high · [ilbarbogio.itch.io](https://ilbarbogio.itch.io/spherical-qix) · [ilbarbogio.itch.io](https://ilbarbogio.itch.io/spherical-qix/devlog/338951/qix-reshaped)
+- **Tinnitus** (2022) — Windows — Maxime Gammaitoni; published by self-published (itch.io)
+  - 3D levels (tagged 'cube'); fill 80% of each level by reaching the blue or grey safe zones
+  - an enemy touching your path while you build makes it decay quickly; reach a safe zone before it vanishes or restart the level
+  - `xonix` · confirmed · high · [maximegammaitoni.itch.io](https://maximegammaitoni.itch.io/tinnitus)
+- **Beaver Dam** (c. 2023) — Browser — Microbile; published by self-published (itch.io)
+  - themed reskin: a beaver builds dams to wall off crocodile-infested water, with crocodiles in place of the Qix
+  - the stated goal is to clear the whole map 'in one piece' rather than reach a percentage
+  - `qix` · confirmed · medium · [microbile.itch.io](https://microbile.itch.io/beaver-dam) · [microbile.itch.io](https://microbile.itch.io/beaver-dam/data.json)
+- **CuteQix** (c. 2023-2024) — Browser, Windows, Linux — Imperfect Lines Games; published by self-published (itch.io)
+  - Also known as: CuteQix Free
+  - captured area reveals AI-generated cute animal photos
+  - 30+ levels, one animal each, with 3 sub-levels showing different pictures of that animal; goals rise 60% / 70% / 80%
+  - levels unlock in sequence; beaten levels can be replayed to view the unlocked picture
+  - 12 avatars: 4 at start, 8 unlocked through play
+  - `qix` · corrected · high · [imperfectlinesgames.itch.io](https://imperfectlinesgames.itch.io/cuteqix)
+- **DEIFLOV** (2023) — Browser — euqns; published by self-published on itch.io
+  - reversed roles: enemies try to claim the playfield and the player must stop them
+  - 5-minute rounds that end when enemies reach a set claimed percentage or time runs out
+  - score and coins earned per round buy weapons and power-ups in a shop between rounds
+  - twin-stick-style control: WASD movement, mouse aiming, three abilities on keys 1-3
+  - `volfied` · confirmed · high · [euqns.itch.io](https://euqns.itch.io/deiflov)
+- **Erix 3310** (2023) — Browser — Benkt; published by self-published (itch.io)
+  - limited to the Nokia 3310's resolution and two-colour palette
+  - arrow keys or numpad 2/4/6/8 (phone-keypad layout)
+  - `xonix` · confirmed · medium · [benkt1.itch.io](https://benkt1.itch.io/erix-3310)
+- **Milo's Ghosts** (2023) — Windows, macOS, Linux — odisant; published by self-published (itch.io)
+  - ghost-house theme: the robot Milo's Blaster seals ghosts into smaller and smaller areas
+  - score grows with the area captured
+  - `jezzball` · corrected · medium · [odisant.itch.io](https://odisant.itch.io/milos-ghosts) · [itch.io](https://itch.io/jam/go-godot-jam-4)
+- **PAINT'NT** (2023) — Browser — Werdom; published by self-published (itch.io)
+  - the player is a paintbrush, and claiming territory paints in a picture (jam special object: brush)
+  - `qix` · corrected · medium · [werdom.itch.io](https://werdom.itch.io/paintnt) · [itch.io](https://itch.io/jam/mini-jame-gam-18/rate/2103057) · [itch.io](https://itch.io/jam/mini-jame-gam-18)
+- **Quarosel** (2023) — Browser — unless games; published by self-published (itch.io)
+  - two-player local versus on one shared field: both players grab screen space
+  - one button per player (Space / Enter): hold to aim, release to execute a cut
+  - players sabotage each other with their balls and can counter an opponent's cut while it is still under way
+  - players can be trapped in corners as the free field shrinks into a 'death pit'
+  - `qix` · corrected · medium · [unlessgames.itch.io](https://unlessgames.itch.io/quarosel) · [ldjam.com](https://ldjam.com/events/ludum-dare/54/quarosel) · [api.ldjam.com](https://api.ldjam.com/vx/node2/get/378160)
+- **The Zamio** (2023) — Browser, Windows — arifacid, alarathehuman, kaanculha; published by self-published on itch.io
+  - claiming at least 80% captures the whole building (level framed as a building to take over)
+  - enemies are bugs plus larger threats
+  - safe movement along wall edges
+  - `volfied` · confirmed · medium · [arifacid.itch.io](https://arifacid.itch.io/the-zamio)
+- **Trappy Pixel** (2023 (HTML5 and Mac builds announced 23 Nov 2023; Windows/Linux possibly earlier)) — Windows, macOS, Linux, Browser — agent4125; published by self-published (itch.io)
+  - Also known as: TrappyPixel
+  - enemy pixels roam the field trying to stop you; trapping them in small enclosures raises the fill
+  - fill 75% to advance; bonus grows with fill, and 99% counts as a 'perfect' level
+  - 90-second limit per level; when it runs out more enemy pixels spawn
+  - 'Reverse' power-up reverses the enemy pixels' direction
+  - 1 player or 2 players alternating; four difficulty levels, each with its own high-score table
+  - `xonix` · confirmed · high · [agent4125.itch.io](https://agent4125.itch.io/trappypixel) · [agent4125.itch.io](https://agent4125.itch.io/trappypixel/devlog)
+- **Descaler** (2024) — Browser — arqcenick (Berkin Vapur, Yarkin D Cetin); published by self-published on itch.io
+  - Volfied-inspired shooter: the targets are cyberdragons to be 'descaled'
+  - right click fires a grappling hook
+  - WASD movement with mouse aiming
+  - `volfied` · confirmed · medium · [arqcenick.itch.io](https://arqcenick.itch.io/descaler)
+- **Mirror Qix** (2024) — Browser — Habidakus; published by self-published (itch.io)
+  - Also known as: MirrorQix
+  - the author describes 'rogue-like extensions' added to arcade Qix (not detailed on the page)
+  - `qix` · corrected · medium · [habidakus.itch.io](https://habidakus.itch.io/mirrorqix) · [itch.io](https://itch.io/jam/godot-wild-jam-75)
+- **Scalar Snake** (2024) — Browser, Windows — OmegaFalcon; published by OmegaFalcon (self-published on itch.io)
+  - you are a snake: enclose areas with your body to capture blocks
+  - captured blocks increase the snake's size (jam theme 'Built to Scale')
+  - a virus steadily eats away your captured blocks, so you must keep capturing to hold your mass
+  - scored on three metrics: biggest captured mass, largest single capture, longest survival
+  - `io-territory` · confirmed · high · [omegafalcon.itch.io](https://omegafalcon.itch.io/scalar-snake) · [itch.io](https://itch.io/jam/gmtk-2024/rate/2911008)
+- **Snip It!** (2024) — Windows, Browser — ryshaw (ryshawgames); published by ryshaw
+  - capturing canvas also defeats enemies (Steam: 'Draw lines to capture the canvas and defeat enemies!'; the exact rule is not described)
+  - 25 fixed levels; clearing all 25 wins the game
+  - click/touch-to-move control as well as WASD/arrow keys
+  - `qix` · corrected · high · [store.steampowered.com](https://store.steampowered.com/app/2849870/Snip_It/) · [ryshaw.itch.io](https://ryshaw.itch.io/snip-it)
+- **Xonix (hadaromer)** (2024) — Browser — hadaromer; published by self-published (itch.io)
+  - Also known as: Xonix
+  - player is a student fleeing 'F' (failed exam) enemies
+  - the background behind claimed areas changes to escape locations (beaches, parties) as territory is claimed
+  - `xonix` · corrected · medium · [hadaromer.itch.io](https://hadaromer.itch.io/xonix)
+- **Xonix (TheBoss2)** (2024) — Windows — TheBoss2 (The Boss); published by self-published (Game Jolt, itch.io)
+  - Also known as: Xonix
+  - `xonix` · confirmed · high · [gamejolt.com](https://gamejolt.com/site-api/web/discover/games/884948) · [gamejolt.com](https://gamejolt.com/games/xonix/884948) · [theboss2.itch.io](https://theboss2.itch.io/xonix)
+- **XONIX 1984 2 player remake** (2024) — Browser, Windows, macOS — Idan-Shalom; published by self-published (itch.io)
+  - Also known as: XONIX 1984 Remake Extension
+  - local 2-player versus: both players claim land at the same time and can take land the other has claimed
+  - when the players collide, a duel starts, won by alternately mashing the left and right keys
+  - `xonix` · corrected · high · [idan-shalom.itch.io](https://idan-shalom.itch.io/xonix-1984-remake-extension)
+- **Blobbed Away** (2025) — Windows — Pixed Cubes (Grzegorz Bogacki); published by self-published (itch.io)
+  - crossing your own trail or moving backward along it kills you
+  - enclosing Soots (enemies) inside a claim captures them for bonus points
+  - Arcade mode: 3 lives; each level adds Soots and raises the area quota
+  - Soot Hunt mode: clear by enclosing every Soot; count-up timer with best time saved per level
+  - Time Challenge mode: one life and 60 seconds; score is the claimed percentage
+  - `qix` · confirmed · high · [pixed-cubes.itch.io](https://pixed-cubes.itch.io/blobbed-away)
+- **Demon Wreath** (2025) — Browser — grippus; published by grippus (self-published on itch.io)
+  - turn-based puzzle (tagged Sokoban): encircle demons in salt to banish them
+  - undo key (Z)
+  - `other` · confirmed · medium · [grippus.itch.io](https://grippus.itch.io/gmtk-2025) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Encircle (chlowo)** (2025) — Windows, Linux — chlowo; published by chlowo (self-published on itch.io)
+  - Also known as: Encircle
+  - top-down bullet-hell arcade shooter where looping your path around enemies defeats them instead of shooting them
+  - `other` · confirmed · medium · [chlowo3.itch.io](https://chlowo3.itch.io/encircle) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Encircle (Cyantist)** (2025) — Browser — Cyantist (CyclicalCyantist); published by Cyantist (self-published on itch.io)
+  - Also known as: Encircle
+  - draw freehand loops around enemies with mouse drag or touch
+  - each loop weakens an enemy and fills its seal gauge; a full gauge captures it, so tough enemies need several loops
+  - the goal is to seal an unleashed phoenix from a failed summoning
+  - `other` · confirmed · high · [cyclicalcyantist.itch.io](https://cyclicalcyantist.itch.io/encircle) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Enveloping Darkness** (2025) — Browser — Parrotwise, bakasillysk; published by self-published (itch.io)
+  - each capture is a circular arc set by three mouse-placed control points instead of a straight line
+  - the player is a swarm of darkness enveloping a star; getting too close to the star destroys you
+  - capturing too much space at once is penalised
+  - spaceships fire missiles that can hit you while you capture an arc; planets are harmless
+  - `qix` · confirmed · high · [parrotwise.itch.io](https://parrotwise.itch.io/enveloping-darkness) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Go Around** (2025) — Windows, Linux — hoshoyo, felipeek; published by hoshoyo (self-published on itch.io)
+  - your shots form the loop, not your movement: shoot around enemies, never at them
+  - an enemy dies when a loop of your shots encircles it
+  - top-down roguelike/roguelite run structure against rogue AI robots
+  - `other` · confirmed · high · [hoshoyo.itch.io](https://hoshoyo.itch.io/go-around) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Loopinball** (2025) — Browser — Zunarii; published by Zunarii (self-published on itch.io)
+  - a pinball's trail is the line: loop it around bumpers to score them
+  - blue bumpers give +5000 points and red bumpers give -5000, so loops must avoid enclosing red ones
+  - `other` · confirmed · high · [zunarii.itch.io](https://zunarii.itch.io/loopinball) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Ouroboy** (2025) — Windows, macOS, Linux — Raito777; published by Raito777 (self-published on itch.io)
+  - the snake's body is the trail: wrap it around a herd of cows and touch your own tail tip to close the loop and capture them
+  - crossing your own body cuts the snake instead of killing you
+  - colliding with obstacles costs a life
+  - clear a level by capturing every cow; six levels, the last a surprise
+  - `other` · confirmed · high · [raito777.itch.io](https://raito777.itch.io/ouroboy) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Overheat** (2025) — Browser — Macar3naMacarena; published by Macar3naMacarena (self-published on itch.io)
+  - a drifting car's skid trail is the capture line: close a loop to collect the blocks enclosed in it
+  - timed score run (points with a countdown clock)
+  - `other` · corrected · medium · [macar3namacarena.itch.io](https://macar3namacarena.itch.io/overheat) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Pyrodrome** (2025) — Windows — Matt Chandler, Alex Norfleet, Áiron Bruce, Zachary Adams, turncoda, Tilak Devendran, Vanessa Merlis, FOUDIA (itch account chandlerm35); published by self-published on itch.io
+  - a drifting truck leaves a trail of fire; close the loop to capture the enclosed territory
+  - drive over an opponent's trail to cut it off
+  - driving over your own territory builds a boost meter
+  - alternate 'Hazard Level' stage with power-ups and hazards: bomb, ice, scorcher, big mode
+  - 1v1 against the CPU, local 1v1 (two gamepads) or remote play via Parsec; most territory at round end wins
+  - `io-territory` · corrected · high · [chandlerm35.itch.io](https://chandlerm35.itch.io/pyrodrome)
+- **Qixotic** (2025) — Browser — dreamlogician; published by dreamlogician (self-published on itch.io)
+  - 2-player local versus on one keyboard: hoverbikes with accelerate, brake and turn controls (vehicle steering, not grid moves) leave trails; closed loops capture territory
+  - speed boost while moving through your own territory
+  - you may cross enemy territory, but touching the enemy's trail or crashing loses
+  - most territory when the timer ends wins
+  - `io-territory` · confirmed · high · [dreamlogician.itch.io](https://dreamlogician.itch.io/qixotic) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Ribix** (2025) — Browser, Windows, Linux, Android — ribasoft; published by self-published (itch.io)
+  - `qix` · corrected · medium · [ribasoft.itch.io](https://ribasoft.itch.io/ribix)
+- **Rodeo Rampage** (2025) — Browser, Windows — SpiltMilkTeam, peepschilli; published by SpiltMilkTeam (self-published on itch.io)
+  - draw a lasso loop with the mouse; enclosing an animal pulls it toward you and stuns it
+  - limited rope: a drawing longer than the cap is invalid
+  - kick stunned animals into their matching pens to score
+  - combos and power-ups
+  - endless mode for as many rounds as possible; R zooms out to find animals and pens
+  - `other` · confirmed · high · [spiltmilkteam.itch.io](https://spiltmilkteam.itch.io/rodeo-rampage) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Schloop** (2025) — Windows — Izaac Games; published by Izaac Games (self-published on itch.io)
+  - the snake encircles objects and enemies to devour them; each stage's goal is to encircle and eat a goal object
+  - researchers will not step on slime: wall all four sides of a researcher's tile with slime or your body to stun it, then eat it to grow longer
+  - spit can be shot in any direction, and the game turns into a shooter from level 3
+  - `other` · confirmed · high · [izaac-games.itch.io](https://izaac-games.itch.io/schloop) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Sewernir** (2025) — Browser, Windows, macOS, Linux — PLASTUS; published by PLASTUS (self-published on itch.io)
+  - the trail is a rope that lures enemies; it attaches to wall hooks, and the loop closes only when you reattach it to the same wall side where it started
+  - limited rope length: going too far snatches you back; the current rope can be dropped and restarted at will
+  - floor pins anchor the rope mid-field without closing the loop
+  - closing a loop sucks the enemies inside into a pipe, which must lie inside the loop or nothing is captured
+  - rope length and other stats are upgraded between levels
+  - late-game drink button triggers a special ability
+  - `other` · corrected · high · [plastusmaximus.itch.io](https://plastusmaximus.itch.io/sewernir) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Ludum_Dare)
+- **Smokescreen** (2025) — Browser — Jonah-G-Smith; published by Jonah-G-Smith (self-published on itch.io)
+  - hold to lay smoke behind your ship; surrounding enemies in a smoke loop destroys them
+  - laying smoke drains your ship's own health bar
+  - enemies damage a mothership you must defend
+  - time loop: your past lives replay alongside you and fight with you
+  - escalating Vampire Survivors-inspired enemy waves, score attack; Shift to sprint
+  - `other` · corrected · high · [jonah-g-smith.itch.io](https://jonah-g-smith.itch.io/smokescreen) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Snake Loop** (2025) — Browser — Spincoder; published by Spincoder (self-published on itch.io)
+  - circle your snake around foxes to defeat them
+  - tongue (Space) and rattle (Right Shift) stun foxes
+  - endless survival: last as long as possible
+  - `other` · confirmed · high · [spincoder.itch.io](https://spincoder.itch.io/snake-loop) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **Wrangler** (2025) — Windows, Linux, macOS — fabulouskiwi; published by fabulouskiwi (self-published on itch.io)
+  - loop your rope to expand your territory
+  - loop the rope around enemies to pop them
+  - enemies touching your fragile rope kill you
+  - two levels and a win area to reach, rather than a percentage target
+  - `io-territory` · corrected · high · [fabulouskiwi.itch.io](https://fabulouskiwi.itch.io/wrangler) · [itch.io](https://itch.io/jam/gmtk-2025)
+- **BeastGrid** (2026) — Browser — SQrgames; published by SQrgames (self-published on itch.io)
+  - two rule sets: Classic, quick tile-painting territory battles (suggested 60 s), and Capture, where you close paths to conquer large areas (suggested 120 s)
+  - steal enemy territory and collect power-ups (not described) to reach a domination goal before the timer ends
+  - 1-4 players in local multiplayer, with bots of several difficulties filling the slots
+  - territory ranking and end-of-match stats screen
+  - `io-territory` · corrected · medium · [sqrgames.itch.io](https://sqrgames.itch.io/beastgrid) · [sqrgames.itch.io](https://sqrgames.itch.io/beastgrid/devlog/1540887/beastgrid-010-web-alpha-is-live)
+- **Chernobyl Girls** (2026) — Browser, Windows — LumaxSoftGames; published by LumaxSoftGames (self-published on itch.io)
+  - satirical Soviet theme: claiming area 'cures' mutant pin-up girls
+  - two rounds per patient: reveal the mutant, then the cured version in the same pose; winning both unlocks her poster
+  - Geiger counter: cutting into her silhouette lowers it, time wasted on background raises it; when full, a MELTDOWN ends the attempt
+  - mutant bosses: radioactive aspic, Zmey Gorynych, an armoured train, mutant bears
+  - State Lottery random rewards (vodka, iodine pills, paperwork, 'come back tomorrow')
+  - 30 patients, each with a mutation, a job and a story
+  - `gals-panic` · corrected · high · [lumaxsoftgames.itch.io](https://lumaxsoftgames.itch.io/chernobyl-girls) · [lumaxsoftgames.itch.io](https://lumaxsoftgames.itch.io/) · [itch.io](https://itch.io/games/tag-qix)
+- **Chromonia** (2026) — Windows, macOS, Linux — Juan Medina; published by self-published (itch.io)
+  - each captured area restores part of a desaturated public-domain painting to full colour
+  - dodge slow, ambient enemies by swapping your colour
+  - no score, timer or punishment (meditative)
+  - public-domain classical music soundtrack
+  - `qix` · confirmed · high · [juanmedina.itch.io](https://juanmedina.itch.io/chromonia) · [juanmedina.itch.io](https://juanmedina.itch.io/chromonia/data.json)
+- **Coconut's Coco-Net** (2026) — Windows, macOS, Linux — triplefox; published by triplefox (self-published on itch.io)
+  - Also known as: Coco-Net, multijezz
+  - two-player versus 'sport fighting' built on JezzBall-style walls that claim area
+  - each player can have only one wall active at a time
+  - players can hop over the opponent's wall to take a risk
+  - balls accelerate on each bounce, so each round goes from slow to fast
+  - every button fires a fast grappling hook with momentum, used for movement and attack; the net and ball buttons also carry an item, and holding a button reaches farther to place it
+  - simple defend-only CPU opponent
+  - `jezzball` · corrected · medium · [triplefox.itch.io](https://triplefox.itch.io/coco-net) · [triplefox.itch.io](https://triplefox.itch.io/coco-net/devlog/1506795/returning-to-game-jams-with-coco-net) · [itch.io](https://itch.io/jam/fighting-game-versus-jam-2026)
+- **Eight Bit Qix** (c. 2026) — Windows, macOS — srcleaves; published by self-published (itch.io)
+  - ten-option difficulty menu: lives 1-5, claim goal 50-90% (default 75%), Sparx timer and starting count (2/4/6), Sparx, fuse and Qix speeds, the level where twin Qix appear (1/2/3), extra-life interval (50K/100K/none) and draw speed
+  - presets: Beginner, Arcade (default), Showdown (1 life, no extra lives) and Ruthless (1 life, 85% goal, everything fast)
+  - splitting twin Qix raises the score multiplier up to 9x
+  - `qix` · corrected · high · [srcleaves.itch.io](https://srcleaves.itch.io/eight-bit-qix) · [srcleaves.itch.io](https://srcleaves.itch.io/eight-bit-qix/data.json)
+- **GALS HUNTER** (2026) — Browser — HAUSER (Hausxr); published by HAUSER (self-published on itch.io)
+  - destroy enemies by enclosing them in a completed shape or by stomping on them
+  - beating enemies raises the score multiplier
+  - bonus items include a machine gun and a bomb
+  - time bonuses keep the run alive across 10 phases
+  - rank system: the better you play, the more and faster enemies spawn
+  - `gals-panic` · corrected · high · [hausxr.itch.io](https://hausxr.itch.io/gals-hunter)
+- **Gravebloom** (2026) — Browser, Windows, Linux — Kaskade Labs; published by Kaskade Labs (self-published on itch.io)
+  - enemy roster with distinct roles: Drifters bounce erratically; Listeners wait until a cut starts, then pursue; Border Wardens patrol the safe edge you must close against; Proximity Mines stay still until approached, then fire
+  - choose one of four vessels, each with one active ability on a single button: DROP dashes through a gap, BELL survives one lethal hit, SEED roots every threat in place, MOTH surges ahead
+  - reclaim 80% to advance; ten hand-authored stages, each hiding a stained-glass window revealed by reclaimed ground
+  - three-layer score per stage
+  - five lives shared across the whole 10-stage run; running out of stage time costs a life
+  - furthest stage is saved; CONTINUE restarts there with five fresh lives
+  - meta collectibles: remembrance pages per vessel and twelve deeds to restore in a churchyard archive
+  - `volfied` · corrected · high · [kaskadelabs.itch.io](https://kaskadelabs.itch.io/gravebloom)
+- **Grid Riders** (2026) — Windows, macOS — Johannes Deml; published by Johannes Deml (self-published on itch.io)
+  - GL Tron-inspired car racer; enclose an area with your line to capture it, but only areas connected to your existing territory count (others are discarded)
+  - no trail and slightly higher speed inside your own area
+  - driving through a non-teammate's line destroys that player
+  - cutting a rival's territory off from their start area captures everything disconnected
+  - largest area at the end wins
+  - 1-8 players: solo, local split-screen, LAN or server-based online, with teams
+  - `io-territory` · corrected · high · [johannski.itch.io](https://johannski.itch.io/grid-riders)
+- **HIDDEN JOURNEY: ASIA** (2026) — Browser — kuigames; published by self-published (itch.io)
+  - Also known as: Hidden Journey: Asia
+  - moving without drawing makes the player invincible while an energy gauge lasts; the gauge recovers in that state
+  - drawing (hold Space / A) switches invincibility off; an enemy touching the player or the open line fails the stage
+  - clearing 80% of the mist reveals a photograph of an Asian landscape
+  - `qix` · corrected · high · [kuigames.itch.io](https://kuigames.itch.io/hidden-journey-asia)
+- **Ink Wars** (2026) — Browser — Lukplays; published by Lukplays (self-published on itch.io)
+  - score multiplier grows with territory held, so the next capture is worth more
+  - 3-minute timed mode against three tactical bots that claim ground and try to cut your trail
+  - score-gated cosmetic unlocks (colours, ball shapes, titles) and a global leaderboard
+  - `io-territory` · corrected · high · [lukplays.itch.io](https://lukplays.itch.io/ink-wars)
+- **Lightspace** (2026) — Browser — kdonahue; published by self-published (itch.io)
+  - enemy movement synced to the beat of the music
+  - terrain hazards: ice, mirrors, ion storms, fire, teleporters
+  - fire button (Space); the page does not say what it fires
+  - power-ups (unspecified)
+  - five named bosses: the Hunter, the Wraith, the Swarm Queen, the Fortress, the Corrupted Core
+  - 7 sectors with 30+ hand-built levels, each sector with its own look and soundtrack; stars per level; Easy/Normal/Hard
+  - a paid Supporter Pack adds a level maker and community levels (play and publish)
+  - `qix` · confirmed · high · [kdonahue.itch.io](https://kdonahue.itch.io/lightspace)
+- **Loop: Land Grab** (2026) — Browser — aduyew; published by aduyew (self-published on itch.io)
+  - a rival cutting your trail ends the round, so longer excursions grab more but stay exposed longer
+  - bot styles: careful (hug their land), greedy (roam far), aggressive (hunt your trail)
+  - twelve arenas
+  - win at 60% of the field or as the last one standing
+  - separate 90-second timed mode
+  - `io-territory` · confirmed · high · [aduyew.itch.io](https://aduyew.itch.io/loop-land-grab)
+- **Moonlight Territory** (2026) — Browser — TGRfactory; published by self-published (itch.io)
+  - Also known as: 月夜の陣取り, MOONLIGHT TERRITORY
+  - two line types chosen before leaving the edge: the normal-speed line builds wooden territory, the slow line builds stone forts with double durability
+  - you can retrace the open line to retreat
+  - reaching the stage's occupation target unlocks an auto-aiming bow; dropping to half the target or below seals it again
+  - once the bow is unlocked, wolves chew through walls; a broken wall collapses the territory around it and damages a hunter caught in it
+  - clear condition: kill every wolf, not just reach an area percentage
+  - wolf types: normal; Chaser (signals '!' and pursues a player who is drawing); Dasher (charges, then dashes with sudden turns); new wolves appear over time
+  - 2-player co-op with shared territory and shared life, occupation tracked per player
+  - 5 stages with targets rising to 80%
+  - `qix` · corrected · high · [tgrfactory.itch.io](https://tgrfactory.itch.io/moonlight-territory)
+- **NEON CUT** (2026) — Browser — EYEHEAR; published by self-published (itch.io)
+  - colour-matching objective: capture the bouncing shapes of the target colour for points
+  - wrong-coloured shapes must be kept from reaching your open line
+  - bouncing shapes get in the way of cuts
+  - three lives, no time limit
+  - `qix` · confirmed · high · [eyehear.itch.io](https://eyehear.itch.io/neon-cut)
+- **Neon Divide** (2026) — Browser, Android — Wobbly Studio; published by self-published (itch.io)
+  - each cell of the open circuit adds value; cutting deeper toward the central Core raises the score multiplier (more risk, more reward)
+  - six hostile types, each with a distinct behaviour tell and a shape marker (not colour-only)
+  - five bosses with distinct fights
+  - 15 run upgrades: pick one of three after each Arcade Run clear (roguelite)
+  - Arcade Run: endless escalating stages, an elite stage every 5th and a boss every 10th
+  - Campaign: five districts of ten missions with up to 3 stars each and a district boss
+  - Daily Challenge: one shared grid per day for all players
+  - Data Fragments unlock cosmetic signals, territory styles, capture effects, arenas and themes
+  - `qix` · confirmed · high · [ahmedfarouk5253.itch.io](https://ahmedfarouk5253.itch.io/neon-divide)
+- **panic_Territory Expedition** (2026) — Windows — CleverMint; published by self-published (itch.io)
+  - Also known as: PANIC · Territory Expedition
+  - free top-down movement with mouse aim and a melee attack (hold to keep swinging)
+  - each sortie is an expedition: leave the safe zone, grab an objective deep in enemy territory, and return; the area enclosed by the route and the existing safe zone becomes yours
+  - enemies trapped inside newly claimed land are captured for XP; each level-up offers a choice of 1 of 3 upgrades
+  - enemy reinforcements escalate the longer you stay outside the safe zone
+  - purple path-breaker enemies hunt and cut the trail you leave behind
+  - a cut path or death fails only the current expedition; land and upgrades already earned are kept
+  - win by reclaiming 70% of the map
+  - zoomable camera and toggleable minimap over a map larger than the screen
+  - `qix` · corrected · high · [clevermint.itch.io](https://clevermint.itch.io/panic) · [clevermint.itch.io](https://clevermint.itch.io/panic/data.json)
+- **Pengu Floe** (2026) — Browser — misalliance; published by misalliance (self-published on itch.io)
+  - hex-grid ice field: leave your floe, stamp a track through snow and loop back to claim the enclosed area
+  - eleven AI rival penguins scout, raid and hunt your tracks
+  - cutting a rival's track drops that penguin, and all its territory, into the sea
+  - crossing your own track drowns you
+  - win by holding 40% of the floe or by leading when the blizzard closes the match
+  - `io-territory` · corrected · high · [misalliance.itch.io](https://misalliance.itch.io/pengu-floe)
+- **Pickme Qix** (c. 2026) — Browser — 22ttys22; published by self-published (itch.io)
+  - Space starts drawing; touchscreen input supported
+  - difficulty rises each level (75% clears a level)
+  - `qix` · confirmed · medium · [22ttys22.itch.io](https://22ttys22.itch.io/pickme-qix) · [22ttys22.itch.io](https://22ttys22.itch.io/pickme-qix/data.json)
+- **Qix (sternendreck)** (c. 2026) — Windows — sternendreck; published by self-published (itch.io)
+  - Also known as: Qix
+  - a level is won by exceeding a target score rather than reaching a fixed claim percentage
+  - `qix` · corrected · medium · [sternendreck.itch.io](https://sternendreck.itch.io/qix) · [sternendreck.itch.io](https://sternendreck.itch.io/qix/data.json)
+- **Qixieverse Descent** (2026) — Browser — Sandra Moen (Slideshow776), Tommy Ettinger; published by self-published (itch.io)
+  - Also known as: LibGDX-Jam-37
+  - JezzBall-style division: left click fires a dividing wall, right click or Space switches its orientation
+  - `jezzball` · corrected · medium · [sandramoen.itch.io](https://sandramoen.itch.io/libgdx-jam-37) · [itch.io](https://itch.io/jam/libgdx-jam-37) · [github.com](https://github.com/Slideshow776/LibGDX-Jam-37)
+- **Quantum-X** (c. 2026) — Browser — fullsome; published by self-published (itch.io)
+  - controller support (D-pad to move, A/B to draw fast or slow)
+  - `qix` · confirmed · high · [fullsome.itch.io](https://fullsome.itch.io/qix) · [fullsome.itch.io](https://fullsome.itch.io/qix/data.json)
+- **QWYX** (c. 2026) — Browser — LaughingSkull; published by self-published (itch.io)
+  - Also known as: Qwyx
+  - `qix` · confirmed · high · [laughingskull.itch.io](https://laughingskull.itch.io/qwyx) · [laughingskull.itch.io](https://laughingskull.itch.io/qwyx/data.json)
+- **Reef Reveal** (2026) — Browser — marsmellow1977; published by self-published (itch.io)
+  - 75% of the sea must be captured to clear a level
+  - air meter starts draining the moment the player leaves the shore, which caps how long a cut can stay open
+  - two enemy domains: sea urchins and sharks roam the open water, and crabs hunt the player along the coast (claimed edge)
+  - crabs multiply over time, so slow play gets punished
+  - trapping an enemy inside a captured area gives a big bonus, and chained captures build combos
+  - captured areas reveal a hidden picture square by square, and the player can load their own photo
+  - `xonix` · confirmed · high · [marsmellow1977.itch.io](https://marsmellow1977.itch.io/reef-reveal)
+- **Rinka's Snowmelt Album** (2026) — Browser — Rinka World Production Committee; published by self-published (itch.io)
+  - claimed snow melts to reveal anime-character illustrations (9 pictures, 6 of the original character Rinka)
+  - 80% claim target to clear
+  - bigger single captures give a bigger bonus
+  - enemies: a wolf boss plus small foxes
+  - power-ups: speed boots, shields, helpers
+  - time medals, titles and saved personal bests
+  - daily challenge and a harder Blizzard mode
+  - touch control via a floating virtual stick; portrait-only layout
+  - `qix` · corrected · high · [rinkaworld.itch.io](https://rinkaworld.itch.io/snowmelt-album)
+- **Spectrix** (2026) — Browser — leogames2026; published by self-published (itch.io)
+  - 37 worlds of rising difficulty, each introducing a new neon colour
+  - instant respawns
+  - `qix` · corrected · high · [leogames2026.itch.io](https://leogames2026.itch.io/spectrix)
+- **SPLARG LAND GRAB** (c. 2026) — Browser — splarg; published by self-published (itch.io)
+  - Shift gives turbo speed, but only while on safe ground
+  - neon Splarg enemies hunt the open trail and can cut it; touching one costs a life (3 lives)
+  - large captures earn 'BIG GRAB' / 'MEGA GRAB' rewards with screen shake and hit-stop
+  - each sector adds more and faster Splargs (75% clears a sector)
+  - procedurally generated chiptune soundtrack
+  - `qix` · corrected · high · [splarg.itch.io](https://splarg.itch.io/splarg-land-grab) · [github.com](https://github.com/splargdotcom/splarg-land-grab)
+- **SwarmBlitz** (2026) — Browser — y/core (Y / Play, a two-person studio); published by y/core (self-published on itch.io)
+  - roguelike survivor run: trail-and-enclose territory capture (score shown as % of map) earns XP and levels
+  - levels unlock 14 collectible drones that combine into synergies, plus 50+ upgrades and curses
+  - RPG stat layer on the player: HP, stamina, damage, attack speed, crit, armor, lifesteal
+  - mobs, bosses and a MegaBoss; enemy pressure keeps rising and punishes overextending
+  - difficulty select, kill counter, run timer, unlocks and leaderboard
+  - `io-territory` · corrected · medium · [ycore.itch.io](https://ycore.itch.io/swarmblitz)
+- **Territory Reveal** (2026) — Browser — AI_MM; published by self-published (itch.io)
+  - captures strip away a cover illustration; clearing the stage crumbles the cover to reveal a second 'special moment' illustration of the same character (two artworks per character, kept in a permanent gallery)
+  - a closed loop claims its enclosed area only if no enemy is inside it
+  - medals: silver at 85%+ and gold at 95%+ coverage
+  - power-ups: freeze, speed, shield, time-slow, extra lives, with on-screen buff timers
+  - obstacle stages: interior walls act as anchors to slice the field
+  - 8-way movement
+  - `qix` · corrected · high · [ai-mm.itch.io](https://ai-mm.itch.io/territory-reveal)
+- **Turf Rollers** (2026 (undated; itch.io game ID places it around early Oct 2026)) — Browser — Gamgtq; published by Gamgtq (self-published on itch.io)
+  - paint roller leaves a trail off your turf; looping home claims the enclosure, including land rivals are standing on
+  - when anyone drives into your trail it bursts and you are sent home: a setback, not a death
+  - no 180-degree turns on the spot
+  - campaign of 25 levels in five worlds, rated 1-3 stars, adding walls, collectable stars, portals, speed pads and moving saw blades
+  - level goals: claim a percentage, cut rival tails a set number of times, collect stars, or hold your land against raiders
+  - AI rival personalities: careful, sneaky, aggressive, raiders
+  - power-ups: paint bucket, dash, shield, freeze, spray gun, +8 second clock
+  - Classic: 90-second free-for-all against three AI rollers, with a harder variant
+  - roller skins and turf patterns unlocked with stars
+  - `io-territory` · corrected · medium · [gamgtq.itch.io](https://gamgtq.itch.io/turf-rollers)
+- **Turf War** (2026) — Browser — roguecore; published by roguecore (self-published on itch.io)
+  - Also known as: Turf War (roguecore)
+  - 64x64 arena versus three local AI bots
+  - touching your own trail eliminates you; cutting across an enemy trail eliminates them
+  - instant win at 35% coverage, otherwise the largest turf when the 120-second clock runs out
+  - `io-territory` · corrected · high · [roguecore.itch.io](https://roguecore.itch.io/turf-war)
+- **Turf War / Turfrush** (2026 (Turfrush published 22 Oct 2026; Turf War undated, itch.io ID places it around early Oct 2026)) — Browser — roguecore (Turf War); ringburst (Turfrush); published by self-published on itch.io
+  - Also known as: Turf War (roguecore), Turfrush (ringburst)
+  - single-player Paper.io-style loops against bots instead of online players
+  - your own trail is lethal (Turf War); crossing a bot's trail eliminates it
+  - Turf War: 64x64 arena against three bots; instant win at 35% of the arena, else the largest turf when the 120-second timer ends wins
+  - Turfrush: eight bots with personalities (cautious bots make small loops, greedy bots grab large areas, aggressive bots hunt exposed trails)
+  - Turfrush: claiming encloses rivals' land too; quick rounds and a daily leaderboard of best territory share
+  - `io-territory` · corrected · medium · [itch.io](https://itch.io/games/tag-territory) · [roguecore.itch.io](https://roguecore.itch.io/turf-war) · [ringburst.itch.io](https://ringburst.itch.io/turfrush)
+- **Turfrush** (2026) — Browser — ringburst; published by ringburst (self-published on itch.io)
+  - single-player round against eight clearly marked bots
+  - enclosing steals land already owned by others
+  - crossing a bot's trail knocks that bot out
+  - bot personalities: cautious (small loops), greedy (large areas), aggressive (hunt exposed trails)
+  - score is your share of the map; daily leaderboard of best share
+  - `io-territory` · corrected · high · [ringburst.itch.io](https://ringburst.itch.io/turfrush)
+- **Xonix remake AquaClaim** (2026) — Browser — welSphere; published by self-published (itch.io)
+  - Also known as: AquaClaim
+  - 100 levels of increasing difficulty
+  - `xonix` · corrected · medium · [welsphere.itch.io](https://welsphere.itch.io/aquaclaim) · [welsphere.itch.io](https://welsphere.itch.io/xonic-remake-aquaclaim)
+- **Xonix remake AquaClaim** (2026) — Browser — welSphere; published by self-published (itch.io)
+  - Also known as: AquaClaim
+  - 100 levels of increasing difficulty
+  - `xonix` · confirmed · medium · [welsphere.itch.io](https://welsphere.itch.io/xonic-remake-aquaclaim) · [welsphere.itch.io](https://welsphere.itch.io/aquaclaim)
+- **7 days to harvest** (unknown) — Browser — fallcresthero; published by self-published (itch.io)
+  - theme: a convict harvests fields with a tractor; 7 levels framed as 7 days
+  - the listing promises unpredictable events and challenges each day (not specified)
+  - `xonix` · confirmed · low · [fallcresthero.itch.io](https://fallcresthero.itch.io/7-days-to-harvest)
+- **bloom (PlayWeave)** (unknown) — Browser — PlayWeave; published by PlayWeave (self-published on itch.io)
+  - leave a home patch and close a loop to claim everything inside
+  - rival bots eliminate you by cutting your open trail; crossing your own trail ends the run
+  - bots hunt harder the bigger your territory grows
+  - rocks and spreading blight appear as difficulty rises and must be avoided
+  - one-thumb swipe steering, no tutorial
+  - daily board that uses the same seed for every player
+  - `io-territory` · confirmed · high · [playweave.itch.io](https://playweave.itch.io/bloom)
+- **Go! Hamtaro** (unknown) — Windows, macOS, Linux — microvolnovka; published by self-published (itch.io, name your own price)
+  - 80% of the playfield must be opened to clear a level, against the usual 75%
+  - enemies can be destroyed, not only avoided (the listing says 'destroy the enemies')
+  - progress unlocks new cities (stage sets) that bring new enemy types
+  - `xonix` · confirmed · medium · [microvolnovka.itch.io](https://microvolnovka.itch.io/go-hamtaro) · [microvolnovka.itch.io](https://microvolnovka.itch.io/go-hamtaro/data.json)
+- **LocalUtopia** (unknown) — Browser — dlgustn1245; published by self-published (itch.io)
+  - portrait (vertical) playfield made for phone screens
+  - several drifting enemies (cats, clouds, footprints, guards); every closed region with an enemy in it stays open, all enemy-free regions are claimed
+  - spiders spin webs on the field that slow you when you step on them
+  - coins fall continuously from the top of the screen (their effect is not described)
+  - per-stage time limit; five stages, each with its own character and music, then a bonus stage
+  - claimed area reveals a hidden illustration
+  - trail crossing itself costs a life; the border is safe
+  - brief invincibility after a hit
+  - `gals-panic` · confirmed · high · [dlgustn1245.itch.io](https://dlgustn1245.itch.io/localutopia) · [dlgustn1245.itch.io](https://dlgustn1245.itch.io/localutopia/data.json) · [itch.io](https://itch.io/games/tag-qix)
+- **Mondrian** (unknown) — Browser — Topher Rhodes; published by self-published (itch.io)
+  - walls are paint beams fired across the canvas from a mouse-positioned shooter; Space toggles vertical/horizontal
+  - a bouncing sphere that hits a beam still being painted destroys it and costs a life
+  - filling enough of the canvas advances to a harder level
+  - `jezzball` · confirmed · high · [ctr.itch.io](https://ctr.itch.io/mondrian)
+- **Pirate Xonix** (unknown) — Browser, Windows, Android — NostalgiaGames; published by self-published (itch.io)
+  - each level also requires collecting an old map and treasures, not just claiming enough sea
+  - enemy ships pursue the player
+  - gunpowder barrels are hazards to avoid
+  - each cleared level unlocks a pirate-life picture
+  - `xonix` · confirmed · high · [nostalgiagames.itch.io](https://nostalgiagames.itch.io/pirate-xonix)
+- **Pulsebound: The Expanse** (unknown) — Browser — cooper1223; published by cooper1223 (self-published on itch.io)
+  - claim ground by touching three different relay towers to close a triangle between them, instead of drawing a free-form trail; you pick your own triangle routes
+  - while a link is unfinished you are exposed: patrol drones can cut the chain and damage your shield (a shield replaces one-hit death)
+  - dash on a button to escape drones; larger claims score more and refill dash charge
+  - procedurally generated world with terrain, trees, rocks and relay towers; the mission ends at 30% of the map secured
+  - `other` · confirmed · high · [cooper1223.itch.io](https://cooper1223.itch.io/pulsebound-the-expanse) · [cooper1223.itch.io](https://cooper1223.itch.io/pulsebound-the-expanse/data.json)
+- **Pup 'n' Sweep** (unknown) — Windows — Poizen; published by Poizen (self-published on itch.io)
+  - draw a dividing line across a room; the side without dogs is swept clean (roaming puppies are the hazards)
+  - puzzle scoring: clean a target percentage of the house with as few sweeps as possible
+  - `jezzball` · confirmed · high · [poizen.itch.io](https://poizen.itch.io/pup-n-sweep)
+- **Ronix** (unknown) — Windows — imaginexrios; published by self-published (itch.io)
+  - Also known as: Ronix: A 'Xonix' Clone Version
+  - the level goal is an absolute tile count (fill more than 200 tiles), not a percentage
+  - a life is lost if an enemy touches the player's open path or the player touches their own path
+  - 1UP every 5th level; the game ends after level 15
+  - `xonix` · confirmed · high · [imaginexrios.itch.io](https://imaginexrios.itch.io/ronix-1-bit-game)
+- **Xonix (den23513, Rust)** (unknown) — Windows, Linux — den23513; published by self-published (itch.io)
+  - `xonix` · corrected · medium · [den23513.itch.io](https://den23513.itch.io/xonix)
+
+## Homebrew for retro systems
+
+- **JezzBall Beta 1 (TI-92, Chris Scott)** (1997) — TI-92 — Chris Scott; published by freeware (ticalc.org)
+  - Also known as: JezzBall Beta 1
+  - `jezzball` · confirmed · medium · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/14/1432.html)
+- **JezzBall (TI-83, Joe Wingbermuehle)** (1998) — TI-83, TI-83 / TI-83 Plus — Joe Wingbermuehle; published by freeware (ticalc.org)
+  - Also known as: JezzBall v1.2, Jezzball v2.0
+  - one more ball added each level
+  - selectable ball speed setting (3 is the slowest)
+  - score rewards dividing the room quickly
+  - `jezzball` · confirmed · high · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/57/5718.html) · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/91/9172.html)
+- **JezzBall (TI-85 ZShell) and its TI-86/TI-92 ports** (1998) — TI-85, TI-86, TI-92 — unknown (TI-85 original); Fargo II conversions by Source Guru; published by ticalc.org archive
+  - Also known as: Jezzball 86, Jezzball v2.2 for Fargo II
+  - `jezzball` · corrected · medium · [www.ticalc.org](https://www.ticalc.org/pub/85/asm/games/zshell/) · [www.ticalc.org](https://www.ticalc.org/pub/86/asm/games/) · [www.ticalc.org](https://www.ticalc.org/pub/92/asm/games/fargo/)
+- **JezzBall (TI-92 / TI-89, Thomas Fernique)** (1998) — TI-92, TI-89 — Thomas Fernique; published by freeware (ticalc.org)
+  - Also known as: JezzBall 1.3, JezzBall v1.6, JezzBall v1.8
+  - up to 20 balls (v1.3)
+  - level 1 starts with 2 balls and 2 lives; each level adds one ball and one life (v1.8)
+  - `jezzball` · corrected · high · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/37/3710.html) · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/37/3708.html) · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/70/7082.html)
+- **Jezzball 82 (TI-BASIC)** (1999) — TI-82 — Tide (TideGear); published by freeware (ticalc.org)
+  - Also known as: Jezzball 82
+  - written in TI-BASIC; no extra ball is added per level (the author invites others to add it)
+  - `jezzball` · confirmed · high · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/99/9902.html)
+- **JezzBall 48 / JezzBall 49** (2001) — HP 48, HP 49G / 50G — Fabien Viger; published by freeware (hpcalc.org)
+  - Also known as: JezzBall 48 1.01, JezzBall 1.02
+  - `jezzball` · confirmed · high · [www.hpcalc.org](https://www.hpcalc.org/details/4626) · [www.hpcalc.org](https://www.hpcalc.org/hp48/games/arcade/) · [www.hpcalc.org](https://www.hpcalc.org/hp49/games/arcade/)
+- **Vix** (2002) — Vectrex — Christopher L. Tumber; published by Capital Software Designs
+  - Also known as: Tsunami/Vix, Tsunami/VIX
+  - `qix` · corrected · medium · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/437011-tsunamivix) · [vectrex.fandom.com](https://vectrex.fandom.com/wiki/Tsunami/VIX)
+- **4kQix** (2004) — Oric-1, Oric Atmos — Stephane Geley
+  - Also known as: 4KQIX
+  - `qix` · confirmed · high · [www.oric.org](https://www.oric.org/software/4kqix-2194.html)
+- **Jezzball - Classic** (2004) — TI-89, TI-92 Plus, Voyage 200 — David Coz; published by freeware (ticalc.org)
+  - Also known as: Jezzball - Classic v1.15
+  - three difficulty levels
+  - `jezzball` · confirmed · high · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/311/31122.html) · [www.ticalc.org](https://www.ticalc.org/pub/89/asm/games/arcade/)
+- **Late** (2005) — AmigaOS 4 — Caleb More / ToAks (uploaded by Tony Aksnes); published by freeware (Aminet)
+  - Also known as: Late_OS4
+  - mouse-aimed cutter: left button fires, right button rotates it in 90-degree steps
+  - a fired cut cannot be stopped; it runs until the cut completes or a ball strikes it
+  - the cutter survives a few ball hits instead of dying on the first
+  - goo balls split and scatter when hit, then can reform
+  - unstable triples: groups of three balls that explode when enclosed tightly enough
+  - teleporting balls jump to new positions
+  - 'cold-blooded' balls home in on the cutter when they see it
+  - `jezzball` · confirmed · high · [aminet.net](https://aminet.net/package/game/misc/Late_OS4) · [aminet.net](https://aminet.net/game/misc/Late_OS4.readme)
+- **QiZX** (2007) — ZX Spectrum 48K — Eduardo Fornies; published by Eduardo Fornies (self-published freeware)
+  - `qix` · confirmed · high · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/18839/ZX-Spectrum/QiZX)
+- **JezzballDS** (2008) — Nintendo DS — Erick Citaire (Ricco); published by freeware homebrew (PAlib forum / Google Code rxitr-games)
+  - Also known as: Jezzball DS
+  - dedicated buttons for vertical (X) and horizontal (Y) walls in addition to the orientation toggle
+  - level select of any level already reached (v1.3.0)
+  - optional stylus 'stretch' mode for placing walls
+  - speed and sound toggles in the options menu
+  - `jezzball` · corrected · high · [gamebrew.org](https://gamebrew.org/wiki/JezzballDS) · [github.com](https://github.com/raulbojalil/jezzball3ds) · [github.com](https://github.com/raulbojalil/jezzballu)
+- **Xonix (TS-Config)** (2012) — ZX Evolution — Shiru; published by none (homebrew)
+  - Also known as: Xonix
+  - `xonix` · confirmed · medium · [github.com](https://github.com/mamedev/mame/blob/master/hash/tsconf.xml)
+- **Cix** (2013) — ColecoVision — Philipp Klaus Krause; published by Good Deal Games
+  - simultaneous two-player mode (the arcade Qix alternates players)
+  - `qix` · confirmed · high · [cvaddict.com](https://cvaddict.com/game/cix/) · [www.colecovisionadam.com](https://www.colecovisionadam.com/Coleco/cv_catalog/game_detail.php?slug=cix) · [atariage.com](https://atariage.com/forums/topic/201650-creating-a-qix-like-game-for-the-colecovision/)
+- **Jezzball v1.0 (TI-83 Plus / TI-84 Plus, Kerm Martian)** (2013) — TI-83 Plus / TI-84 Plus — Kerm Martian (Cemetech); published by freeware (ticalc.org)
+  - Also known as: Jezzball v1.0
+  - clear threshold lowered to 65% per level
+  - fill bonus proportional to how far past 65% you fill
+  - time bonus for clearing a level quickly
+  - `jezzball` · confirmed · high · [www.ticalc.org](https://www.ticalc.org/archives/files/fileinfo/457/45757.html)
+- **Clostro** (2020) — CHIP-8, Browser — jibbl (jblebrun); published by self-published (itch.io)
+  - 8 fixed levels with an ending
+  - separate keys for vertical (Q) and horizontal (E) walls instead of an orientation toggle
+  - `jezzball` · confirmed · high · [jibbl.itch.io](https://jibbl.itch.io/clostro) · [github.com](https://github.com/jblebrun/clostro) · [itch.io](https://itch.io/jam/octojam-7)
+- **Atomix (BBC Micro)** (2021) — BBC Micro — Rob Walmsley; published by self-published
+  - Also known as: Atomix
+  - `qix` · confirmed · medium · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=3588)
+- **Amidar (Salvador Camacho)** (2022) — ZX Spectrum 48K — Salvador Camacho
+  - Also known as: Amidar (ZX Spectrum, Salvador Camacho)
+  - `amidar-painter` · corrected · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/37489/ZX-Spectrum/Amidar)
+- **Mix** (2022) — MSX1 — Uninteresting (GitHub: blihblah); published by freeware (MSXdev'22 contest entry)
+  - Also known as: mix, MSXdev'22 #09 Mix
+  - a round timer: running out of time costs you the round, rather than releasing Super Sparx
+  - constant line-drawing speed (no fast/slow draw)
+  - cutting off a Tracer (border enemy) outside the play area scores bonus points, and it respawns after a short delay
+  - in levels with several big green monsters, separating them with a line clears the level as if 100% were painted and doubles the time bonus
+  - `qix` · corrected · high · [github.com](https://github.com/blihblah/mix) · [raw.githubusercontent.com](https://raw.githubusercontent.com/blihblah/mix/main/README.txt) · [www.msxdev.org](https://www.msxdev.org/msxdev22/) · [www.msxdev.org](https://www.msxdev.org/2022/04/28/msxdev22-09-mix/)
+- **Qyx** (2022) — Atari 2600, Atari 2600+/7800+, Harmony/Harmony Encore, Stella 6.7+ and Gopher2600 emulators — Champ Games (John W. Champeau code/design; Nathan Strum art; Bob DeCrescenzo audio); published by Champ Games
+  - simultaneous 2-player co-op modes via the QuadTari adapter (the arcade alternates players)
+  - four skill levels (Novice, Standard, Advanced, Challenge); Challenge adds extra enemies
+  - 99 stages, each with a territory threshold; level bonus plus extra points for beating the goal
+  - `qix` · corrected · high · [champ.games](https://champ.games/qyx) · [champ.games](https://champ.games/released) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/375996-qyx) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Qix)
+- **Amidoh!** (2023) — ZX81 16K — Jonathan Cauldwell
+  - `amidar-painter` · confirmed · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/43110/ZX81/Amidoh)
+- **Kidelyneen** (2023) — Commodore 64 — EgonOlsen71; published by public domain (self-published)
+  - Also known as: Qix Clone in Basic V2 (compiled)
+  - `qix` · confirmed · high · [gb64.com](https://gb64.com/game.php?id=31639) · [github.com](https://github.com/EgonOlsen71/Kidelyneen) · [csdb.dk](https://csdb.dk/release/?id=235190)
+- **QIXSCII** (2023) — Commodore 64 — Roman Werner; published by self-published (free; public domain per GB64)
+  - Also known as: QIXSCII (C64), QIX in Basic V2 (compiled)
+  - PETSCII character-cell playfield and trails
+  - the area to fill is found by scanning the whole screen in compiled BASIC, so each capture takes noticeable time; a separate FASTFILL build swaps in a machine-code fill routine
+  - `qix` · corrected · high · [romwer.itch.io](https://romwer.itch.io/qixscii) · [gb64.com](https://gb64.com/game.php?id=31605) · [csdb.dk](https://csdb.dk/release/?id=235632)
+- **Xonix (Atari 8-bit)** (2024) — Atari 8-bit — Andy Omelyanenko; published by Andy Omelyanenko (self-published freeware)
+  - Also known as: Xonix
+  - three threats: bouncing balls, 'shady characters' that follow the player, and the player's own trail
+  - 5 lives, with an extra life every 2 levels
+  - game speed selectable from 3 to 9
+  - two control modes: continuous movement, or move only while the stick is held
+  - `xonix` · confirmed · high · [www.atarimania.com](https://www.atarimania.com/games/atari-400-800-xl-xe-games-xonix-42872) · [www.atarimania.com](https://www.atarimania.com/8bit/dumps/Xonix.zip)
+- **Painter Man!!** (2025) — ZX Spectrum 48K/128K, Enterprise 64/128 — io.rrwm; published by KTB Productions
+  - paint every wall of a castle room to move on (maze-coverage goal, no enclosure); 10 levels
+  - AI lions chase the player through the maze
+  - a button spills paint on the floor; lions avoid the spill and turn away (placeable deterrent)
+  - spills can be used to trap lions, for example inside the central 'O' shapes on level 2
+  - `amidar-painter` · confirmed · medium · [spectrumcomputing.co.uk](https://spectrumcomputing.co.uk/entry/44267/ZX-Spectrum/Painter_Man) · [ktbproductions.itch.io](https://ktbproductions.itch.io/painter-man)
+- **Qixie** (2025) — Commodore PET, Commodore 64 — MilaSoft (Marcel Lansing); published by self-published (free; public domain per GB64)
+  - Also known as: Qixie - Qix clone for PET, Qixie C64
+  - two Sparks patrol only the outer border in opposing patterns and never enter the field or follow drawn lines, making it easier than the arcade
+  - the Qix moves in a sawtooth pattern, partly homes on the player, and makes sudden speed-ups and zoom-aways
+  - `qix` · corrected · high · [milasoft64.itch.io](https://milasoft64.itch.io/qixie) · [gb64.com](https://gb64.com/game.php?id=32719) · [csdb.dk](https://csdb.dk/release/?id=253527)
+- **Jeezball** (2026) — Commodore 64 — melipone; published by self-published (itch.io)
+  - capture 75% of the screen with horizontal and vertical walls
+  - a ball hitting a wall under construction removes the wall and costs a life
+  - `jezzball` · confirmed · high · [melipone.itch.io](https://melipone.itch.io/jeezball)
+- **Jezzball NES** (2026) — NES — ronaldstoner; published by self-published (GitHub)
+  - Also known as: jezzball-nes
+  - walls grow in two halves (red up/left, blue down/right); a half that reaches solid ground turns to stone, a half touched by an atom is destroyed and costs a life
+  - 75% to advance; more atoms each level up to a cap of 12; levels cap at 99 then repeat
+  - the play clock always runs
+  - fully deterministic from power-on: the run-recap screen shows score, stats, RNG seed and an 8-hex CRC32 code binding the recap to one exact input sequence
+  - verifier tool replays a submitted .fm2 input recording against the SHA-256-pinned ROM and prints per-level checkpoint codes
+  - 9-digit score that saturates instead of rolling over
+  - `jezzball` · corrected · high · [github.com](https://github.com/ronaldstoner/jezzball-nes) · [github.com](https://github.com/ronaldstoner/jezzball-nes/commits/main)
+- **Pauper.Io!** (2026) — Commodore Plus/4 — Proky; published by Freeware (Plus/4 World; part of the Proky Casual Collection)
+  - player against 3 bot opponents, each starting with a territory of at most 3x3 character cells
+  - leave your territory, draw a trail and return to claim the enclosed area
+  - an opponent cutting your unfinished trail eliminates you; crossing your own unfinished trail also ends the run
+  - cutting an opponent's trail eliminates it and gives you its territory and its unfinished trail
+  - walls do not kill: they stop movement or redirect it along the boundary
+  - eliminated bots respawn at random free spots; you win when all three are out and no free space is left for them to return
+  - score is your peak territory in cells, out of 3,588 playable cells
+  - practice mode whose results do not count toward high scores
+  - keyboard, joystick or mouse control (serial mouse over ACIA, or 1351 mouse via SID card); the mouse sets a direction and movement continues
+  - `io-territory` · confirmed · high · [plus4world.powweb.com](https://plus4world.powweb.com/software/Pauper_Io)
+- **PIX (Sega Genesis / Mega Drive)** (2026) — Sega Mega Drive / Genesis, Browser — zaka; published by self-published (itch.io)
+  - Also known as: PIX
+  - fully simultaneous local 2-player co-op (not alternating turns)
+  - dedicated teleport button (B on pad, X on keyboard)
+  - claimed area reveals hidden pixel-art pictures; completed pictures are saved to a gallery viewable from the title menu
+  - a round clears either at the reveal percentage or by trapping every enemy inside claimed areas
+  - five picture books: Scenes, Creatures, History, Mosaics (mathematically defined art) and Freestyle (pictures the players draw themselves)
+  - `qix` · corrected · high · [z4k4.itch.io](https://z4k4.itch.io/pix) · [itch.io](https://itch.io/games/tag-homebrew/tag-qix) · [itch.io](https://itch.io/games/tag-qix)
+- **QIXY** (2026) — Commodore 64 — Vattenmelon (Erling Reizer, with Claude AI credited); published by public domain (self-published)
+  - `qix` · confirmed · medium · [gb64.com](https://gb64.com/game.php?id=33123)
+- **QL-x** (2026) — Sinclair QL — croguet; published by self-published (itch.io, free)
+  - Also known as: QL-X
+  - `qix` · corrected · high · [croguet.itch.io](https://croguet.itch.io/ql-x)
+- **QLix (Sinclair QL)** (2026) — Sinclair QL — Jgl; published by self-published (itch.io, free)
+  - Also known as: QLix
+  - `qix` · confirmed · high · [jglev.itch.io](https://jglev.itch.io/qlix) · [itch.io](https://itch.io/games/tag-qix)
+- **Gravity (GBA)** (unknown) — Game Boy Advance — VG Source Game Studio; published by VG Source Game Studio (self-published on itch.io, $3+)
+  - Also known as: Gravity
+  - several enemy types with their own movement patterns instead of one Qix plus Sparx
+  - new enemy types appear as the levels progress
+  - an enemy touching the ship, or cutting the open line before it closes, costs a life
+  - a level is cleared at a 'victory percentage' (most of the screen); the page does not give the threshold
+  - `qix` · confirmed · high · [vgsource.itch.io](https://vgsource.itch.io/gravity)
+- **JayBall** (unknown) — Game Boy Advance — jlei48; published by self-published (itch.io)
+  - single bouncing ball; you win by trapping it in a region smaller than 625 pixels, not by reaching an area percentage
+  - `jezzball` · confirmed · high · [jlei48.itch.io](https://jlei48.itch.io/jayball)
+- **MOLTBALL C64** (unknown) — Commodore 64 — softwire/v0; published by self-published (itch.io)
+  - `jezzball` · confirmed · medium · [softwire0.itch.io](https://softwire0.itch.io/moltball-c64)
+- **Quark Panic** (unknown) — Bandai WonderSwan, WonderSwan Color / SwanCrystal, WonderWitch — joesoft; published by self-published (itch.io)
+  - cursor fires a gluon divider whose lines extend horizontally or vertically until they hit the screen edge or solid area
+  - completed lines become solid, and any enclosed area with no quark also becomes solid
+  - a quark hitting a line while it extends destroys the line and costs a life
+  - stage clears at 75% solid (lower than JezzBall's 75-80% norm only in theme, not rule)
+  - 34 stages, each with more quarks
+  - `jezzball` · confirmed · high · [joesoft.itch.io](https://joesoft.itch.io/quark-panic)
+- **Territory Grid** (unknown) — Nintendo 3DS — m4v_dev; published by self-published (itch.io)
+  - leave your safe zone, draw a wide path and reconnect it to your home area to claim new land
+  - opponents can sever your path while it is exposed
+  - the grid changes constantly during play
+  - the player with the largest territory at the end wins
+  - `io-territory` · corrected · medium · [froggyvr2.itch.io](https://froggyvr2.itch.io/territory-grid)
+
+## Fantasy consoles, calculators and small handhelds
+
+- **Just4Qix** (2009) — Dingoo A320, Amiga — MrLogan (Amiga 68k compile by Lorence Lombardo); published by freeware (Dingux release; Amiga port on Aminet)
+  - Also known as: just4qix_68k
+  - claimed area uncovers a hidden background picture (one of ten backgrounds), Gals Panic style
+  - level clears above 80% coverage
+  - the boss bounces freely across the whole screen and never kills the player by touch
+  - when the boss crosses a drawn track line it can spawn fire 'henchmen' that run along the track lines and steer toward the player's current trail; touching one costs a life, followed by 3 seconds of invulnerability
+  - per the README, completing a fill while a fire is on your tail douses it
+  - `gals-panic` · corrected · high · [aminet.net](https://aminet.net/package/game/actio/just4qix_68k) · [aminet.net](https://aminet.net/game/actio/just4qix_68k.readme) · [aminet.net](https://aminet.net/game/actio/just4qix_68k.lha)
+- **JezzBall (PICO-8, roywig)** (2016) — PICO-8, Browser — roywig; published by Lexaloffle BBS
+  - Also known as: JezzBall 0.8
+  - `jezzball` · confirmed · high · [www.lexaloffle.com](https://www.lexaloffle.com/bbs/?tid=28360)
+- **JezzBall (Gamebuino / Arduboy)** (2017) — Gamebuino Classic, Arduboy — ThomasPietrzak on GitHub, credited as RackhamLeNoir in the Arduboy Collection; Arduboy adaptation by akkera102; published by self-published (GitHub)
+  - Also known as: gamebuino-jezzball
+  - `jezzball` · corrected · medium · [github.com](https://github.com/ThomasPietrzak/gamebuino-jezzball) · [github.com](https://github.com/ThomasPietrzak/gamebuino-jezzball/commits/master) · [raw.githubusercontent.com](https://raw.githubusercontent.com/eried/ArduboyCollection/master/Arcade/Jezzball/game.ini)
+- **Cellonix** (2019) — PICO-8, Browser, Windows, macOS, Linux — Jason (jasonnumberxiii, jasonxiii.pl); published by self-published (itch.io)
+  - the goal is stated as filling the whole board
+  - enemies crawl both inside the board and outside it
+  - points raise a persistent rank, and each rank increases movement speed
+  - achievements for specific tasks award extra points
+  - the Premium Edition adds special skills and difficulty levels
+  - `xonix` · confirmed · high · [jasonnumberxiii.itch.io](https://jasonnumberxiii.itch.io/cellonix)
+- **Stix (PICO-8)** (2019) — PICO-8, Browser, Windows, macOS, Linux, and 1 more — pahammond; published by pahammond (self-published on itch.io, name your own price)
+  - Also known as: Stix
+  - goal: trap the energy bundle by filling 75% of the arena
+  - one action button (X) to leave the grid and draw
+  - fuses move fast (players say so in the comments, and the author acknowledges it)
+  - `qix` · confirmed · high · [pahammond.itch.io](https://pahammond.itch.io/stix) · [itch.io](https://itch.io/games/tag-pico-8/tag-qix)
+- **ISOL8: Build & Isolate** (2021) — PICO-8, Browser — professir; published by Lexaloffle BBS
+  - Also known as: ISOL8
+  - level is won when every ball is walled off from every other ball, checked by flood fill, rather than by reaching an area percentage
+  - player builds horizontal or vertical walls; a ball hitting a wall under construction costs a life
+  - one more ball each level, up to 15
+  - choice of 1, 3 or 5 lives (listed as Easy, Normal, Hard), plus an Endless mode where you cannot die
+  - background and ball palettes change every 5 levels; colours are random every level after level 100
+  - guide lines show where the wall will be built (v3), and an alternate control scheme (hold a button, then pick the direction)
+  - `jezzball` · confirmed · high · [www.lexaloffle.com](https://www.lexaloffle.com/bbs/?tid=44323)
+- **Paper-io (MakeCode Arcade)** (2021) — MakeCode Arcade — UnsignedArduino; published by self-published (GitHub)
+  - offline single-player Paper.io clone: one human snake, bots spawn every 2 seconds until 6 snakes are on the map
+  - leaving your colour draws a trail; returning traces your outer boundary and flood-fills it, overwriting rival colour inside
+  - the snake that runs into any trail, its own or a rival's, dies, not the trail's owner (reversed from Paper.io)
+  - hitting the map wall kills; a snake whose territory is reduced to zero tiles dies
+  - a dead snake's territory is wiped back to empty and its colour returns to the spawn pool
+  - bots make random 90-degree turns, a few per excursion
+  - result screen shows time alive and percent of the map claimed; leaderboard bars and a minimap
+  - `io-territory` · corrected · high · [github.com](https://github.com/UnsignedArduino/Paper-io) · [raw.githubusercontent.com](https://raw.githubusercontent.com/UnsignedArduino/Paper-io/master/main.ts) · [github.com](https://github.com/topics/paperio)
+- **JEZZAK** (2023) — Playdate, Playdate SDK simulator — Optimal Prime Futureworks LLC (Tracey Boydston); published by Optimal Prime Futureworks LLC (itch.io and Playdate Catalog)
+  - Also known as: JEZZAK (Playdate)
+  - goal: capture over 80% of the play area while indestructible 'Ultra Dense Spheres' and other enemies bounce around
+  - player avatar moves with the D-pad; B rotates it and A extends the 'isolator' wall
+  - cranking forward overcharges the isolator so walls build faster; too much overcharge makes the player explode
+  - power-ups deployed with A+B or by cranking backward, e.g. lightning and snail to deal with fast balls, chaff to counter seeker missiles
+  - seeker missiles that cannot pass through screen edges and must arc back toward the player
+  - 30+ ball, enemy and power-up types
+  - story episodes with unique locations, bosses and animated cutscenes; 50+ levels
+  - 2 arcade modes, including 'Arcade Classic', added on request to play closer to JezzBall
+  - scoreboard and playable credits
+  - `jezzball` · corrected · high · [optimalprime.itch.io](https://optimalprime.itch.io/jezzak) · [play.date](https://play.date/games/jezzak/) · [itch.io](https://itch.io/games/tag-jezzball)
+- **Stix Disruption** (2024) — Picotron, Browser, Windows, macOS, Linux — pahammond; published by pahammond (self-published on itch.io, name your own price)
+  - hold X while leaving the trail to draw at half speed for a 'bonus 2x' fill; release it at once for a normal fill
+  - 2-player co-op: player 2 shoots the Stix to 'disrupt' it, which the page warns may make it more unpredictable
+  - fast fuse: players report it, and the author says it carried over from the PICO-8 Stix
+  - `qix` · confirmed · high · [pahammond.itch.io](https://pahammond.itch.io/stix-disruption)
+- **Xonix (PICO-8)** (2024) — PICO-8, Browser — newagebegins; published by none (open source on GitHub)
+  - Also known as: xonix-pico8
+  - 75% land to clear a level
+  - a land enemy patrols claimed land, and each time the level timer runs out another land enemy spawns
+  - one more sea enemy each level (starting at 3)
+  - 3 lives; score equals the number of cells captured
+  - `xonix` · corrected · high · [github.com](https://github.com/newagebegins/xonix-pico8) · [newagebegins.github.io](https://newagebegins.github.io/xonix-pico8/xonix_html/)
+- **Q\*BALL** (2025) — PICO-8, Browser — sizescape; published by self-published (Lexaloffle BBS / itch.io)
+  - Also known as: qball
+  - playfield is a Q\*bert-style isometric pyramid of cubes the player hops across
+  - hopping marks horizontal or diagonal lines of cubes, and marked lines drop out of play
+  - blocks cut off from both the player and the q\*balls slowly decay (capture by isolation)
+  - randomly bouncing q\*balls undo your progress, so you must trap them
+  - clear at least 16 blocks per level against a timer; pressing X speeds the timer up to advance sooner
+  - whole game fits in 1020 compressed bytes, with all sprites generated by code
+  - `jezzball` · confirmed · high · [www.lexaloffle.com](https://www.lexaloffle.com/bbs/?tid=151724) · [sizescape.itch.io](https://sizescape.itch.io/qball)
+- **OVERWORLD** (2026) — Playdate, Browser — Nikolay Shebanov; published by self-published (itch.io)
+  - holding A or B changes movement speed and stops the trail from solidifying while held: finer control and more bonus area, at the cost of longer exposure to enemies
+  - territory captured beyond the level target scores bonus points
+  - collecting enough bonus earns bonus items
+  - `xonix` · confirmed · high · [nshebanov.itch.io](https://nshebanov.itch.io/overworld)
+- **Moss Covers Everything** (unknown) — PICO-8, Browser — 23; published by 23 (self-published on itch.io)
+  - the player (a moss ball) always moves forward; two buttons only turn left or right, Snake-style
+  - every square crossed becomes moss, and closing a loop of moss fills the enclosed interior too
+  - enemies caught inside filled moss are deactivated and become harmless pushable skulls
+  - pushing a deactivated skull into a bug destroys the bug, so captures double as ammunition
+  - level goal is to cover the crystal with moss, not to reach a coverage percentage
+  - `qix` · corrected · high · [23.itch.io](https://23.itch.io/moss-covers-everything) · [23.itch.io](https://23.itch.io/moss-covers-everything/data.json) · [itch.io](https://itch.io/games/tag-pico-8/tag-qix)
+- **TIXONIX** (unknown) — TIC-80, Browser, Windows, Linux — enotofil; published by self-published (tic80.com, itch.io)
+  - Also known as: TiXoNiX
+  - level n starts with n+1 balls bouncing in the unclaimed area, plus one enemy that bounces only inside claimed land
+  - a 60-second countdown on the HUD spawns one more land enemy each time it runs out; losing a life removes the extra land enemies and restarts the countdown
+  - capturing past the 75% goal pays a bonus of 50 points for each percent of the goal above 100
+  - score is 1 point per enclosed cell; trail cells count toward the goal but score nothing
+  - game logic steps every third frame and sprites are drawn between cells, which gives the smooth movement
+  - `xonix` · corrected · high · [tic80.com](https://tic80.com/dev/enotofil/tixonix) · [enotofil.itch.io](https://enotofil.itch.io/tixonix) · [tic80.com](https://tic80.com/cart/4cbed91da156c9e585053b55209bb7bf/tixonix.tic)
+- **ZUBGUBBLERS** (unknown) — PICO-8, Windows, macOS, Linux, Raspberry Pi — ROBYSOFT (Nick Santaniello); music by Devin Curry (Grand Atrium); published by ROBYSOFT (self-published on itch.io, name your own price)
+  - four local players (best with 4 gamepads) race to cover the playfield in their own colour and pattern
+  - power-ups to collect and 'nefarious powerdowns' to avoid
+  - players can sabotage opponents
+  - very short rounds (itch lists the average session as 'a few seconds')
+  - `qix` · confirmed · medium · [robysoft.itch.io](https://robysoft.itch.io/zubgubblers) · [itch.io](https://itch.io/games/tag-pico-8/tag-qix)
+
+## Minigames inside other games
+
+- **Art Class (Bully minigame)** (2006) — PlayStation 2, Wii, Xbox 360, Windows, PlayStation 4, and 2 more — Rockstar Vancouver; published by Rockstar Games
+  - Also known as: Bully (Art class), Canis Canem Edit, Bully: Scholarship Edition
+  - Qix-style area-drawing minigame played as the school's Art class
+  - five Art classes of increasing difficulty
+  - passing Art classes gives lasting rewards in the main game: Jimmy can kiss girls, and his health rises
+  - `qix` · confirmed · medium · [wikipedia2007.classicistranieri.com](https://wikipedia2007.classicistranieri.com/q/i/x/Qix.html) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Bully_%28video_game%29) · [es.wikipedia.org](https://es.wikipedia.org/wiki/Bully_%28videojuego%29)
+- **Видатні художники світу — «Моя територія»** (2007) — Windows — GARBUZ.Studio; published by Atlantik (Атлантік)
+  - Also known as: Outstanding Painters of the World — 'My Territory' mini-game, Vydatni khudozhnyky svitu, Выдающиеся художники мира
+  - Qix/Xonix-style mini-game inside an art-history edutainment title
+  - claiming area uncovers a hidden picture
+  - a hostile spider interferes, and the player races it to uncover the picture
+  - `qix` · corrected · medium · [www.old-games.ru](https://www.old-games.ru/game/12628.html)
+- **Boku no Natsuyasumi 4 (QIX 50-yen game)** (2009) — PlayStation Portable — Millennium Kitchen; published by Sony Computer Entertainment
+  - Also known as: ぼくのなつやすみ4 瀬戸内少年探偵団「ボクと秘密の地図」, Bokunatsu 4 (QIX minigame)
+  - Taito's QIX is playable inside a summer-vacation life sim as the '50-yen game' at the Yoshida shop, paid with in-game pocket money
+  - `qix` · confirmed · high · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/ぼくのなつやすみ4_瀬戸内少年探偵団「ボクと秘密の地図」) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クイックス) · [dengekionline.com](https://dengekionline.com/elem/000/000/696/696566/)
+- **Clubhouse Games: 51 Worldwide Classics (Dots and Boxes)** (2020) — Nintendo Switch — NDcube; published by Nintendo
+  - Also known as: Clubhouse Games: 51 Worldwide Classics
+  - turn-based: draw one line between two adjacent dots per turn
+  - completing the fourth side of a box claims it and grants another turn
+  - most boxes claimed wins
+  - `other` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Clubhouse_Games:_51_Worldwide_Classics) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Dots_and_boxes)
+- **KISS U** (2022 (demo; full game in development)) — Windows, macOS — Babs Tarr and Sam Thurman; published by Babs Tarr and Sam Thurman (self-published)
+  - Also known as: KISS U: Demo, KISS U New Demo
+  - fantasy dating-sim visual novel with fast mini-games; VNDB tags one as a Xonix/Qix-style capture game, in which boxed-off areas reveal a hidden picture
+  - the capture mini-game's specific rules are not documented
+  - `gals-panic` · corrected · medium · [vndb.org](https://vndb.org/v34631) · [vndb.org](https://vndb.org/r88828) · [vndb.org](https://vndb.org/r142582) · [vndb.org](https://vndb.org/g1913)
+- **Coin-Op Vice** (2024) — Windows — Andrei Fomin
+  - Also known as: CoinOp Vice
+  - Xonix is one of 100+ short altered arcade mini-games played on machines inside a 2.5D top-down action game
+  - completing an arcade rewards two random cartridges (skills, weapons, abilities), which make up a deck; two cartridges combine into a higher-level one, and deck size grows with the detective's rank
+  - arcade buildings and rooms are procedurally generated, with 8 main missions and daily random missions
+  - `xonix` · corrected · medium · [store.steampowered.com](https://store.steampowered.com/app/2722640/CoinOp_Vice/)
+
+## Adjacent genres
+
+- **Blockade** (1976) — Arcade, Noval 760 — Gremlin Industries (designer Lane Hauck, programmer Ago Kiss); published by Gremlin; Taito (JP, as Barricade II); Noval (Noval 760)
+  - Also known as: Barricade II (Taito, JP)
+  - two players each steer an arrow that leaves a permanent solid trail, so the free space shrinks as both players wall it off
+  - crashing into either trail or the border scores a point for the opponent
+  - the operator sets match length at 3-6 crashes
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Blockade_%28video_game%29) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/陣取りゲーム)
+- **Lock 'n' Chase** (1981) — Arcade, Intellivision, Atari 2600, Apple II, Game Boy — Data East; published by Data East; Taito (NA arcade); Mattel (Intellivision, Atari 2600)
+  - the player closes doorways behind them as temporary walls that trap the police
+  - at most two doors closed at once; each reopens after a few seconds
+  - some doors near the centre open and close on their own
+  - money bags in the centre briefly stun the police, with escalating values (500 to 4000)
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Lock_%27n%27_Chase)
+- **Make Trax** (1981) — Arcade, Neo Geo Pocket Color, Windows — Alpha Denshi (ADK); published by Kural Samno Electric (JP); Exidy (EU, as Crush Roller); Williams Electronics (NA, as Make Trax); SNK (NGPC)
+  - Also known as: Crush Roller, Make Trax Turbo (fan speed hack)
+  - paint every path of the maze (a coverage goal with no enclosure)
+  - two chasing fish enemies ('Ojaman'); touching one costs a life
+  - two rollers on overpasses can be pushed along a corridor to crush enemies, which come back from an aquarium after a few seconds; crush points rise from 50 up to 9,000
+  - enemies learn to dodge the rollers and try to trap the player
+  - pop-in characters (cat, mouse, bird, tire, ghost cat, invisible man) leave footprints that must be painted again; catching one stops the tracks and scores
+  - the NGPC remake redesigns the levels for the small screen
+  - `amidar-painter` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Crush_Roller) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/クラッシュローラー)
+- **Amidar** (1982) — Arcade, Atari 2600, Casio PV-1000, NEC PC-6001, Gakken VFD tabletop — Konami; published by Konami (JP); Stern (NA); Parker Brothers (Atari 2600); Casio (PV-1000)
+  - Also known as: Amigo (bootleg)
+  - movement is limited to the lines of a fixed Amidakuji (ladder) grid; the player cannot cut freely into the field
+  - painting all four sides of a box fills it; the whole board must be filled
+  - each filled box scores the value printed inside it
+  - stages alternate: odd stages are dot/coconut collecting (ape), even stages are edge painting (paint roller)
+  - roller stages: new boxes must touch already-claimed territory, and the roller runs out of paint if it strays too far from filled boxes, at which point unfinished lines vanish
+  - filling the four corner boxes briefly makes enemies killable (200/400/800/1,600 points)
+  - jump button (3 uses per level or life) makes all enemies jump so the player can pass under them
+  - deterministic 'Amidar movement': enemies travel vertically and take every available horizontal turn
+  - a white Tracer patrols the perimeter counterclockwise, then follows the player's exact path after a set number of laps (sooner on later stages)
+  - later levels add more and faster enemies and more complex grids
+  - Amidakuji bonus stage between levels (5,000-point prize)
+  - `amidar-painter` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Amidar) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/アミダー) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/amidar)
+- **Disco No. 1** (1982) — Arcade — Data East
+  - Also known as: Sweet Heart, ディスコNo.1
+  - instead of claiming area, the roller-skater scores by skating a complete loop around one or more tough guys
+  - encircling several tough guys in one loop is the core scoring play
+  - bonus items drift across the rink to collect
+  - 1-2 players, alternating
+  - `other` · corrected · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Disco_No._1) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/dataeast/decocass.cpp) · [arcade-museum.com](https://arcade-museum.com/Videogame/disco-no-1) · [videogamecritic.com](https://videogamecritic.com/inteltt.htm?e=91554)
+- **Hot Shocker** (1982) — Arcade — E.G. Felaco; published by E.G. Felaco (Domino license)
+  - the player (Dudley) recolours the strands of a web by walking along them
+  - skeletons chase the player across the web
+  - `amidar-painter` · confirmed · medium · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/hot-shocker) · [github.com](https://github.com/mamedev/mame/blob/master/src/mame/galaxian/scramble.cpp) · [raw.githubusercontent.com](https://raw.githubusercontent.com/AntoPISA/MAME_SupportFiles/main/catver.ini/catver.ini) · [en.wikipedia.org](https://en.wikipedia.org/wiki/List_of_arcade_video_games:_H)
+- **Pepper II** (1982) — Arcade, ColecoVision — Exidy (Larry Hutcherson); published by Exidy; Coleco (ColecoVision)
+  - each level is four connected mazes that must all be filled; the playfield spans four screens
+  - the player leaves a zipper trail and enclosing a segment fills it; going back over an unfinished segment unzips it
+  - the Whippersnapper (Zipper Ripper on ColecoVision) unzips any unfinished segment it crosses
+  - enclosing a corner pitchfork turns the player into a devil for about 4 s: Roaming Eyes can be eaten and the Whippersnapper freezes
+  - a centre energizer alternates between pitchfork and halo; enclosing it on the halo removes the Whippersnapper from the maze
+  - each maze hides a prize under one segment, awarded when that area is enclosed
+  - extra turn at a DIP-switch threshold (40k/50k/70k/90k points)
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Pepper_II) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Amidar)
+- **Quantum** (1982) — Arcade — General Computer Corporation (designer Betty Ryan); published by Atari
+  - the trackball probe leaves a tail; crossing it to close a loop destroys the particles inside
+  - the stage clears when all nuclei are destroyed
+  - touching particles or active red bonds destroys the probe; only electrons are safe to touch
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Quantum_%28video_game%29) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/atari/quantum.cpp)
+- **Triple Punch** (1982) — Arcade — K. K. International; published by Thomas Automatics; Nicole Manufacturing
+  - Also known as: Knock Out!!
+  - playfield is a grid wider than the screen that scrolls horizontally and wraps around
+  - fill rectangles by colouring every line around them, as in Amidar
+  - completing two rectangles at once doubles the points and three at once quadruples them
+  - an eraser enemy removes lines you have already painted
+  - three quick punches knock out the eraser, ghost or gorilla, and an ambulance carries it off
+  - a fire enemy cannot be punched and is always deadly
+  - `amidar-painter` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Triple_Punch) · [raw.githubusercontent.com](https://raw.githubusercontent.com/AntoPISA/MAME_SupportFiles/main/catver.ini/catver.ini)
+- **Libble Rabble** (1983) — Arcade, X68000, Super Famicom, FM Towns Marty, Windows, and 2 more — Namco (designer Toru Iwatani); published by Namco; MediaKite (Windows); Hamster (Arcade Archives)
+  - Also known as: リブルラブル
+  - twin-stick control of two arrows joined by a line that wraps around poles to form loops
+  - enclosing Mushlins harvests them; loops you close yourself score more; a season ends when all are harvested
+  - looping enemies: most are sent to the top of the screen for a short time; Killers, Changers and Demons are destroyed
+  - Shears and Demons cut the line, which then reforms between the arrows
+  - a detector signals when a closed area holds a hidden chest; you open it by enclosing a small area that covers only the chest and no other possible hiding place
+  - Topcups released from chests must be corralled and looped to earn bonus letters; a completed word opens a timed bonus stage
+  - the border is a timer; looping Mushlins and plants adds time
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Libble_Rabble) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/namco/toypop.cpp)
+- **Rollo and the Brush Brothers** (1983) — IBM PC — Windmill Software
+  - Also known as: Rollo and the Brush Bros.
+  - Amidar remake: Rollo, a paint roller, paints the maze lines to box in grid squares while the enemy paint brushes (the Brush Brothers) chase him
+  - `amidar-painter` · corrected · medium · [www.dosgames.com](https://www.dosgames.com/game/rollo-and-the-brush-bros/) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Amidar) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Digger_%28video_game%29)
+- **Zoo Keeper** (1983) — Arcade — Taito America (designers Keith Egging, John Morgan); published by Taito America
+  - zoo stage: the player runs along the edges of a rectangle, laying a brick wall behind him
+  - animals bounce around inside and break holes in the wall where they hit it
+  - escaped animals run along the outer edge toward the player, who must jump over them; jumping several at once scores exponentially more
+  - a net power-up briefly lets the player herd animals back into the central cage
+  - when the stage timer runs out, each animal still inside the wall scores points
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Zoo_Keeper_%281983_video_game%29)
+- **Gridd Worz** (1984) — BBC Micro — Simon Phipps; published by Your Computer (IPC Electrical-Electronic Press), vol. 4 issue 7, July 1984 type-in
+  - there is no enclosure: you clear a 26x20 grid one cell at a time by flying over it, and the level ends once about 75% of the cells are gone
+  - the ship keeps moving in its last direction, like a Tron light-cycle, and the keys only steer it
+  - Drones (one per level, up to four) bounce around the grid and lay cleared cells back down as they pass, undoing your progress
+  - re-crossing cells you have already cleared, or bumping the edge, adds cells back to the remaining count and makes the Drones home in on you
+  - each level adds one more lethal fixed obstacle in a random cell; 3 lives
+  - `amidar-painter` · corrected · medium · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/game.php?id=893) · [www.bbcmicro.co.uk](https://www.bbcmicro.co.uk/gameimg/discs/893/Disc050-GriddWorz.ssd)
+- **Itazura Tenshi** (1984) — Arcade, Nintendo Switch / PS4 — Alice; published by Nichibutsu; Hamster (Arcade Archives)
+  - Also known as: 悪戯天使
+  - the angel connects constellations by flying into scattered stars, so lines run between fixed points rather than enclosing area
+  - the angel shoots arrows to fend off enemies
+  - a completed constellation scores a bonus that grows with its size; each stage has a set number of constellations
+  - after the constellations of a stage, a bonus event reunites Ran and Lum (in the manner of Altair and Vega) for extra points
+  - `other` · corrected · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Itazura_Tenshi) · [ja.wikipedia.org](https://ja.wikipedia.org/wiki/悪戯天使) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/nichibutsu/dacholer.cpp)
+- **Rumba Lumber** (1984) — Arcade, Taito Egret II mini Arcade Memories Vol. 3 — Taito
+  - Also known as: ルンバランバ
+  - the player hacks down trees (about two hacks each); each felled tree shrinks the enemy's space and opens ground for the player, as in Dig Dug
+  - goal: trap the pterodactyl, which can fly only over trees, in a clump of four or fewer trees
+  - the scene score multiplies the trees left uncut by a bonus that grows as the trap gets smaller, so efficient captures pay more
+  - the pterodactyl bounces diagonally, wraps around screen edges through tree rows, and starts breathing fire as the scene goes on
+  - a limited number of stone wheels per scene (second button plus a direction) kill the dinosaur and mole; hitting the pterodactyl ends the scene at once
+  - a dinosaur hatched from an egg walks through trees, and a mole surfaces and tracks the player briefly
+  - four scenes loop with their own hazards: a river (scene 2), a cloud that regrows cut mushrooms (scene 3), a fireball volcano (scene 4); later loops add uncuttable dead trees
+  - `qix` · corrected · medium · [www.gaminghell.co.uk](https://www.gaminghell.co.uk/RumbaLumber.html) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/taito/flstory.cpp) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/rumba-lumber) · [www.timeextension.com](https://www.timeextension.com/news/2024/08/taito-egret-ii-mini-arcade-memories-vol-3-line-up-announced)
+- **Clax** (1985) — MS-DOS — Dmitry Pavlovsky
+  - the field is a grid of coloured blocks; moving across the borders between blocks swaps their colours, which is how territory is taken
+  - three enemy smileys are trapped when their colour matches the block they stand on; a trapped smiley stops moving
+  - a trapped smiley's last position stays lethal but becomes invisible, so the player must remember it
+  - trapping two smileys at once scores far more than one; clearing a level adds a time bonus
+  - levels are timed: surviving until the timer ends advances without capture points or time bonus
+  - colours are random per level; after level 10 the blocks get smaller and more numerous; touching a smiley ends the game
+  - `xonix` · corrected · medium · [www.old-games.ru](https://www.old-games.ru/game/12534.html)
+- **Dig Dug II** (1985) — Arcade, Famicom/NES, Famicom Disk System, X68000, PSP/DS/Wii compilations, and 3 more — Namco; published by Namco; Bandai (NES, NA); Hamster (Arcade Archives)
+  - Also known as: Dig Dug II: Trouble in Paradise
+  - a jackhammer cracks the island along predefined fault lines
+  - when cracks split the island, the smaller part sinks, killing everything on it, the player included if careless
+  - score scales with the number of enemies sunk at once
+  - a bonus vegetable appears after three pieces are cut off
+  - an air pump inflates enemies; Fygars also breathe fire
+  - the last 1-3 enemies flee to the edge and jump into the sea, ending the round
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Dig_Dug_II)
+- **Spider Web** (1989) — MS-DOS — Christopher G. Gunn; published by Christopher G. Gunn (shareware)
+  - Also known as: Spider's Web, Spider
+  - spider moves inside a bordered rectangular field and spins straight web strands (one button starts and stops a strand)
+  - strands persist and build up a web that catches flies; clear the level by catching all flies before they overpopulate
+  - the more strands on the field, the fewer flies may be active at once (wall-building progressively constrains enemies)
+  - spider can kill flies directly while suspended on a strand, or zap them with Space/right mouse button
+  - mouse or 8-direction keyboard control (number-pad diagonals)
+  - `other` · rescued · medium · [archive.org](https://archive.org/details/SPIDER_CG_zip) · [archive.org](https://archive.org/download/SPIDER_CG_zip/SPIDER_CG.zip/SPIDER.DOC) · [archive.org](https://archive.org/details/msdos_Spider_Web_1989) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Mr. Do! Run Run (Atari ST)** (1990) — Atari ST — Martin Bysh (code), Gary Felix (graphics), Wally Beben (music); game design by Universal; published by Electrocoin
+  - Also known as: Do! Run Run (arcade original, 1984), Super Pierrot
+  - Mr. Do leaves a rope line behind him as he runs; looping the rope around dots ('inscribing') turns them into cherries
+  - inscribing fruit again upgrades it a tier (cherry, apple, lemon, pineapple), worth more points and more powerball recharge
+  - inscribing can turn a fruit into a flashing EXTRA letter; running over it releases an Alpha-Monster with three henchmen, and defeating it locks in the letter
+  - a screen clears when all dots and fruit are eaten or all regular monsters are defeated
+  - logs can be rolled downslope to crush monsters, and a bouncing powerball scores more with each bounce
+  - `other` · corrected · medium · [www.atarimania.com](https://www.atarimania.com/games/atari-st-games-mr-do-run-run-9138) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Do!_Run_Run)
+- **Rampart** (1990) — Arcade, NES, Game Boy, Game Boy Color, SNES, and 10 more — Atari Games (John Salwitz, Dave Ralston); published by Atari Games (NA/EU); Namco (JP, April 1991)
+  - timed build phase: place Tetris-like wall pieces to close gaps and fully enclose castles; pieces are often larger than the gaps, so leftover pieces make later repairs harder
+  - each fully enclosed castle grants cannons (the home castle grants two), which are placed only inside your enclosed territory
+  - after combat, any area no longer fully walled in is lost along with the cannons inside it
+  - you lose if no castle is enclosed when a build phase ends
+  - battle phase: ships (single player) or the rival player (versus) shoot your walls; you fire slow cannonballs that must lead moving targets
+  - enclosing bonus squares awards extra points
+  - 2-player versus, with each side's territory separated by rivers
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Rampart_%28video_game%29)
+- **Splash!** (1992) — Arcade — OMK Software (Barcelona freelance group; Gaelco did music and sound); published by Gaelco; Windial (Korea)
+  - Also known as: Painted Lady (North America), New Splash (Korea, Windial license)
+  - a brush moves freely in 8 directions and erases the blue overlay wherever it passes, revealing a picture of a woman (painting, not line capture)
+  - an on-screen completion percentage and a timer; some levels do not require full coverage
+  - bubbles bounce around the screen, and touching one costs a life (3 lives)
+  - limited, non-refillable ammo of 50 shots to pop bubbles; popped bubbles eventually reappear
+  - popped bubbles leave red stars that turn into bonus coins when touched
+  - bombs can be dropped anywhere; they stay put and explode when a bubble touches them
+  - 66 stages
+  - 2-player simultaneous play
+  - `amidar-painter` · corrected · high · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/gaelco/splash.cpp) · [adb.arcadeitalia.net](http://adb.arcadeitalia.net/dettaglio_mame.php?game_name=splash) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/39082-splash) · [thegamesdb.net](https://thegamesdb.net/game.php?id=36116)
+- **Achtung, die Kurve!** (1993 (also listed as 1995)) — Amiga, MS-DOS — Filip Oščádal (Fred Brooker) and Kamil Doležal; published by none (freeware)
+  - Also known as: Zatacka, Curve Fever (name of the later remake series)
+  - 2 to 8 players (up to 6 in the original) on one screen
+  - each dot moves at constant speed and leaves a permanent solid trail
+  - two buttons steer left and right with a limited turn rate, giving curved, non-cardinal trails
+  - hitting any trail or the border eliminates you; trails stay until the game ends
+  - random gaps open in trails, letting a player escape an enclosure
+  - last surviving player wins the round
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Achtung,_die_Kurve!)
+- **Lady Killer** (1993) — Arcade — Yanyaka; published by Yanyaka (JP); Mitchell (export license)
+  - Also known as: Moeyo Gonta!! (Japan)
+  - the chosen woman's picture is shown briefly, then covered by a board of tiles
+  - the diver dives into the board and surfaces to flip tiles; flipping every tile clears the level
+  - flipped tiles often hold power-ups
+  - touching or being shot by an enemy kills you; flipping the tile an enemy stands on kills it; enemies respawn until the level ends
+  - the woman's silhouette stays visible on the board
+  - eight women, four stages each, with the picture changing between stages
+  - each woman has a special stage: a sliding-tile puzzle or a number-selection game
+  - continuing restarts the current level
+  - `other` · confirmed · high · [www.arcade-history.com](https://www.arcade-history.com/game/1652/) · [www.arcade-museum.com](https://www.arcade-museum.com/Videogame/lady-killer) · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/metro/metro.cpp) · [adb.arcadeitalia.net](http://adb.arcadeitalia.net/dettaglio_mame.php?game_name=ladykill)
+- **Painter** (1993) — Atari ST, Atari Jaguar — Sinister Developments (David Cowan, Gordon Gibson); published by ST Format / Future Publishing (shareware, later public domain)
+  - walk a grid of lines; each line you pass changes colour, and colouring every side of a rectangle fills it
+  - some lines are hidden and only flash at level start, so the grid must be memorised
+  - enemies always take the most direct route to you and can see hidden lines, so their paths reveal them
+  - fire drops a hole in the grid that blocks pursuers but stops you doubling back
+  - 100 levels with passwords; registered users get a level designer
+  - `amidar-painter` · corrected · high · [www.atarimania.com](https://www.atarimania.com/games/atari-st-games-painter-10177) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **The Return of Lady Frog** (1993) — Arcade — Microhard
+  - drop bombs that each clear a 3x3 area of the grid covering a photo; the stage is cleared by uncovering the picture
+  - bombs also break grey square barriers that block paths
+  - bombs do not hurt balloons, but a balloon rolling over a bomb as it explodes smothers the blast and leaves that area covered
+  - fire bottle-rockets at balloons; a popped balloon drops point items or splits into smaller balloons
+  - skull-and-crossbones balloons cannot be destroyed and must be avoided
+  - being hit by a balloon costs a life
+  - 2-player play
+  - `other` · confirmed · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/gaelco/splash.cpp) · [adb.arcadeitalia.net](http://adb.arcadeitalia.net/dettaglio_mame.php?game_name=roldfrog) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/39620-the-return-of-lady-frog)
+- **Harapeko Bakka** (1994) — Super Famicom, SNES — Magical Company; published by Magical Company (Japan); Sunsoft (Europe)
+  - Also known as: はらぺこバッカ, Hungry Dinosaurs (Europe)
+  - dinosaurs walk on a 9x9 grid and automatically drop eggs of their colour along their path to claim squares
+  - surrounding an opponent's eggs converts them to your colour (Othello-style enclosure capture), allowing late reversals
+  - a player can eat laid eggs (B button) to change their colour; this costs time and can leave them outmanoeuvred
+  - the player with the most eggs wins
+  - up to 4 simultaneous players with a multitap
+  - single-player mode of 50 stages of rising difficulty
+  - `other` · corrected · medium · [www.arcade-history.com](https://www.arcade-history.com/game/61417/) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Hungry_Dinosaurs)
+- **Party Time: Gonta the Diver II** (1995) — Arcade — Mitchell
+  - Also known as: Ganbare! Gonta!! 2 (Japan)
+  - adult-themed tile-flipping picture reveal, following Lady Killer's diver
+  - `other` · corrected · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/dataeast/simpl156.cpp) · [gamesdb.launchbox-app.com](https://gamesdb.launchbox-app.com/games/details/36386-party-time-gonta-the-diver-ii) · [www.arcade-history.com](https://www.arcade-history.com/game/3523/) · [adb.arcadeitalia.net](http://adb.arcadeitalia.net/dettaglio_mame.php?game_name=prtytime)
+- **Penky** (1996) — Arcade — Yun Sung; published by Yun Sung (Impeuropex license in Italy)
+  - timed rounds of 40-70 seconds (30-60 s on the Italian set), set by DIP switch
+  - a round is won by covering a minimum share of the surface (70-99.9% by DIP) or by holding the majority when time runs out
+  - versus play over 1 bout or best of 3 (2 or 3 matches)
+  - optional strip-tease pictures as the reward
+  - `amidar-painter` · confirmed · medium · [raw.githubusercontent.com](https://raw.githubusercontent.com/mamedev/mame/master/src/mame/yunsung/paradise.cpp) · [adb.arcadeitalia.net](https://adb.arcadeitalia.net/dettaglio_mame.php?game_name=penky) · [raw.githubusercontent.com](https://raw.githubusercontent.com/AntoPISA/MAME_SupportFiles/main/catver.ini/catver.ini)
+- **firmament i-a** (2001) — Mac OS — flatearth software; published by flatearth software (self-published; shareware at release, now listed as freeware)
+  - clusters of small diamond-shaped pieces flow down from the top in varied formations; the line drawn by moving the mouse pointer encloses them, and enclosed pieces vanish while the rest keep flowing
+  - missed pieces cross a dead-end line and stack at the bottom; a stack 4 or more rows high ends the game
+  - score = basic points x efficiency x speed x sequence, shown as a formula for every erasure
+  - basic points rise the lower on the field the pieces are erased
+  - efficiency multiplier = piece area divided by enclosed area, rewarding tight enclosures
+  - speed multiplier from the player-chosen maximum flow speed (4 steps); pieces accelerate as they flow
+  - sequence multiplier (up to 9.99x) for erasing the next piece while the previous erasing line is still on screen
+  - modes: normal, extreme, and score attack (no stack game over, a penalty per missed piece, 10-minute limit)
+  - `other` · corrected · high · [www.vector.co.jp](https://www.vector.co.jp/soft/mac/game/se172006.html) · [www.vector.co.jp](https://www.vector.co.jp/magazine/softnews/010908/n0109083.html)
+- **Brainstorm (TI-86)** (2002) — TI-86 — unknown; published by unknown (distributed via ticalc.org)
+  - Also known as: Brainstorm v1.0, brainst.zip
+  - you have only three lines to capture a ball inside the point-giving areas
+  - `other` · corrected · low · [www.ticalc.org](https://www.ticalc.org/pub/86/asm/games/)
+- **Star Trigon** (2002) — Arcade, iPod / iOS, Windows — Namco (Project Driller); ports by Namco Networks; published by Namco
+  - the player hops from planet to planet, and the jumps form large triangles
+  - creatures (Uchijins) inside a completed triangle are rescued (enclosure capture); the stage ends when all are rescued
+  - the player automatically circles the planet they stand on and must time each jump, or they fall off and lose a life
+  - an oxygen meter drains during the stage and is refilled with air capsules
+  - selectable characters differ in speed and oxygen use
+  - later stages speed up and add hazards: large flares and black holes that pull the player in
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Star_Trigon) · [en.wikipedia.org](https://en.wikipedia.org/w/index.php?title=Special:WhatLinksHere/Libble_Rabble&limit=500&namespace=0)
+- **Dig Dug: Digging Strike** (2005) — Nintendo DS — Bullets; published by Namco (JP); Namco Hometek (NA); Atari Europe (EU, 2006)
+  - dig underground on the bottom screen and line up large stakes to create fault lines
+  - a completed fault line breaks off a section of the island on the top screen and sinks it, which is how the boss is sunk
+  - two-screen play: island and boss on the top screen; player, enemies and stakes on the bottom
+  - enemies are defeated by pumping them up or pushing them into rocks, lava or quicksand
+  - enemies can carry food to the boss to make it stronger
+  - items: magnets, time-stopping clocks, boxing gloves
+  - some power-ups summon Susumu (after a minigame) to drive a stake in with a dropped weight or to stun the boss
+  - collecting all fossils unlocks a bonus stage
+  - `other` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Dig_Dug:_Digging_Strike)
+- **Yoshi Touch & Go** (2005) — Nintendo DS — Nintendo EAD; published by Nintendo (iQue in China)
+  - Also known as: Catch! Touch! Yoshi! (Japan)
+  - draw a circle around an enemy to trap it in a bubble (lasso capture)
+  - draw lines that become cloud paths carrying the character around hazards and opening alternate routes
+  - blow into the microphone to erase drawn clouds
+  - versus: clearing enemies sends spiky obstacles to the opponent's screen
+  - modes: Score Attack, Marathon, unlockable Time Attack and Challenge
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Yoshi_Touch_%26_Go)
+- **Pokémon Ranger** (2006) — Nintendo DS — HAL Laboratory; Creatures Inc.; published by The Pokémon Company (JP); Nintendo (worldwide)
+  - capture by drawing consecutive loops around a moving Pokémon with the stylus
+  - each Pokémon needs N loops; a counter above it drops by one per completed loop
+  - the combined loop length is capped; the cap grows with Styler level, so tight loops near the target are riskier and bigger loops need upgrades
+  - if the Pokémon touches the capture line it breaks and the loops reset (Qix-style)
+  - Pokémon attacks damage the Styler's HP; plain collisions mostly do not; at 0 HP you restart from the last save
+  - Poké Assist: captured Pokémon can be spent to help with harder captures; the partner Plusle or Minun can paralyze the target, and successful loops recharge its energy
+  - captured Pokémon are used once for a field move or assist, then released
+  - `other` · confirmed · high · [www.serebii.net](https://www.serebii.net/ranger/get.shtml) · [www.serebii.net](https://www.serebii.net/ranger/mechanics.shtml) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Pok%C3%A9mon_Ranger)
+- **Dig Dug Island** (2008) — Windows — Namco Bandai Games; published by VerX Inc. (Bellx / ベルクス, distributed via Vector)
+  - Also known as: Dig Dug Island: Minami no Shima no Pukupukupon, ディグダグアイランド〜南の島のプクプクポン〜
+  - Dig Dug II island-cutting moved online: drill cracks along fault lines, and when they split the island the smaller piece sinks with every enemy on it
+  - free-to-play online multiplayer action instead of single-player arcade
+  - `other` · corrected · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Dig_Dug_II) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Dig_Dug) · [www.4gamer.net](https://www.4gamer.net/games/044/G004447/) · [www.4gamer.net](https://www.4gamer.net/games/044/G004447/20090122033/)
+- **Pokémon Ranger: Shadows of Almia** (2008) — Nintendo DS, Wii U Virtual Console — Creatures Inc.; published by The Pokémon Company (JP); Nintendo (worldwide)
+  - a Friendship Gauge filled by loops replaces the fixed count of unbroken loops
+  - lift the stylus to dodge attacks without losing progress, but the gauge drains if you stop looping too long
+  - levelling the Styler makes each loop fill more of the gauge
+  - the Fine Styler can be held to charge for quicker captures, and the charge can be upgraded
+  - partner Pokémon is chosen, not set by gender: 17 possible partners, one per type
+  - `other` · corrected · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Pok%C3%A9mon_Ranger:_Shadows_of_Almia)
+- **Pokémon Ranger: Guardian Signs** (2010) — Nintendo DS, Wii U Virtual Console — Creatures Inc.; published by The Pokémon Company (JP); Nintendo (worldwide)
+  - capture by drawing loops around a Pokémon with the Capture Styler
+  - a Pokémon that breaks the loop by attacking drains styler energy; at zero energy the styler breaks and the game reverts to the last save
+  - a Pokémon crossing the line without attacking breaks the loop at no energy cost
+  - experience from captures and missions unlocks styler upgrades (power, energy capacity); later the styler can be charged for stronger captures
+  - partner Pokémon can be called in to help a capture
+  - drawn 'Ranger Signs' summon Legendary Pokémon for use outside battle
+  - up to 4-player co-op missions
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Pok%C3%A9mon_Ranger:_Guardian_Signs)
+- **Game Maker Qix** (2011) — Windows — Tangentg; published by Tangentg (self-published; distributed on itch.io)
+  - Also known as: Game_maker_qix_v9_2011
+  - antivirus theme: the playfield border is a ring of folder icons; the marker travels along it and touches infected (red) files to clean them (they turn cyan)
+  - marker can leave the border and draw a dotted Stix trail, chased along the trail by a Qix-style Fuse (seen in the screenshot)
+  - Spritz enemies are removed by touching them; Sparx patrol the border and the Qix roams the field, and both must be avoided
+  - HUD tracks score, cleaned-file count and an Energy meter
+  - final phase: once all files are clean, shoot the cleaned files at the Qix to destroy it
+  - `qix` · rescued · medium · [tangentg.itch.io](https://tangentg.itch.io/game-maker-qix) · [img.itch.zone](https://img.itch.zone/aW1nLzE0MTUwNjk5LnBuZw==/original/i2RzFb.png)
+- **Hundreds** (2013) — iOS, Android, Flash — Semi Secret Software with Greg Wohlwend; published by Semi Secret Software
+  - no line drawing: touching a circle grows it and counts its number up; the level clears when the numbers total 100
+  - a circle that touches another circle while it is being grown fails the level
+  - 100 handcrafted levels add linked circles that must be touched together, buzzsaws that reset numbers, and snowflakes that freeze other circles
+  - hidden cipher puzzles appear between levels; an endless mode of random levels unlocks after level 100
+  - `jezzball` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Hundreds_%28video_game%29)
+- **Ingress** (2013) — Android, iOS — Niantic (Niantic Labs at Google; Niantic Inc.; Niantic Spatial from 2025); published by Niantic
+  - Also known as: Ingress Prime
+  - location-based: two factions capture and link real-world portals
+  - linking three portals in a triangle creates a control field that claims the Mind Units beneath it
+  - Mind Units scale with the human population under the field, so bigger enclosures score more
+  - an enemy breaks a field by destroying any one of its links; a portal left with fewer than 3 resonators loses all its links and fields
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Ingress_%28video_game%29) · [ja.wikipedia.org](https://ja.wikipedia.org/w/index.php?title=Special:WhatLinksHere/陣取りゲーム&limit=500&namespace=0)
+- **Spider: Rite of the Shrouded Moon** (2015) — iOS, Android, Windows, macOS, Linux, and 2 more — Tiger Style
+  - the spider jumps between surfaces trailing silk; strands that close a triangle form a web that catches flying insects (series rule documented for the predecessor Spider: The Secret of Bryce Manor)
+  - a jump across too wide a gap breaks the strand (documented for the predecessor)
+  - silk is limited: trap insects before you run out
+  - each level has an insect quota that opens the exit portal; you may stay to keep eating
+  - hornets cannot be webbed and must be attacked by jumping into them
+  - real-world time of day, weather and location change insect placement and puzzles; 30 levels
+  - `other` · corrected · medium · [en.wikipedia.org](https://en.wikipedia.org/wiki/Spider:_Rite_of_the_Shrouded_Moon) · [en.wikipedia.org](https://en.wikipedia.org/wiki/Spider:_The_Secret_of_Bryce_Manor) · [www.shroudedmoon.com](https://www.shroudedmoon.com) · [wiki.ryliejamesthomas.net](https://wiki.ryliejamesthomas.net/doku.php?id=qixote)
+- **Splatoon (Turf War)** (2015) — Wii U — Nintendo EAD (with Monolith Soft assisting); published by Nintendo
+  - Also known as: Splatoon
+  - online 4v4 teams ink the map; the team covering the most turf in its colour after 3 minutes wins
+  - in squid form you swim through your own team's ink (including up walls) to move fast, hide and refill ink
+  - enemy ink slows you in humanoid form, cannot be swum through and slowly damages you
+  - splatted players respawn at their team's starting point
+  - `other` · confirmed · high · [en.wikipedia.org](https://en.wikipedia.org/wiki/Splatoon_%28video_game%29)
+- **Ink Dots: Territory Capture** (2026) — iOS, iPadOS, macOS, visionOS — KirsuLab LLC
+  - two ink colours of dots on one grid; surrounding rival dots with an unbroken chain captures them
+  - goal is to claim the most territory; play against a friend or the AI
+  - `other` · confirmed · medium · [apps.apple.com](https://apps.apple.com/us/app/ink-dots-territory-capture/id6785680981)
+- **Lazy Drawer: Line Survivors** (2026) — Windows, macOS, Linux — BottleTasteStudio
+  - no weapons or aiming: your walking trail is the attack, and enemies touching it take damage over time
+  - closing a loop bursts damage on everything inside; bigger loops trap more enemies
+  - dash out of danger while managing a trail gauge
+  - pick 1 of 3 upgrades per level from 30+; maxed upgrades awaken; 26 hidden synergies tracked in a codex
+  - 10 stages, each with its own waves, a mid-boss and a boss; ~15-minute runs; toggleable per-stage Overtime Conditions
+  - 5 characters; 18 collectible charms bought with run gold, with set bonuses that shape the starting build
+  - `other` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/5018790/Lazy_Drawer_Line_Survivors/)
+- **Linsips** (2026) — Windows, SteamOS/Linux — MILQ Games
+  - exactly one horizontal and one vertical line split the field into four quadrants
+  - a goal of equal ball counts in every quadrant replaces a percentage target
+  - each ball has its own speed, trajectory and size
+  - the first line cannot be undone, and the clock and balls keep moving while you place the second
+  - 20 levels, from four-ball setups to multi-ball ones
+  - `jezzball` · confirmed · high · [store.steampowered.com](https://store.steampowered.com/app/4301370/Linsips/)
+- **Tetro Domain** (2026) — PICO-8 — puleo; published by puleo (self-published on the Lexaloffle BBS)
+  - turn-based territory claiming between two factions (blue vs pink) on a royal map
+  - each turn, claim one vacant territory adjacent to the central castle or to land you own
+  - any territory fully enclosed by your claims is captured automatically
+  - some territories hold mines worth 1-3; the first to control a majority of total mine value wins
+  - `other` · confirmed · high · [www.lexaloffle.com](https://www.lexaloffle.com/bbs/?tid=155537)
+- **Pencil Pursuit** (2027 (planned: 12 January 2027)) — Windows — Terrace Vale Gaming
+  - side-scrolling runner across notebook pages, chased by the eraser; jump, freeze and weave through ink-drawn obstacles; five-continue budget
+  - 25 run pages in five chapters, each ending in a boss (Eraser, White-Out, Pen, Marker, Keyboard), then a 26th-page fight with the War Machine they build together
+  - PENCIL REVENGE mode: fight pages that turn the chase on the rivals who chased you
+  - REDRAW mode: 'draw your territory, close your lines, own the notebook' to claim the page (rules not detailed)
+  - `other` · corrected · low · [store.steampowered.com](https://store.steampowered.com/app/5033170/Pencil_Pursuit/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=5033170)
+- **Paint Tanks** (unknown) — Browser, Windows, Linux — EsVagy; published by EsVagy (self-published on itch.io)
+  - top-down tank shooter where bullets recolour map cells to your colour to capture area
+  - opponents cannot drive on area you have captured, so territory is both terrain denial and an escape route
+  - power-ups: bullet speed, bullet recolour area (2 cells per bullet instead of 1), reload time
+  - up to 4 local players; you win only by eliminating the other players
+  - `other` · corrected · medium · [esvagy.itch.io](https://esvagy.itch.io/paint-tanks) · [esvagy.itch.io](https://esvagy.itch.io/)
+- **Splash&Dash** (unknown (coming soon)) — Windows — Ghost Budget Games
+  - Also known as: Splash and Dash
+  - kart combat where every painted tile is claimed territory; most ground in your colour wins; rivals paint over you
+  - drifting refills the paint tank
+  - between rounds, pick cards that permanently upgrade your vehicle for the rest of the match; opponents build their decks too
+  - vehicle classes: Heavies (ramming), Speedsters (fast cornering, wide trails), Standards (balanced); ram rivals off the map
+  - arena power-ups such as speed boosts, paint bombs and shields; tracks change every lap
+  - 4-player local split-screen, 8 online; match length 2-10 minutes
+  - `other` · confirmed · medium · [store.steampowered.com](https://store.steampowered.com/app/3884060/SplashDash/) · [store.steampowered.com](https://store.steampowered.com/api/appdetails?appids=3884060)
+
+## Not included
+
+Candidates that two independent checks dropped, because they are not territory-capture games or because no source confirms them. A later search may still confirm some of them.
+
+- **7ix** (2020): only the title of an AtariAge thread about an Atari 7800 work in progress, which could not be opened.
+- **CutOut!** (1995): a bare name in the [Qixote wiki](https://wiki.ryliejamesthomas.net/doku.php?id=qixote) list, with no other source.
+- **Dinosaur Dig** (unknown): named as a minigame in the Qixote wiki, with no host game or other source.
+- **El Dorado (CD Express)** (1997?): exists, but shows no territory capture: MAME classes it as a gambling game.
+- **Gals Panic II (Super NES)** (1994 (unreleased)): one uncited row in Wikipedia; no other source confirms the port.
+- **Gals Panic RPG remake** (2019): exists, but is a role-playing game with no capture core.
+- **Ground Keeper** (unknown): a bare name in the [Qixote wiki](https://wiki.ryliejamesthomas.net/doku.php?id=qixote) list, with no other source.
+- **Jintori Game (PC-6001)** (unknown (early 1980s)): exists in MAME's software list (Hudson Soft), but its gameplay is unverified.
+- **Kurohige no Kurutto Jintori** (2002): exists, but is a board-style puzzle.
+- **LawnMower** (unknown): a bare name in the [Qixote wiki](https://wiki.ryliejamesthomas.net/doku.php?id=qixote) list, with no other source.
+- **LightFlight** (unknown): a bare name in the [Qixote wiki](https://wiki.ryliejamesthomas.net/doku.php?id=qixote) list, with no other source.
+- **Lineum** (unknown): a bare name in the [Qixote wiki](https://wiki.ryliejamesthomas.net/doku.php?id=qixote) list, with no other source.
+- **OneFrog Xonix** (unknown): a bare name in the [Qixote wiki](https://wiki.ryliejamesthomas.net/doku.php?id=qixote) list, with no other source; the developer's site is gone.
+- **Pikiinya!** (1997): exists (Super Famicom, 1997), but is not a territory-capture game.
+- **Silk** (unknown): a bare name in the [Qixote wiki](https://wiki.ryliejamesthomas.net/doku.php?id=qixote) list, with no other source.
+- **Super Jezzball Touch** (unknown (~2014)): only an archived store page; its mechanics are unknown.
+- **TIX** (2019): only the title of an AtariAge thread about a TI-99/4A work in progress, which could not be opened.
+- **TPXonix** (unknown): a bare name in the [Qixote wiki](https://wiki.ryliejamesthomas.net/doku.php?id=qixote) list, with no other source; its SourceForge page could not be opened.
+- **Waifu Uncovered** (2020): exists, but is a shoot 'em up with no area capture.
+- **Xonix (Altarsoft)** (unknown): its Android listing is gone, and nothing else confirms it.
+- **Xonix 4G** (unknown): its Android listing is gone, and nothing else confirms it.
+- **贪吃蛇的圈地冒险** (2026 (4399 upload)): exists, but is a slither-style snake game.
