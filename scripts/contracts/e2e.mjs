@@ -712,6 +712,7 @@ export function realProof(runFile) {
     const proved = spawnSync(ZK_HOST, ["prove", "--run", runFile, "--season", LIVE_SEASON_FILE], { cwd: REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
     if (proved.error) throw proved.error;
     if (proved.status !== 0) throw new Error(`zk-host prove --run ${runFile} exited ${proved.status ?? proved.signal}`);
+    process.stdout.write(proved.stdout);
     writeFileSync(proofFile, `${JSON.stringify(fixtureOf(proved.stdout), null, 2)}\n`);
   }
   return encodeProof(JSON.parse(readFileSync(proofFile, "utf8")));

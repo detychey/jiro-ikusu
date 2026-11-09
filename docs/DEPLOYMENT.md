@@ -2,7 +2,7 @@
 
 The Arbitrum Sepolia deployment of plan M4.14 and its first settled run: the runbook of the round F2 session, what it records, how a redeploy works, and the fork rehearsal that tested the runbook first. The backend is zk (D2): `ZkReferee` over RISC Zero's emergency stop for its 3.0 Groth16 verifier, `0x724d375B5b622e15f0E64e9Deb76a4cB17877797`, pinned in `scripts/contracts/deploy.mjs` by chain id (`docs/ECONOMY.md`, zk prover trust).
 
-**Status: prepared, not deployed.** No key exists yet and no testnet transaction has been sent. The tooling, `seasons/testnet-0.json` and this runbook landed with M4.14's preparation, and the whole flow passed on a fork of Arbitrum Sepolia ([§5](#5-fork-rehearsal)). The F2 session runs §2 and fills §3.
+**Status: deployed on 2026-11-09; a run settled.** Round F2 ran §2 end to end on Arbitrum Sepolia. It deployed generation 1 from `ca76f8f` and opened `testnet-0` as season 1. All four sources verified on Sourcify. Run 1, a bot run proven with a real Groth16 proof, settled with 1 clear; run 2 committed six full journals; `isSolvent()` is true ([§3](#3-results)). The whole flow first passed on a fork of Arbitrum Sepolia ([§5](#5-fork-rehearsal)).
 
 ## 1. Prerequisites
 
@@ -117,17 +117,71 @@ The plan's nine steps, as seven, each one or two commands, run in order in one s
 
 ## 3. Results
 
-Filled by the F2 session; Arbiscan is `https://sepolia.arbiscan.io/address/<address>` and `https://sepolia.arbiscan.io/tx/<hash>`.
+Round F2 ran §2 on 2026-11-09, its transactions from 12:14 to 13:32 UTC, from the repository at `/home/runner/work/jiro-ikusu/jiro-ikusu`, at this PR's `ca76f8f` (forge 1.8.6, Node 22.23.4, ethers 6.17.0). Arbiscan is `https://sepolia.arbiscan.io/address/<address>` and `https://sepolia.arbiscan.io/tx/<hash>`. Every transaction succeeded, and every receipt reports `gasUsedForL1` 0: Arbitrum Sepolia still prices L1 calldata at 0 (§1). Gas was priced at 0.0200 to 0.0201 gwei. The deployer spent 0.000130 ETH and the tester 0.000127 ETH, of which 0.0001 ETH was the two run fees.
 
-- **Generation:** `deployedAt`, `sourceCommit`, and each address of `deployments/arbitrum-sepolia.json` with its Arbiscan link: ArbBlockhashEntropy, ZkReferee (and its `imageId`), Season, Challenge; the season number of `testnet-0`.
-- **Sourcify:** the four links `sourcify.sh` printed.
-- **Gas per transaction:** the `e2e-gas` tables of steps 5 and 6, and the deployment lines of steps 2 and 3, each with its transaction link and its `gasUsedForL1` (the "Of which L1" column).
-- **Verify gas per level:** the two `ZkReferee` estimates of step 5: a run proof verifies its six levels at once, so the gas per level of a run is a sixth of it; a level proof's gas is the second figure.
-- **Reveal timing:** each run's reveal, in seconds after its `startRun` block.
-- **Inclusion latency of the full six-journal commit:** step 6's `commitRun` line, from the submission to its block's timestamp. Block timestamps are whole seconds, so this reads to about 1 s, and can be negative by up to 1 s.
-- **Margin at commit of the settled bot run:** step 5's line, its deadline, `revealedAt + ⌈Σ ticksUsed / 15⌉ + commitSlack`, minus `committedAt`; and step 6's margin to its latest commit.
-- **The settled run:** run id, score, ticks and clears from `RunSettled` (at least one clear), its `settleRun` link, and the proving time and segments `zk-host` printed.
-- **`isSolvent()`:** true, with the block read.
+### Generation
+
+From `deployments/arbitrum-sepolia.json`: `deployedAt` 2026-11-09T12:14:37.563Z, `sourceCommit` `ca76f8f58c3b0bbecf82ac5a13b93726f341d6d4`, backend zk, operator and treasury the deployer [`0xEfEA…d1B3`](https://sepolia.arbiscan.io/address/0xEfEA68dbE0740982789735D007B14D0D8358d1B3).
+
+| Contract | Address | Sourcify |
+|---|---|---|
+| ArbBlockhashEntropy, over ArbSys `0x64` | [`0xB350552550ff09474692CA688e89873DF336C470`](https://sepolia.arbiscan.io/address/0xB350552550ff09474692CA688e89873DF336C470) | [exact match](https://repo.sourcify.dev/421614/0xB350552550ff09474692CA688e89873DF336C470) |
+| ZkReferee, over the emergency stop `0x724d…7797` | [`0x1097BDED737146D4A83Cf969a357e504FA028c5a`](https://sepolia.arbiscan.io/address/0x1097BDED737146D4A83Cf969a357e504FA028c5a) | [exact match](https://repo.sourcify.dev/421614/0x1097BDED737146D4A83Cf969a357e504FA028c5a) |
+| Season | [`0x0e9BcC5A9DBD9CAD05C531fC12E925164cfaDf6d`](https://sepolia.arbiscan.io/address/0x0e9BcC5A9DBD9CAD05C531fC12E925164cfaDf6d) | [exact match](https://repo.sourcify.dev/421614/0x0e9BcC5A9DBD9CAD05C531fC12E925164cfaDf6d) |
+| Challenge | [`0x585b38c5dEfb601E52613F5FB80F9e3289fF4fAB`](https://sepolia.arbiscan.io/address/0x585b38c5dEfb601E52613F5FB80F9e3289fF4fAB) | [exact match](https://repo.sourcify.dev/421614/0x585b38c5dEfb601E52613F5FB80F9e3289fF4fAB) |
+
+- **Image id:** `ZkReferee.imageId()` reads `0xa3013dc48ccd9e8e28c6625a8362a1fde513e1c51ae1e50286445c0eae3702b1`, which `zk-host image-id` printed in the session, the value of M4.8's and M4.10's guests. The happy path checked it again before proving.
+- **`testnet-0`** is season 1 of `Season`, opened at block 327,552,759, 12:14:45 UTC. It accepts runs until 2026-11-10 12:14:45 UTC and settles until 24 h later. `seasons/testnet-0.json`'s `referee` is the ZkReferee above.
+- **Preflight** (step 1): `ready: yes`, the `RISC Zero verifier` row passing: the stop is not paused, over `0x2a09…a84D`, selector `0x73c457ba`. The optional fork rehearsal, run before step 2, passed with §5's gas for every transaction.
+
+### Gas per transaction
+
+| §2 step | Transaction | Calldata bytes | Gas | Of which L1 | Fork (§5) |
+|---|---|---:|---:|---:|---:|
+| 2 | [deploy `ArbBlockhashEntropy`](https://sepolia.arbiscan.io/tx/0x276603e4db0d53ac17522dde9234b1719c82911d1e7d1b752d8fef90e390b912) | | 496,001 | 0 | 496,229 |
+| 2 | [deploy `ZkReferee`](https://sepolia.arbiscan.io/tx/0x03ce2a20fdc4bff6e13dc1359b17312394648243b061c9c9d80ace68ffd34be6) | | 762,710 | 0 | 762,710 |
+| 2 | [deploy `Season`](https://sepolia.arbiscan.io/tx/0x5701da211287ae1754f7d79bdd9d4f8a19cf558966ff6109cbf28bcef9e97a41) | | 1,736,804 | 0 | 1,736,804 |
+| 2 | [deploy `Challenge`](https://sepolia.arbiscan.io/tx/0x58e0b6b47e6462bc7363955590a96b0b01f602e167543e1ee54767e15c2573b5) | | 1,971,257 | 0 | 1,971,257 |
+| 2 | [`Season.bindChallenge`](https://sepolia.arbiscan.io/tx/0xd31c7388ea63b4c56ac7f773620f309a20033b86802eab70629a5a21be761915) | | 45,310 | 0 | 45,310 |
+| 3 | [`Season.open`, testnet-0](https://sepolia.arbiscan.io/tx/0xbc24eedf5bafd52ba3130d5d8404630a40e8e1f26810ae1259c0a5b87421e933) | | 925,637 | 0 | 925,637 |
+| 5 | [`Challenge.startRun`, run 1](https://sepolia.arbiscan.io/tx/0x916e1b4cb04c961601bb08dc74197563b428099bc738f6bbdc708e58fba350b9) | 36 | 162,179 | 0 | 166,176 |
+| 5 | [`Challenge.revealRun`](https://sepolia.arbiscan.io/tx/0x2de173acac528c3b5e6c7890a0badb18feb5148daa437339bfb84429f1d93395) | 36 | 59,396 | 0 | 63,294 |
+| 5 | [`Challenge.commitRun`, run 1's six journals (723 bytes)](https://sepolia.arbiscan.io/tx/0x666fe3c01e76964bae67764cc0109d59cee565289c91e0794ea31c9b32c76177) | 1,220 | 94,289 | 0 | 96,523, other journals |
+| 5 | [`Challenge.settleRun`, run 1, through ZkReferee and the emergency stop](https://sepolia.arbiscan.io/tx/0x3d329fb05184dad4aba4564801334065bd740f365126224411d1989a01db3e6b) | 7,300 | 530,256 | 0 | 530,143, other run |
+| 6 | [`Challenge.startRun`, run 2](https://sepolia.arbiscan.io/tx/0xeb23fd0db7bcd5f92c81a5b553c36e3f7cf2bbc553cf464435a69b3f89168a90) | 36 | 127,979 | 0 | 131,976 |
+| 6 | [`Challenge.revealRun`](https://sepolia.arbiscan.io/tx/0xc0f172967b6356f3dbf85df4008bad90f4df62f2dac09b6622c820f00fadeb9f) | 36 | 59,396 | 0 | 63,294 |
+| 6 | [`Challenge.commitRun`, six full journals (49,026 bytes)](https://sepolia.arbiscan.io/tx/0x2e3953b9a7e30874dc67c7a223574ce4ea7407e0d9769dd888abde7c35739108) | 49,604 | 864,001 | 0 | 1,940,060 |
+
+- **The full commit cost 864,001 gas**, under half the fork's 1,940,060. That figure was the EIP-7623 calldata floor anvil applied; Arbitrum Sepolia charged less than that floor, so ArbOS does not apply it, and §1's funding table overstates the tester's cost. Both are far below the 32,000,000 cap.
+- **`startRun` and `revealRun`** cost about 4,000 gas less than on the fork. There `ArbBlockhashEntropy` called MockArbSys, a contract, where here it calls the ArbSys precompile. `ArbBlockhashEntropy`'s deployment cost 228 gas less, since its constructor argument `0x64` is mostly zero bytes.
+
+### Verify gas per level
+
+`eth_estimateGas` against the deployed `ZkReferee`, the transaction's 21,000 and calldata included:
+
+- **A run proof:** `verifyRun` of run 1's proof, 344,156 gas, which verifies its six levels at once: 57,359 gas per level.
+- **A level proof:** `verify` of M4.8's level proof of `commit-at-tick-0`, 283,896 gas.
+
+### Timing
+
+- **Reveal timing:** run 1 revealed 13 s after its `startRun` block (block 327,553,309 at 12:17:19, revealed at 12:17:32), and run 2 12 s after its own. Both waited for the entropy block, 40 Arbitrum blocks on.
+- **Inclusion latency of the full six-journal commit:** run 2's `commitRun` is in a block of timestamp 1794226690 (block 327,553,492), 0.5 s after its submission; its receipt arrived 2.3 s after that.
+- **Margin at commit of the settled bot run:** 141 s. Its deadline 1794226795, `revealedAt` 1794226652 + ⌈338 / 15⌉ + 120, minus `committedAt` 1794226654. The bots play much faster than real time, so the margin is nearly the whole of the 23 s of play plus the 120 s slack. Run 2's margin to its latest commit was 1,197 s of the 1,080 + 120.
+
+### The settled run
+
+- **Run 1**, settled by [`settleRun`](https://sepolia.arbiscan.io/tx/0x3d329fb05184dad4aba4564801334065bd740f365126224411d1989a01db3e6b) at block 327,569,544, 13:32:09 UTC. Its `RunSettled`: score 20,310, 338 ticks, 1 clear, equal to the native replay. The happy path's first run cleared a level, so no second happy-path run was bought.
+- **Run file and proof:** [`seasons/testnet-0/runs/run-1.json`](../seasons/testnet-0/runs/run-1.json), draw slots 1, 11, 4, 0, 2, 13. With `--short`, the bots' clear is kept whole and the other five levels close at tick 30. Its Groth16 proof is [`run-1.proof.json`](../seasons/testnet-0/runs/run-1.proof.json).
+- **Proving:** the proof of record took about 74.5 min from commit to settlement, from the run file (12:17:36) to the proof file (13:32:09). That covers the executor's check, the segment proofs, the recursion and the Groth16 wrapping, and is well under §6's estimate of 2 to 3 hours. `e2e.mjs` kept `zk-host prove`'s output to read the seal and did not print it, so the session's log lacks its figures; this PR now prints them. They come from a second, offline proof of the same run file with the same `zk-host`, in progress when this line was written.
+
+### `isSolvent()`
+
+`true` at block 327,569,660 (13:32:42 UTC), after the settlement; `preflight.mjs --check-solvent` printed `solvency PASS` and `ready: yes`.
+
+### Deviations from §2
+
+- **The keys** are set without the `0x` prefix that the scripts check for. The session ran every script with `DEPLOYER_KEY="0x${DEPLOYER_KEY#0x}"` (and the same for `TESTER_KEY`) in that command's environment, so neither key went on a command line.
+- **`e2e.mjs` recompiled the `zk-host` crate** for 1 min 28 s at the start of step 5, with the same `cargo build` as §1. The image id was unchanged, and `ZkReferee.imageId()` still matched.
 
 ## 4. Redeploy and generations
 
