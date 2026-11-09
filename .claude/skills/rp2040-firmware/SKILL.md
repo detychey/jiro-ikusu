@@ -9,7 +9,7 @@ The device is a [wedgie](https://wedgie.dev) and Jiro is an app on it (README §
 
 ## Facts
 
-- RP2040: dual Cortex-M0+, 264 KB SRAM, no FPU. The wedgie's firmware (0.3.76) runs MicroPython 1.29.0 and boots into one app. About 137 KB of RAM is free for an app, and about 113.6 KB after a power-up, which also starts the wedgie's USB drive (largest block about 96 KB).
+- RP2040: dual Cortex-M0+, 264 KB SRAM, no FPU. The wedgie's firmware (0.3.76, then 0.3.77) runs MicroPython 1.29.0 and boots into one app. About 137 KB of RAM is free for an app, and about 113.6 KB after a power-up, which also starts the wedgie's USB drive (largest block about 96 KB).
 - Screen: the firmware's 240×240, 16-color framebuffer (4 bits per pixel, 28,800 B). A full-screen push takes about 25 ms. Pin map and key mapping: README §2. On the case, A is green, B and X are grey, Y is red.
 - An app is a folder with `wedgie.json`: at most 30 files and 256 KB, every file name starting with its `mod`. Saves go to `/saves/<mod>/` and survive reinstalls. Install with `python3 wedgie.py install .` and one green press. Holding both grey buttons while plugging in starts the wedgie without its app.
 - The rp2 port's C stack is 8 KB, so the glue runs the core on a stack the app allocates: 24 KB for `start`, `step` and `state_hash` (the core builds the Recorder in place, `Recorder::new_in`; `start` peaks at 19,404 B), 48 KB for `replay`, which builds its game on the stack as the referees do (peak 46,820 B).
@@ -31,6 +31,7 @@ The device is a [wedgie](https://wedgie.dev) and Jiro is an app on it (README §
 
 ## Always
 
+- Take random bytes from `os.urandom`: the firmware's `wedgie.rand` probes the I2C bus for a secure element on its first call and keeps about 13 KB of drivers.
 - Allocate the core's stack and the Recorder first, before importing anything else; ship the app's code precompiled with `mpy-cross`; read levels and vectors one at a time.
 - Run this sequence every tick, on an absolute 66,667 µs schedule:
   1. Sample all inputs once, into the README §6.1 mask; Y and the joystick press are never in it.

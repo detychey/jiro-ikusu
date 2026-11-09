@@ -1524,7 +1524,7 @@ On 2026-11-02 the device became a wedgie app that plays Training only (README §
     - **Timing:** step time and render time measured separately, with the worst case and an overrun counter, shown on the end screen.
     - **Levels:** the 16 levels' bytes and the weights of `seasons/calibration-1.json`, generated into the app at build time.
     - **Screens (P12):** a level select outside play, with the joystick and green (A), never journaled; between-level screens with claim, score and lives; a brief overlay at level start; after the last level's clear, "Congrats! visit jiro-ikusu.win" (round E1). See §15, question 11.
-    - **Training `runNonce`:** from the wedgie's random source, since §6.3 allows any value in training.
+    - **Training `runNonce`:** from `os.urandom`, since §6.3 allows any value in training (round E1: the firmware's `wedgie.rand` keeps about 13 KB of the heap).
     - **Best scores:** per level in `/saves/jiro/`, which survives reinstalls.
   - **A qemu play test,** with the screen and inputs stubbed as the spike's `qemu_app_check.py` does: it plays level 1 with scripted inputs to the summary screen, and checks the journal and the score against native replay. It runs with the heap filled down to the free RAM a wedgie reports with no app: 137,760 bytes in the spike.
   - **The `wedgie` CI job** builds `wedgie/app/` with the module and uploads it as the `wedgie-app` artifact, with `retention-days: 90`.
@@ -1535,7 +1535,7 @@ On 2026-11-02 the device became a wedgie app that plays Training only (README §
   - the qemu play test passes in CI, at the free RAM above;
   - the app's folder keeps the wedgie's app limits, checked as in M3.8;
   - the free heap and the largest free block after start are printed over USB, and recorded;
-  - (user) on a wedgie, each of the 16 levels can be selected, at least one is played to its end with captures, the overrun counter shows 0 and the worst tick is under 50 ms, and a best score survives unplugging: the user posts the PASS list of the 16 levels and the two values.
+  - (user) on a wedgie, each of the 16 levels can be selected, at least one is played to its end with captures, the overrun counter shows 0 (the owner dropped a 50 ms target for the worst tick on 2026-11-09: round E1's 59.4 ms with no overrun passes), a best score survives unplugging, and the app starts after a power-up, which also starts the wedgie's USB drive: the user posts the PASS list of the 16 levels and the two values.
 
   This closes README §9's M3, so this PR updates the status lines.
 - **Verify with:** `bash scripts/bootstrap.sh wedgie && make -C wedgie/natmod/glue && bash wedgie/scripts/build-app.sh && python3 -I wedgie/scripts/qemu_app_check.py <firmware.elf> wedgie/app 137760`
