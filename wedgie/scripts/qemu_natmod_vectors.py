@@ -4,14 +4,15 @@ check app's own code (wedgie/check/jiro_check.py) on records of the app's own en
 (make_check_vectors.py): replay's code, the Outcome, the tick count, traceKeccak and the last
 state hash, then, for a vector replay accepts, the Recorder's end reason, journal and final state
 hash. For a vector that fails, it prints the first tick whose state hash differs from the
-committed trace. It prints the stack peak of start, step and replay on the 64 KB stack, which
-must stay under it. Usage:
+committed trace. It prints the stack peak of start, step and replay on one 48 KB stack: start's
+and step's must stay under the Training app's 24 KB stack, replay's under the check app's 48 KB,
+the stacks the glue requires for each call. Usage:
 
   python3 -I qemu_natmod_vectors.py <firmware.elf> <jiro_core.mpy> <repo> (--all | <kind/name>...)
 
 where --all is every vector of vectors/game/ and vectors/levels/. It stops qemu when it ends,
 but hangs if the module hard-faults: run it under a timeout. Exit status 0 when every vector
-passes and every peak stays under the stack.
+passes and every peak stays under its stack.
 """
 
 import ast
@@ -26,7 +27,8 @@ spec = importlib.util.spec_from_file_location("make_check_vectors", Path(__file_
 make_check_vectors = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(make_check_vectors)
 
-STACK_BYTES = 65536
+STACK_BYTES = 49152  # the check app's, which runs replay
+CALL_STACK_BYTES = {"start": 24576, "step": 24576, "replay": STACK_BYTES}
 DIAGNOSED_TICKS = 1024
 QEMU = ["qemu-system-arm", "-M", "microbit", "-global", "nrf51-soc.flash-size=1048576",
         "-global", "nrf51-soc.sram-size=262144", "-nographic", "-monitor", "null",
@@ -162,9 +164,9 @@ def main(firmware, mpy, repo, names):
                 print(f"     {first_differing_tick(repl, repo, name)}")
         peaks = ast.literal_eval(repl.exec("print(peaks)"))
         print(f"stack peaks of {STACK_BYTES} bytes: start {peaks['start']}, step {peaks['step']}, replay {peaks['replay']}")
-        over = [call for call, peak in peaks.items() if peak >= STACK_BYTES]
+        over = [call for call, peak in peaks.items() if peak >= CALL_STACK_BYTES[call]]
         if over:
-            print(f"FAIL: {', '.join(over)} reached the end of the stack")
+            print(f"FAIL: {', '.join(f'{call} reached {CALL_STACK_BYTES[call]} bytes' for call in over)}")
         # A peak of 0 means the probe saw no call: the run checked nothing.
         unmeasured = [call for call, peak in peaks.items() if peak == 0 and (call == "replay" or accepted)]
         if unmeasured:

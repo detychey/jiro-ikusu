@@ -1,11 +1,13 @@
 // MicroPython dynamic native module "jiro_core": jiro-core (natmod/rust, linked in as
-// build/jiro_rust.o) behind a Python API. The caller owns all memory: a stack buffer of at least
-// 64 KB (the rp2 port's C stack is 8 KB; starting a level needs about 63 KB) and the Recorder
-// buffer, both bytearrays made once, first, while the heap is whole. `start`, `step`,
-// `state_hash` and `replay` run on that stack; the other calls only read the Recorder or paint
-// cells, in small frames, on the C stack. A recorder buffer holds a marker after a successful
-// `start`, and every other call that takes it raises ValueError without one. The buffers of one
-// call must not overlap, since the core writes some while it reads others: ValueError.
+// build/jiro_rust.o) behind a Python API. The caller owns all memory: a stack buffer, of at least
+// 24 KB for `start`, `step` and `state_hash` and 48 KB for `replay` (the rp2 port's C stack is
+// 8 KB; starting a level needs about 19 KB and a replay about 46 KB, since replay builds its game
+// on the stack, as the referees do), and the Recorder buffer, both bytearrays made once, first,
+// while the heap is whole. `start`, `step`, `state_hash` and `replay` run on that stack; the other
+// calls only read the Recorder or paint cells, in small frames, on the C stack. A recorder buffer
+// holds a marker after a successful `start`, and every other call that takes it raises ValueError
+// without one. The buffers of one call must not overlap, since the core writes some while it
+// reads others: ValueError.
 //
 //   rules_version() -> int
 //   recorder_size() -> int
@@ -33,17 +35,18 @@
 #include "py/dynruntime.h"
 #include "jiro_api.h"
 
-#define STACK_MIN (64 * 1024)
+#define PLAY_STACK_MIN (24 * 1024)
+#define REPLAY_STACK_MIN (48 * 1024)
 
 void jiro_glue_panic(void) {
     mp_raise_msg(&mp_type_RuntimeError, MP_ERROR_TEXT("jiro-core panic"));
 }
 
-static void *stack_top(mp_obj_t stack_obj) {
+static void *stack_top(mp_obj_t stack_obj, size_t min_len) {
     mp_buffer_info_t stack;
     mp_get_buffer_raise(stack_obj, &stack, MP_BUFFER_RW);
-    if (stack.len < STACK_MIN) {
-        mp_raise_ValueError(MP_ERROR_TEXT("stack buffer under 64 KB"));
+    if (stack.len < min_len) {
+        mp_raise_ValueError(MP_ERROR_TEXT("stack buffer too small for this call"));
     }
     return (void *)(((uintptr_t)stack.buf + stack.len) & ~(uintptr_t)7);
 }
@@ -134,7 +137,7 @@ static mp_obj_t start(size_t n_args, const mp_obj_t *args) {
         .mode = mp_obj_get_int(args[2]),
         .level_index = mp_obj_get_int(args[4]),
     };
-    uint32_t code = jiro_call_on_stack(&start_args, stack_top(args[5]), (jiro_entry_t)jiro_recorder_start);
+    uint32_t code = jiro_call_on_stack(&start_args, stack_top(args[5], PLAY_STACK_MIN), (jiro_entry_t)jiro_recorder_start);
     return mp_obj_new_int(code);
 }
 static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(start_obj, 6, 6, start);
@@ -144,7 +147,7 @@ static mp_obj_t step(mp_obj_t recorder_obj, mp_obj_t mask_obj, mp_obj_t stack_ob
         .recorder = recorder_buf(recorder_obj),
         .mask = mp_obj_get_int(mask_obj),
     };
-    uint32_t code = jiro_call_on_stack(&step_args, stack_top(stack_obj), (jiro_entry_t)jiro_recorder_step);
+    uint32_t code = jiro_call_on_stack(&step_args, stack_top(stack_obj, PLAY_STACK_MIN), (jiro_entry_t)jiro_recorder_step);
     if (code == JIRO_MISUSE) {
         check(code);
     }
@@ -186,7 +189,7 @@ static MP_DEFINE_CONST_FUN_OBJ_2(journal_equals_obj, journal_equals);
 static mp_obj_t state_hash(mp_obj_t recorder_obj, mp_obj_t stack_obj) {
     uint8_t hash[JIRO_HASH_LEN];
     jiro_view_args_t view = {.recorder = recorder_buf(recorder_obj), .state_hash = hash};
-    check(jiro_call_on_stack(&view, stack_top(stack_obj), (jiro_entry_t)jiro_recorder_view));
+    check(jiro_call_on_stack(&view, stack_top(stack_obj, PLAY_STACK_MIN), (jiro_entry_t)jiro_recorder_view));
     return mp_obj_new_bytes(hash, JIRO_HASH_LEN);
 }
 static MP_DEFINE_CONST_FUN_OBJ_2(state_hash_obj, state_hash);
@@ -273,7 +276,7 @@ static mp_obj_t replay(size_t n_args, const mp_obj_t *args) {
         .trace_keccak = keccak,
         .last_hash = last,
     };
-    uint32_t code = jiro_call_on_stack(&replay_args, stack_top(args[3]), (jiro_entry_t)jiro_replay);
+    uint32_t code = jiro_call_on_stack(&replay_args, stack_top(args[3], REPLAY_STACK_MIN), (jiro_entry_t)jiro_replay);
     mp_obj_t items[5] = {
         mp_obj_new_int(code),
         mp_obj_new_bytes(outcome, JIRO_OUTCOME_LEN),

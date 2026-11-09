@@ -82,7 +82,7 @@ The core allocates nothing: its buffers have fixed sizes. The RP2040 has 270,336
 | Journal: at most 1 event per tick × 2,700 ticks × 3 bytes ([§6.2](#62-events)) | 8,100 |
 | Full-screen RGB565 framebuffer (not used) | 115,200, about 43 % of SRAM |
 
-On the wedgie, the firmware owns the screen: a 16-color buffer of 240 × 240 × 4 bits, 28,800 bytes, and a full-screen push takes about 25 ms ([wedgie code guide](https://wedgie.dev/code.md)). About 137 KB of RAM is left for an app: the spike's wedgie reported 137,760 bytes free with no app. Jiro's app holds the core's 64 KB stack, its 18.5 KB Recorder, the 18.2 KB module and the 3.6 KB shadow of the dirty-cell diff ([§3](#3-architecture)); on qemu, with the heap filled down to 137,760 bytes free, about 18 KB stay free after it starts.
+On the wedgie, the firmware owns the screen: a 16-color buffer of 240 × 240 × 4 bits, 28,800 bytes, and a full-screen push takes about 25 ms ([wedgie code guide](https://wedgie.dev/code.md)). About 137 KB of RAM is left for an app: the spike's wedgie reported 137,760 bytes free with no app. Jiro's app holds the core's 24 KB stack, its 18.5 KB Recorder, the 18.6 KB module and the 3.6 KB shadow of the dirty-cell diff ([§3](#3-architecture)); on qemu, with the heap filled down to 137,760 bytes free, about 58 KB stay free after it starts. A power-up also starts the wedgie's USB drive, which leaves about 113.6 KB free, the largest block about 96 KB.
 
 A tick changes only a handful of cells. So the app redraws the changed 4×4-pixel cells and pushes only the regions that changed.
 
@@ -126,7 +126,7 @@ A tick changes only a handful of cells. So the app redraws the changed 4×4-pixe
 
 - **The app,** in MicroPython, draws the screen, samples the inputs once per tick, keeps the 15 Hz tick, and keeps local best scores. It never computes game state: it passes each tick's mask to the core's Recorder and draws what the core reports.
 - **The core** is jiro-core compiled for `thumbv6m-none-eabi` and linked by MicroPython v1.29.0's `mpy_ld`, with C glue, into a native module, `jiro_core.mpy`. The rules still exist exactly once.
-- **Its stack.** The rp2 port gives C code an 8 KB stack, and the core needs about 63 KB (`start` peaks at 62,784 bytes), so the glue runs the core on a 64 KB stack the app allocates on the heap.
+- **Its stack.** The rp2 port gives C code an 8 KB stack, so the glue runs the core on a 24 KB stack the app allocates on the heap: the core builds the Recorder in place, in the app's buffer, so starting a level needs about 19 KB (`start` peaks at 19,404 bytes). A replay builds its game on the stack, as the referees do, and needs 48 KB: only the check app replays.
 - **Evidence:** the spike of 2026-11-02 ([PR #42](https://github.com/detychey/jiro-ikusu/pull/42), `spikes/wedgie-natmod/README.md` on branch `claude/wedgie-app-spike`). All 75 golden vectors replay bit for bit through the module in MicroPython on qemu's Cortex-M0, and a real wedgie showed "Jiro PASS" on 4 of 4 vectors. The worst tick is estimated at about 22 ms, against the 66.7 ms tick.
 
 D1's first answer, Rust firmware on `embassy-rp` flashed as a UF2, is superseded ([§13](#13-open-decisions)).

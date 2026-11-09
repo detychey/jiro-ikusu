@@ -1,5 +1,5 @@
 # Jiro Training (README §8.1): the 16 levels, offline, at 15 Hz, with local best scores. The
-# core's buffers come first, while the heap is least fragmented: the stack needs 64 KB in one
+# core's buffers come first, while the heap is least fragmented: the stack needs 24 KB in one
 # block. Then all the app holds from level to level, so that playing allocates nothing sizable:
 # the level buffer, the level file, open once (a file on a wedgie's littlefs is a 1,148-byte
 # object), and the bests, which save.load reads through another. The stack is passed in a list, so
@@ -7,7 +7,7 @@
 # jiro_app.mpy, because compiling it from source here would scatter its parse tree over that heap.
 import gc
 
-STACK_BYTES = 65536  # the core needs up to 63 KB of stack; the rp2 C stack is 8 KB
+STACK_BYTES = 24576  # start needs up to 19 KB of stack; the rp2 C stack is 8 KB
 RECORDER_BYTES = 18568  # jiro_core.recorder_size(), which jiro_app checks
 SHADOW_BYTES = 3600  # jiro_core.shadow_size(), which jiro_app checks
 LEVEL_BYTES = 472  # a level's bytes in the level file, which jiro_app checks

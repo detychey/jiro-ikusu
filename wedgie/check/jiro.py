@@ -1,11 +1,11 @@
 # Jiro core check: replays the golden vectors of jiro_vectors.bin through jiro_core.mpy, the Rust
 # core built as a native module, and checks what the referee would compute. The result shows on
 # the screen and goes to USB. The core's two buffers come first, while the heap is least
-# fragmented: the stack needs 64 KB in one block. The check's code is precompiled in
+# fragmented: the stack needs 48 KB in one block. The check's code is precompiled in
 # jiro_check.mpy, because compiling it from source here would scatter its parse tree over that heap.
 import gc
 
-STACK_BYTES = 65536  # the core needs up to 63 KB of stack; the rp2 C stack is 8 KB
+STACK_BYTES = 49152  # replay needs up to 46 KB of stack; the rp2 C stack is 8 KB
 RECORDER_BYTES = 18568  # jiro_core.recorder_size(), which jiro_check checks
 
 
