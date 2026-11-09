@@ -3,6 +3,7 @@
 # inputs go into the README §6.1 mask and through the core's Recorder, and the app only draws
 # what the core reports. wedgie/scripts/qemu_app_check.py plays it on MicroPython's qemu port.
 import gc
+import os
 import struct
 import time
 from array import array
@@ -12,7 +13,6 @@ import jiro_core as jc
 import lcd
 import save
 import ui
-import wedgie
 
 MAGIC = b"JL01"
 LEVEL_BYTES = 472
@@ -22,6 +22,12 @@ TRAINING_INDEX = 0  # Training plays at levelIndex 0, as in the browser
 TICK_US = 66666
 OVERLAY_MS = 1500
 SUMMARY_GUARD_MS = 500
+# The app collects every GC_EVERY_TICKS ticks, after a tick whose work took under GC_LIGHT_US, so
+# that the garbage of a tick's drawing (the frames and lists of the firmware's show_rect) is not
+# collected inside a heavy tick: a collection took up to 27.5 ms in the app on a wedgie, and a
+# light tick and a collection fit in a tick (round E1: no overrun, against three before).
+GC_EVERY_TICKS = 8
+GC_LIGHT_US = 25000
 PRINT_STALL_MS = 100  # a print that takes longer finds the USB port open but not read
 CELL_PX = 4
 FIELD_PX = 240
@@ -161,7 +167,6 @@ class Training:
         for key in range(len(self.levels)):
             del bests[key]
         heap(stages, "app")
-        print("jiro: random source", wedgie.rand_source())
 
     def heap_lines(self):
         """The heap stages, two to a line, in kB: free, then the largest block."""
@@ -212,7 +217,9 @@ class Training:
         self.level_file.seek(offset)
         if self.level_file.readinto(self.level) != LEVEL_BYTES:
             raise ValueError("the level file ends inside level %s" % name)
-        code = jc.start(self.recorder, self.level, TRAINING, wedgie.rand(32), TRAINING_INDEX, self.stack)
+        # Not the firmware's wedgie.rand: its first call probes the I2C bus for a secure element and
+        # keeps the drivers it imports, about 13 KB of a wedgie's heap (round E1).
+        code = jc.start(self.recorder, self.level, TRAINING, os.urandom(32), TRAINING_INDEX, self.stack)
         if code:
             raise RuntimeError("the core rejects level %s: code %d" % (name, code))
         if jc.journal(self.recorder, 36, 68) != level_id:
@@ -271,6 +278,8 @@ class Training:
             tick_max = max(tick_max, time.ticks_diff(done, started))
             if left_until(due) < 0:
                 overruns += 1
+            if tick % GC_EVERY_TICKS == 0 and time.ticks_diff(done, started) < GC_LIGHT_US:
+                gc.collect()
             if end >= STEP_ERROR:
                 raise RuntimeError("jiro-core error %d on tick %d" % (end - STEP_ERROR, tick - 1))
             if end:

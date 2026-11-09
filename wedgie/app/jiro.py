@@ -1,10 +1,13 @@
-# Jiro Training (README §8.1): the 16 levels, offline, at 15 Hz, with local best scores. The
-# core's buffers come first, while the heap is least fragmented: the stack needs 64 KB in one
-# block. Then all the app holds from level to level, so that playing allocates nothing sizable:
-# the level buffer, the level file, open once (a file on a wedgie's littlefs is a 1,148-byte
-# object), and the bests, which save.load reads through another. The stack is passed in a list, so
-# that the app can lend its block to save.store between levels. The game's code is precompiled in
-# jiro_app.mpy, because compiling it from source here would scatter its parse tree over that heap.
+# Jiro Training (README §8.1): the 16 levels, offline, at 15 Hz, with local best scores. The three
+# large blocks come first, largest first, while the heap is least fragmented: the core's 64 KB
+# stack, its 18.5 KB Recorder, then jiro_core's 18 KB of code, before any small allocation can
+# split the space they need (round E1: right after a power-up, which also starts the WEDGIE drive,
+# the code found no block). Then all the app holds from level to level, so that playing allocates
+# nothing sizable: the level file, open once (a file on a wedgie's littlefs is a 1,148-byte
+# object), the shadow, the level buffer and the bests, which save.load reads through another. The
+# stack is passed in a list, so that the app can lend its block to save.store between levels. The
+# game's code is precompiled in jiro_app.mpy, because compiling it from source here would scatter
+# its parse tree over that heap.
 import gc
 
 STACK_BYTES = 65536  # the core needs up to 63 KB of stack; the rp2 C stack is 8 KB
@@ -37,13 +40,17 @@ def heap(stages, stage):
 def run():
     stages = {}
     heap(stages, "run")
-    stack, recorder, shadow = [bytearray(STACK_BYTES)], bytearray(RECORDER_BYTES), bytearray(SHADOW_BYTES)
-    level = bytearray(LEVEL_BYTES)
+    stack, recorder = [bytearray(STACK_BYTES)], bytearray(RECORDER_BYTES)
+    heap(stages, "buf")
+    try:
+        import jiro_core  # its 18 KB of code next, then jiro_app's objects fill the holes it leaves
+    except MemoryError as error:
+        raise MemoryError("%s; heap free/largest at start %d/%d, after the stack and Recorder %d/%d" % (
+            (error,) + stages["run"] + stages["buf"]))
+    level_file = open(LEVELS, "rb")  # in the hole of the file jiro_core was read through
+    shadow, level = bytearray(SHADOW_BYTES), bytearray(LEVEL_BYTES)
     import save
     bests = save.load("bests", {})
-    heap(stages, "buf")
-    import jiro_core  # its 18 KB of code next, then jiro_app's objects fill the holes it leaves
-    level_file = open(LEVELS, "rb")  # in the hole of the file jiro_core was read through
     import jiro_app
     heap(stages, "imp")
     jiro_app.main(stack, recorder, shadow, level, level_file, bests, heap, stages)

@@ -1,6 +1,6 @@
 """The Training app's play test (plan M3.9): runs wedgie/app/jiro.py's run(), unmodified, on
 MicroPython v1.29.0's qemu MICROBIT port (scripts/build-qemu.sh builds it), with the wedgie's
-lcd, ui, save, wedgie and time modules stubbed and the app's files served from a RAM filesystem
+lcd, ui, save, wedgie and time modules and os.urandom stubbed and the app's files served from a RAM filesystem
 whose open() allocates what a wedgie's does: a 1,148-byte littlefs file object. The test's files
 and stubs sit above one large free block, as a wedgie's free RAM is, and a ballast fills the heap
 down to the given free bytes, the free RAM a wedgie reports with no app, before run() starts:
@@ -254,11 +254,17 @@ def store(name, value):
     raise OSError('flash full: delete some saves at wedgie.dev')
   print('save.store', repr(name), text)
 """,
+    # The firmware's wedgie module: its rand() probes the I2C bus for a secure element on its first
+    # call and keeps the drivers it imports, about 13 KB of a wedgie's heap (round E1).
     "wedgie.py": """\
 def rand(n):
+  raise AssertionError('wedgie.rand keeps about 13 KB of a wedgie heap: use os.urandom')
+rand_source = rand
+""",
+    # The app's os: the run nonce comes from os.urandom.
+    "os_stub.py": """\
+def urandom(n):
   return NONCE[:n]
-def rand_source():
-  return 'qemu stub'
 """,
 }
 
@@ -491,7 +497,7 @@ def main(firmware, app, free_bytes, holes, hard_irq):
                        f"LATE_US = {LATE_US}\nPLAY_COUNT = {len(PLAYS)}\nMENU = {menu_presses()!r}\nSCRIPT = {script!r}\n"
                        ) + stubs["lcd.py"]
     stubs["save.py"] = f"LFS_FILE_BYTES = {LFS_FILE_BYTES}\n" + stubs["save.py"]
-    stubs["wedgie.py"] = f"NONCE = {RUN_NONCE!r}\n" + stubs["wedgie.py"]
+    stubs["os_stub.py"] = f"NONCE = {RUN_NONCE!r}\n" + stubs["os_stub.py"]
     files.update({name: text.encode() for name, text in stubs.items()})
     sizes = [HOLE_SIZES[i % len(HOLE_SIZES)] for i in range(holes)]
     hole_bytes = sum((size + 15) // 16 * 16 + 16 for size in sizes)
@@ -506,7 +512,7 @@ def main(firmware, app, free_bytes, holes, hard_irq):
         repl.exec(f"_FILES = {{}}\nLFS_FILE_BYTES = {LFS_FILE_BYTES}\n" + VFS)
         upload_files(repl, files)
         repl.exec(PLACEHOLDER.format(room=STUB_ROOM))
-        repl.exec("import lcd_buffer, sys, clock; sys.modules['time'] = clock")
+        repl.exec("import lcd_buffer, sys, clock, os_stub; sys.modules['time'] = clock; sys.modules['os'] = os_stub")
         repl.exec("import lcd, ui, save, wedgie")
         if hard_irq:
             repl.exec(ARM_HARD_IRQ)
