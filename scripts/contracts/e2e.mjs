@@ -342,7 +342,7 @@ async function revertOf(call, interfaces) {
   throw new Error("the call does not revert");
 }
 
-function totals(levels) {
+export function totals(levels) {
   return {
     score: levels.reduce((sum, { outcome }) => sum + outcome.levelScore, 0),
     ticks: levels.reduce((sum, { outcome }) => sum + outcome.ticksUsed, 0),
@@ -713,6 +713,19 @@ async function measureVerifyGas(context, run, proof) {
 }
 
 /**
+ * A run of the player, paid, revealed, played by `play`, which gives a revealed run's six scored
+ * levels, and committed, with its margin at commit measured.
+ */
+export async function liveCommittedRun(context, caseName, play) {
+  const run = await startAndReveal(context, caseName);
+  run.levels = play(context, run.runNonce);
+  const committedAt = await timedCommit(context, run);
+  const deadline = run.revealedAt + (BigInt(totals(run.levels).ticks) + TICKS_PER_SECOND - 1n) / TICKS_PER_SECOND + context.commitSlack;
+  measurements.push(`${caseName}: run ${run.runId}'s margin at commit is ${deadline - committedAt} s, its deadline ${deadline} minus committedAt ${committedAt}`);
+  return run;
+}
+
+/**
  * Case happy-path: a bot run of the player, committed, its run file written to `runsDir`, then
  * proven and settled by the settler, the operator. `play` gives a revealed run's six scored levels,
  * and `prove` the proof of a run file. A run that clears no level is followed by another, up to
@@ -729,11 +742,7 @@ export async function liveHappyPath(context, { play, prove, resume }) {
     for (let attempt = 1; !run || totals(run.levels).clears === 0; attempt++) {
       if (attempt > HAPPY_PATH_RUNS) throw new Error(`the bots cleared no level in ${HAPPY_PATH_RUNS} runs`);
       if (run) console.log(`[e2e] happy path: run ${run.runId} clears no level, so M5.5 could not rehearse a claim: playing another`);
-      run = await startAndReveal(context, "happy path");
-      run.levels = play(context, run.runNonce);
-      const committedAt = await timedCommit(context, run);
-      const deadline = run.revealedAt + (BigInt(totals(run.levels).ticks) + TICKS_PER_SECOND - 1n) / TICKS_PER_SECOND + context.commitSlack;
-      measurements.push(`happy path: run ${run.runId}'s margin at commit is ${deadline - committedAt} s, its deadline ${deadline} minus committedAt ${committedAt}`);
+      run = await liveCommittedRun(context, "happy path", play);
       run.file = writeRunFile(context, run, context.runsDir);
       console.log(`[e2e] happy path: run ${run.runId} committed, its run file ${run.file}`);
     }

@@ -1,8 +1,11 @@
-# Season operations on Arbitrum Sepolia (plan M5.8; M5.5 adds the bot runs and the zk settlement),
-# public CI profile (plan §1.3, P14). Daily and on workflow_dispatch: season.mjs status of every
-# season of deployments/arbitrum-sepolia.json, failing when a Season is not solvent, then close and
-# withdraw, which send nothing until a season's end plus grace has passed (README §8.4). They sign
-# with TESTER_KEY: anyone may close and withdraw, so the operator's key never reaches Actions. On
+# Season operations on Arbitrum Sepolia (plan M5.8, M5.5), public CI profile (plan §1.3, P14).
+# Daily and on workflow_dispatch: season.mjs status of every season of
+# deployments/arbitrum-sepolia.json, failing when a Season is not solvent, then close and withdraw,
+# which send nothing until a season's end plus grace has passed (README §8.4), then one bot run of
+# the tester in BOT_SEASON, from the day its open is recorded in deployments/ to its end
+# (docs/SEASON_RUNBOOK.md). They sign with TESTER_KEY: anyone may close, withdraw and play, so the
+# operator's key never reaches Actions. Nothing here proves a run: a whole run takes hours on a CPU
+# (docs/DEPLOYMENT.md), and the operator settles from its own machine (web/scripts/settle.mjs). On
 # PRs that touch season.mjs or this file: the read-only status, with no secret. A run that may send
 # transactions is never cancelled. Never a required check.
 name: season-ops
@@ -26,10 +29,12 @@ permissions:
 jobs:
   season-ops:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
+    env:
+      BOT_SEASON: testnet-1
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -57,3 +62,26 @@ jobs:
         run: |
           node scripts/contracts/season.mjs close --network arbitrum-sepolia
           node scripts/contracts/season.mjs withdraw --network arbitrum-sepolia
+
+      - name: Whether the bots' season is open on the newest generation
+        id: bots
+        if: ${{ github.event_name != 'pull_request' }}
+        run: |
+          season="$(node -p "require('./deployments/arbitrum-sepolia.json').generations[0].seasons[process.env.BOT_SEASON] ?? ''")"
+          echo "season=$season" >> "$GITHUB_OUTPUT"
+          [ -n "$season" ] || echo "$BOT_SEASON is not open on the newest generation: no bot run"
+
+      - name: Toolchain, for the bots
+        if: ${{ steps.bots.outputs.season != '' }}
+        run: bash scripts/bootstrap.sh core
+
+      - uses: Swatinem/rust-cache@v2.9.3
+        if: ${{ steps.bots.outputs.season != '' }}
+
+      - name: The tester's bot run in the bots' season, which plays nothing after its end
+        if: ${{ steps.bots.outputs.season != '' }}
+        env:
+          TESTER_KEY: ${{ secrets.TESTER_KEY }}
+        run: |
+          cargo build -p jiro-tools --release --locked
+          node scripts/contracts/season.mjs bots --network arbitrum-sepolia --season "$BOT_SEASON" --runs 1

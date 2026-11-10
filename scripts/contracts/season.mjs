@@ -1,4 +1,6 @@
-// Season operations on deployments/<network>.json (plan M4.14 step 4, M5.8; M5.5 adds settle).
+// Season operations on deployments/<network>.json (plan M4.14 step 4, M5.8, M5.5). The operator's
+// settlement of a season's best runs is web/scripts/settle.mjs, which replays them with the web
+// app's core.
 //   - open: opens the season of a season file on the newest generation, as Season's operator,
 //     after checking:
 //       - the season file: its keys, and the rules version, level ids and weights of the
@@ -16,22 +18,27 @@
 //   - close: closeSeason on each Season whose next season to close has passed its end plus grace.
 //   - withdraw: withdrawRake on each Season that owes rake, which goes to its treasury.
 //   - claim: the signer's claim in a closed season.
+//   - bots: --runs bot runs of the signer in a season of the newest generation, while it accepts
+//     runs: each pays, reveals, plays the six drawn levels with the playtest bots of e2e.mjs and
+//     commits; the operator settles the signer's best run (README §7.5). jiro-tools must be built.
 // close and withdraw send nothing while nothing is due, and anyone may send them (README §8.4).
 // Usage: [DEPLOYER_KEY=…] node season.mjs open --network <network> --season seasons/<label>.json [--rpc <url>]
 //        node season.mjs status --network <network> [--season <label>] [--rpc <url>]
 //        [TESTER_KEY=…] node season.mjs close|withdraw|claim --network <network> [--season <label>, for claim] [--rpc <url>]
+//        [TESTER_KEY=…] node season.mjs bots --network <network> --season <label> [--runs <n>] [--rpc <url>]
 // A key is 64 hex digits, with or without 0x. On the local chain every command signs with anvil's
 // development account 0. Elsewhere DEPLOYER_KEY holds the operator's key, for open, and
-// TESTER_KEY the key of close, withdraw and claim: the tester is the bot player (docs/DEPLOYMENT.md),
-// and the operator's key stays out of season-ops.yml.
+// TESTER_KEY the key of close, withdraw, claim and bots: the tester is the bot player
+// (docs/DEPLOYMENT.md), and the operator's key stays out of season-ops.yml.
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { Contract, Wallet, formatEther, getAddress } from "ethers";
 import { readProgramTimeLeft } from "./activation.mjs";
 import { JIRO_TOOLS, NETWORKS, REPO_ROOT, connect, deploymentFileOf, privateKeyOf, sendTransaction } from "./deploy.mjs";
 import { isEntryPoint, readDeploymentRecord, recordSeason } from "./deployments.mjs";
+import { botRun, liveCommittedRun, liveContext, measurements, totals } from "./e2e.mjs";
 import { eventOf } from "./localnet.mjs";
 
 const SEASON_KEYS = [
@@ -50,13 +57,17 @@ const SEASON_KEYS = [
 ];
 const FROM_CALIBRATION = ["rulesVersion", "levelIds", "weightsBp"];
 const INTEGER_KEYS = ["rakeBp", "length", "grace", "commitSlack", "minClears"];
-const SEASON_ABI = JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "abi", "Season.json"), "utf8"));
-const CHALLENGE_ABI = JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "abi", "Challenge.json"), "utf8"));
-const COMMANDS = ["open", "status", "close", "withdraw", "claim"];
+const abiOf = (name) => JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "abi", `${name}.json`), "utf8"));
+const SEASON_ABI = abiOf("Season");
+const CHALLENGE_ABI = abiOf("Challenge");
+// The contracts of e2e.mjs's liveContext, as their committed ABIs: bots needs no build of the contracts.
+const LIVE_ARTIFACTS = Object.fromEntries(["Season", "Challenge", "ArbBlockhashEntropy", "ZkReferee", "MockArbSys"].map((name) => [name, { abi: abiOf(name) }]));
+const COMMANDS = ["open", "status", "close", "withdraw", "claim", "bots"];
 const USAGE = [
   "usage: [DEPLOYER_KEY=…] node season.mjs open --network <network> --season seasons/<label>.json [--rpc <url>]",
   "       node season.mjs status --network <network> [--season <label>] [--rpc <url>]",
   "       [TESTER_KEY=…] node season.mjs close|withdraw|claim --network <network> [--season <label>, for claim] [--rpc <url>]",
+  "       [TESTER_KEY=…] node season.mjs bots --network <network> --season <label> [--runs <n>] [--rpc <url>]",
 ].join("\n");
 // Challenge's SettlementStatus.
 const SETTLED = 1;
@@ -375,6 +386,35 @@ export async function claimShare({ signer, record, label }) {
   return { amount, receipt };
 }
 
+/**
+ * Up to `runs` runs of `player` in the season labeled `label` of the newest generation of
+ * `recordFile`, each paid, revealed, played by `play` (by default the playtest bots of e2e.mjs) and
+ * committed. It stops at the season's end, when the season stops accepting runs (README §8.4).
+ * Returns the committed runs.
+ */
+export async function playBotRuns({ network, provider, player, recordFile, label, runs, play = (context, runNonce) => botRun(context, runNonce, false) }) {
+  const context = await liveContext({ network, provider, player, settler: player, artifacts: LIVE_ARTIFACTS, recordFile, seasonLabel: label });
+  const measured = measurements.length;
+  try {
+    const end = await context.season.endOf(context.number);
+    const committed = [];
+    while (committed.length < runs) {
+      if (BigInt((await provider.getBlock("latest")).timestamp) >= end) {
+        console.log(`${label}, season ${context.number}: its runs ended at ${isoOf(end)}`);
+        break;
+      }
+      const run = await liveCommittedRun(context, "bot run", play);
+      const { score, ticks, clears } = totals(run.levels);
+      console.log(`${label}: bot run ${run.runId} of ${await player.getAddress()} committed, score ${score}, ${ticks} ticks, ${clears} cleared`);
+      committed.push(run);
+    }
+    if (measurements.length > measured) console.log(measurements.slice(measured).join("\n"));
+    return committed;
+  } finally {
+    rmSync(context.workDir, { recursive: true, force: true });
+  }
+}
+
 /** The key `command` signs with, read from the environment, which then keeps neither key. */
 function signingKeyOf(command, network) {
   const name = command === "open" ? "DEPLOYER_KEY" : "TESTER_KEY";
@@ -388,12 +428,13 @@ function signingKeyOf(command, network) {
 async function main() {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
-    options: { network: { type: "string" }, season: { type: "string" }, rpc: { type: "string" } },
+    options: { network: { type: "string" }, season: { type: "string" }, rpc: { type: "string" }, runs: { type: "string" } },
   });
   const [command, ...extra] = positionals;
-  const seasonNeeded = command === "open" || command === "claim";
+  const seasonNeeded = command === "open" || command === "claim" || command === "bots";
   const seasonRefused = command === "close" || command === "withdraw";
-  if (!COMMANDS.includes(command) || extra.length > 0 || !NETWORKS[values.network] || (seasonNeeded && !values.season) || (seasonRefused && values.season)) {
+  const runsValid = values.runs === undefined || (command === "bots" && /^[1-9][0-9]*$/.test(values.runs));
+  if (!COMMANDS.includes(command) || extra.length > 0 || !NETWORKS[values.network] || (seasonNeeded && !values.season) || (seasonRefused && values.season) || !runsValid) {
     throw new Error(USAGE);
   }
   const network = values.network;
@@ -408,6 +449,7 @@ async function main() {
     close: () => closeSeasons({ provider, signer, record: readDeploymentRecord(recordFile) }),
     withdraw: () => withdrawRakes({ signer, record: readDeploymentRecord(recordFile) }),
     claim: () => claimShare({ signer, record: readDeploymentRecord(recordFile), label }),
+    bots: () => playBotRuns({ network, provider, player: signer, recordFile, label, runs: Number(values.runs ?? 1) }),
   };
   await commands[command]();
   provider.destroy();
