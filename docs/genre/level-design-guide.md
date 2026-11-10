@@ -1,6 +1,6 @@
 # Level design guide
 
-For Jiro-ikusu's level designers: a summary of the genre research in this folder (710 games in [`CATALOG.md`](CATALOG.md), 628 mechanic families in [`TAXONOMY.md`](TAXONOMY.md), 143 judged ideas in [`IDEAS.md`](IDEAS.md); [method](README.md#how-it-was-built)), plus the minimum how-to: today's knobs, tools and calibration chain.
+For Jiro-ikusu's level designers: a summary of the genre research in this folder (710 games in [`CATALOG.md`](CATALOG.md), 628 mechanic families in [`TAXONOMY.md`](TAXONOMY.md), 142 judged ideas in [`IDEAS.md`](IDEAS.md); [method](README.md#how-it-was-built)), plus the minimum how-to: today's knobs, tools and calibration chain.
 
 **Status: non-normative.** README §4 and §5 own the rules, their defaults and the [level format](../../README.md#5-levels), §7 and §8 runs, settlement and seasons; [`levels/README.md`](../../levels/README.md) owns the per-level knobs; [`levels/targets.json`](../../levels/targets.json) the reference bot mix, target clear rates, tolerance and floor; `seasons/*.json` the season parameters ([`CLAUDE.md`](../../CLAUDE.md), Owners of numbers). They win over this guide. The research is "research notes, not a specification ... Nothing here is scheduled or decided" ([README.md](README.md), status line).
 
@@ -46,7 +46,6 @@ Check these, and boss-free pockets ([§7.4](#74-d14-and-safe-pockets)), yourself
 - **An island is a bridge before it is a capture.** A cut that closes on an island separates no region: it claims its trail, plus any pocket the path wraps, and joins the island to your rail, opening it to border minions ([Low target](ideas/scoring-and-risk.md#low-target-where-the-crossing-cut-decides-the-score), core engineer and play).
 - **Where a stranded minion comes back.** At its spawn or, if that left the rail, at the first rail cell in row-major order, usually top-left, where it can hit a player (PIN-11): "Bots know this and humans won't" ([Guarded islands](ideas/edge-and-claimed-enemies.md#guarded-islands-release-or-remove-the-guard), fairness). R ≥ T avoids it.
 - **Patrol direction.** Minions circle clockwise (R4.7-3), west along the bottom border. One spawned at (31, 59) steps onto the start at tick 0 and hits a player standing still; one at (30, 59) steps to (29, 59) and hits a player stepping west (*derived*, R4.7-3, R4.4-2, R4.9-9). A bottom-border minion "must not spawn on or next to the player start" ([Lesson ladder](ideas/level-structure-and-progression.md#lesson-ladder), fairness).
-- **One-word names.** `NN-two-words.txt` passes the level tool, but [`make_app_levels.py`](../../wedgie/scripts/make_app_levels.py) reads names with `(\w+)` and exits.
 
 ### 1.3 What the seed decides
 
@@ -66,7 +65,7 @@ Check these, and boss-free pockets ([§7.4](#74-d14-and-safe-pockets)), yourself
 
 ### 2.1 Source and tools
 
-**Today.** `levels/src/NN-name.txt`, NN 01-16: the eight `key=value` knobs of §1.1 in its order, a blank line, then 60 rows of 60 cells (`#` obstacle, `.` open, `m` minion spawn), LF line endings and a final newline ([`levels/README.md`](../../levels/README.md)). The browser **level editor** reads and writes `.bin` and hex ([web/README.md](../../web/README.md#level-editor)): save `level render <file.bin>` as the source, since CI requires each source to be exactly that render. **Browser Training** plays any other level unscored and offers each attempt's journal ([web/README.md](../../web/README.md#training)); the wedgie prints journals in hex over USB ([wedgie/README.md](../../wedgie/README.md)); `replay --level <bin> --journal <jrn>` replays them ([playtest-human-1](../../reports/playtest-human-1.md)).
+**Today.** `levels/src/NN-name.txt`, NN 01-16: the eight `key=value` knobs of §1.1 in its order, a blank line, then 60 rows of 60 cells (`#` obstacle, `.` open, `m` minion spawn), LF line endings and a final newline ([`levels/README.md`](../../levels/README.md)). The browser **level editor** reads and writes `.bin` and hex ([web/README.md](../../web/README.md#level-editor)): save `level render <file.bin>` as the source, since CI requires each source to be exactly that render. **Browser Training** plays any other level unscored and offers each attempt's journal ([web/README.md](../../web/README.md#training)); `replay --level <bin> --journal <jrn>` replays them ([playtest-human-1](../../reports/playtest-human-1.md)).
 
 Run `cargo run -p jiro-tools --release --locked -- <command>` (nightly.yml uses `--release` for playtest and calibrate; `level build` is the same without it):
 
@@ -82,11 +81,11 @@ Run `cargo run -p jiro-tools --release --locked -- <command>` (nightly.yml uses 
 
 **The version gate.** `calibrate` rewrites `vectors/levels/NN-worst` and `NN-synthetic` in place (tools/src/calibrate.rs). `scripts/check-rules-version.sh`, in ci.yml's vectors-drift step (pushes to main, and PRs touching a `rust`-filter path, `levels/` and `vectors/` included), fails when a file under `vectors/game/` or `vectors/levels/` is modified or deleted unless `RULES_VERSION` changes, and then needs every game vector regenerated at the new version. A bump costs "regenerated vectors, a playtest rerun, recalibration, a new ZkReferee image and a new season" ([Sequencing](README.md#sequencing), step 5). Agree with the owner first: a bump, or a gate or tools change in its own work item. The research's [New boards on v1 knobs](README.md#new-boards-on-v1-knobs) ("no RULES_VERSION bump") and Sequencing step 4 ("rules still 2") assume a new gate set beside the old one ([Topology season](ideas/v1-levels.md#topology-season-one-field-shape-per-slot), core engineer, Cost); today's calibrate does not.
 
-**The calibration file** is regenerated in place "until a season that references it has opened" (CLAUDE.md); none has: no public deployment record is committed ([deployments](../../deployments/README.md#networks)). M4.14 opens `testnet-0` with calibration-1's ids and weights; after that a level change writes a new calibration file and reaches players only through a new season. The Training page, the wedgie scripts, the contract scripts and tools/src/playtest/shard.rs read `seasons/calibration-1.json` by name, so a second file also needs a tools change ([§8.4](#84-tools-prerequisites)).
+**The calibration file** is regenerated in place "until a season that references it has opened" (CLAUDE.md); none has: no public deployment record is committed ([deployments](../../deployments/README.md#networks)). M4.14 opens `testnet-0` with calibration-1's ids and weights; after that a level change writes a new calibration file and reaches players only through a new season. The Training page, the contract scripts and tools/src/playtest/shard.rs read `seasons/calibration-1.json` by name, so a second file also needs a tools change ([§8.4](#84-tools-prerequisites)).
 
 ### 2.3 Season slots and the 16-level limit
 
-**Today.** No 17th or Training-only slot exists: the level tool, playtest, calibrate, the wedgie script, `core/src/consts.rs` and Training ("All 16 levels", [README §8.1](../../README.md#81-training-free)) expect 16. Browser Training throws if its bundled levels are not the calibration's 16 (web/src/pages/training.ts), so an extra `.bin` in `levels/` breaks it; the Challenge page checks the same files against the open season's ids (web/src/run/season.ts).
+**Today.** No 17th or Training-only slot exists: the level tool, playtest, calibrate, `core/src/consts.rs` and Training ("All 16 levels", [README §8.1](../../README.md#81-training-free)) expect 16. Browser Training throws if its bundled levels are not the calibration's 16 (web/src/pages/training.ts), so an extra `.bin` in `levels/` breaks it; the Challenge page checks the same files against the open season's ids (web/src/run/season.ts).
 
 **Pick the slot.** A new board replaces one slot: its NN selects `clear_rate_pct[NN − 1]` (playtest.rs, `check`). Hit that band, or change the curve: P11 keeps it non-increasing, from at least 90 % at level 1 to about 15 % at level 16, within ±5 points over 1,000 seeds, and the owner approves the curve and the floor (plan M2.6); then retune every level. **Proposal:** generalize the tools first ([§8.4](#84-tools-prerequisites)).
 
@@ -96,7 +95,7 @@ Run `cargo run -p jiro-tools --release --locked -- <command>` (nightly.yml uses 
 
 0. **Get a work item** of its own ([README.md](README.md), status line), one per PR (CLAUDE.md). Settle the version gate with the owner ([§2.2](#22-the-sync-chain-and-the-version-gate)).
 1. **Pick the slot** whose band the board hits ([§2.3](#23-season-slots-and-the-16-level-limit); fits in [§5](#5-board-patterns-on-v1-knobs-proposals)).
-2. **Author** with a one-word name; pick knobs from [§3](#3-how-the-16-levels-ramp); pass codes 20-39; run the checks of [§1.2](#12-validity-and-what-no-tool-checks), [§6](#6-patterns-to-avoid), [§7.4](#74-d14-and-safe-pockets) and [§7.6](#76-research-recommendations-proposals); iterate on scratch.
+2. **Author** the board; pick knobs from [§3](#3-how-the-16-levels-ramp); pass codes 20-39; run the checks of [§1.2](#12-validity-and-what-no-tool-checks), [§6](#6-patterns-to-avoid), [§7.4](#74-d14-and-safe-pockets) and [§7.6](#76-research-recommendations-proposals); iterate on scratch.
 3. `level build levels/src levels`; record the new `level_id`.
 4. `playtest --levels levels --check levels/targets.json`: clear rate in target ± 5, median above 500 bp. It writes `reports/playtest-<hash>`, the hash covering the level ids; delete the old `.md` and `.json` by hand.
 5. `level build` again, for the measured clear rates.
@@ -104,7 +103,7 @@ Run `cargo run -p jiro-tools --release --locked -- <command>` (nightly.yml uses 
 7. `calibrate --check --out seasons/calibration-1.json`: compare your weight with 13,692-64,620; P moves when the lowest median moves ([§7.2](#72-weights-p-and-the-floor)). In place only while no season references it; update README §8.4 and `docs/ECONOMY.md`.
 8. Commit the regenerated files. Then, on a clean tree, rerun steps 3-5 and 7 and run `bash scripts/check-drift.sh seasons/ levels/ vectors/ reports/` (it fails on any uncommitted, staged or untracked change), then `bash scripts/check-rules-version.sh`.
 9. **Gate-set cost.** `10-worst`, the heaviest today, takes 29.6 million RISC Zero user cycles and 11.6 million Stylus gas (README §13, D2). Measure the new `NN-worst` and `NN-synthetic`: `bash scripts/bootstrap.sh zk`, `cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host` (a clean build takes about an hour, [VERIFICATION.md](../VERIFICATION.md#m112-the-choice)), then `referee/zk/target/release/zk-host execute vectors/levels` ([cycles per vector](../VERIFICATION.md#executor-cycles-per-vector-1)). The research's bar: neither above `10-worst`, else raise the target or cut T ([Tree maze](ideas/v1-levels.md#tree-maze-every-seal-cuts-off-a-subtree), core engineer).
-10. Check that `python3 -I wedgie/scripts/make_app_levels.py . <out.bin>` runs. List invalidated measurements in the PR: gate-set cycles and gas, bot-advantage, ECONOMY.md's results.
+10. List invalidated measurements in the PR: gate-set cycles and gas, bot-advantage, ECONOMY.md's results.
 11. **The clients ship one level set.** The site bundles `levels/*.bin` for Training, Challenge and settlement (web/src/shipped.ts, pages/season.ts); Challenge refuses a run unless the 16 shipped levels are the open season's `levelIds`, slot by slot ([web/README.md](../../web/README.md#challenge)); `main` deploys production on every push (pages.yml). Once a season is open (M4.14 opens `testnet-0` with calibration-1's ids), merging a board into `levels/` stops the site playing and settling that season: merge only at a season boundary agreed with the owner, or after a tools and web change. **Proposal:** a level directory per season ([New boards on v1 knobs](README.md#new-boards-on-v1-knobs), step 5; Topology season, core engineer).
 
 ## 3. How the 16 levels ramp
@@ -210,7 +209,7 @@ The genre default is a [per-level enemy ramp](taxonomy/level-structure-and-progr
 | Lanes, bays or notches narrower than B | Boss-free on every seed (D14); judges disagree on patrolled ones ([§7.4](#74-d14-and-safe-pockets)) |
 | 5-6 lives everywhere | D5's zero rarely binds, so Commit loses its purpose (Short, forgiving set) |
 | Difficulty from period-1 minions and R 30 first | Rewards bots' reaction speed; use obstacles, B and minion count first (same) |
-| Spirals, 1-cell doors, a 15 × 15 maze | Busy or nearly invisible at 240 × 240 (Calibrated library, Tree maze). Doors and corridors at least 3 wide, at least B + 1 where the boss travels, no 1-cell slivers or single-cell islands (Calibrated library, play). Half the field solid is "a lot of dead screen on the device" (Letterbox, play) |
+| Spirals, 1-cell doors, a 15 × 15 maze | Busy or nearly invisible (Calibrated library, Tree maze). Doors and corridors at least 3 wide, at least B + 1 where the boss travels, no 1-cell slivers or single-cell islands (Calibrated library, play). Half the field solid is "a lot of dead screen" (Letterbox, play) |
 
 ## 7. Fairness and calibration
 

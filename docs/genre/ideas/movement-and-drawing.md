@@ -25,7 +25,7 @@ Step back onto the trail cell you just left and the line rolls back up behind yo
 Three issues:
 
 1. The trail_len = 1 retreat changes today's behavior. Stepping from the first trail cell back onto the cut start is now a close (R4.5-5) that captures 1 cell. The retreat rule turns it into a cancel, so any committed vector or journal that pokes out and back changes its outcome. Moved outcomes must be explained, or retreat limited to trail_len ≥ 2.
-2. The log becomes consensus state, because the trail's cell order cannot be recovered from the grid when the path folds beside itself. A fixed-width hash means serialising 6,728 B, zero-padded past trail_len because capture leaves garbage in the stack. The preimage grows from 948 B to about 7.7 KB, roughly 8× the keccak work per traced tick (57 blocks instead of 7) on every target, including the wedgie's vector check.
+2. The log becomes consensus state, because the trail's cell order cannot be recovered from the grid when the path folds beside itself. A fixed-width hash means serialising 6,728 B, zero-padded past trail_len because capture leaves garbage in the stack. The preimage grows from 948 B to about 7.7 KB, roughly 8× the keccak work per traced tick (57 blocks instead of 7) on every target.
 3. D4 and R4.5-4 have to be rewritten. The Player::sub_step match must test a retreat before both (_, Trail) and (true, Claimed).
 
 The 'retreat ends movement' rule and minion hits on the entered cells are consistent with PIN-04 and R4.9-6. The retreat at step 3 empties the front cell before the boss's step 4, which is the intended dodge.
@@ -43,13 +43,13 @@ The 'retreat ends movement' rule and minion hits on the entered cells are consis
 
 **Fairness: ok, 4 of 5; gap narrows; D14 compliant.** It narrows the gap. Retreat is a reactive escape that a human uses on an unforeseen boss turn or a minion at the far end of a cut, while search, which already foresees both, gains little. I found no exploit for bots. TRAIL stays lethal to the boss's edge test, so a trail is never a safe wall. The rail ignores TRAIL versus EMPTY (R4.2-3), so retracting leaves minions unaffected. Starting a cut still ends invulnerability. Retreat runs at 1 cell per tick, a sub-step that ends the tick's movement, so it is no faster than drawing. Reusing the capture stack for the trail log is safe, because the flood fill needs the stack only after the cut has closed. There is no D14 effect, and no level-specific effect, so it adds no variance to the draw. The rule is simple for scripted bots ('retreat when the projected bump comes before the close'), but the mix's clear rates will rise, so recalibration is required. Costs: D4, PIN-04 and PIN-05 change, RULES_VERSION is bumped, and state hash v2 carries the log.
 
-*Fixes.* Pin how a back-press is resolved under R4.5-1. While rolling the 5-way joystick, two directions can be held at once, so specify that a retreat needs the opposite direction resolved by R4.5-1's rules, and add vectors for rolling through the reverse. Teach bold and committer to retreat before recalibrating, so the weights reflect the new risk. Record in README §4.10 that Commit is no longer the only way out of a doomed cut.
+*Fixes.* Pin how a back-press is resolved under R4.5-1. Two directions can be held at once, so specify that a retreat needs the opposite direction resolved by R4.5-1's rules, and add vectors for rolling through the reverse. Teach bold and committer to retreat before recalibrating, so the weights reflect the new risk. Record in README §4.10 that Commit is no longer the only way out of a doomed cut.
 
 **Play: strong, 4 of 5.** It changes the central cut loop with new choices, not more difficulty. Today a started cut can only be finished, lost to a hit or ended with Commit, which ends the level. With retreat, the player trades exposure time for safety: back out when the boss turns, retreat partway and branch around it, or back off from a minion waiting near the close. Retreating at 1 cell per tick, with A giving no speed-up, keeps long cuts costly to undo, so commitment tension remains. It keeps D4's core (the own trail still blocks every step except the one back onto the previous cell), and it narrows the human/bot gap because the escape is reactive, which none of the other movement ideas do. Reusing the capture stack as the trail log fits the memory budget, because the log is dead by the time a capture needs the stack. Costs: the trail log must enter state hash v2 (trail order can't be recovered from the grid when a trail touches itself), the 16 levels need recalibration because they all become easier, and scripted bots need the retreat rule. It does change the Qix-like feel of committing to a line, so playtest it before freezing.
 
 *Fixes.* Make it global, not per-level: a movement rule that differs between levels confuses players. Rerun the playtest and recalibrate. Specify exactly that a retreat step leaves the previous direction (PIN-05) and press_tick unchanged. In the bot mix, add a simple policy: retreat when the projected bump comes before the projected close.
 
-*Readability.* Very readable: the trail visibly shrinks one red cell per tick back to the field colour, which costs one cell redraw on the wedgie. Retreating is the natural reverse push on the joystick. Rolling the joystick passes through a perpendicular direction first, which R4.5-1 resolves as a sideways step rather than an accidental retreat.
+*Readability.* Very readable: the trail visibly shrinks one red cell per tick back to the field colour.
 
 ## Diagonal cutting
 
@@ -57,7 +57,7 @@ The 'retreat ends movement' rule and minion hits on the entered cells are consis
 
 While cutting, holding two perpendicular directions draws a 45-degree line. The player can slice corners off the boss's space, close triangles, and cross the field with half as many exposed cells as a staircase.
 
-**Rule sketch.** R4.5-1 is extended. While cutting, if exactly two perpendicular directions are held (U+L, U+R, D+L or D+R), the resolved direction is that diagonal. On the rail, and with any other combination, R4.5-1 applies as today, so rail moves stay 4-way (D3). A diagonal sub-step targets (x ± 1, y ± 1) and follows R4.5-2 to R4.5-5: into EMPTY it lays a new TRAIL cell, onto CLAIMED it closes the cut, onto TRAIL it is ignored, and onto the boss body it is a hit. One extra rule: it is ignored if both orthogonal cells it passes between are TRAIL, so the player cannot slip through a diagonal gap in its own trail. A diagonal trail is still a wall for R4.8's 4-connected fill, because two diagonal cells leave no 4-path between them, and the boss moves one axis at a time, so it cannot pass between them either. R4.8 and R4.6-3 therefore stay unchanged. The previous-direction field grows from 4 to 8 values, which changes its meaning in the state hash. A 5-way stick reports two directions while rolling between them, so a diagonal applies only when the same pair was also held on the previous tick. That previous mask is already available at the Input step.
+**Rule sketch.** R4.5-1 is extended. While cutting, if exactly two perpendicular directions are held (U+L, U+R, D+L or D+R), the resolved direction is that diagonal. On the rail, and with any other combination, R4.5-1 applies as today, so rail moves stay 4-way (D3). A diagonal sub-step targets (x ± 1, y ± 1) and follows R4.5-2 to R4.5-5: into EMPTY it lays a new TRAIL cell, onto CLAIMED it closes the cut, onto TRAIL it is ignored, and onto the boss body it is a hit. One extra rule: it is ignored if both orthogonal cells it passes between are TRAIL, so the player cannot slip through a diagonal gap in its own trail. A diagonal trail is still a wall for R4.8's 4-connected fill, because two diagonal cells leave no 4-path between them, and the boss moves one axis at a time, so it cannot pass between them either. R4.8 and R4.6-3 therefore stay unchanged. The previous-direction field grows from 4 to 8 values, which changes its meaning in the state hash. A diagonal applies only when the same pair was also held on the previous tick. That previous mask is already available at the Input step.
 
 **Inspired by:** Styx (1983), Gals Panic II (1993), Spider Web (1989), Territory Reveal (2026). **Mechanic families:** [Eight-way diagonal movement](../taxonomy/movement-and-drawing.md#eight-way-diagonal-movement), [Any-angle straight cuts](../taxonomy/movement-and-drawing.md#any-angle-straight-cuts), [Grid-step four-direction movement](../taxonomy/movement-and-drawing.md#grid-step-four-direction-movement). **Touches:** rules, input, state-hash, tools-bots, presentation.
 
@@ -76,9 +76,8 @@ Gaps:
 (b) R4.5-1 needs a precedence rule. With Up held and then U+R held for two ticks, does the kept Up win or the diagonal?
 (c) The previous-direction byte goes from 0-4 to 0-8. CLAUDE.md requires a state hash version bump (v2) even though the layout is unchanged, and vectors/format must be regenerated.
 (d) The previous mask is in the prior state (the state hash's mask), so no new state is needed. But step 3 must read it before step 1 overwrites Game.mask.
-(e) Two-direction masks already occur in journals (stick rolls; the random-dirs vectors), so existing vectors will change outcome. This is a behavior change, and the moved outcomes must be explained.
-(f) The wedgie's 5-way stick cannot hold a diagonal reliably. The 2-tick debounce only filters rolls shorter than 133 ms, so device play will feel different from the keyboard (Training only).
-(g) A diagonal can still pass between the player's own TRAIL and a CLAIMED cell. That is harmless for capture, but it makes the anti-slip rule partial.
+(e) Two-direction masks already occur in journals (the random-dirs vectors), so existing vectors will change outcome. This is a behavior change, and the moved outcomes must be explained.
+(f) A diagonal can still pass between the player's own TRAIL and a CLAIMED cell. That is harmless for capture, but it makes the anti-slip rule partial.
 
 Search branches 8 ways instead of 4 while cutting; the gap stays about the same.
 
@@ -92,11 +91,11 @@ Search branches 8 ways instead of 4 while cutting; the gap stays about the same.
 
 *Fixes.* Bump the state hash version for the 8-valued previous-direction field. Measure, from browser input logs, how often humans' key overlaps on turns last 2 ticks or more. If that is common, require 3 ticks, or require that neither key of the pair started being held on the tick of the turn. Rerun bot-advantage with a diagonal-aware greedy to confirm the gap is neutral.
 
-**Play: ok, 3 of 5.** Gives cuts a real new geometry: triangles, corner slices, and chords that meet the boss's diagonal motion head-on. The wall argument holds: a diagonal line of cells is a wall for a 4-connected fill, and a body that moves one axis at a time cannot cross it. After a capture the claimed side makes the rail a 4-connected staircase, so D7 still holds. A diagonal step onto CLAIMED lands on a rail cell through the 8-neighbour rule, which keeps R4.5-5 true. Most of the effect, though, is cheaper and faster exposure: with A held, two diagonal sub-steps move about 2.8 cells of distance per tick, which mainly lowers difficulty. The 5-way stick is the weak point on the wedgie: holding a steady diagonal on a small tactile 5-way switch is unreliable. The two-tick filter will either drop intended diagonals or catch slow rolls between directions, so the same level plays differently on the device and on a keyboard.
+**Play: ok, 3 of 5.** Gives cuts a real new geometry: triangles, corner slices, and chords that meet the boss's diagonal motion head-on. The wall argument holds: a diagonal line of cells is a wall for a 4-connected fill, and a body that moves one axis at a time cannot cross it. After a capture the claimed side makes the rail a 4-connected staircase, so D7 still holds. A diagonal step onto CLAIMED lands on a rail cell through the 8-neighbour rule, which keeps R4.5-5 true. Most of the effect, though, is cheaper and faster exposure: with A held, two diagonal sub-steps move about 2.8 cells of distance per tick, which mainly lowers difficulty.
 
-*Fixes.* Let diagonal sub-steps ignore A (one sub-step per tick). The player then trades a fast staircase (2 cells per tick, more trail) against a slower diagonal (1.41 per tick, fewer trail cells), which is a real decision rather than a pure speed-up. Gate diagonals behind a v2 level byte so they define a level family. On the device, try out how reliably the stick holds a diagonal before adopting it.
+*Fixes.* Let diagonal sub-steps ignore A (one sub-step per tick). The player then trades a fast staircase (2 cells per tick, more trail) against a slower diagonal (1.41 per tick, fewer trail cells), which is a real decision rather than a pure speed-up. Gate diagonals behind a v2 level byte so they define a level family.
 
-*Readability.* Acceptable. A diagonal trail is red 4x4 cells touching at their corners, a dotted jagged line, still clear on black. The player's ring keeps the tip visible. The input is a bigger problem than the screen.
+*Readability.* Acceptable. A diagonal trail is red 4x4 cells touching at their corners, a dotted jagged line, still clear on black.
 
 ## Per-level draw speeds
 
@@ -151,9 +150,9 @@ The bot assessment (mixed, per-level calibration) is honest.
 
 *Fixes.* Drop fast_steps 3, or keep it for Training. Keep rail_steps 2, which narrows the gap. Before any level with speeds other than the defaults enters a season, add a human-like execution model to the reference mix: input delay of a few ticks, turn-timing jitter. Also check its clear rates against a human playtest, as M2.9 did.
 
-**Play: ok, 3 of 5.** Only one of the three knobs adds a decision. A rail sprint (rail_steps = 2) is new: today minions with period 1 move as fast as the player on the rail, so they can't be outrun. Sprinting makes 'race the minion to the cut position' a choice, and it narrows the human/bot gap, because the escape is reactive. The extended PIN-04 and the existing pass predicate handle it cleanly. The other two knobs are mostly difficulty. fast_steps = 1 takes a decision away and breaks muscle memory on the A key. fast_steps = 3 means 45 cells/s, 12 px per tick on the wedgie, where one tick of reaction overshoots by 3 cells. That is hard to steer with a 5-way joystick, and it widens the gap, as the pitch concedes. slow_period 3-4 just lengthens shield exposure. Varying player speed per level, against the knob set, is distinct from the 16 levels, but speeds that change between levels can feel arbitrary unless each level tells the player.
+**Play: ok, 3 of 5.** Only one of the three knobs adds a decision. A rail sprint (rail_steps = 2) is new: today minions with period 1 move as fast as the player on the rail, so they can't be outrun. Sprinting makes 'race the minion to the cut position' a choice, and it narrows the human/bot gap, because the escape is reactive. The extended PIN-04 and the existing pass predicate handle it cleanly. The other two knobs are mostly difficulty. fast_steps = 1 takes a decision away and breaks muscle memory on the A key. fast_steps = 3 means 45 cells/s, where one tick of reaction overshoots by 3 cells. That is hard to steer, and it widens the gap, as the pitch concedes. slow_period 3-4 just lengthens shield exposure. Varying player speed per level, against the knob set, is distinct from the 16 levels, but speeds that change between levels can feel arbitrary unless each level tells the player.
 
-*Fixes.* Ship only the rail sprint, as one v2 byte (with A held on the rail, 2 sub-steps), on the levels where minions dominate. Keep fast_steps fixed at 2, and drop 1 and 3. Keep slow_period only if playtests show it creates a real choice rather than a slower shield. Show the level's speeds in the 1.5 s overlay at level start.
+*Fixes.* Ship only the rail sprint, as one v2 byte (with A held on the rail, 2 sub-steps), on the levels where minions dominate. Keep fast_steps fixed at 2, and drop 1 and 3. Keep slow_period only if playtests show it creates a real choice rather than a slower shield. Show the level's speeds in the overlay at level start.
 
 *Readability.* No new on-screen element. A sprinting player jumps 8 px per tick on the rail, which is still easy to follow. 3 cells per tick (12 px) on a cut is hard to track and steer at 15 Hz. The level's speed must appear in the start overlay, since nothing in the field shows it.
 
@@ -194,7 +193,7 @@ Standing still on the rail, hold A to fire a straight wall into the field that g
 
 **Fairness: concerns, 3 of 5; gap widens; D14 compliant.** D14 holds. The lance is a straight chord at fast-cut speed (2 cells per tick) that cannot stop. It gives up D4's mid-cut stop, a human's main way to adapt, in exchange for keeping the body on the rail. Whether it lands depends on the next 10 to 30 boss moves, seeded deflections included: search predicts that exactly, while for a human it is a gamble. Search is already at 98.5% of the ceiling, so it gains little score, but humans get little safe value either: a mild widening. Two errors only humans will make: (1) The trigger is level-sensitive (A held, no direction, on the rail). A player who closes a cut with A and a direction held, then releases the direction first, fires an unintended lance, and many players keep A held. (2) The aim is implicit: the first of N, E, S, W whose neighbour is EMPTY. At corners and obstacle notches the lance can go where the player did not aim. Scripted bots get an easy policy they can be calibrated on (fire when the forecast chord is clear at the Caution margin). As a global rule it adds no draw variance; as the per-level lance_steps byte, only a little.
 
-*Fixes.* Trigger only when A goes from released to held. Aim with the joystick: the lance flies in the last direction pressed toward EMPTY, not the first open neighbour. Keep an adaptive option for humans: holding B pauses or slows the lance head, preserving D4's stop. Add the lance to greedy and bold, using their existing Caution margin, before calibrating.
+*Fixes.* Trigger only when A goes from released to held. Aim the lance: it flies in the last direction pressed toward EMPTY, not the first open neighbour. Keep an adaptive option for humans: holding B pauses or slows the lance head, preserving D4's stop. Add the lance to greedy and bold, using their existing Caution margin, before calibrating.
 
 **Play: ok, 3 of 5.** A JezzBall-style growing wall. Its exposure equals a straight fast cut: 2 cells per tick, and a boss bump hits either way. So the real difference is that the body stays behind: you keep your side of the field and spend the flight time walking the rail to the next launch point. That is a real tempo and positioning gain and creates two-front attention. But on minion levels it keeps you on the rail, where the minions are, while a cut takes you off it. So it is a positional trade rather than a large new space. Only straight chords are possible, and the aim is implicit: perpendicular to the local rail, with an invisible N, E, S, W tie-break at corners. Input clash: today, holding A while standing on the rail is harmless and a natural habit to get ready for a fast dash. Under this rule it would launch lances by accident. Protecting a lance with the shield also means holding B, which halves rail speed just when you are dodging.
 
@@ -216,7 +215,7 @@ Standing on the rail, hold Y to grow a square of territory into the field, ring 
 
 **Bot effect.** Widens the gap a little. The best moment to release depends on when the boss will next reach the square, which search knows to the tick. Humans judge it from a very readable growing shape and a visible minion approach, so the gap is smaller than for steered cuts. Y becomes an action, not a pause: the clock and both threats keep running, so D8's concern about free thinking time does not arise. Scripted bots can use a simple policy: grow while the projected boss path stays out of the next square and no minion is within k rail cells.
 
-**Budget.** Four bytes of state. Each growth checks at most 4s + 4 cells, every G ticks, and the release costs one capture. The journal v2 decoder changes, and all vector journals get new headers. On the device, Key3 (Y) is mapped. Screen: up to 4s + 4 cells per growth.
+**Budget.** Four bytes of state. Each growth checks at most 4s + 4 cells, every G ticks, and the release costs one capture. The journal v2 decoder changes, and all vector journals get new headers. Screen: up to 4s + 4 cells per growth.
 
 **Variety.** It adds a capture that is about timing rather than steering: stand, grow, release. Squares are a shape cuts rarely make, and standing still becomes a deliberate risk against the minions, whereas today it is only ever the player's choice to wait.
 
@@ -226,14 +225,14 @@ Problems:
 (a) An invulnerability exploit. R4.3-5 and PIN-02 end invulnerability only when a cut starts. A bloom started right after a lost life grows for 30 ticks while boss and minion hits are ignored, and the boss just bounces off the TRAIL. At G=3 that reaches s=21: about 441 cells risk-free after every lost life.
 (b) The state needs about 4 bytes, and only if the anchor is the player's cell (the player cannot move) and 'active' is s > 0. Growing 'every G ticks after the start' needs a u16 start tick, or else the global phase tick % G. Either way the state hash goes to v2.
 (c) Several cases are unspecified: Y held while cutting; Y held when no bloom can start (does the player freeze?); a release on a tick when a direction is also held; and where growth runs in the tick order. If growth runs at step 3, a new ring can be laid against the body's leading edge and bumped at step 4 of the same tick.
-(d) Journal v2: bit 7 becomes valid and decode rule 10 goes. That means a new journal version in the core, the zk image and the wedgie Recorder, and new headers on every vector. The owner must amend D8.
+(d) Journal v2: bit 7 becomes valid and decode rule 10 goes. That means a new journal version in the core and the zk image, and new headers on every vector. The owner must amend D8.
 (e) A bloom grows only on straight rail. Any CLAIMED cell in the near-edge row stops it, so on obstacle levels it stalls at s = 1 to 3.
 
 Search times the release to the tick; humans read the shape well. The gap is modest.
 
 *Fixes.* Set invulnerability to 0 when a bloom starts. State: s (u8), direction (u8), start tick (u16); anchor = the player's cell. Y while cutting is ignored. Y with no startable bloom has no effect, and the player moves normally. A release captures and ends the tick's movement, like R4.5-5. Grow at step 3 only if the ring keeps a 1-cell margin from the body, or accept the risk. To stay on journal v1 and avoid revisiting D8, trigger the bloom with A held and no direction on the rail (A does nothing there today); the cost is surprising players who keep A held. Otherwise the owner amends D8.
 
-*Cost.* About 4 B of state (state hash v2, preimage 952 B). Level format v2 +1 B (G). Journal v2: decoder, header version, Recorder, every vector header. Each growth reads at most 4s+4 ≤ 232 cells every G ticks; a release costs one capture (0.1M to 0.55M zk cycles); zk otherwise negligible. RULES_VERSION bump; all vectors regenerated. Key3 is mapped on the device.
+*Cost.* About 4 B of state (state hash v2, preimage 952 B). Level format v2 +1 B (G). Journal v2: decoder, header version, Recorder, every vector header. Each growth reads at most 4s+4 ≤ 232 cells every G ticks; a release costs one capture (0.1M to 0.55M zk cycles); zk otherwise negligible. RULES_VERSION bump; all vectors regenerated.
 
 *Conflicts.* D8; R4.3-2; R4.3-5; PIN-02; R4.4-8; R4.5-1; R4.9-17; §6.1 bit 7 reserved; §6.3 decode rule 10
 
@@ -273,7 +272,7 @@ Points the sketch glosses over:
 2. A lapse is also a guaranteed, timed abort. A doomed cut held still until it lapses escapes at no cost if no bump comes first. So short breath gives humans a partial bail-out as well as taxing waiting. The bot effect is mixed rather than simply 'widens'.
 3. It is a fuse in spirit, against D4's 'no fuse in v1', so it needs the owner.
 
-Costs are trivial: one compare per tick, and a lapse costs the same 3,600-cell pass as a lost life, far below a capture's 11 ms worst tick on the wedgie.
+Costs are trivial: one compare per tick, and a lapse costs the same 3,600-cell pass as a lost life.
 
 *Fixes.* - Decide whether a lapse grants the 30 ticks of invulnerability of R4.9-17, or none.
 - Get the owner's D4 decision before implementing.
@@ -281,7 +280,7 @@ Costs are trivial: one compare per tick, and a lapse costs the same 3,600-cell p
 *Cost.* - Format: level v2 +2 B. State +2 B, state hash v2.
 - Per tick: one compare; a lapse costs one 3,600-cell pass. zk negligible.
 - Versioning: RULES_VERSION bump, all traces regenerated, bots taught the deadline, recalibration.
-- Client: one HUD bar (natmod status +1 field).
+- Client: one HUD bar.
 
 *Conflicts.* D4; R4.5-8; R4.3-2; R4.9-13; R4.9-17
 
@@ -292,8 +291,6 @@ Costs are trivial: one compare per tick, and a lapse costs the same 3,600-cell p
 **Play: weak, 2 of 5.** It reverses D4's explicit 'no fuse', which is part of the game's feel. As the pitch concedes, it widens the paid gap. It taxes the human's main answer to an unforeseen boss turn, stopping mid-cut to wait, while search plans cuts that close in time. The one decision it adds, sizing a cut to the meter, mostly duplicates pressure that the boss, the minions and the time limit already apply, so per-level breath values become a difficulty knob. The lapse also has an odd double role. Because it costs no life, waiting out a short breath becomes a delayed, free abort back to the cut start. That is a clumsier version of the retractable-trail idea, which gives the player a deliberate escape and narrows the gap instead.
 
 *Fixes.* Drop it in favour of the retractable trail, which adds abort and re-route decisions without a timer. If a tempo pressure is still wanted, use a level time limit rather than a per-cut fuse.
-
-*Readability.* There is no HUD space for a draining bar during play on the wedgie, because the field fills the whole 240×240 screen. Re-colouring the trail as breath runs out would repaint up to 3,364 trail cells, costly on the device. Only a blink of the player's ring in the last second is cheap and readable.
 
 ## Lasso loops and spur walls
 
@@ -325,7 +322,7 @@ R4.5-5's 'that cell is a rail cell at that moment' must be reworded, because a T
 
 *Fixes.* Adopt it only behind the per-level byte (trail_contact = close), on a few designated levels, after the owner amends D4. To stop the free bank: a trail contact closes only if the capture encloses at least one EMPTY, non-TRAIL cell. Decide this with a trial fill that is reverted (BOSS_ZONE back to EMPTY, the move ignored as in today's R4.5-4) when nothing is enclosed. The cheapest bank is then a 3x3 ring of 8 trail cells. A refused contact costs one fill. That is at most one per tick, so the worst tick holds, but the adversarial zk maximum doubles to about 2,700 fills per level. Reword R4.5-5 and PIN-05.
 
-*Cost.* 0 B RAM and no new state; state hash v1 unchanged. RULES_VERSION bump; vectors in which the player pushes into its own trail change outcome. Each lasso or spur costs one capture, about 0.1M to 0.55M zk user cycles (20 spurs add about 10M, a third of the heaviest level's 29.6M). Worst tick unchanged at one capture, about 22 ms. The optional trail_contact byte makes level format v2. The trial-fill fix adds one fill per refused contact.
+*Cost.* 0 B RAM and no new state; state hash v1 unchanged. RULES_VERSION bump; vectors in which the player pushes into its own trail change outcome. Each lasso or spur costs one capture, about 0.1M to 0.55M zk user cycles (20 spurs add about 10M, a third of the heaviest level's 29.6M). Worst tick unchanged at one capture. The optional trail_contact byte makes level format v2. The trial-fill fix adds one fill per refused contact.
 
 *Conflicts.* D4; R4.5-4; R4.5-5; PIN-05; §7.4 bot gap
 

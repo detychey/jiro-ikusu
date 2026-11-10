@@ -6,42 +6,30 @@ The 10 ideas proposed from the axis of the [taxonomy](../TAXONOMY.md) *items and
 
 `items-and-power-ups#2` · T0 Presentation · score 12 (core 5, fairness 5, play 2) · gap: neutral · D14: compliant
 
-Three faint glyphs sit on open cells of each Training level. Claiming a glyph's cell collects it, and a full set across the 16 levels unlocks a palette or an alternate reveal picture on the wedgie. It is a free, scoreless test of how players route captures toward a marked cell, before anyone pays for enclosure items in the core.
+Three faint glyphs sit on open cells of each Training level. Claiming a glyph's cell collects it, and a full set across the 16 levels unlocks a palette or an alternate reveal picture. It is a free, scoreless test of how players route captures toward a marked cell, before anyone pays for enclosure items in the core.
 
-**Rule sketch.** Client-only. At level start, for g = 0..2, the client takes idx = fmix32(u32 of level seed bytes 28..31 XOR g) mod 3600. The glyph sits on the first cell at or after idx, row-major and wrapping, that is EMPTY at level start and outside the boss's start body. The wedgie's natmod exports the three cells, or the seed. After each tick the client already knows which cells changed. A glyph whose cell turned CLAIMED is collected, so trail through it counts only once the cut closes, as in the core. The wedgie saves a 3-bit mask per level in /saves/jiro/ (6 bytes for 16 levels), and the browser keeps it in local storage. All three glyphs on a level light its card, and all 48 unlock a palette or an alternate image. Glyphs are never in the score or the core. They are hidden by default in Challenge. Any later core use of seed bytes 28..31 would only correlate with glyph positions, which is harmless for a feature that scores nothing.
+**Rule sketch.** Client-only. At level start, for g = 0..2, the client takes idx = fmix32(u32 of level seed bytes 28..31 XOR g) mod 3600. The glyph sits on the first cell at or after idx, row-major and wrapping, that is EMPTY at level start and outside the boss's start body. After each tick the client already knows which cells changed. A glyph whose cell turned CLAIMED is collected, so trail through it counts only once the cut closes, as in the core. The browser keeps a 3-bit mask per level (6 bytes for 16 levels) in local storage. All three glyphs on a level light its card, and all 48 unlock a palette or an alternate image. Glyphs are never in the score or the core. They are hidden by default in Challenge. Any later core use of seed bytes 28..31 would only correlate with glyph positions, which is harmless for a feature that scores nothing.
 
 **Inspired by:** Super Qix (1987), Power Styx (1988), Gals Panic S - Extra Edition (1997), Gals Panic S2 (1999). **Mechanic families:** [Set collection (letters and tokens)](../taxonomy/items-and-power-ups.md#set-collection-letters-and-tokens), [Enclosure-collected items and boxes](../taxonomy/items-and-power-ups.md#enclosure-collected-items-and-boxes), [Score and currency collectibles](../taxonomy/items-and-power-ups.md#score-and-currency-collectibles). **Touches:** presentation.
 
 **Bot effect.** None on scores. Glyphs are outside the core and the Outcome, so the gap between search and humans is unchanged, and bots ignore them. As a by-product it measures how far humans deviate to enclose a cell, and how often that costs a life. That data can size the T3 cache ideas before any RULES_VERSION bump.
 
-**Budget.** Zero zk cycles and no consensus change. Wedgie: 3 compares per capture, 6 bytes of save data, and 3 marks drawn on EMPTY cells, restored after the boss passes as other field cells are. Browser: trivial. Palette: reuse an existing dim colour.
+**Budget.** Zero zk cycles and no consensus change. Browser: trivial. Palette: reuse an existing dim colour.
 
-**Variety.** A low-stakes detour decision: enclose the glyph now with a bigger cut, or come back for it. It also gives offline Training on the wedgie a collection goal across all 16 levels, which today has only scores.
+**Variety.** A low-stakes detour decision: enclose the glyph now with a bigger cut, or come back for it. It also gives Training a collection goal across all 16 levels, which today has only scores.
 
 **Core engineer: feasible, 5 of 5, tier 0.** Truly client-only. Positions come from seed bytes 28-31 and the start grid, and collection reads the CLAIMED cells that the renderer's dirty-cell diff already sees. No consensus, zk or vector impact, and no change to RULES_VERSION, the hash or the formats.
 
-Device details to get right:
-
-- MicroPython has no keccak, so the wedgie needs jiro_core.mpy to export the level seed or the three cells. That is a natmod API addition and a rebuild, not a rule change.
-- The app's `restore` repaints cells from the grid, which knows nothing of glyphs, so the glyph overlay must be redrawn after the boss, the minions or the player pass over it.
-- The bests save must pre-size its glyph keys at start, like the bests, so the dict never grows after start.
-- An alternate reveal picture does not fit the wedgie's RAM: 240 × 240 at 4 bits is 28.8 KB, against about 17 KB free after start. It must be streamed from flash rect by rect, or the device unlock limited to a palette.
-
 In Training the nonce is arbitrary, so glyph cells move from play to play, which is fine. The detour data it gathers is a useful by-product.
 
-*Fixes.* - Export the 32-byte level seed in the natmod's status call; the app derives the cells itself.
-- On the wedgie, unlock a palette, or stream any alternate picture from a file.
-- Pre-size the save keys at start.
-
 *Cost.* - Zero zk cycles; no format, hash or RULES_VERSION change.
-- Wedgie: one natmod export, 3 compares per capture, 6 B of save data, 3 overlay cells.
 - Browser: trivial.
 
 **Fairness: ok, 5 of 5; gap neutral; D14 compliant.** Client-only: glyphs never enter the core, the Outcome or the score, so there is no effect on consensus, bots or calibration. Seed bytes 28-31 are public once the nonce is revealed, so glyph positions leak nothing, and a later core use of those bytes only correlates with something worth nothing. A cosmetic, local unlock gives bots no reason to farm. The one fairness point is Challenge: a visible glyph lures a human into a detour that costs paid score. That is the player's choice, but glyphs should stay off there by default, as written. The data has limited value: a detour that costs no score understates how far players will go for an item that scores.
 
 *Fixes.* Keep glyphs hidden in Challenge, or show them but never count a Challenge collection. Keep unlocks local and non-transferable so they never become a bot target. If the data is used to size the T3 item ideas, account for the bias that the detour was free.
 
-**Play: weak, 2 of 5.** Cheap and harmless, with no consensus impact, but little play value. It adds a side goal: a level clears at the target, so the three glyph cells must fall inside the area you take before you clear, and that gently shapes the order of captures. Masks accumulate across runs and score nothing, so the pressure is low. It doesn't touch the boss, minions, fast cut, shield or commit beyond an optional detour. Hidden in Challenge, so it does nothing for paid play. Its best arguments are outside play value: a collection goal for offline wedgie Training, and data on how far players detour to enclose a marked cell, which could size the T3 pickup ideas. Title and rule disagree: the rule draws visible marks on EMPTY cells, so the glyphs aren't hidden. Distinct from the 16 levels, which have no collectibles.
+**Play: weak, 2 of 5.** Cheap and harmless, with no consensus impact, but little play value. It adds a side goal: a level clears at the target, so the three glyph cells must fall inside the area you take before you clear, and that gently shapes the order of captures. Masks accumulate across runs and score nothing, so the pressure is low. It doesn't touch the boss, minions, fast cut, shield or commit beyond an optional detour. Hidden in Challenge, so it does nothing for paid play. Its best arguments are outside play value: a collection goal for Training, and data on how far players detour to enclose a marked cell, which could size the T3 pickup ideas. Title and rule disagree: the rule draws visible marks on EMPTY cells, so the glyphs aren't hidden. Distinct from the 16 levels, which have no collectibles.
 
 *Fixes.* Rename it, since the glyphs are visible. Show per-level collection on the level-select card, and give the all-48 unlock a visible tease, so the goal is known before play. To give it bite, require all three glyphs in a single run for the level's mark. If the data use is the real goal, log detour-and-hit events explicitly in Training telemetry rather than inferring them from saves.
 
@@ -61,7 +49,7 @@ When a hit leaves you on your last life with at least half the target claimed, a
 
 **Bot effect.** Narrows the gap. Search almost never reaches its last life, so the lifeline is worth little to it, while humans and the committer bot reach it often. It turns some commits and some zeroed levels into finished levels, which lifts the bottom of the distribution. Search learns the cell only a few ticks before a human sees it, so no meaningful information gap opens. The committer presses X the moment it is on its last life, so it needs a rule: walk to a visible lifeline if no minion is within k rail cells of the route, then decide again. Calibration must rerun, because mix claims on the hard levels will rise.
 
-**Budget.** \+4 bytes of state. At most once per level: one fmix32 and a scan of up to 3,600 cells with an 8-neighbour rail test (about 30k cell reads). Per tick: one position compare at step 3. zk cost is negligible. Screen: one rail cell in a distinct colour (the whole 240x240 field is always visible).
+**Budget.** \+4 bytes of state. At most once per level: one fmix32 and a scan of up to 3,600 cells with an 8-neighbour rail test (about 30k cell reads). Per tick: one position compare at step 3. zk cost is negligible. Screen: one rail cell in a distinct colour.
 
 **Variety.** Gives the commit decision a third option at the moment it matters most. It also makes the rail, today just a road, a place you travel to on purpose, past the minions, with no invulnerability to hide behind.
 
@@ -70,7 +58,6 @@ When a hit leaves you on your last life with at least half the target claimed, a
 - The key comes from free seed bytes 17-20.
 - At most one scan per level.
 - The rail is never empty (R4.7-11), so the fallback cell exists.
-- Worst tick: a capture and a lost life can coincide (a cut closes at step 3, a minion hits at step 5). The ~30k-read scan adds about 2-4 ms to the ~22 ms capture tick, still far under 66.7 ms.
 
 Issues:
 (1) Rail moves are 4-directional, so reaching a cell at Manhattan distance ≥ 24 takes at least 24 of the 30 protected ticks. A player who arrives while still invulnerable must step off and back on, because only entering counts.
@@ -88,7 +75,6 @@ It softens D5's zero without removing it. The 'narrows the gap' claim is plausib
 - Once per level: a scan of at most 3,600 cells × 9 reads, or a bounded rail walk of at most 4|C| steps. Per tick: one compare.
 - zk under 0.1%.
 - No level change, unless the optional flag is added.
-- Wedgie: Game about +4 B; one rail cell in a distinct colour.
 - RULES_VERSION bump, vectors, playtest and calibration.
 
 *Conflicts.* D5; R4.9-13; R4.9-17; R4.7-8; R4.3-2; §6.4 seed bytes 17-20; state hash v1
@@ -144,7 +130,6 @@ The mix will lose fewer lives on large rectangles, so calibration moves.
 *Cost.* - Level v2: +2 B.
 - State: +2 B, hash v2.
 - One compare per capture and one per TRAIL edge: zk negligible.
-- Wedgie: Game +2 B; the trail recoloured once per arm or spend (at most a few hundred cells).
 - RULES_VERSION bump, vectors, playtest and calibration.
 
 *Conflicts.* D6; R4.6-3; R4.6-11; R4.9-2; R4.9-16; R4.4-9; state hash v1
@@ -175,7 +160,7 @@ New step 5b, after the minions: the warden moves from w0 to w1 when tick % perio
 
 **Bot effect.** Keeps or slightly narrows the gap. The warden is deterministic and visible. It makes the minion-heavy levels (trio, swarm, doom), where the reference mix scores least, more survivable for everyone, while search, already near the ceiling there, gains little score. Scripted bots benefit with no new code, since minions simply vanish more often; a 'cut behind the warden' heuristic would help them more. The warden is seed-free like the minions, and the boss stays seeded, so no learnable safe zone appears.
 
-**Budget.** \+5 bytes of state. Per tick: one more rail walker (a few neighbour reads) and up to 3 meeting tests. One orientation step per capture. zk cycles under 1%. Screen: one more moving cell in an unused colour (cyan fits on the wedgie).
+**Budget.** \+5 bytes of state. Per tick: one more rail walker (a few neighbour reads) and up to 3 meeting tests. One orientation step per capture. zk cycles under 1%. Screen: one more moving cell in an unused colour.
 
 **Variety.** The first friendly unit. Minion levels gain a rhythm: the warden sweeps, the respawn countdown runs, and the player cuts in the gap. On the hardest levels a designer can trade a threat for an ally instead of only lowering knobs.
 
@@ -199,7 +184,6 @@ Seed-free like the minions while the boss stays seeded, so no new learnable safe
 *Cost.* - Level v2: +3 B.
 - State: +5 B, hash v2.
 - Per move: a few hundred cycles. About 2-5% of the heaviest level; proving price under +0.5%. One orientation step per capture.
-- Wedgie: Game about +6 B; one more entity drawn (cyan).
 - RULES_VERSION bump, new step 5b, vectors, playtest and calibration.
 
 *Conflicts.* D7; PIN-14; R4.4-5 (step 5b); R4.3-1; R4.7-2; R4.7-3; R4.7-8; R4.7-9 (a new cause of destruction); state hash v1
@@ -220,7 +204,7 @@ Seed-free like the minions while the boss stays seeded, so no new learnable safe
 
 The unused Y key gets a few charges per level. Pressing it sends the boss back the way it came and makes every minion stagger for a second. Spend one to save a cut that is about to be hit, or keep it for the big final capture.
 
-**Rule sketch.** Input mask bit 7 becomes Y in journal v2 (version 2), so the decoder no longer rejects bit 7 (code 10 is dropped). Level bytes v2 append reverse charges u8 (0..3). State hash v2 adds 2 bytes: reverse charges u8 and minion stagger u8. New step 2b, after Commit and before Player: on a Y press, Y held in this tick's mask but not in the previous tick's (detected the way R4.5-7 detects a B press), and with charges > 0, charges go down by 1, the boss's vx and vy both invert, and stagger = 15. The body never moves at 2b; its next move tests the new leading edges under R4.6-3, with any TRAIL hit as usual. Step 5: while stagger > 0, live minions don't move (respawn countdowns still tick), and stagger goes down by 1 at the end of step 5. Wedgie: Key3 maps to bit 7 in the app's CONTROL_BITS. Browser: one more rebindable key. No new seed material.
+**Rule sketch.** Input mask bit 7 becomes Y in journal v2 (version 2), so the decoder no longer rejects bit 7 (code 10 is dropped). Level bytes v2 append reverse charges u8 (0..3). State hash v2 adds 2 bytes: reverse charges u8 and minion stagger u8. New step 2b, after Commit and before Player: on a Y press, Y held in this tick's mask but not in the previous tick's (detected the way R4.5-7 detects a B press), and with charges > 0, charges go down by 1, the boss's vx and vy both invert, and stagger = 15. The body never moves at 2b; its next move tests the new leading edges under R4.6-3, with any TRAIL hit as usual. Step 5: while stagger > 0, live minions don't move (respawn countdowns still tick), and stagger goes down by 1 at the end of step 5. Browser: one more rebindable key. No new seed material.
 
 **Inspired by:** AQuix (1997), Zolyx (1987), Bolyx (2001), Kid Grid (1982), Amidar (1982), Potty Painter (1983). **Mechanic families:** [Enemy direction reversal](../taxonomy/items-and-power-ups.md#enemy-direction-reversal), [Limited escape charges](../taxonomy/items-and-power-ups.md#limited-escape-charges), [On-demand powers and upgradable skills](../taxonomy/items-and-power-ups.md#on-demand-powers-and-upgradable-skills), [Stun effects](../taxonomy/items-and-power-ups.md#stun-effects). **Touches:** input, journal, rules, state-hash, level-format, level-data, presentation, tools-bots.
 
@@ -232,11 +216,11 @@ The unused Y key gets a few charges per level. Pressing it sends the boss back t
 
 **Variety.** The first active, player-timed defence: today every protection is passive (B held in advance). It adds the choice 'spend it now or keep it for the finale', and lets bold players start cuts the boss would otherwise catch.
 
-**Core engineer: feasible, 3 of 5, tier 4.** Builds as stated. The press is an edge of the journaled mask. The previous mask is already state (the hash's mask field), as press_tick is for B. A press does two negations and sets a counter, and draws no seed, so D14 and the R4.6-12 divergence argument are untouched. The body never moves at 2b, so R4.6-3 and R4.6-10 still keep it on EMPTY cells only. A reversal right after a bounce points back into the wall and just re-bounces on that axis, which is worth a hint but is not a bug. The bot claim is plausible: search sits at 0.985 of the ceiling and never loses lives, so charges mostly help humans and the mix. The cost is wider than the budget line suggests. (1) Three format bumps at once: journal v2 for bit 7, level v2 for the charges, state hash v2 (948 to 950 B). With RULES_VERSION 3, every journal, outcome and trace vector is regenerated. (2) It spends the last reserved mask bit, so any later input (the joystick press) needs a wider event: journal v3 with 4-byte events. (3) D8 is an owner decision whose text says Y stays unused. Its rationale (a pause gives free thinking time) is not hit, but the decision must be reopened. (4) The tick-0 case needs a PIN: Y in the tick-0 event counts as a press, like PIN-03. (5) Wedgie: CONTROL_BITS gains Y, and qemu_app_check's 'Y held never reaches the mask' assertion flips. The status export gains a field. There is no in-play HUD (the field fills 240x240), so pips must overlay the border rows or appear only in the start overlay. (6) Calibration needs a scripted reversal trigger. Otherwise the mix never spends charges, and the weights misprice what humans do.
+**Core engineer: feasible, 3 of 5, tier 4.** Builds as stated. The press is an edge of the journaled mask. The previous mask is already state (the hash's mask field), as press_tick is for B. A press does two negations and sets a counter, and draws no seed, so D14 and the R4.6-12 divergence argument are untouched. The body never moves at 2b, so R4.6-3 and R4.6-10 still keep it on EMPTY cells only. A reversal right after a bounce points back into the wall and just re-bounces on that axis, which is worth a hint but is not a bug. The bot claim is plausible: search sits at 0.985 of the ceiling and never loses lives, so charges mostly help humans and the mix. The cost is wider than the budget line suggests. (1) Three format bumps at once: journal v2 for bit 7, level v2 for the charges, state hash v2 (948 to 950 B). With RULES_VERSION 3, every journal, outcome and trace vector is regenerated. (2) It spends the last reserved mask bit, so any later input needs a wider event: journal v3 with 4-byte events. (3) D8 is an owner decision whose text says Y stays unused. Its rationale (a pause gives free thinking time) is not hit, but the decision must be reopened. (4) The tick-0 case needs a PIN: Y in the tick-0 event counts as a press, like PIN-03. (5) Calibration needs a scripted reversal trigger. Otherwise the mix never spends charges, and the weights misprice what humans do.
 
 *Fixes.* Add a PIN: Y held at tick 0 is a press. Add a validity code for charges > 3. State in §6.1 that bit 7 was the last spare. Give bold and committer a reversal trigger before recalibrating. Optionally make charges a core constant (for example 1) to skip level v2. Optionally drop the minion stagger so the press has one effect.
 
-*Cost.* State +2 B (preimage 950 B), level +1 B (473 B), Recorder +2 B on the wedgie. Journal v2 keeps 3-byte events and drops decode code 10. Per tick: one mask edge test and one stagger compare, about 20 RV32 instructions, about 54k cycles per 2,700-tick level, under 0.2% zk. Per press: 2 negations. Versions: journal v2, level v2, state hash v2, RULES_VERSION 3. All journal and game vectors, traces included, regenerated. Playtest rerun and recalibration.
+*Cost.* State +2 B (preimage 950 B), level +1 B (473 B). Journal v2 keeps 3-byte events and drops decode code 10. Per tick: one mask edge test and one stagger compare, about 20 RV32 instructions, about 54k cycles per 2,700-tick level, under 0.2% zk. Per press: 2 negations. Versions: journal v2, level v2, state hash v2, RULES_VERSION 3. All journal and game vectors, traces included, regenerated. Playtest rerun and recalibration.
 
 *Conflicts.* D8; R4.4-5; R4.4-6; R4.7-10; §6.1 bit 7 reserved; §6.3 decode code 10; PIN-03 (tick-0 press analogue)
 
@@ -248,7 +232,7 @@ The unused Y key gets a few charges per level. Pressing it sends the boss back t
 
 *Fixes.* Keep charges scarce: 1 on most Challenge levels, 0 on a few, 2 or 3 only in Training and lessons, so the hold-or-spend tension stays. Make the stagger visible: a stunned palette colour on the minion cells for the 15 ticks. Show the charges as HUD pips that flash when spent. Before any Challenge season uses it, give the scripted bots a reversal trigger and get the owner's explicit decision revisiting D8.
 
-*Readability.* Good. The boss body is 8 to 32 px, so a reversal is obvious. Charges fit as up to 3 HUD pips. The minion stagger is readable only if frozen minions switch to a distinct colour, since a minion is one 4x4 px cell. Key3 is a physical key on the wedgie.
+*Readability.* Good. The boss body is 8 to 32 px, so a reversal is obvious. Charges fit as up to 3 HUD pips. The minion stagger is readable only if frozen minions switch to a distinct colour, since a minion is one 4x4 px cell.
 
 ## Stranding a minion refills the shield
 
@@ -334,7 +318,6 @@ The self-inflicted GROW is a genuine new decision.
 - State: +5 B, hash v2.
 - Once per level: one fmix32 and a scan of at most 3,600 cells (about 10-20k cycles). GROW: at most 4 × 81 reads, once. Per tick: one countdown.
 - zk under 0.1%.
-- Wedgie: Game about +8 B; one cell with two face colours and a ring; a boss redraw on a size change.
 - RULES_VERSION bump, vectors, playtest and calibration.
 
 *Conflicts.* D9; R4.3-3 (B set per level); R4.6-1; R4.4-5; R4.8-4; §6.4 seed bytes 13-16 (overlap with #10); state hash v1
@@ -367,7 +350,7 @@ Taking (step 3): in the capture pass (R4.8-4), if the cache's cell turns CLAIMED
 
 **Bot effect.** Widens slightly through foresight; FREEZE, PURGE and CHARGE then narrow it. The spawn schedule is level data, and each cell is a pure function of the seed and the grid. Search therefore foresees every cache from the reveal and is in position before it appears, while a human sees it only on spawn. A HUD countdown can show when the next one comes, but not where. FREEZE, PURGE and CHARGE do not raise the ceiling, and search is at 98.5% of it, so they mostly lift humans and the mix by saving lives. SHRINK does raise the ceiling, by 2B − 1 cells per take (about 27 bp at B = 5), and search always collects that. To trim the foresight edge, pick the cell 30 ticks before s_k and draw a pulsing outline until the cache opens. Scripted bots need a rule (stretch the greedy rectangle over a visible cache when the margin allows), or calibration will price levels without the caches humans use.
 
-**Budget.** About 8 bytes of core state, plus about 4 more natmod status entries for the wedgie app. Per tick: two countdowns. Per spawn (at most 8 per level): one fmix32 and a scan of up to 3,600 cells, comparable to one capture pass. Worst-tick time stays far below 22 ms, and zk cycles grow well under 1% against about 30M per level. Screen: one 4x4 icon in up to 4 kind colours (or 2 colours plus a blink), redrawn after the boss passes.
+**Budget.** About 8 bytes of core state. Per tick: two countdowns. Per spawn (at most 8 per level): one fmix32 and a scan of up to 3,600 cells, comparable to one capture pass. zk cycles grow well under 1% against about 30M per level. Screen: one 4x4 icon in up to 4 kind colours (or 2 colours plus a blink), redrawn after the boss passes.
 
 **Variety.** The first reason to go somewhere specific in the field. A cache deep in the boss's haunt asks for a big, risky cut now; one by the rail is a cheap detour. FREEZE and PURGE pay off only if the next cut is ready, so the question is when to take a cache, not just whether.
 
@@ -375,15 +358,15 @@ Taking (step 3): in the capture pass (R4.8-4), if the cache's cell turns CLAIMED
 
 - Seeded supply caches: Up to three caches sit at seed-chosen spots in the open field, different every run. Capturing the cell a cache sits on grants an extra shield charge or an extra life, often at the price of a cut deep into boss territory.
 
-**Core engineer: feasible with changes, 2 of 5, tier 3.** Determinism, RAM and timing all hold: 8 B of state, two countdowns per tick, and at most 8 spawns per level. A spawn scan on a capture tick adds about 1 ms to the 22 ms worst tick, and the cache is an entity, so the 2-bit cells are untouched. The spawn rule has a real flaw. 'Scan from h mod 3600 for the first EMPTY cell' picks cell c with probability proportional to 1 plus the length of the non-eligible run before it in row-major order. Once the top half is claimed, about 50% of caches land on the open region's first cell, which sits right against the rail and is the cheapest possible take. As the claim rises toward the target, that hot spot reaches about 70%. That is learnable and seed-independent in effect. FREEZE stops the boss and the minions for 30 ticks: a 60-cell fast cut with no boss risk, the kind of risk-free window R4.9-17's rationale rules out for invulnerability. Search will always have the maximal cut ready, and SHRINK raises the ceiling every time search takes one. SHRINK also overturns D9 (B fixed per level). Bytes 9 to 12 collide with [reveal-and-presentation#8](reveal-and-presentation.md#figure-weighted-claim). The bot-effect text is honest about the foresight edge.
+**Core engineer: feasible with changes, 2 of 5, tier 3.** Determinism, RAM and timing all hold: 8 B of state, two countdowns per tick, and at most 8 spawns per level. The cache is an entity, so the 2-bit cells are untouched. The spawn rule has a real flaw. 'Scan from h mod 3600 for the first EMPTY cell' picks cell c with probability proportional to 1 plus the length of the non-eligible run before it in row-major order. Once the top half is claimed, about 50% of caches land on the open region's first cell, which sits right against the rail and is the cheapest possible take. As the claim rises toward the target, that hot spot reaches about 70%. That is learnable and seed-independent in effect. FREEZE stops the boss and the minions for 30 ticks: a 60-cell fast cut with no boss risk, the kind of risk-free window R4.9-17's rationale rules out for invulnerability. Search will always have the maximal cut ready, and SHRINK raises the ceiling every time search takes one. SHRINK also overturns D9 (B fixed per level). Bytes 9 to 12 collide with [reveal-and-presentation#8](reveal-and-presentation.md#figure-weighted-claim). The bot-effect text is honest about the foresight edge.
 
 *Fixes.* Pick the (h mod n)-th eligible cell, where n is the count of EMPTY cells outside the boss body: one counting pass and one selecting pass, still under about 2 ms. Use seed bytes 13 to 16 or coordinate with #8. Shorten FREEZE (for example to 10 ticks), or make it slow the boss to period x 2 rather than stop it. Drop SHRINK or treat it as a D9 decision. Announce the cell 30 ticks early, as proposed, to trim search's foresight.
 
-*Cost.* Level bytes +8 B (480 B v2); core state +8 B (state hash v2, 956 B preimage). Per tick, two countdowns; per spawn, one fmix32 and 1 to 2 grid passes, at most 8 per level; under 1% zk. Natmod status +4 u16 entries; a 4x4 icon in up to 4 colours. New tick step 6b (R4.4-5). RULES_VERSION, vectors, cache policies for the scripted bots, playtest and calibration.
+*Cost.* Level bytes +8 B (480 B v2); core state +8 B (state hash v2, 956 B preimage). Per tick, two countdowns; per spawn, one fmix32 and 1 to 2 grid passes, at most 8 per level; under 1% zk. A 4x4 icon in up to 4 colours. New tick step 6b (R4.4-5). RULES_VERSION, vectors, cache policies for the scripted bots, playtest and calibration.
 
 *Conflicts.* D6; D9; D14; R4.4-5; R4.6-1; R4.8-4; R4.9-17 (risk-free window rationale); §5 level bytes v1; §6.4 seed bytes 9-12 (also claimed by [reveal-and-presentation#8](reveal-and-presentation.md#figure-weighted-claim)); state hash v1
 
-**Fairness: concerns, 2 of 5; gap widens; D14 compliant.** D14 holds. The cache cell is fmix32 of seed bytes 9-12 plus a scan of the live grid, so it can't be predicted before the reveal or copied between runs, and FREEZE's window depends on play, so it can't be learned. Fairness and the gap are the problems. (1) Foresight: the spawn ticks are level data and the cells are a pure function of the seed and grid, so search knows where every cache will appear from the reveal, given its own planned captures, and waits in position. Humans see it only on spawn. (2) Exploitation: a 30-tick FREEZE is a perfect window for an exact planner (one huge safe cut), and SHRINK raises the ceiling by 2B-1 cells per take, which search always collects. (3) Draw variance: the kind and the cell are seed luck. A CHARGE deep in the boss's area and a PURGE next to the rail are very different runs of the same level. In paid mode that adds per-run variance that weights can't remove, and it rewards buying several runs and playing the best draw. PURGE and FREEZE could save human lives on minion-heavy levels, but only if they spawn reachable, and reaching deep caches costs humans zeros. Scripted bots need cache-seeking logic, which is feasible but adds a new calibration dependency. It also touches 8 B of state, 8 level bytes and the natmod, and takes another D6 conflict through CHARGE.
+**Fairness: concerns, 2 of 5; gap widens; D14 compliant.** D14 holds. The cache cell is fmix32 of seed bytes 9-12 plus a scan of the live grid, so it can't be predicted before the reveal or copied between runs, and FREEZE's window depends on play, so it can't be learned. Fairness and the gap are the problems. (1) Foresight: the spawn ticks are level data and the cells are a pure function of the seed and grid, so search knows where every cache will appear from the reveal, given its own planned captures, and waits in position. Humans see it only on spawn. (2) Exploitation: a 30-tick FREEZE is a perfect window for an exact planner (one huge safe cut), and SHRINK raises the ceiling by 2B-1 cells per take, which search always collects. (3) Draw variance: the kind and the cell are seed luck. A CHARGE deep in the boss's area and a PURGE next to the rail are very different runs of the same level. In paid mode that adds per-run variance that weights can't remove, and it rewards buying several runs and playing the best draw. PURGE and FREEZE could save human lives on minion-heavy levels, but only if they spawn reachable, and reaching deep caches costs humans zeros. Scripted bots need cache-seeking logic, which is feasible but adds a new calibration dependency. It also touches 8 B of state and 8 level bytes, and takes another D6 conflict through CHARGE.
 
 *Fixes.* Drop SHRINK, which changes the ceiling. Fix the kinds per level in level data rather than drawing them from the seed. Telegraph each cache's cell 60-90 ticks before it opens, with a pulsing outline, to cut search's foresight edge. Limit the spawn scan to a band within reach of the rail, so placement luck stays bounded. Try it in Training first and measure the per-run spread before any season.
 
@@ -391,7 +374,7 @@ Taking (step 3): in the capture pass (R4.8-4), if the cache's cell turns CLAIMED
 
 *Fixes.* Choose the (h mod empty_count)-th EMPTY cell with one counting pass (cost comparable to a capture pass) so placement is uniform over the open field. Keep the 30-tick pulsing pre-announcement so humans see what search computes. Start with two kinds, FREEZE and SHRINK, the most distinctive pair, and add more later. Draw a client-side halo or blink pattern per kind, so kind isn't encoded by hue alone.
 
-*Readability.* Marginal as specified. A single 4x4-px cell is visible against the black field, but telling 4 kinds apart by hue at one cell, on a 16-colour palette already crowded with game colours, will fail at a glance. Use a per-kind blink rhythm or a 3x3-cell client halo (T0), and fewer kinds.
+*Readability.* Marginal as specified. A single 4x4-px cell is visible against the black field, but telling 4 kinds apart by hue at one cell will fail at a glance. Use a per-kind blink rhythm or a 3x3-cell client halo (T0), and fewer kinds.
 
 ## Four shrines, then the boss flees
 
@@ -428,7 +411,6 @@ Problems:
 *Cost.* - Level v2: +10 B.
 - State: +2 B, hash v2.
 - Per capture: at most 4 cell checks. During fright: 4 compares per boss move and a branch per minion. zk negligible.
-- Wedgie: Game about +12 B; a colour-table swap for the boss and minions during F, plus their redraw.
 - RULES_VERSION bump, vectors, playtest and calibration.
 
 *Conflicts.* D14; R4.6-6; R4.6-7; R4.9-8; R4.9-13; R4.7-9; R4.4-5; D13 (identity); state hash v1
@@ -457,7 +439,7 @@ A Challenge run comes with three boosters: an extra shield charge, a start freez
 
 **Bot effect.** Widens the gap slightly in allocation and narrows it in play. Search can simulate each drawn level with and without each booster before choosing, so it allocates near-optimally, while humans allocate by feel. But boosters don't raise the ceiling, and search sits at its ceiling, so it gains almost no score from them, while they save zeroed levels for humans and the mix. Net, the pot-share ratio should drop. Weights must be recalibrated with boosters in play, or they will overstate the hard levels.
 
-**Budget.** \+1 header byte per journal (a 72-byte header). Per tick: only HOLDFAST's compare. Referee: a 6-byte budget check per run, and the Outcome grows by a byte. This means an IReferee/Outcome change, a new Season generation and new run-flow text in README §7-§8, plus a booster picker on the browser's level intro. The wedgie is Training only, so it shows a free picker.
+**Budget.** \+1 header byte per journal (a 72-byte header). Per tick: only HOLDFAST's compare. Referee: a 6-byte budget check per run, and the Outcome grows by a byte. This means an IReferee/Outcome change, a new Season generation and new run-flow text in README §7-§8, plus a booster picker on the browser's level intro.
 
 **Variety.** The only run-level decision in the game: today the six levels are independent. It gives a reason to read the whole draw at reveal and plan across it, and gives a feared level a lever without changing its weight.
 
@@ -465,7 +447,7 @@ A Challenge run comes with three boosters: an extra shield charge, a start freez
 
 *Fixes.* Drop HOLDFAST or make it harmless: for example extra time (+300 ticks), or a freeze that ends when the first cut starts, capped at about 15 ticks. Enforce the budget in Challenge: settleRun checks the six Outcomes; settleLevel keeps a per-run tally and marks the run invalid, like Late, when it is exceeded. The client must refuse an over-budget pick. Calibrate with a draw-aware booster rule.
 
-*Cost.* Journal header 71 to 72 B (journal v2), Outcome +1 uint8, core RAM +1 B. Per tick: one compare while tick \< 60, about 0 zk. Contracts: new Outcome and IReferee, ZkReferee plus a new guest image ID, a Challenge with a booster tally (+1 SSTORE per settleLevel), a new season. RULES_VERSION 3. All journal and game vectors regenerated. README §7-§8 and docs/ECONOMY.md rewritten. A picker on the browser's level intro and on the wedgie.
+*Cost.* Journal header 71 to 72 B (journal v2), Outcome +1 uint8, core RAM +1 B. Per tick: one compare while tick \< 60, about 0 zk. Contracts: new Outcome and IReferee, ZkReferee plus a new guest image ID, a Challenge with a booster tally (+1 SSTORE per settleLevel), a new season. RULES_VERSION 3. All journal and game vectors regenerated. README §7-§8 and docs/ECONOMY.md rewritten. A picker on the browser's level intro.
 
 *Conflicts.* D6; PIN-01; P16; P4 (Outcome/IReferee); §7.3 zk public values; D5 (SPARE changes the lives that make Commit matter, mildly)
 
@@ -473,7 +455,7 @@ A Challenge run comes with three boosters: an extra shield charge, a start freez
 
 *Fixes.* Prefer a per-level booster (one optional booster per level, or a booster fixed by level data), which per-slot weights can normalize. If a run budget stays, calibrate by simulating the allocation rule over many random draws and report draw-conditional score variance before shipping. For P16, have Season accumulate the Outcome's booster byte and check the budget when the sixth level settles, instead of dropping settleLevel. Consider dropping HOLDFAST, or letting the frozen boss's deflection draws keep flipping its velocity, so the opening is not a function of boss start alone.
 
-**Play: ok, 3 of 5.** The allocation is a real run-level decision: read all six drawn levels at reveal and choose where to spend three boosters. Inside a level, though, two of the three boosters only lower difficulty: SPARE (+1 life) and SHIELD (a second charge, which also bends D6). They add no new situations, and SPARE weakens Commit's meaning under D5. HOLDFAST is the one that creates a new situation, but it is a solved one. The boss stands still at a cell you can see for 60 ticks, and a fast cut covers about 120 cells in that time, so there is a best opening rush to compute. Search computes it exactly; humans memorise an approximation. On the wedgie (Training, free picker) the decision vanishes entirely. Because weights already normalise difficulty, the allocation question ('where does one more life raise my expected score most?') is subtle for humans and easy for search. The variety it adds is mostly menu-level, and it costs T5 changes to settlement and to P16.
+**Play: ok, 3 of 5.** The allocation is a real run-level decision: read all six drawn levels at reveal and choose where to spend three boosters. Inside a level, though, two of the three boosters only lower difficulty: SPARE (+1 life) and SHIELD (a second charge, which also bends D6). They add no new situations, and SPARE weakens Commit's meaning under D5. HOLDFAST is the one that creates a new situation, but it is a solved one. The boss stands still at a cell you can see for 60 ticks, and a fast cut covers about 120 cells in that time, so there is a best opening rush to compute. Search computes it exactly; humans memorise an approximation. Because weights already normalise difficulty, the allocation question ('where does one more life raise my expected score most?') is subtle for humans and easy for search. The variety it adds is mostly menu-level, and it costs T5 changes to settlement and to P16.
 
 *Fixes.* Drop HOLDFAST, or replace it with something non-solvable such as one reversal charge. Have the player commit the whole allocation once at reveal, as a 6-byte plan bound in the run commitment, instead of a per-level header byte. That keeps per-level settlement simple, makes it one planning decision, and pairs naturally with the free-order run board. Consider forbidding SPARE on 1-life levels so Commit keeps its bite.
 

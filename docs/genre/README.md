@@ -11,7 +11,7 @@ What the games in the lineages of *Qix* and *Volfied* do, and which of their mec
 | [`CATALOG.md`](CATALOG.md) | 710 games, ports and clones in 16 categories and 8 lineages, each with its distinctive mechanics and sources |
 | [`catalog.json`](catalog.json) | The catalog's data, with notes and every source |
 | [`TAXONOMY.md`](TAXONOMY.md) and [`taxonomy/`](taxonomy) | 628 mechanic families drawn from the catalog, in 12 axes, with the games that show each |
-| [`IDEAS.md`](IDEAS.md) and [`ideas/`](ideas) | 143 concept ideas for Jiro-ikusu, each judged for feasibility, fairness and play |
+| [`IDEAS.md`](IDEAS.md) and [`ideas/`](ideas) | 142 concept ideas for Jiro-ikusu, each judged for feasibility, fairness and play |
 | [`level-design-guide.md`](level-design-guide.md) | The findings summarized for level designers: today's knobs, tools and calibration chain, how the 16 levels ramp, genre lessons, board patterns, pitfalls and fairness checks |
 
 ## How it was built
@@ -35,9 +35,9 @@ Limits:
 ### The taxonomy and the ideas
 
 1. **Taxonomy.** Ten agents, each reading a tenth of the catalog, extracted the mechanic families their games show (1,336). One agent per axis merged them into 628 families across 12 axes ([`TAXONOMY.md`](TAXONOMY.md)).
-2. **Ideation.** Each designer got a brief of Jiro's rules, levels and modes, its hard constraints (determinism and seeded draws, one core for the RP2040, wasm and the zk guest, the wedgie's RAM and tick budget, proving cost, consensus formats, the search bot, the fairness of the six-level draw, the 240×240 screen, D13) and the cost tiers of [`IDEAS.md`](IDEAS.md). One designer per axis and five more with a cross-cutting lens (new levels on v1 knobs, human edge, presentation, modes and social play, bold combinations) proposed 222 ideas.
-3. **Dedup.** One agent grouped near-duplicates into 47 groups, leaving 143 ideas; each keeps its merged variants.
-4. **Judge.** Three judges scored every idea from 1 to 5, reading the repository as they needed: a skeptical core engineer (feasibility, true tier, cost), a fairness judge (D14, the search-bot gap, calibration, variance in the six-level draw) and a game designer (new decisions, readability at 4×4 px, fit with the rules). An idea is rejected when the engineer finds it infeasible or the fairness judge finds it unacceptable: 3 were, and 140 kept.
+2. **Ideation.** Each designer got a brief of Jiro's rules, levels and modes, its hard constraints (determinism and seeded draws, one core for wasm and the zk guest, proving cost, consensus formats, the search bot, the fairness of the six-level draw, D13) and the cost tiers of [`IDEAS.md`](IDEAS.md). One designer per axis and five more with a cross-cutting lens (new levels on v1 knobs, human edge, presentation, modes and social play, bold combinations) proposed 220 ideas.
+3. **Dedup.** One agent grouped near-duplicates into 46 groups, leaving 142 ideas; each keeps its merged variants.
+4. **Judge.** Three judges scored every idea from 1 to 5, reading the repository as they needed: a skeptical core engineer (feasibility, true tier, cost), a fairness judge (D14, the search-bot gap, calibration, variance in the six-level draw) and a game designer (new decisions, readability at 4×4 px, fit with the rules). An idea is rejected when the engineer finds it infeasible or the fairness judge finds it unacceptable: 2 were, and 140 kept.
 5. **Synthesize.** One agent wrote the recommendation below (shortlist, quick wins, packages, sequencing, open questions, the bot gap), and another the genre overview.
 
 Limits:
@@ -204,7 +204,7 @@ Milestones:
 
 ## Concept ideas
 
-[`IDEAS.md`](IDEAS.md) lists all 143 ideas by tier and score; the pages under [`ideas/`](ideas) give each one in full. Score is the sum of the three judges' scores, out of 15.
+[`IDEAS.md`](IDEAS.md) lists all 142 ideas by tier and score; the pages under [`ideas/`](ideas) give each one in full. Score is the sum of the three judges' scores, out of 15.
 
 | Tier | Kept | Rejected | Best score |
 |---|---:|---:|---:|
@@ -213,21 +213,21 @@ Milestones:
 | [T2 Level format v2](IDEAS.md#t2-level-format-v2-5) | 5 | 0 | 13 |
 | [T3 New core rule](IDEAS.md#t3-new-core-rule-68) | 68 | 0 | 12 |
 | [T4 Input or journal](IDEAS.md#t4-input-or-journal-8) | 8 | 0 | 11 |
-| [T5 Mode, scoring or contracts](IDEAS.md#t5-mode-scoring-or-contracts-19) | 19 | 2 | 11 |
+| [T5 Mode, scoring or contracts](IDEAS.md#t5-mode-scoring-or-contracts-19) | 19 | 1 | 11 |
 
-Of the 143 ideas, the fairness judge found that 51 narrow the gap between search bots and skilled humans, 35 leave it as it is, 43 widen it and 14 are unclear. The recommendation that follows is the synthesis agent's, quoted as written apart from links.
+Of the 142 ideas, the fairness judge found that 51 narrow the gap between search bots and skilled humans, 35 leave it as it is, 43 widen it and 13 are unclear. The recommendation that follows is the synthesis agent's.
 
 ### Shortlist
 
 1. [Minion patrol and respawn forecast](ideas/edge-and-claimed-enemies.md#minion-patrol-and-respawn-forecast) (`edge-and-claimed-enemies#1`, T0, score 13): Joint top score (13). The forecast stays exact until the next capture because minions read only the rail. It reuses the core's pub right_hand_step and is T0. It narrows the gap by showing humans what search already simulates, and the respawn blink removes the row-major respawn surprise (R4.7-7, PIN-11) that only bots know. The one weakness is short lead time: 8 ticks on the seven period-1 levels.
-2. [Boss turn tells](ideas/human-edge.md#boss-turn-tells) (`human-edge#1`, T0, score 12): The best fit among the presentation ideas: it telegraphs a seeded event without making it learnable across runs, so D14 holds. Tells are an exact function of key and tick. Build it as one overlay with [reveal-and-presentation#1](ideas/reveal-and-presentation.md#boss-path-forecast-overlay) (path forecast). Condition: the draw must come from a wasm/natmod export of the core, never a JS re-implementation of fmix32 and R4.6-7. Caveat: lead time is counted in boss moves, so the help is smallest on the high-weight period-1 levels.
-3. [Edge-line HUD with commit readout](ideas/presentation-wedgie.md#edge-line-hud-with-commit-readout) (`presentation-wedgie#8`, T0, score 12): The browser half makes the D5 bank-or-push decision informed in Challenge ('X banks N' against 'clear pays at least M', via the existing level_score). That is information search already computes, with no consensus change. The wedgie edge-line half is weak (1-px lines on the rail) and can be dropped.
-4. [Lesson ladder](ideas/level-structure-and-progression.md#lesson-ladder) (`level-structure-and-progression#3`, T1, score 13): The cheapest item with a clear gap benefit. Its lessons teach banking under D5 and the overshoot finish, the two levers where search beats the reference mix most. It is Training-only and T1, provided the lessons live in their own directory so CLAUDE.md's playtest and calibration chain and make_app_levels.py's 16-level pairing are not triggered.
-5. [Daily shared seed](ideas/modes-and-meta.md#daily-shared-seed) (`modes-and-meta#3`, T0, score 13): A proven habit hook at zero consensus cost: Training accepts any nonce (§6.3), and the 'jiro.daily' tag cannot collide with consensus tags. The Sprint board adds a genuinely new objective (fastest clear). Boards are local or shared between friends, which rightly concedes that search would own a public board. The wedgie needs natmod keccak and draw exports.
-6. [Per-level medal tiers in Training](ideas/modes-and-meta.md#per-level-medal-tiers-in-training) (`modes-and-meta#4`, T0, score 13): Self-imposed feats (Untouched, Single stroke, Boxed, Stranded, Last breath) create new decision contexts on the 16 existing levels, computed from state the shell already sees. Gold must be set per level: at 9,500 it is out of reach for humans on the B8 levels. It shares one art pipeline with [presentation-wedgie#1](ideas/presentation-wedgie.md#picture-reveal-under-claimed-land).
-7. [Endless climb with carried lives](ideas/modes-and-social.md#endless-climb-with-carried-lives) (`modes-and-social#5`, T0, score 13): A strong wedgie fit. The device is Training-only with 16 fixed levels; this adds unseen boards, a run-level lives budget and X as a whole-run cash-out, all as plain v1 level bytes played by the unchanged core. The generator belongs in a no_std crate shared by wasm and natmod, with a bounded retry loop and an open-field fallback.
+2. [Boss turn tells](ideas/human-edge.md#boss-turn-tells) (`human-edge#1`, T0, score 12): The best fit among the presentation ideas: it telegraphs a seeded event without making it learnable across runs, so D14 holds. Tells are an exact function of key and tick. Build it as one overlay with [reveal-and-presentation#1](ideas/reveal-and-presentation.md#boss-path-forecast-overlay) (path forecast). Condition: the draw must come from a wasm export of the core, never a JS re-implementation of fmix32 and R4.6-7. Caveat: lead time is counted in boss moves, so the help is smallest on the high-weight period-1 levels.
+3. [Edge-line HUD with commit readout](ideas/presentation.md#edge-line-hud-with-commit-readout) (`presentation#8`, T0, score 12): The browser HUD makes the D5 bank-or-push decision informed in Challenge ('X banks N' against 'clear pays at least M', via the existing level_score). That is information search already computes, with no consensus change.
+4. [Lesson ladder](ideas/level-structure-and-progression.md#lesson-ladder) (`level-structure-and-progression#3`, T1, score 13): The cheapest item with a clear gap benefit. Its lessons teach banking under D5 and the overshoot finish, the two levers where search beats the reference mix most. It is Training-only and T1, provided the lessons live in their own directory so CLAUDE.md's playtest and calibration chain is not triggered.
+5. [Daily shared seed](ideas/modes-and-meta.md#daily-shared-seed) (`modes-and-meta#3`, T0, score 13): A proven habit hook at zero consensus cost: Training accepts any nonce (§6.3), and the 'jiro.daily' tag cannot collide with consensus tags. The Sprint board adds a genuinely new objective (fastest clear). Boards are local or shared between friends, which rightly concedes that search would own a public board.
+6. [Per-level medal tiers in Training](ideas/modes-and-meta.md#per-level-medal-tiers-in-training) (`modes-and-meta#4`, T0, score 13): Self-imposed feats (Untouched, Single stroke, Boxed, Stranded, Last breath) create new decision contexts on the 16 existing levels, computed from state the shell already sees. Gold must be set per level: at 9,500 it is out of reach for humans on the B8 levels. It shares one art pipeline with [presentation#1](ideas/presentation.md#picture-reveal-under-claimed-land).
+7. [Endless climb with carried lives](ideas/modes-and-social.md#endless-climb-with-carried-lives) (`modes-and-social#5`, T0, score 13): It adds unseen boards, a run-level lives budget and X as a whole-run cash-out, all as plain v1 level bytes played by the unchanged core. The generator needs a bounded retry loop and an open-field fallback.
 8. [Pace ghost of a best run](ideas/multiplayer-and-competition.md#pace-ghost-of-a-best-run) (`multiplayer-and-competition#1`, T0, score 12): A same-seed asynchronous rival with no new rules, which sharpens commit timing. Define its ghost/link format once and reuse it for the daily seed, the replay take-over and the duel. Draw the ghost so it cannot be mistaken for a real trail.
-9. [Proven level codes](ideas/modes-and-meta.md#proven-level-codes) (`modes-and-meta#6`, T0, score 13): Gives the level editor a sharing loop in which every shared level has a replay-checked proof that it can be cleared. It is also a free trial of the 'completed once needs proof' problem the deferred Superchallenge must solve. The importer must check mode 0, levelIndex 0 and the proof nonce itself. Import is browser-only in practice (codes can reach about 33 KB).
+9. [Proven level codes](ideas/modes-and-meta.md#proven-level-codes) (`modes-and-meta#6`, T0, score 13): Gives the level editor a sharing loop in which every shared level has a replay-checked proof that it can be cleared. It is also a free trial of the 'completed once needs proof' problem the deferred Superchallenge must solve. The importer must check mode 0, levelIndex 0 and the proof nonce itself.
 10. [Street grid: seal segments to pen the boss](ideas/v1-levels.md#street-grid-seal-segments-to-pen-the-boss) (`v1-levels#2`, T1, score 13): Play 5 on existing knobs alone. Captures become graph cuts on a street network, guards are confined to block islands until a seal joins them to the main rail, and permanent stranding comes from R = 2,700. The geometry checks out and the scripted bots can play it. It widens the gap slightly (min-cut timing), so its weight needs watching.
 11. [Slow giant, fast patrol: hide in the field](ideas/v1-levels.md#slow-giant-fast-patrol-hide-in-the-field) (`v1-levels#10`, T1, score 13): Inverts the game's geography (rail dangerous, field safe from minions) with periods alone, and turns D4's mid-cut stop into a tactic. A D14 coverage check was run by the judge. Fits mid-ladder, and the gap is about neutral.
 12. [Guarded islands: release or remove the guard](ideas/edge-and-claimed-enemies.md#guarded-islands-release-or-remove-the-guard) (`edge-and-claimed-enemies#2`, T1, score 12): The only T1 board that has already been played: a trial playtest gave 50.5% clears and a median of 7,500 bp, so it can be calibrated. Annex, enclose or ignore is a readable three-way choice with a neutral gap. R must be long for 'remove the guard' to matter.
@@ -246,13 +246,13 @@ Small, low-risk changes that could start first:
 
 1. [Minion patrol and respawn forecast](ideas/edge-and-claimed-enemies.md#minion-patrol-and-respawn-forecast) (`edge-and-claimed-enemies#1`, T0, score 13): T0, exact by construction, built on the core's pub right_hand_step. Narrows the gap in Challenge without touching consensus or calibration.
 2. [Boss turn tells](ideas/human-edge.md#boss-turn-tells) (`human-edge#1`, T0, score 12): T0 boss turn tells, merged with [reveal-and-presentation#1](ideas/reveal-and-presentation.md#boss-path-forecast-overlay)'s dotted path into one overlay. Ship it once the core exposes the deflection draw and a boss-forecast step through wasm; never re-implement the rule in JS. Fix the horizon per season.
-3. [Edge-line HUD with commit readout](ideas/presentation-wedgie.md#edge-line-hud-with-commit-readout) (`presentation-wedgie#8`, T0, score 12): Browser HUD 'X banks / clear pays / weight' computed with the existing level_score. A few hours of client work that makes D5's decision legible in paid play.
-4. [Shape-coded sprites, colour-blind palettes and level themes](ideas/presentation-wedgie.md#shape-coded-sprites-colour-blind-palettes-and-level-themes) (`presentation-wedgie#9`, T0, score 12): Opt-in Okabe-Ito and high-contrast palettes plus shape-coded sprites. The browser boss is still magenta next to the red trail, so this is a real accessibility fix for paid play. Device themes can follow.
-5. [Capture impact feedback](ideas/presentation-wedgie.md#capture-impact-feedback) (`presentation-wedgie#3`, T0, score 11): A capture '+x.x%' popup and the clearing capture's overshoot readout teach that claim is score. Drop the 2-px shake and the delayed band reveal, which hide state for up to 4 ticks.
+3. [Edge-line HUD with commit readout](ideas/presentation.md#edge-line-hud-with-commit-readout) (`presentation#8`, T0, score 12): Browser HUD 'X banks / clear pays / weight' computed with the existing level_score. A few hours of client work that makes D5's decision legible in paid play.
+4. [Shape-coded sprites, colour-blind palettes and level themes](ideas/presentation.md#shape-coded-sprites-colour-blind-palettes-and-level-themes) (`presentation#9`, T0, score 12): Opt-in Okabe-Ito and high-contrast palettes plus shape-coded sprites. The browser boss is still magenta next to the red trail, so this is a real accessibility fix for paid play.
+5. [Capture impact feedback](ideas/presentation.md#capture-impact-feedback) (`presentation#3`, T0, score 11): A capture '+x.x%' popup and the clearing capture's overshoot readout teach that claim is score. Drop the 2-px shake and the delayed band reveal, which hide state for up to 4 ticks.
 6. [Lesson ladder](ideas/level-structure-and-progression.md#lesson-ladder) (`level-structure-and-progression#3`, T1, score 13): T1 lessons in their own directory (for example levels/lessons/src), Training only. Teaches the D5 bank and the overshoot finish. Add success feedback for 'Bank it' and 'Big finish', and check L3/L6 spawns for validity.
-7. [Daily shared seed](ideas/modes-and-meta.md#daily-shared-seed) (`modes-and-meta#3`, T0, score 13): Browser half is clean today: journal_hash and draw already exist in jiro-wasm, and Training accepts any nonce. The wedgie half waits for natmod keccak and draw exports.
+7. [Daily shared seed](ideas/modes-and-meta.md#daily-shared-seed) (`modes-and-meta#3`, T0, score 13): Clean today: journal_hash and draw already exist in jiro-wasm, and Training accepts any nonce.
 8. [Pace ghost of a best run](ideas/multiplayer-and-competition.md#pace-ghost-of-a-best-run) (`multiplayer-and-competition#1`, T0, score 12): Browser pace ghost on an existing journal and a second wasm instance. Define one ghost/link format keyed by RULES_VERSION and level id, and reuse it for the daily seed and duels.
-9. [Per-level medal tiers in Training](ideas/modes-and-meta.md#per-level-medal-tiers-in-training) (`modes-and-meta#4`, T0, score 13): Feats are pure functions of jc.status fields (add claimable as a 24th field). Ship the feats first, with gold tiers set per level, and the picture album later with [presentation-wedgie#1](ideas/presentation-wedgie.md#picture-reveal-under-claimed-land).
+9. [Per-level medal tiers in Training](ideas/modes-and-meta.md#per-level-medal-tiers-in-training) (`modes-and-meta#4`, T0, score 13): Feats are pure functions of what the shell already sees (derive claimable at level start). Ship the feats first, with gold tiers set per level, and the picture album later with [presentation#1](ideas/presentation.md#picture-reveal-under-claimed-land).
 10. [Run postcard from public journals](ideas/reveal-and-presentation.md#run-postcard-from-public-journals) (`reveal-and-presentation#5`, T0, score 12): Almost all existing code: web/src/chain/calldata.ts already recovers the six journals and the replay page replays them. Render lazily and never label anyone a bot.
 11. [Slow giant, fast patrol: hide in the field](ideas/v1-levels.md#slow-giant-fast-patrol-hide-in-the-field) (`v1-levels#10`, T1, score 13): T1, data only, easy (greedy 99%). A good first Training-only extra board while the tools learn to handle level sets beyond the season's 16.
 12. [Street grid: seal segments to pen the boss](ideas/v1-levels.md#street-grid-seal-segments-to-pen-the-boss) (`v1-levels#2`, T1, score 13): T1, data only, geometry and validity checked. Training first; it enters Challenge only at a season boundary with its own calibration.
@@ -264,7 +264,7 @@ Shortlisted and related ideas grouped into deliveries that share their prerequis
 
 #### Training arcade layer
 
-*Tiers up to T1.* Free-play variety and social hooks on the wedgie and in the browser, with zero consensus impact: Training accepts any nonce, and nothing here is paid.
+*Tiers up to T1.* Free-play variety and social hooks in the browser, with zero consensus impact: Training accepts any nonce, and nothing here is paid.
 
 Gives players reasons to come back without touching rules, vectors or season weights.
 
@@ -273,44 +273,44 @@ Gives players reasons to come back without touching rules, vectors or season wei
 - Medal feats and a picture reveal turn the 16 known levels into new decision contexts.
 - Postcards make public Challenge journals inspectable.
 - Proven level codes give the editor a sharing loop.
-- The endless climb gives the Training-only wedgie unseen boards.
+- The endless climb gives Training unseen boards.
 
 The whole package is client code, plus one T1 lesson set kept outside levels/src so CLAUDE.md's playtest and calibration chain never fires. Boards stay local or shared between friends; any public board would belong to search.
 
-Ideas: [Lesson ladder](ideas/level-structure-and-progression.md#lesson-ladder), [Pace ghost of a best run](ideas/multiplayer-and-competition.md#pace-ghost-of-a-best-run), [Daily shared seed](ideas/modes-and-meta.md#daily-shared-seed), [Per-level medal tiers in Training](ideas/modes-and-meta.md#per-level-medal-tiers-in-training), [Picture reveal under claimed land](ideas/presentation-wedgie.md#picture-reveal-under-claimed-land), [Run postcard from public journals](ideas/reveal-and-presentation.md#run-postcard-from-public-journals), [Replay take-over practice](ideas/modes-and-social.md#replay-take-over-practice), [Proven level codes](ideas/modes-and-meta.md#proven-level-codes), [Duel on identical seeded games](ideas/modes-and-social.md#duel-on-identical-seeded-games), [Endless climb with carried lives](ideas/modes-and-social.md#endless-climb-with-carried-lives).
+Ideas: [Lesson ladder](ideas/level-structure-and-progression.md#lesson-ladder), [Pace ghost of a best run](ideas/multiplayer-and-competition.md#pace-ghost-of-a-best-run), [Daily shared seed](ideas/modes-and-meta.md#daily-shared-seed), [Per-level medal tiers in Training](ideas/modes-and-meta.md#per-level-medal-tiers-in-training), [Picture reveal under claimed land](ideas/presentation.md#picture-reveal-under-claimed-land), [Run postcard from public journals](ideas/reveal-and-presentation.md#run-postcard-from-public-journals), [Replay take-over practice](ideas/modes-and-social.md#replay-take-over-practice), [Proven level codes](ideas/modes-and-meta.md#proven-level-codes), [Duel on identical seeded games](ideas/modes-and-social.md#duel-on-identical-seeded-games), [Endless climb with carried lives](ideas/modes-and-social.md#endless-climb-with-carried-lives).
 
 Sequence:
 
-1. Tools prerequisite: a separate level-set directory for the lessons, and make_app_levels.py appending them at weight 10,000.
+1. Tools prerequisite: a separate level-set directory for the lessons.
 2. Lesson ladder.
 3. One ghost/link format (level bytes + journal, keyed by RULES_VERSION and level id), then the pace ghost in the browser.
-4. Daily seed in the browser. Then natmod exports for keccak and draw, so the wedgie can join.
-5. Medal feats: add claimable to jc.status, set gold per level.
-6. One art pipeline in the Shadow's spare nibble (masked compare, obstacle flag, rail kept in the frame colour). Medal album and picture reveal share it.
+4. Daily seed in the browser.
+5. Medal feats: derive claimable at level start, set gold per level.
+6. One art pipeline (obstacle flag, rail kept in the frame colour). Medal album and picture reveal share it.
 7. Run postcard from calldata.ts and the replay page, rendered lazily.
 8. Replay take-over in the browser only. Force mode 0, and wait for the owner's answer on revealed Challenge nonces.
 9. Proven level codes, after the scripted bots build for wasm.
 10. Sealed duel variant.
-11. Endless climb last: the generator in a no_std crate shared by wasm and natmod, bounded retries with an open-field fallback, then re-measure the wedgie RAM on qemu.
+11. Endless climb last: the generator with bounded retries and an open-field fallback.
 
 #### Readable board
 
 *Tiers up to T0.* Legibility aids that give humans, within the current tick, the information search already computes. These are T0, but they reach Challenge.
 
-Narrows the human-search gap without a rule change. One forecast overlay shows the exact minion patrol and respawn cell and the boss's upcoming seeded turns and path, computed by running the core's own Boss::step, the deflection draw and right_hand_step on copies through wasm (and the natmod on the wedgie), so rules still live once. Alongside it: a commit readout (what X banks against what a clear pays), colour-blind palettes and shape coding, capture and overshoot feedback, and browser-only tick-locked sound. The capture preview comes last and stays optional: it is only right for an instant close, and it costs about 10 ms per tick on the device. Because these aids raise human medians unevenly (most on boss-heavy levels, least on the period-1 high-weight levels), they change how humans score against bot-derived weights. Ship them at a season boundary and freeze their horizon per season.
+Narrows the human-search gap without a rule change. One forecast overlay shows the exact minion patrol and respawn cell and the boss's upcoming seeded turns and path, computed by running the core's own Boss::step, the deflection draw and right_hand_step on copies through wasm, so rules still live once. Alongside it: a commit readout (what X banks against what a clear pays), colour-blind palettes and shape coding, capture and overshoot feedback, and tick-locked sound. The capture preview comes last and stays optional: it is only right for an instant close. Because these aids raise human medians unevenly (most on boss-heavy levels, least on the period-1 high-weight levels), they change how humans score against bot-derived weights. Ship them at a season boundary and freeze their horizon per season.
 
-Ideas: [Minion patrol and respawn forecast](ideas/edge-and-claimed-enemies.md#minion-patrol-and-respawn-forecast), [Boss turn tells](ideas/human-edge.md#boss-turn-tells), [Boss path forecast overlay](ideas/reveal-and-presentation.md#boss-path-forecast-overlay), [Edge-line HUD with commit readout](ideas/presentation-wedgie.md#edge-line-hud-with-commit-readout), [Shape-coded sprites, colour-blind palettes and level themes](ideas/presentation-wedgie.md#shape-coded-sprites-colour-blind-palettes-and-level-themes), [Capture impact feedback](ideas/presentation-wedgie.md#capture-impact-feedback), [Generated sound with stereo minion cues and a danger drone](ideas/presentation-wedgie.md#generated-sound-with-stereo-minion-cues-and-a-danger-drone), [Live capture preview](ideas/presentation-wedgie.md#live-capture-preview).
+Ideas: [Minion patrol and respawn forecast](ideas/edge-and-claimed-enemies.md#minion-patrol-and-respawn-forecast), [Boss turn tells](ideas/human-edge.md#boss-turn-tells), [Boss path forecast overlay](ideas/reveal-and-presentation.md#boss-path-forecast-overlay), [Edge-line HUD with commit readout](ideas/presentation.md#edge-line-hud-with-commit-readout), [Shape-coded sprites, colour-blind palettes and level themes](ideas/presentation.md#shape-coded-sprites-colour-blind-palettes-and-level-themes), [Capture impact feedback](ideas/presentation.md#capture-impact-feedback), [Generated sound with stereo minion cues and a danger drone](ideas/presentation.md#generated-sound-with-stereo-minion-cues-and-a-danger-drone), [Live capture preview](ideas/presentation.md#live-capture-preview).
 
 Sequence:
 
-1. Core-side pure exports through wasm and natmod: the deflection draw and a boss/minion forecast on copies.
+1. Core-side pure exports through wasm: the deflection draw and a boss/minion forecast on copies.
 2. Minion patrol and respawn forecast (exact).
 3. Boss tells plus dotted path, with horizon H fixed as a per-season client constant.
 4. Commit readout in the browser HUD.
 5. Palettes and shape coding.
 6. Capture popup and overshoot readout, without shake or delayed reveal.
 7. Browser sound, with minion clicks throttled.
-8. Capture preview, optional, browser first.
+8. Capture preview, optional.
 
 #### New boards on v1 knobs
 
@@ -408,8 +408,7 @@ Where the project stands: rules are frozen at RULES_VERSION 2, and seasons/calib
 
 1. Now, in parallel with M4 and M5 (no consensus impact):
    - All of 'Training arcade layer'.
-   - The tools prerequisite: level sets beyond the season's 16, with a separate lessons directory and a Training-only level list. This keeps CLAUDE.md's playtest, calibration and make_app_levels.py chain from firing for non-season boards.
-   - The natmod keccak and draw exports for the wedgie. These are a module rebuild, not a rule change.
+   - The tools prerequisite: level sets beyond the season's 16, with a separate lessons directory and a Training-only level list. This keeps CLAUDE.md's playtest and calibration chain from firing for non-season boards.
 2. Before testnet-1 opens, or at a later season boundary: 'Readable board'. It is T0, but it changes how humans score in Challenge relative to bot weights. So land it between seasons, freeze its forecast horizon per season, and record the client version, so the first season's human journals measure its effect. Do not change it mid-season.
 3. During the first testnet seasons:
    - The 'New boards on v1 knobs' levels play in Training only, and their journals are compared with the reference mix.
@@ -459,7 +458,7 @@ The fairness judges agree that no mechanic closes the roughly 2x pot-share gap b
 4. D6: may the shield become renewable or multi-charge (strand refills it, per-level charge stock, vault, discharge, long-hold recharge), or does one charge per level stay a pillar?
 5. D4: is any fuse-like pressure acceptable in a later version (stall fuse, rail rider, breath limit, restless boss), given that every such idea measured as widening the gap?
 6. Should the reference bot mix in levels/targets.json gain new policies (hold B, seal doors, hunt strands, ram, overtime exit)? Every rule or board idea needs one to be calibratable, but changing the mix moves every level's weight and needs a new calibration file.
-7. Should Challenge seasons rotate level sets (a topology season, or later a calibrated library)? If so, how often, given that each rotation needs new calibration, invalidates human practice, means rebuilding the wedgie's level file, and starts on bot-only weights?
+7. Should Challenge seasons rotate level sets (a topology season, or later a calibrated library)? If so, how often, given that each rotation needs new calibration, invalidates human practice, and starts on bot-only weights?
 8. Should the Training page refuse, or warn on, the nonce of a live Challenge run? The mode byte does not enter the level seed, so replay take-over and rewind make save-state splicing of a revealed paid level easy for semi-technical players (the §7.2 residual).
 9. Is a twin-boss rule (D9 revision) worth pursuing, and only in the form that ends the level at separation so D7's single-region coverage argument holds?
 10. Public boards: should the project ever publish a public season wall of medals or daily results, knowing that search would top every board on a known seed?
