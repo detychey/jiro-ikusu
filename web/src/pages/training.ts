@@ -225,6 +225,9 @@ export function mount(): void {
     canvas.dataset.ticksUsed = "0";
     delete canvas.dataset.endReason;
     canvas.focus();
+    // focus() only brings the field's bottom into view: Play puts its top at the top of the
+    // viewport, past the banner, with no animation (docs/STYLE_GUIDE.md §8, §10).
+    canvas.scrollIntoView({ block: "start", behavior: "instant" });
     requestAnimationFrame(frame);
   }
 

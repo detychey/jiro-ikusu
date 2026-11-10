@@ -1,0 +1,4 @@
+# The /wipui preview of the visual identity is the site now (docs/STYLE_GUIDE.md §16): its links
+# land on the same page at the root.
+/wipui / 301
+/wipui/* /:splat 301
