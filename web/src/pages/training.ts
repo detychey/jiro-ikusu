@@ -13,7 +13,11 @@ import {
   type Bindings,
   type Control,
   CONTROLS,
+  defaultBindings,
   HeldKeys,
+  type KeyboardLayout,
+  keyboardLayout,
+  keyLabel,
   loadBindings,
   rebind,
   saveBindings,
@@ -90,6 +94,12 @@ const CONTROL_NAMES: Record<Control, string> = {
   x: "X (commit)",
 };
 
+/** The controls panel's note on how it names the keys. */
+function layoutNote(layout: KeyboardLayout | undefined): string {
+  if (layout !== undefined) return "The default keys and their names follow your keyboard layout.";
+  return "Your browser doesn't tell the page your keyboard layout, so keys are named by their place on a QWERTY keyboard: on AZERTY, A (QWERTY) is the key marked Q. Rebind any control below.";
+}
+
 /** The picker's name for the level of the `hex` parameter, which the editor's Play button sets. */
 const EDITED_LEVEL = "Edited level";
 
@@ -114,6 +124,9 @@ export function mount(): void {
 
   let bindings: Bindings = loadBindings(storage);
   const keys = new HeldKeys(bindings);
+  /** The layout the browser reports, or else what the keys pressed on this page printed. */
+  let layout: KeyboardLayout | undefined;
+  const printedHere = new Map<string, string>();
   const renderer = new Renderer(canvas);
   /** The picker's levels, by name. */
   const levels = new Map<string, () => Uint8Array>();
@@ -131,6 +144,10 @@ export function mount(): void {
     if (nonce !== null) fixedNonce = fromHex(nonce);
     core = await loadCore();
     await listLevels();
+    layout = await keyboardLayout();
+    bindings = loadBindings(storage, defaultBindings(layout));
+    keys.setBindings(bindings);
+    element("layout-note").textContent = layoutNote(layout);
     showBindings();
     fitField(renderer);
     window.addEventListener("resize", () => fitField(renderer));
@@ -267,6 +284,7 @@ export function mount(): void {
   }
 
   function onKey(event: KeyboardEvent): void {
+    if (event.key.length === 1) printedHere.set(event.code, event.key);
     if (rebinding !== undefined) {
       event.preventDefault();
       finishRebinding(rebinding, event.code);
@@ -285,7 +303,7 @@ export function mount(): void {
     for (const control of CONTROLS) {
       const row = table.insertRow();
       row.insertCell().textContent = CONTROL_NAMES[control];
-      row.insertCell().textContent = bindings[control];
+      row.insertCell().textContent = keyLabel(bindings[control], layout ?? printedHere);
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = rebinding === control ? "Press a key…" : "Rebind";
@@ -299,7 +317,7 @@ export function mount(): void {
 
   function finishRebinding(control: Control, code: string): void {
     rebinding = undefined;
-    const result = rebind(bindings, control, code);
+    const result = rebind(bindings, control, code, keyLabel(code, layout ?? printedHere));
     const message = element("bindings-message");
     if (typeof result === "string") {
       message.textContent = result;

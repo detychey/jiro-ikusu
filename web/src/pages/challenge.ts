@@ -22,7 +22,7 @@ import {
   WALLET_EVENTS,
 } from "../chain/wallet";
 import { type Core, hex } from "../core";
-import { CONTROLS, HeldKeys, loadBindings } from "../input";
+import { CONTROLS, defaultBindings, HeldKeys, keyboardLayout, loadBindings } from "../input";
 import { downloadJson, element, exclusive, fitField, loadCore, messageOf, pending, percent, showHud } from "../page";
 import { Renderer } from "../render";
 import { buyRun, continueRun, playUnfinished, type RunEnv, SeasonChanged } from "../run/flow";
@@ -118,8 +118,13 @@ export function mount(): void {
   const stopButton = element<HTMLButtonElement>("stop");
   const canvas = element<HTMLCanvasElement>("field");
   const renderer = new Renderer(canvas);
-  const bindings = loadBindings(browserStorage());
+  const storage = browserStorage();
+  let bindings = loadBindings(storage);
   const keys = new HeldKeys(bindings);
+  void keyboardLayout().then((layout) => {
+    bindings = loadBindings(storage, defaultBindings(layout));
+    keys.setBindings(bindings);
+  });
   const found = deploymentOfPage();
   renderFooter(element("footer"), footerEntries(found, __GIT_SHA__));
   if (found === undefined) {
