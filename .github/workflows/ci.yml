@@ -204,7 +204,8 @@ jobs:
 
   # The web row of plan §3.4: the browser shell, on the wasm build of the core, and the chain
   # bindings that web/scripts/bindings.mjs generates from contracts/abi/, which must not drift
-  # (plan M5.1). Then the Challenge run flow runs end to end on a local chain left up by
+  # (plan M5.1). The brand assets in web/public/ must match their sources in brand/src/
+  # (brand/README.md). Then the Challenge run flow runs end to end on a local chain left up by
   # `localnet.mjs --up`, which needs Foundry and the contracts' submodules, with the playtest bots
   # of jiro-tools choosing the inputs: a run, a reload in the third level, reloads right after a
   # level ends by lives out and by a clear, a reload while startRun confirms, and a stale season,
@@ -227,6 +228,7 @@ jobs:
           filters: |
             web:
               - 'web/**'
+              - 'brand/**'
               - 'contracts/**'
               - 'scripts/contracts/**'
               - '.gitmodules'
@@ -262,6 +264,10 @@ jobs:
           cache-dependency-path: |
             web/package-lock.json
             scripts/contracts/package-lock.json
+
+      - name: Brand assets are up to date (web)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: node brand/build.mjs --check
 
       - name: The chain bindings match contracts/abi/ (web)
         if: ${{ steps.toolchain.outcome == 'success' }}
