@@ -1,6 +1,6 @@
 # Jiro-ikusu
 
-A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It plays in the browser; a phone version comes later.
+A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It plays in the browser; a phone version comes later. An independant training app is available for the [wedgie](https://wedgie.dev/) and maintained [here](https://github.com/jdetychey/jiro-ikusu-wedgie). 
 
 Play the browser build of `main` at [jiro-ikusu.win](https://jiro-ikusu.win). Every pull request that touches the game gets its own preview, linked in a comment on the pull request.
 
