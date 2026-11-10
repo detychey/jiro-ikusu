@@ -38,14 +38,16 @@ The build runs Vite twice over the same pages. `vite build` writes the site to `
 always has. Then `vite build --mode wipui --base /wipui/ --outDir dist/wipui` writes a preview of
 the visual identity of [`docs/STYLE_GUIDE.md`](../docs/STYLE_GUIDE.md) to `web/dist/wipui`, emptying
 that folder alone, so every deploy serves both, the preview at https://jiro-ikusu.win/wipui/.
-Only the wipui mode loads `src/wipui/plugin.ts`, which rewrites each page before Vite processes it,
-so that Vite bundles and rebases what it adds: the guide's head tags, the stylesheet
-`src/wipui/style.css` after `src/style.css`, the preload of the Jiro Pixel 12 font in
-`public/fonts/`, the header bar with links relative to the base, the page's own header as a
-`div`, and on Training the banner `h1` and `src/wipui/play.ts`, which scrolls the field to the
-top once a game starts. A page that lacks what the plugin rewrites fails the build, which names
-it. The smoke test also starts a game on the preview. The guide's §16 says how the preview
-becomes the site.
+Only the wipui mode registers the plugin of `src/wipui/plugin.ts`, which rewrites each page before
+Vite processes it, so that Vite bundles and rebases what it adds: the guide's head tags, the
+stylesheet `src/wipui/style.css` after `src/style.css`, the preload of the Jiro Pixel 12 font, the
+header bar with links relative to the base, the page's own header as a `div`, and on Training the
+banner `h1` and `src/wipui/play.ts`, which scrolls the field to the top once a game starts. The
+font and its license stay in `src/wipui/fonts/`, out of `public/`, which both builds copy: Vite
+emits the font into the preview's `assets/` from the stylesheet and the preload, and the plugin
+emits the license next to it. A page that lacks what the plugin rewrites fails the build, which
+names it. The smoke test also loads the preview and starts a game on it, and checks that the root
+site carries none of it. The guide's §16 says how the preview becomes the site.
 
 ## Training
 
@@ -295,7 +297,7 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/wipui/plugin.ts` | The Vite plugin of the wipui preview: the head tags, header bar and Training banner it adds to each page |
 | `src/wipui/style.css` | The wipui preview's stylesheet: the tokens and components of the style guide's §8, and the Jiro Pixel 12 font |
 | `src/wipui/play.ts` | The wipui preview's Training script: the field scrolls to the top once a game starts |
-| `public/fonts/` | Jiro Pixel 12, the subset of Fusion Pixel that `brand/README.md` builds, with its license |
+| `src/wipui/fonts/` | Jiro Pixel 12, the subset of Fusion Pixel that `brand/README.md` builds, with its license: only the wipui build emits them |
 | `test/*.test.ts` | vitest: the clock, the bindings, play, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, what a reload resumes, the run store and its lock, the run file, and the gate that plays one run at a time in a tab; the leaderboard and chunked logs, the season page's phases, close and pot, the best run and its settlement, and a committed run's journals from calldata or a trace; the wipui build's pages |
 | `test/challenge.ts` | Plays a revealed run's levels without a chain, on a fake clock, with scripted keys and reloads |
 | `test/drive.ts` | Plays a level through the page's session on a fake clock, with the controls of a journal or a script |

@@ -18,10 +18,11 @@ with exit code 1, writing nothing, when any of these fails:
 - **Palette.** Every color of `CELL_COLORS` and `ENTITY_COLORS` in `web/src/render.ts`, each a
   quoted 6-digit hex, and every variable named after a token in any `:root` block of
   `web/src/style.css` and of `web/src/wipui/style.css`, the wipui preview's stylesheet, which loads
-  after it, with its `var()` aliases followed, equals `palette.txt`. `--accent` must
-  equal `claim`, and `--focus` must equal `player`. The level editor's `SPAWN_AREA_COLOR`, in
-  `web/src/pages/editor.ts`, must be a quoted 8-digit hex whose first 6 digits equal `boss`.
-  Colors written elsewhere in `style.css`, such as the link color, are not checked.
+  after it, with its `var()` aliases followed on the pages that load it, equals `palette.txt`.
+  `--accent` must equal `claim`, and `--focus` must equal `player`. The level editor's
+  `SPAWN_AREA_COLOR`, in `web/src/pages/editor.ts`, must be a quoted 8-digit hex whose first 6
+  digits equal `boss`. Colors written elsewhere in `style.css`, such as the link color, are not
+  checked.
 - **Legality.** Each scene is a legal game state one move before a capture (below).
 - **Shelf.** The wordmark's shelf leaves at least one empty cell before any kana or tile.
 - **Checksums.** The cell counts of each full-color lockup and of each scene equal its
@@ -190,9 +191,11 @@ because the font reserves its name.
 
 2. Rename it with fontTools, keeping name records 0, 13 and 14: records 1 and 4 become
    `Jiro Pixel 12`, record 6 `JiroPixel12-Regular`, and record 3 `JiroPixel12-Regular;2024.05.12;subset`.
-3. Save it as `web/public/fonts/jiro-pixel-12.woff2`, next to the package's `LICENSE`, copied whole
-   as `web/public/fonts/LICENSE-fusion-pixel.txt`: it holds the licenses and notices of Fusion
-   Pixel, of Ark Pixel and of the other fonts that Fusion Pixel draws on (Credits).
+3. Save it as `web/src/wipui/fonts/jiro-pixel-12.woff2`, next to the package's `LICENSE`, copied
+   whole as `web/src/wipui/fonts/LICENSE-fusion-pixel.txt`: it holds the licenses and notices of
+   Fusion Pixel, of Ark Pixel and of the other fonts that Fusion Pixel draws on (Credits). Both stay
+   there while only the preview serves the font; the switch in the guide's §16 moves them to
+   `web/public/fonts/`.
 
 The committed `jiro-pixel-12.woff2` came out of these steps with fontTools 4.68.0, run as
 `python3 -I -m fontTools.subset` for `pyftsubset`: 2,528 bytes, sha256

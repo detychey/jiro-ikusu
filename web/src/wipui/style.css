@@ -4,7 +4,7 @@
 
 @font-face {
   font-family: "Jiro Pixel 12";
-  src: url("/fonts/jiro-pixel-12.woff2") format("woff2");
+  src: url("./fonts/jiro-pixel-12.woff2") format("woff2");
   font-display: block;
 }
 
@@ -59,7 +59,8 @@
 .intro h1 { margin: 0 0 8px; font: 36px/54px var(--font-pixel); }
 .intro p { margin: 0 0 16px; color: var(--muted); }
 
-.banner { margin: 0 0 16px; }
+/* Training's h1 is the banner: 8 cells of clear space below the stacked lockup, and no pixel face. */
+.intro .banner { margin: 0 0 16px; font: inherit; }
 .banner img { display: block; width: 196px; height: 220px; }
 
 .visually-hidden {
@@ -108,19 +109,22 @@ button:is(#download, #bindings button, #resume, #stop, #run-file, #settle-file, 
   transform: none;
 }
 
-.side { flex: 1 1 240px; }
+/* The side column sits beside the field only when it is as wide as the Controls table. */
+.side { flex: 1 1 288px; }
 .hud, .setup, .controls, .wallet { padding: 12px; background: var(--panel); }
 :is(.setup, .wallet) .hud { padding: 0; }
 .setup p { margin: 0; }
 :is(.setup, .wallet) > :is(button, a.button) { align-self: flex-start; }
 .setup .actions { justify-content: flex-start; }
 .numbers fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 8px 16px; }
-/* The season's leaderboard: as wide as the page allows, scrolling sideways in its panel beyond. */
-main > .wallet { flex: 1 1 480px; min-width: 0; max-width: none; overflow-x: auto; }
+/* The season's leaderboard: 560 px and its padding at most, so that beside the 360-px side column the
+   row ends at the 960-px content width; it scrolls sideways in its panel beyond. */
+main > .wallet { flex: 1 1 480px; min-width: 0; max-width: 560px; overflow-x: auto; }
 main > .wallet:has(> .outcome:empty) { display: none; }
-main > .wallet tbody td, #bindings button { white-space: nowrap; }
+main > .wallet tbody td { white-space: nowrap; }
 
-label, .hud dt, footer dt, .outcome thead td {
+/* An outcome table's row names are labels, but for Challenge's last row, the run's score alone. */
+label, .hud dt, footer dt, .outcome thead td, :is(#outcome, #run-outcomes) td:first-child:not(:only-child) {
   font: 600 12px/16px var(--font-ui);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -131,6 +135,7 @@ label:has(> input[type="radio"]) {
   flex-direction: row;
   align-items: center;
   gap: 8px;
+  min-height: 40px;
   font: 16px/24px var(--font-ui);
   letter-spacing: normal;
   text-transform: none;
@@ -148,11 +153,12 @@ input:not([type="radio"], [type="range"], [type="file"]), select, textarea {
   color: var(--text);
   font: 16px var(--font-ui);
 }
+::placeholder { color: var(--muted); opacity: 1; }
 textarea { font: 14px/20px var(--font-code); }
 input[type="file"] { color: var(--muted); font: 14px/20px var(--font-ui); }
 ::file-selector-button { margin-inline-end: 8px; }
 input[type="radio"], input[type="range"] { margin: 0; }
-input[type="range"] { width: 100%; }
+input[type="range"] { width: 100%; height: 40px; }
 fieldset { padding: 12px; border: 1px solid var(--line); }
 legend { padding: 0 4px; font: 600 14px/20px var(--font-ui); }
 summary { font-weight: 600; cursor: pointer; }
@@ -165,7 +171,8 @@ a:hover { color: var(--player); }
 .hud { grid-template-columns: fit-content(40%) 1fr; align-items: baseline; }
 /* The game's HUD: a label column of whole pixels, so the pixel face starts on a whole pixel. */
 .hud:has(> #hud-claim) { grid-template-columns: 64px 1fr; }
-.hud dd[id^="hud-"] { font: 24px/36px var(--font-pixel); }
+/* A claim that wraps breaks in balance, keeping its target whole: "0.00 % of" over "75.00 %". */
+.hud dd[id^="hud-"] { font: 24px/36px var(--font-pixel); text-wrap: balance; }
 code, .hud code { font: 14px/20px var(--font-code); color: var(--muted); overflow-wrap: anywhere; }
 
 .outcome { font: 14px/20px var(--font-ui); }
@@ -215,6 +222,12 @@ canvas { background: var(--field); scroll-margin-top: 8px; }
 }
 @media (width >= 992px) {
   .banner img { width: 960px; height: 240px; }
+}
+/* Forced colors drop box shadows: the current page's bar and the buttons' edges become borders, each
+   button keeping its 40-px box. */
+@media (forced-colors: active) {
+  .bar nav a[aria-current="page"] { padding-bottom: 0; border-bottom: var(--cell) solid; }
+  button, a.button, ::file-selector-button { padding: 10px 14px; border: 2px solid; }
 }
 @media (prefers-reduced-motion: reduce) {
   .end { animation: none; }

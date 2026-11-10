@@ -1,6 +1,7 @@
 // The wipui preview build (docs/STYLE_GUIDE.md §16): the plugin's transformation of the five
 // pages, run on their sources: the header bar with the current page, the head tags, the Training
-// banner and script, and a build that fails, naming the page, when a page lacks what it expects.
+// banner and script, and a build that fails, naming the page, when a page lacks what it expects;
+// and the font's license, which the plugin emits.
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -51,7 +52,7 @@ describe("the wipui build of each page", () => {
     const tags = [
       '<link rel="stylesheet" href="/src/style.css" />',
       '<link rel="stylesheet" href="/src/wipui/style.css" />',
-      '<link rel="preload" href="/fonts/jiro-pixel-12.woff2" as="font" type="font/woff2" crossorigin />',
+      '<link rel="preload" href="/src/wipui/fonts/jiro-pixel-12.woff2" as="font" type="font/woff2" crossorigin />',
       '<meta name="theme-color" content="#000000" />',
       '<meta name="description" content="Draw the line. Claim the field. A territory-capture arcade game in the browser, where every ranked Challenge run is verified onchain." />',
       '<link rel="apple-touch-icon" href="/apple-touch-icon.png" />',
@@ -67,6 +68,13 @@ describe("the wipui build of each page", () => {
 
   it.each(PAGES)("%s loads the Play scroll script only on Training", (page) => {
     expect(built(page).includes('<script type="module" src="/src/wipui/play.ts"></script>')).toBe(page === "index.html");
+  });
+});
+
+describe("the head tags", () => {
+  it("escape a double quote of the page's title in og:title", () => {
+    const html = source("challenge.html").replace("<title>Jiro-ikusu Challenge</title>", '<title>Jiro-ikusu "Challenge"</title>');
+    expect(wipuiPage(html, "challenge.html")).toContain('<meta property="og:title" content="Jiro-ikusu &quot;Challenge&quot;" />');
   });
 });
 
@@ -113,5 +121,14 @@ describe("the plugin", () => {
     const html = source("season.html");
     const context = { path: "/season.html", filename: "/repo/web/season.html" };
     expect([hook.order, await hook.handler.call({} as never, html, context)]).toEqual(["pre", built("season.html")]);
+  });
+
+  it("emits the font's license next to the font, as no page references it", async () => {
+    const hook = wipui().generateBundle;
+    if (typeof hook !== "function") throw new Error("the plugin has no generateBundle hook");
+    const emitted: unknown[] = [];
+    await hook.call({ emitFile: (file: unknown) => emitted.push(file) } as never, {} as never, {}, true);
+    const license = readFileSync(new URL("../src/wipui/fonts/LICENSE-fusion-pixel.txt", import.meta.url));
+    expect(emitted).toEqual([{ type: "asset", fileName: "assets/LICENSE-fusion-pixel.txt", source: license }]);
   });
 });

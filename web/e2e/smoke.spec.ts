@@ -1,7 +1,8 @@
 // The browser smoke test (plan M2.2): the built site, on the open-field level with a vector's run
 // nonce, plays the vector's keys on Playwright's fake clock, so that every key lands on its tick,
 // and must end on the vector's final state hash. The wipui preview build (docs/STYLE_GUIDE.md §16)
-// must load its assets and its font under /wipui/, start a game, and scroll the field to the top.
+// must load its assets and its font under /wipui/, and scroll the field to the top when a game
+// starts; the root site must carry none of it.
 
 import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
@@ -70,24 +71,38 @@ test(`plays ${VECTOR}'s keys to its final state hash`, async ({ page }) => {
   expect([end.ticksUsed, end.stateHash]).toEqual([String(vector.outcome.ticksUsed), finalHash]);
 });
 
-test("the wipui build loads its assets and font, and a game's start scrolls the field to the top", async ({ page }) => {
+test("the wipui build loads its assets and its font from under /wipui/", async ({ page }) => {
+  const requested: string[] = [];
   const failed: string[] = [];
+  page.on("request", (request) => requested.push(request.url()));
   page.on("response", (response) => {
     if (response.status() >= 400) failed.push(`${response.status()} ${response.url()}`);
   });
-  // On a phone the whole field is in view before the game starts, and autoplay starts it without
-  // a click, which would scroll the page itself: only the wipui script scrolls the field.
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/wipui/index.html", { waitUntil: "networkidle" });
+  const fontFaces = await page.evaluate(async () => (await document.fonts.load('24px "Jiro Pixel 12"')).length);
+  // The root site serves the same files at the root, so a URL that Vite did not rebase still loads.
+  const origin = new URL(page.url()).origin;
+  const outsideBase = requested.filter((url) => url.startsWith(origin) && !new URL(url).pathname.startsWith("/wipui/"));
+  expect([fontFaces, failed, outsideBase]).toEqual([1, [], []]);
+});
+
+test("the wipui build scrolls the field to the top when a game starts", async ({ page }) => {
+  // At 360 × 640 the page runs on far enough below the field for its top to reach the canvas's 8-px
+  // scroll-margin-top. Autoplay starts the game without a click, which would scroll the page itself,
+  // and play()'s canvas.focus() only brings the field's bottom into view: only the wipui script puts
+  // the field's top at 8 px.
+  await page.setViewportSize({ width: 360, height: 640 });
   await page.goto("/wipui/index.html?autoplay");
   await expect.poll(async () => Number((await field(page)).ticksUsed)).toBeGreaterThan(0);
-  const shown = await page.evaluate(async () => {
-    const canvas = document.getElementById("field");
-    if (canvas === null) throw new Error("#field is missing from the page");
-    const top = canvas.getBoundingClientRect().top + window.scrollY;
-    const end = document.documentElement.scrollHeight - window.innerHeight;
-    // The canvas's scroll-margin-top is 8 px.
-    const scrolledToTop = Math.abs(window.scrollY - Math.min(top - 8, end)) < 1 && window.scrollY > 0;
-    return { scrolledToTop, fontFaces: (await document.fonts.load('24px "Jiro Pixel 12"')).length };
-  });
-  expect([shown, failed]).toEqual([{ scrolledToTop: true, fontFaces: 1 }, []]);
+  const top = await page.evaluate(() => document.getElementById("field")?.getBoundingClientRect().top);
+  expect(top).toBeCloseTo(8, 0);
+});
+
+test("the root site carries none of the wipui preview", async ({ page }) => {
+  await page.goto("/");
+  const preview = await page.evaluate(() => ({
+    headerBar: document.querySelector("header.bar") !== null,
+    pixelFont: [...document.fonts].some((face) => face.family.replace(/"/g, "") === "Jiro Pixel 12"),
+  }));
+  expect(preview).toEqual({ headerBar: false, pixelFont: false });
 });
