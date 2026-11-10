@@ -4,7 +4,7 @@ The visual identity of Jiro-ikusu (ジロイクス, 极络益克司): the name i
 
 This guide owns the rules. [`brand/src/`](../brand/src/) owns the numbers: every coordinate, glyph bitmap, palette hex value and checksum of the identity. The guide quotes hex values, contrast ratios and headline sizes, never a checksum or a glyph's coordinates; where a quoted value and `brand/src/` differ, `brand/src/` wins. `node brand/build.mjs` builds every asset from it ([§12](#12-assets-and-build)).
 
-> **Status: a proposal under owner review (2026-11-10).** This pull request adds `brand/`, the generated assets, one CI check and this guide, replaces the placeholder favicon, and builds a preview of the pages in the identity, served at [jiro-ikusu.win/wipui](https://jiro-ikusu.win/wipui/). The pages, interface and game canvas adopt the identity in follow-up pull requests ([§16](#16-adoption)), which the sections marked *planned* describe.
+> **Status: adopted (2026-11-10).** `brand/` builds the assets, and the site wears the identity: the pages, `web/src/style.css` and the Jiro Pixel 12 font follow it. What the sections marked *planned* describe comes in follow-up pull requests ([§16](#16-adoption)); [§17](#17-open-questions) lists the open questions.
 
 <img alt="Jiro-ikusu (ジロイクス, 极络益克司): a red cut about to close around the name" src="../web/public/brand/banner.svg" width="720" height="180">
 
@@ -50,7 +50,7 @@ Five directions were drawn up: Claimed Chrome (chrome cell letters over an attra
 
 ## 3. Color
 
-[README §4.1](../README.md#41-grid) freezes the field's colors as rule text: open field black (R4.1-3), claimed land blue (R4.1-4), trail red (R4.1-5). [`brand/src/palette.txt`](../brand/src/palette.txt) owns every hex value, and the build fails when `CELL_COLORS` or `ENTITY_COLORS` in render.ts, or a `:root` variable of style.css or of the preview's stylesheet ([§16](#16-adoption)), disagrees with it, or when `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits ([§12](#12-assets-and-build)). Contrast is WCAG 2.2.
+[README §4.1](../README.md#41-grid) freezes the field's colors as rule text: open field black (R4.1-3), claimed land blue (R4.1-4), trail red (R4.1-5). [`brand/src/palette.txt`](../brand/src/palette.txt) owns every hex value, and the build fails when `CELL_COLORS` or `ENTITY_COLORS` in render.ts, or a `:root` variable of style.css, disagrees with it, or when `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits ([§12](#12-assets-and-build)). Contrast is WCAG 2.2.
 
 **Game colors,** in `CELL_COLORS` and `ENTITY_COLORS` of render.ts:
 
@@ -70,7 +70,7 @@ Five directions were drawn up: Claimed Chrome (chrome cell letters over an attra
 |---|---|---|---|
 | chrome-hi | `#B4C4FF` | The capitals' top band. Art only | 12.28:1 on field |
 | chrome-mid | `#6E8BFF` | The capitals' second band and foot. Art only | 6.80:1 on field |
-| claim-deep | `#14206E` | The wordmark's shelf, the halo next to white; the button shelf of the planned UI | 1.46:1 on field: decorative |
+| claim-deep | `#14206E` | The wordmark's shelf, the halo next to white; the UI's button shelf | 1.46:1 on field: decorative |
 | trail-deep | `#5A0E14` | The halo next to red. Art only | 1.51:1: decorative |
 | boss-ghost-1 | `#7A1D73` | The boss's first afterimage: 48 % of the boss over black, as a flat color. Art only | Decorative |
 | boss-ghost-2 | `#3D0E3A` | The second afterimage: 24 %. Art only | Decorative |
@@ -84,11 +84,11 @@ Five directions were drawn up: Claimed Chrome (chrome cell letters over an attra
 | `--text` | `#E6E8EE` | Body text, HUD values | 15.86:1 on `--bg`, 14.31:1 on `--panel`, 17.14:1 on field |
 | `--muted` | `#9AA1B2` | Labels, nav, secondary text, input borders | 7.51:1, 6.78:1 and 8.11:1 on the same |
 | `--danger` | `#FF5A5A` | Error text, and the Out of lives title's drop | 6.35:1 on `--bg`, 5.73:1 on `--panel`; white on it 3.06:1, so never a fill under text |
-| `--accent` | claim | The primary button; today the literal `#2850ff` | White on it 5.70:1 |
-| `--link` *(planned)* | `#8FA6FF` | Links, always underlined; today a literal | 8.39:1 on `--bg`, 7.57:1 on `--panel` |
-| `--line` *(planned)* | `#2A3142` | Hairlines, the disabled button's fill | 1.50:1 on `--bg`, so never a control's only edge; muted text on it 5.02:1 |
-| `--accent-hover` *(planned)* | `#1F3FD6` | The primary button on hover | White on it 7.66:1 |
-| `--focus` *(planned)* | player | The focus ring, the current page | 19.43:1 on `--bg` |
+| `--accent` | claim | The primary button, as `var(--claim)` | White on it 5.70:1 |
+| `--link` | `#8FA6FF` | Links, always underlined | 8.39:1 on `--bg`, 7.57:1 on `--panel` |
+| `--line` | `#2A3142` | Hairlines, the disabled button's fill | 1.50:1 on `--bg`, so never a control's only edge; muted text on it 5.02:1 |
+| `--accent-hover` | `#1F3FD6` | The primary button on hover | White on it 7.66:1 |
+| `--focus` | player | The focus ring, the current page | 19.43:1 on `--bg` |
 
 - **Meaning first:** each color keeps its game meaning everywhere, blue also marking the primary action, and a game color keeps the hue README §4.1 names.
 - **Cold land, hot thread:** large areas only black or blue; red, magenta and green stay small. Claim blue and trail red are never text.
@@ -120,11 +120,11 @@ Each band is one flat color, and the white line stays outermost: whatever the ba
 
 ### system-ui: body text
 
-As today (`system-ui, sans-serif`): no download, the best hinting for long text, native CJK for `lang`-tagged spans. The pixel faces carry the voice, system-ui the reading; code, hashes, addresses and journals use ui-monospace (today only the journal textarea sets it; `<code>` uses the browser's monospace).
+`--font-ui` (system-ui first, [§8](#8-interface)): no download, the best hinting for long text, native CJK for `lang`-tagged spans. The pixel faces carry the voice, system-ui the reading; code, hashes and journals use ui-monospace, `--font-code` (the pages' `<code>` and the journal textarea), and addresses will *(planned)*: the footer's contract links, the wallet status and the Season leaderboard still show them in system-ui.
 
-### Jiro Pixel 12: the UI's pixel face *(planned)*
+### Jiro Pixel 12: the UI's pixel face
 
-- **What:** a subset of Fusion Pixel 12px Proportional SC, 106 code points (U+0020–007E, · × – — …, ← ↑ → ↓, ■ □), about 2.5 KB as `web/public/fonts/jiro-pixel-12.woff2` (in `web/src/wipui/fonts/` while only the preview serves it, [§16](#16-adoption)). Renamed, as the OFL requires of a Modified Version of a font with a Reserved Font Name, it keeps its copyright and license records. It ships with the package's full license text, which also carries the notices of the fonts Fusion Pixel draws on: Ark Pixel, Galmuri, Cubic 11, JF Dot M+H 12 and M+ BITMAP FONTS.
+- **What:** a subset of Fusion Pixel 12px Proportional SC, 106 code points (U+0020–007E, · × – — …, ← ↑ → ↓, ■ □), about 2.5 KB as `web/public/fonts/jiro-pixel-12.woff2`. Renamed, as the OFL requires of a Modified Version of a font with a Reserved Font Name, it keeps its copyright and license records. It ships with the package's full license text, `LICENSE-fusion-pixel.txt` beside it, which also carries the notices of the fonts Fusion Pixel draws on: Ark Pixel, Galmuri, Cubic 11, JF Dot M+H 12 and M+ BITMAP FONTS.
 - **Why:** no anti-aliased pixel at 12, 24, 36 or 48 px in Chromium in the design test; tabular digits; a slashed zero; distinct I, l and 1; the design of the logo's CJK. DotGothic16 was dropped for outlines off its pixel grid.
 - **Use:** HUD values, headings and end-of-level titles, only at 12, 24, 36 or 48 px, line-height 1 or 1.5, letter-spacing 0, `font-synthesis: none`, never bold or italic; essential values at 24 px or more. It lacks U+00A0, so values use U+0020, as `percent()` in `web/src/page.ts` does.
 
@@ -161,7 +161,7 @@ The primary lockup on its field plate, which reads on light and dark pages alike
 
 - **Size:** 240 × 60 cells at 4 px per cell, 960 × 240 px: one field tall and four wide at the game's own cell, the 4:1 of a coin-op marquee and of a site hero.
 - **Scene,** back to front: the field with its claim frame and three claimed blocks, the trail, the full-color primary lockup, the boss (B = 6) and its two ghosts, the player. The halo comes last: black cells next to white turn claim-deep, then black cells next to red turn trail-deep.
-- **Placement** *(planned)*: the Training page's `h1`, under the header bar, sized by media query to a whole number of CSS px per cell: 960 × 240 from a 992-px viewport, 720 × 180 from 752 px, 480 × 120 from 512 px, then the stacked lockup at 2 px per cell. It never shrinks the field ([§8](#8-interface-planned)).
+- **Placement:** the Training page's `h1`, under the header bar, sized by media query to a whole number of CSS px per cell: 960 × 240 from a 992-px viewport, 720 × 180 from 752 px, 480 × 120 from 512 px, then the stacked lockup at 2 px per cell. It never shrinks the field ([§8](#8-interface)).
 - **Never in it:** minions, sparks, flares, gradients, blur, text other than the name, fees, prizes, URLs or third-party logos.
 
 ### Attract-frame legality
@@ -202,22 +202,22 @@ The monogram, First Cut, is a level at its first move on 8 × 8 cells: the claim
 - **ロ tiles:** the claimed, white-rimmed square, which returns as the monogram's ring and, planned, as the ロ mark before h2 headings and the Challenge run squares.
 - **The cut,** the only red in art, and the **attract frame** ([§6](#6-banner-icon-and-social-card)); the hyphen is the cut at its shortest.
 - **Halo and Magnetar ghosts:** the hero art's only glow and only motion cue: one ring of claim-deep or trail-deep on black, and two flat afterimages 2 and 4 cells behind the boss on its diagonal.
-- *Planned:* the **cabinet edge** (a claim rail under the header, buttons on a claim-deep shelf, a white bar under the current page), the **pixel voice** (end titles dropped by one font pixel) and the **claim meter** ([§8](#8-interface-planned)).
+- The **cabinet edge** (a claim rail under the header, buttons on a claim-deep shelf, a white bar under the current page), the **pixel voice** (end titles dropped by one font pixel) and, planned, the **claim meter** ([§8](#8-interface)).
 
-## 8. Interface *(planned)*
+## 8. Interface
 
-A follow-up adopts these rules in `web/src/style.css` and the pages ([§16](#16-adoption)). The preview at [jiro-ikusu.win/wipui](https://jiro-ikusu.win/wipui/) already shows them on the pages' current markup, but for what needs new markup or the pages' scripts: the claim meter, the run squares, the ロ mark (no page has a section `h2` yet), the end-of-level status region and the "Error: " prefix.
+`web/src/style.css` and the pages follow these rules, but for what needs new markup or the pages' scripts, marked *planned*: the claim meter, the run squares, the ロ mark (no page has a section `h2` yet), the end-of-level status region and the "Error: " prefix ([§16](#16-adoption)).
 
 - **Units:** a cell is 4 CSS px; every length is a multiple of 4 px but 1- and 2-px strokes and offsets (hairlines, borders, rings, outlines), type sizes, line heights and letter-spacing, and the pixel-voice drop of one font pixel; `border-radius` is 0; content is at most 960 px wide with 16-px gutters; the field keeps `integerScale`. Pixel art shows at whole CSS px per cell by media query ([§5](#5-logo)): banner 4, 3 or 2; stacked lockup 2; wordmark 2, or 1 below a 400-px viewport.
-- **Tokens:** `:root` gains `--field`, `--claim`, `--player`, `--claim-deep`, `--line`, `--link`, `--accent-hover` (from palette.txt), `--accent: var(--claim)`, `--focus: var(--player)`, `--cell: 4px`, `--tick: 66.667ms`, `--font-ui` (system-ui, -apple-system, "Segoe UI", Roboto, sans-serif), `--font-pixel` ("Jiro Pixel 12", ui-monospace, monospace) and `--font-code` (ui-monospace, monospace). Trail, boss, minion and the other art tones get no token.
-- **Type:** body system-ui 16/24, small 14/20; labels 600 12/16, uppercase, +0.08em, `--muted`; buttons 600 16/16. In Jiro Pixel 12: h1 36/54 (not on Training); h2 24/36 after the ロ mark, a 12-px `::before` square with a 2-px `--claim` border and an 8-px gap; HUD values 24/36; end titles 48/48, or 24/24 at field scale 1. Hashes: ui-monospace 12–14 px, `--muted`, `overflow-wrap: anywhere`.
-- **Header bar** on every page: `<header class="bar">` on `--field`, a 4-px `--claim` bottom border (the rail), padding 16px and a 16-px gap (the wordmark's 8 cells of clear space at 2 px per cell), wrapping flex. Left, the wordmark linked to `/` at 2 px per cell (1 below a 400-px viewport), `alt="Jiro-ikusu"`. Right, the nav (Training, Challenge, Season, Replay, Editor) in system-ui 600 14 px, uppercase, +0.08em, 24 px apart, `--muted`; hover and `aria-current="page"` turn `--player`, and the current page gets a 4-px inset white bar below. Red never marks navigation; a nav that does not fit takes its own row.
+- **Tokens:** `:root` holds the page tokens of [§3](#3-color) and `--field`, `--claim`, `--player`, `--claim-deep`, `--line`, `--link`, `--accent-hover` (from palette.txt), `--accent: var(--claim)`, `--focus: var(--player)`, `--cell: 4px`, `--tick: 66.667ms`, `--font-ui` (system-ui, -apple-system, "Segoe UI", Roboto, sans-serif), `--font-pixel` ("Jiro Pixel 12", ui-monospace, monospace) and `--font-code` (ui-monospace, monospace). Trail, boss, minion and the other art tones get no token.
+- **Type:** body system-ui 16/24, small 14/20; labels 600 12/16, uppercase, +0.08em, `--muted`; buttons 600 16/16. In Jiro Pixel 12: h1 36/54 (not on Training); h2 24/36 after the ロ mark *(planned)*, a 12-px `::before` square with a 2-px `--claim` border and an 8-px gap; HUD values 24/36; end titles 48/48, or 24/24 at field scale 1. Hashes: ui-monospace 12–14 px, `--muted`, `overflow-wrap: anywhere`.
+- **Header bar** on every page: `<header class="bar">` on `--field`, a 4-px `--claim` bottom border (the rail), padding 16px and a 16-px gap (the wordmark's 8 cells of clear space at 2 px per cell), wrapping flex. Left, the wordmark linked to `/` at 2 px per cell (1 below a 400-px viewport), `alt="Jiro-ikusu"`. Right, the nav (Training, Challenge, Season, Replay, Editor) in system-ui 600 14 px, uppercase, +0.08em, 24 px apart, `--muted`; hover and `aria-current="page"` turn `--player`, and the current page gets a 4-px inset white bar below. Red never marks navigation; a nav that does not fit takes its own row. The bar is the page's one `header`, so its one banner landmark; under it, the page's intro is a `section` labeled by its `h1`.
 - **Cabinet buttons:** padding 12px 16px, min-height 40px, margin-bottom 4px, no border; `--accent`, white text, standing on a 4-px `--claim-deep` shelf, a box shadow drawn below the 40-px target. Hover `--accent-hover`; active `translateY(4px)`, no shelf; `:focus-visible` a 2-px `--focus` outline at 2 px. Secondary: transparent, a 2-px inset `--claim` ring, `--text`. Disabled: `--line`, `--muted` text, no shelf, `cursor: not-allowed`.
-- **Panels** `--panel`, padding 12px, no border. **Inputs** on `--field`, `--text`, a 1-px `--muted` border, padding 8px, min-height 40px. **Links** `--link`, underlined at a 4-px offset, hover `--player`. **Errors** `--danger`, `role="alert"`, prefixed "Error: ".
-- **HUD:** a `dl` grid (auto 1fr, gap 4px 16px), `dt` as labels, `dd` in Jiro Pixel 12 at 24 px with `text-wrap: balance`, so that a claim that wraps keeps its target whole: claim ("74.92 % of 75.00 %"), lives, shield, time.
-- **Claim meter** (optional, `aria-hidden`): under the canvas, as wide, 2 cells tall, 60 segments. Segment i is `--claim` when i < floor(claim_bp × 60 / 10,000), or when claim_bp ≥ target_bp and i ≤ ceil(target_bp × 60 / 10,000) − 1; segment ceil(target_bp × 60 / 10,000) − 1 is `--player` until it fills; the rest `--field`.
-- **Challenge run squares:** six 16-px squares, 4 px apart, each a 4-px ring (`--muted`, then `--player` once the level is current or done) around an 8-px core (`--claim` if the level scored above 0, else `--field`), with "Level n of 6".
-- **End overlay:** `rgb(11 13 18 / 0.85)` as today; the `END_REASONS` title uppercase, white, dropped by `text-shadow: 0 calc(1em / 12) 0 var(--claim)`, or `var(--danger)` for Out of lives (one font pixel: 4 px at 48 px, 2 px at 24 px); detail in system-ui 16 px, the hash in ui-monospace. The title and detail, and on Challenge the level line, are announced by a `role="status"` region that is not hidden before they are written ([§14](#14-accessibility)).
+- **Panels** `--panel`, padding 12px, no border. **Inputs** on `--field`, `--text`, a 1-px `--muted` border, padding 8px, min-height 40px. **Links** `--link`, underlined at a 4-px offset, hover `--player`. **Errors** `--danger`, `role="alert"`, prefixed "Error: " *(planned)*.
+- **HUD:** a `dl` grid (a 64-px label column, so that the pixel face starts on a whole pixel, then 1fr; gap 4px 16px; the other pages' `dl` panels take `fit-content(40%) 1fr`), `dt` as labels, `dd` in Jiro Pixel 12 at 24 px with `text-wrap: balance`, so that a claim that wraps keeps its target whole: claim ("74.92 % of 75.00 %"), lives, shield, time.
+- **Claim meter** *(planned)* (optional, `aria-hidden`): under the canvas, as wide, 2 cells tall, 60 segments. Segment i is `--claim` when i < floor(claim_bp × 60 / 10,000), or when claim_bp ≥ target_bp and i ≤ ceil(target_bp × 60 / 10,000) − 1; segment ceil(target_bp × 60 / 10,000) − 1 is `--player` until it fills; the rest `--field`.
+- **Challenge run squares** *(planned)*: six 16-px squares, 4 px apart, each a 4-px ring (`--muted`, then `--player` once the level is current or done) around an 8-px core (`--claim` if the level scored above 0, else `--field`), with "Level n of 6".
+- **End overlay:** `rgb(11 13 18 / 0.85)`, `--bg` at 85 %; the `END_REASONS` title uppercase, white, dropped by `text-shadow: 0 calc(1em / 12) 0 var(--claim)`, or `var(--danger)` for Out of lives (one font pixel: 4 px at 48 px, 2 px at 24 px); detail in system-ui 16 px, the hash in ui-monospace. The title and detail, and on Challenge the level line, are announced by a `role="status"` region that is not hidden before they are written *(planned, [§14](#14-accessibility))*.
 - **Canvas:** `--field`, pixelated, a 2-px white `:focus-visible` outline at 2 px. `fitField` stays as it is, so the banner never costs the field a scale step; Play scrolls the field to the top (`scrollIntoView({ block: "start" })`).
 - **Font:** "Jiro Pixel 12" from `/fonts/jiro-pixel-12.woff2`, `font-display: block`, preloaded on every page.
 
@@ -291,7 +291,7 @@ node brand/build.mjs          # writes every output that is missing or stale
 node brand/build.mjs --check  # writes nothing, and exits 1 when an output is stale
 ```
 
-Both rebuild everything in memory and exit 1, writing nothing, when a palette hex disagrees with `CELL_COLORS` or `ENTITY_COLORS` in render.ts or with a `:root` variable of the same name in style.css or in the preview's `web/src/wipui/style.css` (`--accent` must equal claim, `--focus` player), `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits, a scene breaks a legality rule ([§6](#6-banner-icon-and-social-card)), the shelf leaves no empty cell before a kana or a tile, a checksum (the cells per color that `brand/src/` records for each full-color lockup and scene) differs, or `web/public/brand/` holds a file that is not an output. `--check` also fails on a stale output: SVG and ICO byte for byte, PNG by decoded pixels as this build encodes them, so a zlib update can make only `favicon.ico`, which holds deflated PNGs, stale.
+Both rebuild everything in memory and exit 1, writing nothing, when a palette hex disagrees with `CELL_COLORS` or `ENTITY_COLORS` in render.ts or with a style.css `:root` variable of the same name (`--accent` must equal claim, `--focus` player), `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits, a scene breaks a legality rule ([§6](#6-banner-icon-and-social-card)), the shelf leaves no empty cell before a kana or a tile, a checksum (the cells per color that `brand/src/` records for each full-color lockup and scene) differs, or `web/public/brand/` holds a file that is not an output. `--check` also fails on a stale output: SVG and ICO byte for byte, PNG by decoded pixels as this build encodes them, so a zlib update can make only `favicon.ico`, which holds deflated PNGs, stale.
 
 CI runs `--check` as the step "Brand assets are up to date (web)" of the web job in `.github/workflows/ci.yml`, whose path filter includes `brand/**`. A pull request that changes `brand/**` commits the rebuilt `web/public/` with it, and updates this guide when a rule, or a value it quotes, changes (`CLAUDE.md`).
 
@@ -333,19 +333,19 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 
 **Culture.** 极络益克司 uses Simplified forms (极, not 極; 络, not 絡), from the Simplified Chinese build of a pan-CJK pixel font, whose 益 is the Chinese form; the kana come from the same file and match its Japanese build; ジロイクス is plain katakana with a short ro. 司 replaces 斯, the usual character for a final -s, on purpose: it means "take charge", and as it may read as slightly unusual, it goes to native review. Traps avoided: rising-sun rays and red sun discs; a symmetric red Π that reads as a torii; five yellow stars on red; 卍; Cultural Revolution poster styling; "chop-suey" brush lettering; characters as decoration without meaning. Gals Panic-style reveal pictures carry adult connotations, so the identity stays abstract.
 
-**Licenses.** Jiro Caps, the lockups, the scenes and the icons are project artwork, under the repository's MIT license. The logo's CJK and the card's tagline are artwork made from Fusion Pixel 12px glyphs, which the SIL OFL 1.1 does not restrict; `brand/README.md` credits TakWolf all the same, and the font file is never served. Jiro Pixel 12 *(planned)* is renamed because this build reserves the name "Fusion Pixel" ([§4](#4-type)).
+**Licenses.** Jiro Caps, the lockups, the scenes and the icons are project artwork, under the repository's MIT license. The logo's CJK and the card's tagline are artwork made from Fusion Pixel 12px glyphs, which the SIL OFL 1.1 does not restrict; `brand/README.md` credits TakWolf all the same, and the font file is never served. Jiro Pixel 12 is renamed because this build reserves the name "Fusion Pixel" ([§4](#4-type)).
 
 **Other risks.** One-cell CJK strokes blur below 2 device px per cell, which the minimum sizes prevent. Safari supports SVG favicons only in part, so the ICO ships too. Other products use the name Jiro, so clearance is open.
 
 ## 14. Accessibility
 
-- **Contrast,** WCAG 2.2, per token in §3: every text color clears 4.5:1 on the grounds it uses, and the planned white focus ring is 19.43:1 on `--bg`. Non-text needs 3:1 (WCAG 1.4.11): claim is 3.41:1 on `--bg`, 3.07:1 on `--panel` and 3.68:1 on field.
+- **Contrast,** WCAG 2.2, per token in §3: every text color clears 4.5:1 on the grounds it uses, and the white focus ring is 19.43:1 on `--bg`. Non-text needs 3:1 (WCAG 1.4.11): claim is 3.41:1 on `--bg`, 3.07:1 on `--panel` and 3.68:1 on field.
 - **In play:** claim 3.68:1, trail 5.62:1 and boss 7.16:1 on field; minion 4.28:1 and player 5.70:1 on claim. The invulnerable gray is only 2.03:1 on claim, and the planned checker stamp keeps that state white ([§9](#9-game-canvas-presentation-planned)).
 - **Color vision** (Machado 2009 at severity 1; CIEDE2000): trail against claim stays at 57.5 or more in every simulation, boss against minion at 51.7 or more, trail against field at 36.8 and 3.70:1 under protanopia. Shape fixes the two weak pairs (§9), and brand art never shows a minion.
-- **Never color alone:** errors carry "Error:", the current page a bar, run squares "Level n of 6", and the HUD the claim meter's numbers. Forced colors drop box shadows, so there the current page's bar and every button's edge are borders, each button keeping its 40-px box.
+- **Never color alone:** the current page carries a bar; errors carry "Error:", run squares "Level n of 6" and the HUD the claim meter's numbers *(planned, [§8](#8-interface))*. Forced colors drop box shadows, so there the current page's bar and every button's edge are borders, each button keeping its 40-px box.
 - **Motion** follows [§10](#10-motion-and-sound): whole ticks, nothing blinking or shaking, and `prefers-reduced-motion` removing every transition, animation and capture highlight.
-- **Structure:** `<html lang="en">` as today, kana in `<span lang="ja">`, hanzi in `<span lang="zh-Hans">`. The planned Training banner is the `h1`, with `alt=""` and visually hidden text, Jiro-ikusu ジロイクス 极络益克司, carrying those `lang` attributes; the header wordmark has `alt="Jiro-ikusu"`; every SVG has `role="img"` and a `<title>`. Live regions announce events, never per-tick values, so the HUD and the claim meter are not live regions: errors keep `role="alert"`, status lines such as the run, settlement and season status keep `role="status"`, and the end-of-level result joins them *(planned, [§8](#8-interface-planned))*.
-- **Interaction** *(planned, [§8](#8-interface-planned))*: focus is visible everywhere, the canvas included: 2 px of white at a 2-px offset. Buttons and inputs are 40-px targets, above WCAG 2.5.8's 24 px; a button's shelf lies outside its target. Pages reflow at 320 CSS px, pixel art switching to its next whole size. Body text is 16 px, and nothing is under 12 px.
+- **Structure:** `<html lang="en">` as today, kana in `<span lang="ja">`, hanzi in `<span lang="zh-Hans">`. The Training banner is the `h1`, with `alt=""` and visually hidden text, Jiro-ikusu ジロイクス 极络益克司, carrying those `lang` attributes; the header wordmark has `alt="Jiro-ikusu"`; every SVG has `role="img"` and a `<title>`. Live regions announce events, never per-tick values, so the HUD and the claim meter are not live regions: errors keep `role="alert"`, status lines such as the run, settlement and season status keep `role="status"`, and the end-of-level result joins them *(planned, [§8](#8-interface))*.
+- **Interaction** ([§8](#8-interface)): focus is visible everywhere, the canvas included: 2 px of white at a 2-px offset. Buttons and inputs are 40-px targets, above WCAG 2.5.8's 24 px, and Training's Controls `summary` is 24 px, that minimum; a button's shelf lies outside its target. Pages reflow at 320 CSS px, pixel art switching to its next whole size. Body text is 16 px, and nothing is under 12 px.
 
 ## 15. Do and don't
 
@@ -377,16 +377,18 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 
 ## 16. Adoption
 
-**This pull request** adds `brand/`; the generated assets in `web/public/brand/` and the icons in `web/public/`, whose `favicon.svg` and `favicon.ico` replace the placeholders under the pages' unchanged icon links; the CI step "Brand assets are up to date (web)"; this guide, with two entries in the README's "Repository files"; the sync rows and owners of numbers in `CLAUDE.md`; the Jiro Pixel 12 subset and its license ([§4](#4-type)), in `web/src/wipui/fonts/` while only the preview serves them; and the preview below.
+**The identity's pull request** added `brand/`; the generated assets in `web/public/brand/` and the icons in `web/public/`, whose `favicon.svg` and `favicon.ico` replaced the placeholders under the pages' icon links; the CI step "Brand assets are up to date (web)"; this guide, with two entries in the README's "Repository files"; the sync rows and owners of numbers in `CLAUDE.md`; and a preview of follow-ups 1 to 3, without the manifest of follow-up 1, served at `jiro-ikusu.win/wipui`.
 
-**Follow-up pull requests,** one each:
+**Adopted:** follow-ups 1 to 3: the site took over the preview in one switch and added the manifest. `web/public/_redirects` retires the preview: `/wipui` and every page under `/wipui/` redirect permanently (301) to the same page at the root.
 
 1. **Page wiring,** on the five pages `web/*.html`: the banner as the Training page's `h1` ([§6](#6-banner-icon-and-social-card)); `<meta name="theme-color" content="#000000">`; `<meta name="description">`, with the text of `og:description`; a link to `apple-touch-icon.png`; a hand-written `site.webmanifest` (name "Jiro-ikusu", `start_url` "/", `display` "browser", colors "#000000", the 192 and 512 icons plus the maskable one); and Open Graph and Twitter card meta (`summary_large_image`), with `og:image` `https://jiro-ikusu.win/brand/social-card-1200x630.png` at 1200 × 630, `og:image:alt` "Jiro-ikusu (ジロイクス, 极络益克司): a red cut about to close around the name. Cut. Claim. Commit." and `og:description` "Draw the line. Claim the field. A territory-capture arcade game in the browser, where every ranked Challenge run is verified onchain."
-2. **UI tokens and components:** [§8](#8-interface-planned), in `web/src/style.css` and the pages.
+2. **UI tokens and components:** [§8](#8-interface), in `web/src/style.css` and the pages: the header bar on every page, and each page's intro a region labeled by its `h1`.
 3. **The Jiro Pixel 12 font:** the subset and its license in `web/public/fonts/`, `@font-face` and the preload ([§4](#4-type)).
-4. **Renderer stamps:** [§9](#9-game-canvas-presentation-planned), in `web/src/render.ts`, with the tests that check them. `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` then derives from `ENTITY_COLORS.boss`, so the copy of the boss hex, and its check in the build, go away.
 
-**The preview** at [jiro-ikusu.win/wipui](https://jiro-ikusu.win/wipui/) shows follow-ups 1 to 3 on the pages as they stand, without the manifest of follow-up 1; the renderer stamps wait for follow-up 4. `npm --prefix web run build` builds the site twice from the same pages: as it is into `web/dist`, then in the Vite mode `wipui`, with the base `/wipui/`, into `web/dist/wipui`, so every deploy serves both. In that mode `web/src/wipui/plugin.ts` rewrites each page before Vite processes it: the head tags and the font's preload; the header bar, its links relative so that they stay under `/wipui/`; the page's own `header` as a `div`, so that the bar is the one banner landmark; and on Training the banner `h1` and `web/src/wipui/play.ts`, which scrolls the field to the top once a game starts. `web/src/wipui/style.css`, loaded after style.css, holds the tokens, the components and the `@font-face`. The font and its license stay in `web/src/wipui/fonts/`, out of `web/public/`, which both builds copy, so that only the preview emits them. A page that lacks what the plugin rewrites fails the build, which names it. **The switch:** move the markup the plugin adds into the pages, the scroll of `play.ts` into Training's script, the stylesheet into style.css, and the font and its license to `web/public/fonts/`, where §4 and §8 place them; then drop the mode, with its build pass, `web/src/wipui/`, `web/test/wipui.test.ts`, the smoke test's preview cases but the scroll, which moves to the root site, the stylesheet's entry in `brand/build.mjs`, and `allowImportingTsExtensions` in `web/tsconfig.json`, which only the config's import of the plugin needs.
+**Still to come,** one pull request each:
+
+4. **Renderer stamps:** [§9](#9-game-canvas-presentation-planned), in `web/src/render.ts`, with the tests that check them. `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` then derives from `ENTITY_COLORS.boss`, so the copy of the boss hex, and its check in the build, go away.
+5. **The rest of §8,** which needs new markup or the pages' scripts: the claim meter, the Challenge run squares, the ロ mark before section `h2` headings, the end-of-level status region ([§14](#14-accessibility)), the "Error: " prefix and addresses in `--font-code` ([§4](#4-type)).
 
 **Phone, later** (M3): the maskable and apple-touch icons give the app icon; the splash centers the stacked lockup on field, at the largest whole px per cell within 60 % of the screen's width; the header carries the wordmark at 1 CSS px per cell.
 
@@ -397,5 +399,5 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 - **Traditional Chinese.** Is a 極絡益克司 form ever wanted for Taiwan and Hong Kong, or is 极络益克司 the only Chinese name?
 - **Trademark.** Should a name and mark clearance be run for Jiro-ikusu, ジロイクス, 极络益克司 and the monogram before stores, merchandise or paid promotion?
 - **README and accounts.** Should `banner-1920x480.png` head README.md, and `avatar-400.png` become the repository's or the organization's avatar?
-- **Wide game rows.** [§8](#8-interface-planned) caps content at 960 px, but from field scale 3 (a 720-px field, at 1440 × 900) the field and its side column span 1,096 px, on the root site as in the preview. Does the cap leave the game row out, or does the side column go under the field there?
+- **Wide game rows.** [§8](#8-interface) caps content at 960 px, but from field scale 3 (a 720-px field, at 1440 × 900) the field and its side column span 1,096 px. Does the cap leave the game row out, or does the side column go under the field there?
 - **Trust lines.** Runs are verified by exception (README §7.3). Are "Every cut checks out." and "Every ranked run is verified onchain." the claims the owner wants to make?

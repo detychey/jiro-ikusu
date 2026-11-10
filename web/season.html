@@ -7,12 +7,35 @@
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/style.css" />
+    <link rel="preload" href="/fonts/jiro-pixel-12.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Draw the line. Claim the field. A territory-capture arcade game in the browser, where every ranked Challenge run is verified onchain." />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Jiro-ikusu season" />
+    <meta property="og:description" content="Draw the line. Claim the field. A territory-capture arcade game in the browser, where every ranked Challenge run is verified onchain." />
+    <meta property="og:image" content="https://jiro-ikusu.win/brand/social-card-1200x630.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Jiro-ikusu (ジロイクス, 极络益克司): a red cut about to close around the name. Cut. Claim. Commit." />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
-    <header>
-      <h1>Jiro-ikusu season</h1>
-      <p>A Challenge season: its parameters and pot, its leaderboard, read from the chain's events, its close and its claims, and the settlement of your best run. <a href="challenge.html">Challenge</a> · <a href="replay.html">Replay viewer</a> · <a href="index.html">Training</a></p>
+    <header class="bar">
+      <a href="/"><img src="/brand/wordmark.svg" width="368" height="44" alt="Jiro-ikusu" /></a>
+      <nav>
+        <a href="/">Training</a>
+        <a href="challenge.html">Challenge</a>
+        <a href="season.html" aria-current="page">Season</a>
+        <a href="replay.html">Replay</a>
+        <a href="editor.html">Editor</a>
+      </nav>
     </header>
+    <section class="intro" aria-labelledby="page-title">
+      <h1 id="page-title">Jiro-ikusu season</h1>
+      <p>A Challenge season: its parameters and pot, its leaderboard, read from the chain's events, its close and its claims, and the settlement of your best run. <a href="challenge.html">Challenge</a> · <a href="replay.html">Replay viewer</a> · <a href="index.html">Training</a></p>
+    </section>
     <main>
       <aside class="side">
         <section class="wallet" aria-label="Season">
