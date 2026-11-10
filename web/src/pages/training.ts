@@ -8,8 +8,6 @@
 // smoke test.
 
 import calibration from "../../../seasons/calibration-1.json";
-import openField from "../../../vectors/format/level-open-field.json";
-import wallsAndMinions from "../../../vectors/format/level-walls-and-minions.json";
 import { type Core, CoreError, type EndReason, fromHex, hex } from "../core";
 import {
   type Bindings,
@@ -24,44 +22,8 @@ import type { Loop } from "../loop";
 import { element, fitField, loadCore, messageOf, percent, showHud } from "../page";
 import { Renderer } from "../render";
 import { runNonce, startSession } from "../session";
-import { shippedLevels } from "../shipped";
+import { shippedLevels, TEST_LEVELS, type TrainingLevel, trainingLevels } from "../shipped";
 import { browserStorage, load, save, type Storage } from "../storage";
-
-/** The scoring of a calibration file (README §8.4): its rules version, and the level ids and
- *  weights of the 16 levels in index order. */
-export interface Calibration {
-  rulesVersion: number;
-  levelIds: string[];
-  weightsBp: number[];
-}
-
-/** One of the 16 levels: its name, its bytes, its level id and its weight. */
-export interface TrainingLevel {
-  name: string;
-  level: Uint8Array;
-  levelId: string;
-  weightBp: number;
-}
-
-/** The 16 levels with their weights. `bundled` are the page's levels by name, in index order,
- *  and must be the calibration's under the engine's rules version: otherwise the page would show
- *  scores that no season gives, so it throws. */
-export function trainingLevels(core: Core, scoring: Calibration, bundled: [string, Uint8Array][]): TrainingLevel[] {
-  if (scoring.rulesVersion !== core.rulesVersion) {
-    throw new Error(`the calibration is for rules version ${scoring.rulesVersion}, the engine runs ${core.rulesVersion}`);
-  }
-  const levels = bundled.map(([name, level], i) => ({
-    name,
-    level,
-    levelId: hex(core.levelId(level)),
-    weightBp: scoring.weightsBp[i],
-  }));
-  const ids = scoring.levelIds;
-  if (levels.length !== ids.length || levels.some(({ levelId, weightBp }, i) => levelId !== ids[i] || weightBp === undefined)) {
-    throw new Error("the bundled levels are not the calibration's 16 levels");
-  }
-  return levels as TrainingLevel[];
-}
 
 /** An attempt's level score (README §8.4), as the referee computes it: the core replays its
  *  journal with the level's weight. The page recorded the journal, so a rejection throws. */
@@ -205,8 +167,7 @@ export function mount(): void {
     };
     const edited = params.get("hex");
     if (edited !== null) other(EDITED_LEVEL, edited);
-    other("Open field", openField.input);
-    other("Walls and minions", wallsAndMinions.input);
+    for (const [name, input] of TEST_LEVELS) other(name, input);
     levelSelect.append(scored, others);
     showBests();
     const asked = edited !== null ? EDITED_LEVEL : params.get("level");

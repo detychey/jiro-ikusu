@@ -1,26 +1,11 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import calibration from "../../seasons/calibration-1.json";
 import { fromHex, hex } from "../src/core";
 import { DEFAULT_BINDINGS } from "../src/input";
-import {
-  attemptScore,
-  beats,
-  bestKey,
-  loadBests,
-  mergeBests,
-  saveBests,
-  scoreLine,
-  type TrainingLevel,
-  trainingLevels,
-} from "../src/pages/training";
-import { loadEngine, play, repo, schedule } from "./drive";
-
-/** The page's 16 levels by name, in index order, as `levels/` holds them. */
-const bundled: [string, Uint8Array][] = readdirSync(new URL("levels/", repo))
-  .filter((file) => file.endsWith(".bin"))
-  .sort()
-  .map((file) => [file.replace(/\.bin$/, ""), readFileSync(new URL(`levels/${file}`, repo))]);
+import { attemptScore, beats, bestKey, loadBests, mergeBests, saveBests, scoreLine } from "../src/pages/training";
+import { type TrainingLevel, trainingLevels } from "../src/shipped";
+import { bundled, loadEngine, play, repo, schedule } from "./drive";
 
 interface GateVector {
   level: string;

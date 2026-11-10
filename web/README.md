@@ -50,9 +50,13 @@ the end screen offers the journal, which the replay viewer replays.
 
 ## Replay viewer
 
-`replay.html` (plan M2.3) watches and audits a journal: load a game vector with its `.trace`
-file, or a level and a journal, each from a file or from hex; choosing one source clears the
-others, so the page never replays an input left over from earlier. The core replays them as the
+`replay.html` (plan M2.3) watches and audits a journal: load a journal, from a file such as
+Training's download or from hex, or a game vector with its `.trace` file. A journal alone is
+enough for a level the site ships: its header names the level by id (README §6.3), which the
+viewer finds among Training's levels. One of the 16 replays with the weight Training scores it
+with, a test level at 10,000 bp, its claim as its score. For another level, give it from a file
+or from hex; a weight given replaces the level's. Choosing one source clears the others, so the
+page never replays an input left over from earlier. The core replays them as the
 referee does and gives the Outcome; a journal the core rejects shows its error code. Play,
 pause and step move through the ticks, and the slider seeks, which plays the journal again from
 tick 0. Each tick shows its state hash and the inputs held, and a vector's trace is compared tick
@@ -241,14 +245,14 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `src/input.ts` | Controls, bindings and the held keys |
 | `src/storage.ts` | Values kept in localStorage as JSON, with a fallback when storage is missing or refuses |
 | `src/session.ts` | One level in play, in Training or Challenge mode: core, clock and keys on the single input path |
-| `src/shipped.ts` | The 16 shipped levels, `levels/*.bin`, by name in index order |
+| `src/shipped.ts` | The levels the site ships: the 16 of `levels/*.bin`, by name in index order, with their calibration weights, and Training's two test levels |
 | `src/render.ts` | The 240 × 240 field at an integer scale, redrawing only the changed cells |
 | `src/pages/training.ts` | The game page, Training: level picker, HUD, end screen, score and local bests, journal download, bindings panel |
 | `src/pages/replay.ts` | The replay viewer: the view of a replayed journal, the trace comparison and the page |
 | `src/pages/editor.ts` | The level editor: painting, fields, live validation, import, export and Play |
 | `src/level.ts` | The editor's model of a level, its cells and fields, which the core encodes and decodes |
 | `src/page.ts` | What the pages share: elements by id, loading the engine, the field's size, the HUD, error messages, claims in percent |
-| `src/journal.ts` | The events of a journal the core has accepted |
+| `src/journal.ts` | The level id a journal's header names, and the events of a journal the core has accepted |
 | `src/pages/season.ts` | The season page: parameters, pot, countdown, leaderboard with claims, close, claim |
 | `src/pages/settle.ts` | The player's best run, and its settlement: in the browser, or by the operator on zk |
 | `src/pages/challenge.ts` | The Challenge page: wallet, network switch, balance and faucet link, season view, the run with its field, countdown and Outcomes, run file, footer |
