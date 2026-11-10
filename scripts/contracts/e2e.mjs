@@ -53,11 +53,11 @@ import {
   JIRO_TOOLS,
   NETWORKS,
   REPO_ROOT,
-  assertPrivateKey,
   buildContracts,
   connect,
   deployContracts,
   deploymentFileOf,
+  privateKeyOf,
   sendTransaction,
 } from "./deploy.mjs";
 import { isEntryPoint, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
@@ -520,10 +520,9 @@ export function gasTable() {
 async function runSuite(network, rpc, zk) {
   const backend = zk ? "zk" : BACKEND_OF[network];
   const provider = await connect(network, rpc);
-  const deployerKey = process.env.DEPLOYER_KEY;
+  const deployerKey = network === "local" ? undefined : privateKeyOf("DEPLOYER_KEY", process.env.DEPLOYER_KEY, network);
   // No child needs it from the environment: the Stylus build runs third-party build scripts.
   delete process.env.DEPLOYER_KEY;
-  if (network !== "local") assertPrivateKey("DEPLOYER_KEY", deployerKey, network);
   const deployer = network === "local" ? await provider.getSigner(0) : new Wallet(deployerKey, provider);
   const player = Wallet.createRandom(provider);
   const settler = Wallet.createRandom(provider);
@@ -806,7 +805,7 @@ async function runLive(network, rpc, cases, { short, resume }) {
   // No child needs them: jiro-tools and zk-host run from here.
   delete process.env.DEPLOYER_KEY;
   delete process.env.TESTER_KEY;
-  for (const [name, key] of Object.entries(keys)) assertPrivateKey(name, key, network);
+  for (const name of Object.keys(keys)) keys[name] = privateKeyOf(name, keys[name], network);
   const settler = new Wallet(keys.DEPLOYER_KEY, provider);
   const player = new Wallet(keys.TESTER_KEY, provider);
   const context = await liveContext({

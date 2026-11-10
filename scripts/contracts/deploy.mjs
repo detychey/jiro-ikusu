@@ -227,11 +227,12 @@ export async function deployContracts({ artifacts, provider, rpc, network, deplo
   };
 }
 
-// Checked before ethers sees the key: ethers quotes a malformed key in full in its error.
-export function assertPrivateKey(envName, key, network) {
-  if (!/^0x[0-9a-fA-F]{64}$/.test(key ?? "")) {
-    throw new Error(`${envName} must hold a key on ${network}, as 0x and 64 hex digits`);
-  }
+// Checked before ethers sees the key: ethers quotes a malformed key in full in its error. A key is
+// 64 hex digits, with or without 0x; it is returned with 0x.
+export function privateKeyOf(envName, key, network) {
+  const digits = /^(?:0x)?([0-9a-fA-F]{64})$/.exec(key ?? "")?.[1];
+  if (!digits) throw new Error(`${envName} must hold a key on ${network}: 64 hex digits, with or without 0x`);
+  return `0x${digits}`;
 }
 
 async function main() {
@@ -253,10 +254,9 @@ async function main() {
   const network = values.network;
   const rpc = values.rpc ?? NETWORKS[network]?.rpc;
   const provider = await connect(network, rpc);
-  const deployerKey = process.env.DEPLOYER_KEY;
+  const deployerKey = network === "local" ? undefined : privateKeyOf("DEPLOYER_KEY", process.env.DEPLOYER_KEY, network);
   // No child needs it from the environment: the Stylus build runs third-party build scripts.
   delete process.env.DEPLOYER_KEY;
-  if (network !== "local") assertPrivateKey("DEPLOYER_KEY", deployerKey, network);
   const deployer = network === "local" ? await provider.getSigner(0) : new Wallet(deployerKey, provider);
   const generation = await deployContracts({
     artifacts: buildContracts(),

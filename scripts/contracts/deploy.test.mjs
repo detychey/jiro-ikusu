@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { NETWORKS, assertPrivateKey, deployContracts, parseStylusDeploy, riscZeroVerifierOf } from "./deploy.mjs";
+import { NETWORKS, deployContracts, parseStylusDeploy, privateKeyOf, riscZeroVerifierOf } from "./deploy.mjs";
 
 const ADDRESS = "0xA6E41fFD769491a42A6e5Ce453259b93983a22EF";
 const DEPLOY_TX = `0x${"11".repeat(32)}`;
@@ -10,9 +10,17 @@ const DEPLOYED = `deployed code at address: ${ADDRESS}\ndeployment tx hash: ${DE
 test("a malformed DEPLOYER_KEY is refused without quoting it", () => {
   const key = `0x${"ab".repeat(31)}c\r`;
   assert.throws(
-    () => assertPrivateKey("DEPLOYER_KEY", key, "nitro-devnode"),
-    (error) => /0x and 64 hex digits/.test(error.message) && !error.message.includes(key.slice(2, 20)),
+    () => privateKeyOf("DEPLOYER_KEY", key, "nitro-devnode"),
+    (error) => /64 hex digits, with or without 0x/.test(error.message) && !error.message.includes(key.slice(2, 20)),
   );
+});
+
+test("a key without 0x is returned with it", () => {
+  assert.equal(privateKeyOf("TESTER_KEY", "ab".repeat(32), "arbitrum-sepolia"), `0x${"ab".repeat(32)}`);
+});
+
+test("a key with 0x is returned as it is", () => {
+  assert.equal(privateKeyOf("TESTER_KEY", `0x${"ab".repeat(32)}`, "arbitrum-sepolia"), `0x${"ab".repeat(32)}`);
 });
 
 test("a first deployment's output gives the referee's deployment and activation", () => {

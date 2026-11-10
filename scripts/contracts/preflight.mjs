@@ -20,7 +20,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { Contract, JsonRpcProvider, Wallet, formatEther, getAddress } from "ethers";
 import { activationsOpen, readActivationGas } from "./activation.mjs";
-import { NETWORKS, REPO_ROOT, assertPrivateKey, deploymentFileOf, riscZeroVerifierOf } from "./deploy.mjs";
+import { NETWORKS, REPO_ROOT, deploymentFileOf, privateKeyOf, riscZeroVerifierOf } from "./deploy.mjs";
 import { BACKENDS, isEntryPoint, readDeploymentRecord } from "./deployments.mjs";
 
 export const NETWORK_OF_CHAIN = { 421614: "arbitrum-sepolia", 412346: "nitro-devnode", 31337: "local" };
@@ -182,7 +182,7 @@ async function main() {
   // No child needs them: the checks run cargo and git.
   delete process.env.DEPLOYER_KEY;
   delete process.env.TESTER_KEY;
-  for (const [name, key] of Object.entries(keys)) assertPrivateKey(name, key, values.network);
+  for (const name of Object.keys(keys)) keys[name] = privateKeyOf(name, keys[name], values.network);
   const provider = new JsonRpcProvider(rpc, undefined, { staticNetwork: true });
   const { network } = await checkChain(provider);
   if (network !== values.network) throw new Error(`${rpc} serves ${network}, not ${values.network}`);
