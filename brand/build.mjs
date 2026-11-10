@@ -3,7 +3,7 @@
 //   node brand/build.mjs --check   writes nothing, and exits 1 when an output is stale
 // Both exit 1, writing nothing, when a palette hex disagrees with web/src, a scene breaks a
 // legality rule, the shelf touches a kana or a tile, a checksum differs, or web/public/brand/
-// holds a file that is not an output. Node 22, built-ins only.
+// holds a file that is not an output. Node 22.2 or later, built-ins only.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
@@ -53,8 +53,9 @@ const CSS_ALIASES = { accent: "claim", focus: "player" };
 const RULE_KEYS = ["bands", "shelf", "hanzi-tile", "plate"];
 // Keys that a paragraph may repeat; any other key appears once.
 const REPEATED_KEYS = ["cap", "kana", "hanzi", "hyphen", "place", "text"];
-const NEIGHBOURS_4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-const NEIGHBOURS_8 = [...NEIGHBOURS_4, [1, 1], [1, -1], [-1, 1], [-1, -1]];
+const GLYPH_ATTRIBUTES = ["advance", "font", "version", "lang"];
+const NEIGHBORS_4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const NEIGHBORS_8 = [...NEIGHBORS_4, [1, 1], [1, -1], [-1, 1], [-1, -1]];
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 const errors = [];
@@ -116,9 +117,9 @@ function fail(where, message) {
 }
 
 function integers(value, count, where) {
-  const numbers = value.split(",").map(Number);
-  if (numbers.length !== count || !numbers.every(Number.isInteger)) fail(where, `expected ${count} integers, got "${value}"`);
-  return numbers;
+  const fields = value.split(",");
+  if (fields.length !== count || !fields.every((field) => /^\d+$/.test(field))) fail(where, `expected ${count} integers, got "${value}"`);
+  return fields.map(Number);
 }
 
 /** Groups "key=value" lines into paragraphs of [key, value, where] fields; blank lines separate them. */
@@ -165,12 +166,19 @@ function readGlyphs(name) {
     const where = `brand/src/${name}:${index + 1}`;
     const match = /^= (\S+) (\d+)x(\d+)((?: [a-z]+=\S+)*)$/u.exec(lines[index]);
     if (!match) fail(where, 'expected "= <char> <w>x<h> [key=value]..."');
+    if (glyphs.has(match[1])) fail(where, `${match[1]} is defined twice`);
     const [w, h] = [Number(match[2]), Number(match[3])];
     const rows = lines.slice(index + 1, index + 1 + h);
     if (rows.length !== h || !rows.every((row) => row.length === w && /^[#.]+$/.test(row))) {
       fail(where, `expected ${h} rows of ${w} '#' or '.'`);
     }
-    const advance = Number(/ advance=(\d+)/.exec(match[4])?.[1] ?? w);
+    const attributes = new Map();
+    for (const [, key, value] of match[4].matchAll(/ ([a-z]+)=(\S+)/g)) {
+      if (!GLYPH_ATTRIBUTES.includes(key) || attributes.has(key)) fail(where, `unknown or repeated attribute ${key}=`);
+      attributes.set(key, value);
+    }
+    if (attributes.has("advance") && !/^\d+$/.test(attributes.get("advance"))) fail(where, "advance= takes an integer");
+    const advance = Number(attributes.get("advance") ?? w);
     glyphs.set(match[1], { w, h, advance, rows });
     index += h;
   }
@@ -205,7 +213,9 @@ function readBands(value, where, palette) {
   const bands = [];
   for (const band of value.split(",")) {
     const match = /^(\d+)-(\d+):([a-z0-9-]+)$/.exec(band);
-    if (!match || Number(match[1]) !== bands.length || !palette.hex.has(match[3])) fail(where, `bad band "${band}"`);
+    if (!match || Number(match[1]) !== bands.length || Number(match[2]) < Number(match[1]) || !palette.hex.has(match[3])) {
+      fail(where, `bad band "${band}"`);
+    }
     for (let row = Number(match[1]); row <= Number(match[2]); row++) bands.push(match[3]);
   }
   return bands;
@@ -219,13 +229,16 @@ function readLockups(palette) {
     return { value: field[1], where: field[2] };
   };
   const shelf = rule("shelf");
-  const [shelfDepth, shelfToken] = shelf.value.split(",");
+  const shelfFields = shelf.value.split(",");
+  if (shelfFields.length !== 2) fail(shelf.where, "expected shelf=<depth>,<token>");
+  const [shelfDepth, shelfToken] = shelfFields;
   if (!palette.hex.has(shelfToken)) fail(shelf.where, `${shelfToken} is not a palette token`);
   const tile = rule("hanzi-tile");
   const [tileSize, tileInset] = integers(tile.value, 2, tile.where);
   const lockups = new Map();
   for (const [[key, name, where], ...fields] of lockupParagraphs) {
     if (key !== "lockup") fail(where, "a lockup paragraph starts with lockup=<name>");
+    if (lockups.has(name)) fail(where, `lockup ${name} is defined twice`);
     const lockup = { items: [] };
     for (const [field, value, at] of fields) {
       const parts = value.split(",");
@@ -284,10 +297,12 @@ function readSources() {
   const palette = readPalette();
   const monogramRows = readLines("monogram.txt");
   if (monogramRows.at(-1) === "") monogramRows.pop();
+  const [cjk, pixel] = [readGlyphs("glyphs-cjk.txt"), readGlyphs("glyphs-pixel.txt")];
+  for (const char of pixel.keys()) if (cjk.has(char)) fail("brand/src/glyphs-pixel.txt", `${char} is also in glyphs-cjk.txt`);
   return {
     palette,
     caps: readGlyphs("glyphs-latin.txt"),
-    fontGlyphs: new Map([...readGlyphs("glyphs-cjk.txt"), ...readGlyphs("glyphs-pixel.txt")]),
+    fontGlyphs: new Map([...cjk, ...pixel]),
     ...readLockups(palette),
     scenes: new Map(["banner", "social-card"].map((name) => [name, readScene(name, palette)])),
     monogram: readMap("monogram.txt", monogramRows, monogramRows[0].length, monogramRows.length, 1, palette),
@@ -309,7 +324,7 @@ function counters(glyph) {
   reached[0] = 1;
   while (stack.length > 0) {
     const [x, y] = stack.pop();
-    for (const [dx, dy] of NEIGHBOURS_4) {
+    for (const [dx, dy] of NEIGHBORS_4) {
       const [nx, ny] = [x + dx, y + dy];
       if (nx < 0 || ny < 0 || nx >= w || ny >= glyph.h + 2) continue;
       if (reached[ny * w + nx] || isInk(glyph, nx - 1, ny - 1)) continue;
@@ -324,17 +339,21 @@ function counters(glyph) {
   return cells;
 }
 
-/** The capture rule as the type rule: ink with an empty 8-neighbour is the line; other ink is the
+/** The capture rule as the type rule: ink with an empty 8-neighbor is the line; other ink is the
  * core, colored by its row; enclosed empty cells are counters. A null token leaves cells empty. */
 function paintGlyph(grid, glyph, x0, y0, { line, core, counter }) {
   for (let y = 0; y < glyph.h; y++) {
     for (let x = 0; x < glyph.w; x++) {
       if (!isInk(glyph, x, y)) continue;
-      const token = NEIGHBOURS_8.some(([dx, dy]) => !isInk(glyph, x + dx, y + dy)) ? line : core(y);
+      const token = NEIGHBORS_8.some(([dx, dy]) => !isInk(glyph, x + dx, y + dy)) ? line : core(y);
       if (token) grid.set(x0 + x, y0 + y, token);
     }
   }
   if (counter) for (const [x, y] of counters(glyph)) grid.set(x0 + x, y0 + y, counter);
+}
+
+function solid(token) {
+  return { line: token, core: () => token, counter: null };
 }
 
 function paintTile(grid, glyph, x0, y0, { size, inset }, mono) {
@@ -345,27 +364,30 @@ function paintTile(grid, glyph, x0, y0, { size, inset }, mono) {
       if (token) grid.set(x0 + x, y0 + y, token);
     }
   }
-  for (let y = 0; y < glyph.h; y++) {
-    for (let x = 0; x < glyph.w; x++) if (isInk(glyph, x, y)) grid.set(x0 + inset + x, y0 + inset + y, mono ?? "player");
-  }
+  paintGlyph(grid, glyph, x0 + inset, y0 + inset, solid(mono ?? "player"));
 }
 
 function glyphOf(glyphs, name, where) {
   return glyphs.get(name) ?? fail(where, `no glyph for ${name}`);
 }
 
+function lockupOf(lockups, name) {
+  return lockups.get(name) ?? fail("brand/src/lockups.txt", `no lockup ${name}`);
+}
+
 /** A lockup's placements with nested lockups expanded, in absolute coordinates. */
-function placements(lockups, name, ox = 0, oy = 0) {
-  const lockup = lockups.get(name) ?? fail("brand/src/lockups.txt", `no lockup ${name}`);
+function placements(lockups, name, ox = 0, oy = 0, chain = []) {
+  if (chain.includes(name)) fail("brand/src/lockups.txt", `lockup ${name} places itself: ${[...chain, name].join(" > ")}`);
+  const lockup = lockupOf(lockups, name);
   return lockup.items.flatMap((item) => item.kind === "place"
-    ? placements(lockups, item.name, ox + item.x, oy + item.y)
+    ? placements(lockups, item.name, ox + item.x, oy + item.y, [...chain, name])
     : [{ ...item, x: ox + item.x, y: oy + item.y }]);
 }
 
 /** Full color (mono null): lit Jiro Caps, white kana, hanzi on claimed tiles, the red hyphen, and the
- * wordmark's shelf. Mono: the line cells, the tile rims and the hanzi in one token. */
+ * wordmark's shelf. Mono: the line cells, the hyphen, the tile rims and the hanzi in one token. */
 function paintLockup(sources, name, mono) {
-  const { w, h, checksum } = sources.lockups.get(name);
+  const { w, h, checksum } = lockupOf(sources.lockups, name);
   const where = `brand/src/lockups.txt, lockup ${name}`;
   const word = new Grid(w, h);
   const marks = new Grid(w, h);
@@ -397,7 +419,7 @@ function addShelf(grid, word, marks, { depth, token }, where) {
     for (const [x, y] of word.inked()) {
       if (grid.get(x + k, y + k) !== null) continue;
       grid.set(x + k, y + k, token);
-      touches ||= NEIGHBOURS_8.some(([dx, dy]) => marks.get(x + k + dx, y + k + dy) !== null);
+      touches ||= NEIGHBORS_8.some(([dx, dy]) => marks.get(x + k + dx, y + k + dy) !== null);
     }
   }
   if (touches) errors.push(`${where}: the shelf touches a kana or a tile`);
@@ -421,9 +443,7 @@ function paintScene(sources, scene, lockup) {
     let pen = text.x;
     for (const char of text.chars) {
       const glyph = glyphOf(sources.fontGlyphs, char, text.where);
-      for (let y = 0; y < glyph.h; y++) {
-        for (let x = 0; x < glyph.w; x++) if (isInk(glyph, x, y)) art.set(pen + x, text.y + y, text.token);
-      }
+      paintGlyph(art, glyph, pen, text.y, solid(text.token));
       pen += glyph.advance;
     }
   }
@@ -437,7 +457,7 @@ function paintScene(sources, scene, lockup) {
 function addHalo(grid) {
   for (const [source, halo] of [["player", "claim-deep"], ["trail", "trail-deep"]]) {
     const marked = grid.inked().filter(([x, y]) => grid.get(x, y) === "field"
-      && NEIGHBOURS_8.some(([dx, dy]) => grid.get(x + dx, y + dy) === source));
+      && NEIGHBORS_8.some(([dx, dy]) => grid.get(x + dx, y + dy) === source));
     for (const [x, y] of marked) grid.set(x, y, halo);
   }
 }
@@ -451,7 +471,7 @@ function checkLegality(where, map, lockupCells) {
   if (players.length !== 1) return broken("a scene holds one player cell");
   const [[px, py]] = players;
   const isTrail = (x, y) => map.get(x, y) === "trail";
-  const trailNext = ([x, y], seen) => NEIGHBOURS_4.map(([dx, dy]) => [x + dx, y + dy])
+  const trailNext = ([x, y], seen) => NEIGHBORS_4.map(([dx, dy]) => [x + dx, y + dy])
     .filter(([nx, ny]) => isTrail(nx, ny) && !seen.has(ny * map.w + nx));
   const path = trailNext([px, py], new Set());
   if (path.length !== 1) return broken("the player is not at the end of one trail");
@@ -463,7 +483,7 @@ function checkLegality(where, map, lockupCells) {
   }
   if (path.length !== cellsOf("trail").length) broken("the trail is not one 4-connected line");
   const [sx, sy] = path.at(-1);
-  if (!NEIGHBOURS_4.some(([dx, dy]) => map.get(sx + dx, sy + dy) === "claim")) broken("the trail does not start next to claimed land");
+  if (!NEIGHBORS_4.some(([dx, dy]) => map.get(sx + dx, sy + dy) === "claim")) broken("the trail does not start next to claimed land");
   const [ex, ey] = path[0];
   if (map.get(2 * px - ex, 2 * py - ey) !== "claim") broken("the player's next move does not land on claimed land");
 
@@ -475,7 +495,7 @@ function checkLegality(where, map, lockupCells) {
     region[y0 * map.w + x0] = regions;
     while (stack.length > 0) {
       const [x, y] = stack.pop();
-      for (const [nx, ny] of NEIGHBOURS_4.map(([dx, dy]) => [x + dx, y + dy])) {
+      for (const [nx, ny] of NEIGHBORS_4.map(([dx, dy]) => [x + dx, y + dy])) {
         if (!OPEN_TOKENS.includes(map.get(nx, ny)) || region[ny * map.w + nx] >= 0) continue;
         region[ny * map.w + nx] = regions;
         stack.push([nx, ny]);
@@ -515,11 +535,12 @@ function checkPalette(palette) {
     if (!expected) errors.push(`${where}: ${token} is not in brand/src/palette.txt`);
     else if (value.toLowerCase() !== expected) errors.push(`${where} is ${value}, brand/src/palette.txt has ${token} ${expected}`);
   };
-  // render.ts writes each color as a quoted 6-digit hex; any other value is reported, never skipped.
-  const compareLiteral = (where, literal, token) => {
-    const hex = /^(["'])(#[0-9a-fA-F]{6})\1$/.exec(literal)?.[2];
-    if (hex) compare(where, hex, token);
-    else errors.push(`${where} is ${literal}, not a quoted 6-digit hex color`);
+  // render.ts writes each color as a quoted 6-digit hex, and editor.ts its spawn area as the boss's
+  // 6 digits and 2 of alpha; any other value is reported, never skipped.
+  const compareLiteral = (where, literal, token, digitCount = 6) => {
+    const digits = /^(["'])#([0-9a-fA-F]+)\1$/.exec(literal)?.[2];
+    if (digits?.length === digitCount) compare(where, `#${digits.slice(0, 6)}`, token);
+    else errors.push(`${where} is ${literal}, not a quoted ${digitCount}-digit hex color`);
   };
   const renderTs = readFileSync(join(ROOT, "web/src/render.ts"), "utf8");
   const cellColors = /CELL_COLORS = \[([^\]]*)\]/.exec(renderTs)?.[1];
@@ -536,6 +557,9 @@ function checkPalette(palette) {
     const token = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
     compareLiteral(`web/src/render.ts ENTITY_COLORS.${key}`, literal.trim(), token);
   }
+  const editorTs = readFileSync(join(ROOT, "web/src/pages/editor.ts"), "utf8");
+  const spawnArea = /SPAWN_AREA_COLOR = ([^;\n]*)/.exec(editorTs)?.[1] ?? fail("web/src/pages/editor.ts", "SPAWN_AREA_COLOR not found");
+  compareLiteral("web/src/pages/editor.ts SPAWN_AREA_COLOR", spawnArea.trim(), "boss", 8);
   // Every :root block counts, a later one or one inside a media query included.
   const styleCss = readFileSync(join(ROOT, "web/src/style.css"), "utf8");
   const roots = [...styleCss.matchAll(/:root\b[^{}]*\{([^}]*)\}/g)].map(([, body]) => body);
@@ -691,10 +715,13 @@ function encodeIco(pngs) {
 
 function artBuilder(sources) {
   const arts = new Map();
+  const scenesStarted = new Set();
   const build = (name) => {
     const [lockup, variant] = name.split("/");
     if (name === "monogram") return sources.monogram;
     if (sources.scenes.has(name)) {
+      if (scenesStarted.has(name)) fail(`brand/src/${name}.txt`, "the scene refers to itself through lockup=");
+      scenesStarted.add(name);
       const scene = sources.scenes.get(name);
       return paintScene(sources, scene, art(scene.lockup.name));
     }
@@ -719,7 +746,8 @@ function render(output, art, palette) {
   const image = raster(grid, output.px, palette, output);
   const named = /-(\d+)(?:x(\d+))?\.png$/.exec(output.file);
   if (named && (image.width !== Number(named[1]) || image.height !== Number(named[2] ?? named[1]))) {
-    throw new Error(`${output.file} is ${image.width}x${image.height} px: rename it in OUTPUTS`);
+    errors.push(`${output.file} is ${image.width}x${image.height} px: rename it in OUTPUTS, `
+      + "or fix the source if the size was not meant to change");
   }
   return { path, image };
 }
@@ -751,6 +779,10 @@ function strays() {
     .map((name) => join(folder, name));
 }
 
+function printErrors() {
+  for (const error of errors) console.error(`error: ${error}`);
+}
+
 function main() {
   const args = process.argv.slice(2);
   if (args.length > 1 || (args.length === 1 && args[0] !== "--check")) throw new Error("usage: node brand/build.mjs [--check]");
@@ -765,7 +797,7 @@ function main() {
     for (const { output, reason } of stale) errors.push(`${relative(ROOT, output.path)} is stale (${reason}): run node brand/build.mjs`);
   }
   if (errors.length > 0) {
-    for (const error of errors) console.error(`error: ${error}`);
+    printErrors();
     process.exit(1);
   }
   for (const { output } of check ? [] : stale) {
@@ -776,4 +808,9 @@ function main() {
   console.log(`brand: ${outputs.length} outputs, ${check || stale.length === 0 ? "all up to date" : `${stale.length} written`}`);
 }
 
-main();
+try {
+  main();
+} catch (error) {
+  printErrors();
+  throw error;
+}

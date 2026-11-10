@@ -17,5 +17,5 @@ m minion #3cff78 Minions, in the game only: never in brand art or the UI.
 - text #e6e8ee Body text and HUD values.
 - muted #9aa1b2 Labels, nav, secondary text, input borders.
 - link #8fa6ff Links, always underlined.
-- danger #ff5a5a Error text only.
+- danger #ff5a5a Error text, and the Out of lives title's drop.
 - accent-hover #1f3fd6 The primary button on hover.

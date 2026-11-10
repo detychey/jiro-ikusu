@@ -12,14 +12,15 @@ node brand/build.mjs           # writes every output that is missing or stale
 node brand/build.mjs --check   # writes nothing, and exits 1 when an output is stale
 ```
 
-Node 22, built-ins only. Both commands rebuild every output in memory first, and stop with exit
-code 1, writing nothing, when any of these fails:
+Node 22.2 or later, built-ins only. Both commands rebuild every output in memory first, and stop
+with exit code 1, writing nothing, when any of these fails:
 
 - **Palette.** Every color of `CELL_COLORS` and `ENTITY_COLORS` in `web/src/render.ts`, each a
   quoted 6-digit hex, and every variable named after a token in any `:root` block of
   `web/src/style.css`, with its `var()` aliases followed, equals `palette.txt`. `--accent` must
-  equal `claim`, and `--focus` must equal `player`. Colors written elsewhere in `style.css`, such
-  as the link color, are not checked.
+  equal `claim`, and `--focus` must equal `player`. The level editor's `SPAWN_AREA_COLOR`, in
+  `web/src/pages/editor.ts`, must be a quoted 8-digit hex whose first 6 digits equal `boss`.
+  Colors written elsewhere in `style.css`, such as the link color, are not checked.
 - **Legality.** Each scene is a legal game state one move before a capture (below).
 - **Shelf.** The wordmark's shelf leaves at least one empty cell before any kana or tile.
 - **Checksums.** The cell counts of each full-color lockup and of each scene equal its
@@ -46,8 +47,11 @@ request.
 | `monogram.txt` | The 8 × 8 'First Cut' icon, in palette letters. |
 | `banner.txt`, `social-card.txt` | The two scenes: a header, a blank line, then the scene's own cells in palette letters (frame, land, trail, player, boss and ghosts), as in `levels/src/`. |
 
-A glyph is a line `= <char> <w>x<h> [advance=<n>] [font=<font> version=<version> lang=<lang>]`,
+A glyph is a line `= <char> <w>x<h> [advance=<n>] [font=<font> version=<version>] [lang=<lang>]`,
 then `h` rows of `#` (ink) and `.`. Text moves on by `advance` cells, by `w` when it is absent.
+A character is defined once in its file, and once across `glyphs-cjk.txt` and `glyphs-pixel.txt`.
+Each attribute appears at most once. The build stops on a character defined twice, an unknown or
+repeated attribute, or an advance that is not an integer.
 
 `lockups.txt` starts with a paragraph of rules:
 
@@ -69,7 +73,7 @@ on a key that is unknown, repeated or missing.
 
 ## How cells are colored
 
-1. **The capture rule as the type rule.** A glyph's ink cell with an empty 8-neighbour is its line,
+1. **The capture rule as the type rule.** A glyph's ink cell with an empty 8-neighbor is its line,
    in `player`; its other ink cells are its core. The empty cells that the outside of the glyph
    cannot reach 4-connectedly are counters, in `claim`: README §4.8's fill, with the outside of
    the glyph box playing the boss's region.
@@ -78,12 +82,12 @@ on a key that is unknown, repeated or missing.
    hyphen is `trail`. Then the shelf: for k = 1 to the depth, every still-empty cell at
    (x + k, y + k) of a Jiro Caps or hyphen cell takes the shelf token, and the box grows where it
    reaches.
-3. **Mono.** Only the line cells, the tile rings and the hanzi, in `player` (mono white) or `field`
-   (mono black). No bands, no shelf.
+3. **Mono.** Only the line cells, the hyphen, the tile rings and the hanzi, in `player` (mono
+   white) or `field` (mono black). No bands, no shelf.
 4. **Plate.** The full-color lockup on a `field` rectangle, `plate` cells larger on every side,
    inside a one-cell `claim` ring.
 5. **Scenes.** The cell map, then the full-color lockup and the text over it, then the halo:
-   every `field` cell with a `player` cell among its 8 neighbours becomes `claim-deep`, then every
+   every `field` cell with a `player` cell among its 8 neighbors becomes `claim-deep`, then every
    remaining `field` cell with a `trail` cell among them becomes `trail-deep`.
 
 A scene is legal when:
@@ -166,8 +170,8 @@ for char in dict.fromkeys(chars):
     print("\n".join(rows))
 ```
 
-Then add the `font=fusion-pixel-12px-proportional-sc version=2024.05.12` and `lang=` attributes.
-No glyph has ink outside its rows and columns.
+Then add the `font=fusion-pixel-12px-proportional-sc version=2024.05.12` attributes, and `lang=`
+to the glyphs of `glyphs-cjk.txt`. No glyph has ink outside its rows and columns.
 
 ### Font subset
 
