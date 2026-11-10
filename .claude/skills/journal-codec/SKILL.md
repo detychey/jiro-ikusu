@@ -1,6 +1,6 @@
 ---
 name: journal-codec
-description: Use when touching any byte format shared between the device, the browser and the chain — input mask, journal v1 encoding, run commitment, seed derivation, level bytes and level id, state hash. These formats are consensus, so a one-byte difference rejects valid games.
+description: Use when touching any byte format shared between the browser and the chain — input mask, journal v1 encoding, run commitment, seed derivation, level bytes and level id, state hash. These formats are consensus, so a one-byte difference rejects valid games.
 ---
 
 # Journal and byte formats
