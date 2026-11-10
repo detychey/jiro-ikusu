@@ -1,8 +1,11 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import calibration from "../../seasons/calibration-1.json";
 import { Core, CoreError, END_REASONS, fromHex, HASH_LEN, hex, type Outcome } from "../src/core";
 import { describeError } from "../src/errors";
-import { firstMismatch, heldControls, type Recording, ReplayView } from "../src/pages/replay";
+import { firstMismatch, heldControls, journalRecording, type Recording, ReplayView } from "../src/pages/replay";
+import { trainingLevels } from "../src/shipped";
+import { bundled } from "./drive";
 
 const repo = new URL("../../", import.meta.url);
 const core = await Core.load(readFileSync(new URL("target/wasm32-unknown-unknown/release/jiro_wasm.wasm", repo)));
@@ -162,5 +165,30 @@ describe("replay viewer", () => {
     [0b1010_001, "up a x"],
   ])("names the controls the mask %i holds", (mask, names) => {
     expect(heldControls(mask)).toBe(names);
+  });
+});
+
+describe("a journal alone", () => {
+  const scored = trainingLevels(core, calibration, bundled);
+
+  it("finds one of the 16 levels by the id it names, with the weight Training scores it with", () => {
+    const vector = JSON.parse(readFileSync(new URL("vectors/levels/05-synthetic.json", repo), "utf8")) as Vector;
+    const found = journalRecording(core, fromHex(vector.journal), scored);
+    expect(found && { level: hex(found.level), weightBp: found.weightBp }).toEqual({ level: vector.level, weightBp: vector.weightBp });
+  });
+
+  it("finds Training's test level, scored at its claim", () => {
+    const found = journalRecording(core, openFieldJournal, scored);
+    expect(found && { level: hex(found.level), weightBp: found.weightBp }).toEqual({ level: hex(openField), weightBp: 10_000 });
+  });
+
+  it("finds no level for an id the site does not ship", () => {
+    const journal = openFieldJournal.slice();
+    journal[36] = (journal[36] ?? 0) ^ 0xff;
+    expect(journalRecording(core, journal, scored)).toBeUndefined();
+  });
+
+  it("refuses bytes that end before the header names the level", () => {
+    expect(() => journalRecording(core, openFieldJournal.subarray(0, 40), scored)).toThrow("the journal ends before its header names its level");
   });
 });

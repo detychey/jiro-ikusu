@@ -1,7 +1,7 @@
 // Plays a level through the page's session on a fake clock, as a player's keys would (README
 // §6.2): before each tick is due, the controls of a journal or a script replace the keys held.
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { expect } from "vitest";
 import { Core, hex } from "../src/core";
 import { type Bindings, type Control, controlsOf, HeldKeys } from "../src/input";
@@ -11,6 +11,12 @@ import { startSession } from "../src/session";
 
 export const repo = new URL("../../", import.meta.url);
 const wasm = readFileSync(new URL("target/wasm32-unknown-unknown/release/jiro_wasm.wasm", repo));
+
+/** The site's 16 levels by name, in index order, as `levels/` holds them. */
+export const bundled: [string, Uint8Array][] = readdirSync(new URL("levels/", repo))
+  .filter((file) => file.endsWith(".bin"))
+  .sort()
+  .map((file) => [file.replace(/\.bin$/, ""), readFileSync(new URL(`levels/${file}`, repo))]);
 
 export function loadEngine(): Promise<Core> {
   return Core.load(wasm);

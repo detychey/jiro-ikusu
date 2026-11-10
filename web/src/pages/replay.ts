@@ -1,10 +1,12 @@
-// The replay viewer (plan M2.3): watch and audit any journal; the bytes are the match. The core
-// replays the level and the journal as the referee does, and gives the Outcome and the state hash
-// of every tick. The view then plays the journal's masks through the engine one tick at a time,
+// The replay viewer (plan M2.3): watch and audit any journal; the bytes are the match. A journal
+// alone is enough for a level the site ships: its header names the level by id. The core replays
+// the level and the journal as the referee does, and gives the Outcome and the state hash of every
+// tick. The view then plays the journal's masks through the engine one tick at a time,
 // to show each tick, and a seek plays them again from tick 0. Nothing here decides an outcome.
 // A committed Challenge run's journals load from its commit transaction (plan M5.3), through the
 // public RPC of the network `?network=<name>` names, Arbitrum Sepolia by default: no wallet.
 
+import calibration from "../../../seasons/calibration-1.json";
 import { type CommittedRun, committedRun } from "../chain/calldata";
 import { connectContracts } from "../chain/contracts";
 import { bundledDeployment } from "../chain/deployments";
@@ -12,11 +14,14 @@ import { networkOfPage, readOnlyProvider } from "../chain/networks";
 import { type Core, CoreError, fromHex, HASH_LEN, hex, type Outcome } from "../core";
 import { describeError } from "../errors";
 import { controlsOf } from "../input";
-import { type JournalEvent, journalEvents } from "../journal";
+import { type JournalEvent, journalEvents, journalLevelId } from "../journal";
 import { createLoop, type Loop } from "../loop";
 import { element, fitField, loadCore, messageOf, percent } from "../page";
 import { Renderer } from "../render";
-import { shippedLevels } from "../shipped";
+import { shippedLevels, TEST_LEVELS, type TrainingLevel, trainingLevels } from "../shipped";
+
+/** README §8.4: level_score = claim_bp × weight_bp / 10,000, so this weight scores the claim. */
+const CLAIM_WEIGHT_BP = 10_000;
 
 /** The bytes a replay takes (README §7.3). */
 export interface Recording {
@@ -124,6 +129,21 @@ export function heldControls(mask: number): string {
   return held.length === 0 ? "none" : held.join(" ");
 }
 
+/**
+ * The recording of `journal` alone, from the level id its header names (README §6.3): one of the
+ * 16 levels, with the weight Training scores it with (`scored`), or one of Training's test levels,
+ * scored at its claim. Undefined for any other level.
+ */
+export function journalRecording(core: Core, journal: Uint8Array, scored: TrainingLevel[]): Recording | undefined {
+  const named = journalLevelId(journal);
+  if (named === undefined) throw new Error("the journal ends before its header names its level");
+  const levelId = hex(named);
+  const shipped = scored.find((candidate) => candidate.levelId === levelId);
+  if (shipped !== undefined) return { level: shipped.level, journal, weightBp: shipped.weightBp };
+  const test = TEST_LEVELS.map(([, input]) => fromHex(input)).find((level) => hex(core.levelId(level)) === levelId);
+  return test === undefined ? undefined : { level: test, journal, weightBp: CLAIM_WEIGHT_BP };
+}
+
 /** The recording of a game vector (README §6.6), from its JSON text. */
 function vectorRecording(text: string, file: string): Recording {
   const vector: unknown = JSON.parse(text);
@@ -166,6 +186,8 @@ export function mount(): void {
   const parts = [levelPart, journalPart];
   const renderer = new Renderer(element<HTMLCanvasElement>("field"));
   let core: Core;
+  /** The 16 levels with their weights, loaded with the first journal that needs them. */
+  let scored: TrainingLevel[] | undefined;
   let view: ReplayView | undefined;
   let expected: Uint8Array | undefined;
   let loop: Loop<true> | undefined;
@@ -228,6 +250,8 @@ export function mount(): void {
     return { level: fromHex(file.levels[i] as string), journal: fromHex(file.journals[i] as string), weightBp: weight(weightsBp[slot], "the season") };
   }
 
+  const given = ({ file, hex: hexField }: ReturnType<typeof part>) => file.files?.[0] !== undefined || hexField.value.trim() !== "";
+
   async function bytesOf({ name, file, hex: hexField }: ReturnType<typeof part>): Promise<Uint8Array> {
     const chosenFile = file.files?.[0];
     if (chosenFile !== undefined) return new Uint8Array(await chosenFile.arrayBuffer());
@@ -237,7 +261,8 @@ export function mount(): void {
   }
 
   /** The recording and the trace to compare with: a game vector and its .trace file, a committed
-   *  run's level, or else a level and a journal, each from its file or its hex field. */
+   *  run's level, or else a journal, from its file or its hex field, with the level it names or
+   *  the level given, and the weight given, if any. */
   async function chosen(): Promise<[Recording, Uint8Array | undefined]> {
     const files = Array.from(vectorFiles.files ?? []);
     if (files.length > 0) {
@@ -251,12 +276,13 @@ export function mount(): void {
     }
     const runId = runIdField.value.trim();
     if (runId !== "") return [await committedRecording(runId), undefined];
-    const recording = {
-      level: await bytesOf(levelPart),
-      journal: await bytesOf(journalPart),
-      weightBp: weight(weightField.valueAsNumber, "Weight"),
-    };
-    return [recording, undefined];
+    const journal = await bytesOf(journalPart);
+    const weightBp = weightField.value === "" ? undefined : weight(weightField.valueAsNumber, "Weight");
+    if (given(levelPart)) return [{ level: await bytesOf(levelPart), journal, weightBp: weightBp ?? CLAIM_WEIGHT_BP }, undefined];
+    scored ??= trainingLevels(core, calibration, await shippedLevels());
+    const found = journalRecording(core, journal, scored);
+    if (found === undefined) throw new Error("the site ships no level with the id this journal names: give its level as a file or as hex");
+    return [weightBp === undefined ? found : { ...found, weightBp }, undefined];
   }
 
   async function load(): Promise<void> {

@@ -20,22 +20,22 @@
       <aside class="side">
         <form id="load" class="setup" novalidate>
           <fieldset>
-            <legend>Game vector, with its .trace file to compare</legend>
-            <input id="vector-files" type="file" accept=".json,.trace" multiple />
-          </fieldset>
-          <fieldset>
-            <legend>Or a level and a journal, each from a file or from hex</legend>
-            <label>Level file <input id="level-file" type="file" accept=".bin,application/octet-stream" /></label>
-            <label>Level hex <textarea id="level-hex" rows="2" spellcheck="false"></textarea></label>
+            <legend>A journal (.jrn), such as Training's download</legend>
             <label>Journal file <input id="journal-file" type="file" accept=".jrn,application/octet-stream" /></label>
             <label>Journal hex <textarea id="journal-hex" rows="2" spellcheck="false"></textarea></label>
-            <label>Weight (bp) <input id="weight" type="number" min="0" max="65535" value="10000" /></label>
+            <label>Level file, only for a level the site doesn't ship <input id="level-file" type="file" accept=".bin,application/octet-stream" /></label>
+            <label>Level hex <textarea id="level-hex" rows="2" spellcheck="false"></textarea></label>
+            <label>Weight (bp), only to replace the level's <input id="weight" type="number" min="0" max="65535" placeholder="the level's" /></label>
           </fieldset>
           <fieldset>
             <legend>Or a committed Challenge run, read from its commit transaction</legend>
             <label>Run id <input id="run-id" type="text" inputmode="numeric" spellcheck="false" /></label>
             <label>Level <select id="run-level"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
             <p id="run-source"></p>
+          </fieldset>
+          <fieldset>
+            <legend>Or a game vector, with its .trace file to compare</legend>
+            <input id="vector-files" type="file" accept=".json,.trace" multiple />
           </fieldset>
           <button type="submit">Replay</button>
           <p id="load-error" class="error" role="alert"></p>
