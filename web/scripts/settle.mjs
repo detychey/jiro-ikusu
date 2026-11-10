@@ -14,11 +14,11 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { JsonRpcProvider, Wallet } from "ethers";
+import { Contract, JsonRpcProvider, Wallet } from "ethers";
 import { createServer } from "vite";
 import { privateKeyOf } from "../../scripts/contracts/deploy.mjs";
 import { isEntryPoint } from "../../scripts/contracts/deployments.mjs";
-import { realProof } from "../../scripts/contracts/zk-host.mjs";
+import { realProof, zkHost } from "../../scripts/contracts/zk-host.mjs";
 
 const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -34,6 +34,13 @@ function shippedLevels() {
     .filter((name) => name.endsWith(".bin"))
     .sort()
     .map((name) => new Uint8Array(readFileSync(join(LEVELS_DIR, name))));
+}
+
+/** Throws unless zk-host proves the image that the ZkReferee at `referee` pins: no other image's proof verifies. */
+export async function checkProverImage(referee, provider) {
+  const pinned = await new Contract(referee, ["function imageId() view returns (bytes32)"], provider).imageId();
+  const built = zkHost(["image-id"]).trim();
+  if (built !== pinned) throw new Error(`zk-host proves the image ${built}, and the ZkReferee ${referee} takes ${pinned}: build zk-host from the deployed source`);
 }
 
 /**
@@ -76,6 +83,7 @@ export async function settleBestRuns(load, { network: name, season: label, rpc, 
     const contracts = connectContracts(deployment, signer);
     // MockReferee stands in for ZkReferee on the local chain, and takes any proof.
     const proves = deployment.backend === "zk" && network.name !== "local";
+    if (proves && runs.length > 0) await checkProverImage((await reader.season.paramsOf(BigInt(number))).referee, provider);
     const runsDir = join(REPO_ROOT, "seasons", label, "runs");
     for (const run of runs) {
       try {

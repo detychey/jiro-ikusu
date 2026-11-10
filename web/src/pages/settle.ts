@@ -3,9 +3,10 @@
 // ranked in D10's order. The deployment's backend decides who settles it:
 // - Stylus, and the local chain's MockReferee: the page, with one settleRun, or six settleLevel
 //   when settleRun does not fit in one transaction, with progress, retries and decoded reverts;
-// - zk: the operator (D2), because proving needs credentials that cannot live in a browser, so
-//   the page exports the run file and shows the cutoff, the season's end plus grace. Challenge
-//   still takes a settlement from anyone (README §7.2).
+// - zk: the operator (D2, README §7.5), which settles each player's best run from chain data
+//   (src/chain/operator.ts, scripts/settle.mjs): a proof takes hours and gigabytes that a browser
+//   does not have. The page shows the cutoff, the season's end plus grace, and exports the run
+//   file for a player who proves their own: Challenge takes a settlement from anyone (README §7.2).
 
 import { isError, keccak256 } from "ethers";
 import { chainErrorMessage, confirmed, type Contracts } from "../chain/contracts";
@@ -152,7 +153,7 @@ export interface SettleEnv {
 /** What the page says on zk, where the operator settles: the cutoff, from `settlementCutoff`. */
 export function operatorHandoff(chainName: string, cutoff: bigint): string {
   const at = new Date(Number(cutoff) * 1000).toISOString();
-  return `On ${chainName}, the operator proves and settles runs: proving needs credentials that cannot live in a browser. Send the operator the run file; the season's settlement closes at ${at} (block time ${cutoff}).`;
+  return `On ${chainName}, the operator settles each player's best run from the chain's data, so you have nothing to send: the season's settlement closes at ${at} (block time ${cutoff}). To prove and settle this run yourself before then, download its run file.`;
 }
 
 function runSummary({ record, score, ticks, clears, qualified }: RankedRun): string {

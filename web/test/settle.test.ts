@@ -172,4 +172,8 @@ describe("the zk backend", () => {
   it("shows the cutoff", () => {
     expect(operatorHandoff("Arbitrum Sepolia", 1_800_000_000n)).toContain("the season's settlement closes at 2027-01-15T08:00:00.000Z (block time 1800000000)");
   });
+
+  it("asks the player for nothing", () => {
+    expect(operatorHandoff("Arbitrum Sepolia", 1_800_000_000n)).toContain("the operator settles each player's best run from the chain's data, so you have nothing to send");
+  });
 });
