@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { assertPrivateKey, deployContracts, parseStylusDeploy, riscZeroVerifierOf } from "./deploy.mjs";
+import { NETWORKS, assertPrivateKey, deployContracts, parseStylusDeploy, riscZeroVerifierOf } from "./deploy.mjs";
 
 const ADDRESS = "0xA6E41fFD769491a42A6e5Ce453259b93983a22EF";
 const DEPLOY_TX = `0x${"11".repeat(32)}`;
@@ -35,4 +35,12 @@ test("the zk backend is refused without the verify program's image id", async ()
 
 test("a chain with no pinned RISC Zero verifier is refused", () => {
   assert.throws(() => riscZeroVerifierOf(412346), /no RISC Zero verifier is pinned for chain 412346/);
+});
+
+test("the mock backend is refused on arbitrum-sepolia", async () => {
+  await assert.rejects(deployContracts({ network: "arbitrum-sepolia", backend: "mock", rulesVersion: 2 }), /arbitrum-sepolia refuses the mock backend/);
+});
+
+test("ZkReferee on arbitrum-sepolia calls RISC Zero's emergency stop over its 3.0 Groth16 verifier", () => {
+  assert.equal(riscZeroVerifierOf(NETWORKS["arbitrum-sepolia"].chainId), "0x724d375B5b622e15f0E64e9Deb76a4cB17877797");
 });

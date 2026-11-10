@@ -1,6 +1,6 @@
 // The deployment records of deployments/README.md: assertDeploymentRecord checks a record against
-// the schema, and prependGeneration adds a generation in front of a record's earlier ones, which it
-// keeps unchanged. Usage: node deployments.mjs <deployments/<network>.json>...
+// the schema, prependGeneration adds a generation in front of a record's earlier ones, which it
+// keeps unchanged, and recordSeason adds a season number to the newest generation. Usage: node deployments.mjs <deployments/<network>.json>...
 import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -81,6 +81,17 @@ export function prependGeneration(file, network, chainId, generation) {
   assertDeploymentRecord(record);
   writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
   readDeploymentRecord(file);
+  return record;
+}
+
+/** Records that season `label` of `file`'s newest generation got the number `open` assigned. */
+export function recordSeason(file, label, number) {
+  const record = readDeploymentRecord(file);
+  const [newest] = record.generations;
+  if (label in newest.seasons) fail(`.generations[0].seasons.${label}`, `already records season ${newest.seasons[label]}`);
+  newest.seasons[label] = number;
+  assertDeploymentRecord(record);
+  writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
   return record;
 }
 

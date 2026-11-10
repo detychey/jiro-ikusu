@@ -1,6 +1,6 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. On 2026-11-10 the owner made the browser the game's platform, with a phone version later (README §13 D1): M3 is that phone version, not scheduled.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. M4, the referees and the contracts, closed with M4.14 on 2026-11-09: a run settled end to end on Arbitrum Sepolia. On 2026-11-10 the owner made the browser the game's platform, with a phone version later (README §13 D1): M3 is that phone version, not scheduled.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
 [`README.md`](README.md) is the normative specification, and this plan turns it into 58 work items. Four are conditional (M1.14, M1.15, M4.10, M4.15) and one is optional (M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
@@ -194,7 +194,8 @@ vectors/             format/, game/, levels/, derivations.json, COVERAGE.md, REA
 seasons/             calibration-1.json (M2.9), testnet-0.json (M4.14), testnet-1.json (M5.5)
 scripts/             bootstrap, CI checks, float-probe/ (own workspace),
                      contracts/ (Node package: deploy, preflight, e2e, localnet, stylus-gas,
-                     activation, season operations; nitro/ holds the vendored dev-node script)
+                     activation, season operations, fork rehearsal, Sourcify verification;
+                     nitro/ holds the vendored dev-node script)
 docs/                TOOLING, VERIFICATION, ECONOMY, DEPLOYMENT, SEASON_RUNBOOK,
                      TESTNET, TESTNET-1-REPORT
 reports/             playtest, calibration and bot reports
@@ -1987,7 +1988,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 
 - **Goal:** everything needed to open, watch, settle and close a season on schedule, the testnet-1 parameters set from measurements, and a rehearsed close and claim on Sepolia.
 - **Deliverables:**
-  - `scripts/contracts/season.mjs`, with five commands:
+  - `scripts/contracts/season.mjs`, with five commands (M4.14 adds `open`, which this item keeps):
     - `open`: opens a season from a season file, and writes the season number `open` assigned, from its event, into `deployments/<network>.json` under the file's label, after checking the 16 levels with the level tool and, for a Stylus referee, that its remaining activation time (`ArbWasm.programTimeLeft`) covers the season's length plus grace;
     - `status`: runs, commits, settlements, pot, `isSolvent`;
     - `close`: the permissionless close;

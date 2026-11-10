@@ -8,7 +8,11 @@ import { Contract, JsonRpcProvider } from "ethers";
 
 export const ARB_WASM = "0x0000000000000000000000000000000000000071";
 export const MAX_OPEN_ACTIVATION_GAS = 30_000_000n;
-const ARB_WASM_ABI = ["function activationGas() view returns (uint64)", "function programVersion(address program) view returns (uint16)"];
+const ARB_WASM_ABI = [
+  "function activationGas() view returns (uint64)",
+  "function programVersion(address program) view returns (uint16)",
+  "function programTimeLeft(address program) view returns (uint64)",
+];
 
 export async function readActivationGas(provider, blockTag) {
   return new Contract(ARB_WASM, ARB_WASM_ABI, provider).activationGas({ blockTag });
@@ -17,6 +21,11 @@ export async function readActivationGas(provider, blockTag) {
 /** The Stylus version `program` is activated at; ArbWasm reverts when its code is not activated. */
 export async function readProgramVersion(provider, program) {
   return new Contract(ARB_WASM, ARB_WASM_ABI, provider).programVersion(program);
+}
+
+/** The seconds until `program`'s activation expires; ArbWasm reverts when its code is not activated. */
+export async function readProgramTimeLeft(provider, program) {
+  return new Contract(ARB_WASM, ARB_WASM_ABI, provider).programTimeLeft(program);
 }
 
 export function activationsOpen(activationGas) {
