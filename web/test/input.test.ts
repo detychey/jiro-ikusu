@@ -4,7 +4,10 @@ import {
   type Control,
   CONTROLS,
   DEFAULT_BINDINGS,
+  defaultBindings,
   HeldKeys,
+  type KeyboardLayout,
+  keyLabel,
   loadBindings,
   rebind,
   saveBindings,
@@ -85,5 +88,57 @@ describe("input", () => {
     keys.down("ArrowUp");
     keys.up("ArrowUp");
     expect([held, keys.sample()]).toEqual([0x01, 0]);
+  });
+});
+
+const AZERTY: KeyboardLayout = new Map([
+  ["KeyQ", "a"],
+  ["KeyA", "q"],
+  ["KeyW", "z"],
+  ["KeyZ", "w"],
+  ["KeyB", "b"],
+  ["KeyX", "x"],
+]);
+const DVORAK: KeyboardLayout = new Map([
+  ["KeyA", "a"],
+  ["KeyN", "b"],
+  ["KeyB", "x"],
+  ["KeyX", "q"],
+]);
+
+describe("keyboard layouts", () => {
+  it("binds the QWERTY places of A, B and X when the layout is unknown", () => {
+    expect(defaultBindings(undefined)).toEqual(DEFAULT_BINDINGS);
+  });
+
+  it("binds A to the key that prints it on AZERTY", () => {
+    expect(defaultBindings(AZERTY)).toEqual({ ...DEFAULT_BINDINGS, a: "KeyQ" });
+  });
+
+  it("binds B and X to the keys that print them on Dvorak", () => {
+    expect(defaultBindings(DVORAK)).toEqual({ ...DEFAULT_BINDINGS, b: "KeyN", x: "KeyB" });
+  });
+
+  it("keeps the QWERTY place of a letter the layout doesn't print", () => {
+    expect(defaultBindings(new Map([["KeyA", "ф"]]))).toEqual(DEFAULT_BINDINGS);
+  });
+
+  it("loads the layout's defaults when nothing is stored", () => {
+    const empty = { getItem: () => null, setItem: () => undefined };
+    expect(loadBindings(empty, defaultBindings(AZERTY))).toEqual({ ...DEFAULT_BINDINGS, a: "KeyQ" });
+  });
+
+  it.each([
+    ["KeyQ", AZERTY, "A"],
+    ["KeyQ", undefined, "Q (QWERTY)"],
+    ["Digit1", undefined, "1 (QWERTY)"],
+    ["ArrowUp", AZERTY, "↑"],
+    ["Enter", undefined, "Enter"],
+  ] as const)("names %s as %s prints it", (code, layout, label) => {
+    expect(keyLabel(code, layout)).toBe(label);
+  });
+
+  it("names the key in its refusal", () => {
+    expect(rebind(DEFAULT_BINDINGS, "a", "ArrowUp", keyLabel("ArrowUp", undefined))).toBe("↑ is already bound to up");
   });
 });

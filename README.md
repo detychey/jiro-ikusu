@@ -54,7 +54,7 @@ The draft names the controls a joystick and Key0–Key3. The keys map to A, B, X
 
 The draft's Key2 is "Commit/Forfeit (ends game immediately)". Here it ends the current level, not the whole run, and the level keeps its claim.
 
-**The keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome.
+**The keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome. By default, A, B and X are the keys that print those letters, where the browser reports the keyboard layout; elsewhere they are the keys at those letters' places on a QWERTY keyboard, which the controls panel says.
 
 The core allocates nothing: its buffers have fixed sizes.
 

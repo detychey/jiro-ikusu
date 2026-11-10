@@ -23,7 +23,8 @@ export function controlsOf(mask: number): Control[] {
   return CONTROLS.filter((control) => (mask & CONTROL_BITS[control]) !== 0);
 }
 
-/** KeyboardEvent.code of each control by default: the arrows, and the keys A, B and X. */
+/** KeyboardEvent.code of each control on a QWERTY keyboard: the arrows, and the keys A, B and X.
+ *  A code names a key by its place on a QWERTY keyboard, whatever the layout prints on it. */
 export const DEFAULT_BINDINGS: Bindings = {
   up: "ArrowUp",
   down: "ArrowDown",
@@ -35,10 +36,48 @@ export const DEFAULT_BINDINGS: Bindings = {
 };
 
 const STORAGE_KEY = "jiro-ikusu.bindings";
+const ARROWS: Record<string, string> = { ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→" };
 
-/** The stored bindings, or the defaults when storage is missing, unreadable or invalid. */
-export function loadBindings(storage: Storage | undefined): Bindings {
-  return load(storage, STORAGE_KEY, isBindings, () => ({ ...DEFAULT_BINDINGS }));
+/** What the player's keyboard layout prints on each key, by KeyboardEvent.code. */
+export type KeyboardLayout = ReadonlyMap<string, string>;
+
+/** The player's keyboard layout, from the Keyboard API, which only Chromium browsers offer;
+ *  undefined elsewhere. */
+export async function keyboardLayout(): Promise<KeyboardLayout | undefined> {
+  const { keyboard } = navigator as Navigator & { keyboard?: { getLayoutMap?: () => Promise<KeyboardLayout> } };
+  if (keyboard?.getLayoutMap === undefined) return undefined;
+  try {
+    return await keyboard.getLayoutMap();
+  } catch {
+    // The API refuses outside a top-level page, as in an iframe: the layout stays unknown there.
+    return undefined;
+  }
+}
+
+/** The default bindings under `layout`: the arrows, and the keys that print A, B and X. A letter
+ *  the layout doesn't print, or an unknown layout, keeps its QWERTY place. */
+export function defaultBindings(layout: KeyboardLayout | undefined): Bindings {
+  const letterKeys = [...(layout ?? [])].filter(([code]) => /^Key[A-Z]$/.test(code));
+  const keyPrinting = (letter: string) => letterKeys.find(([, printed]) => printed.toLowerCase() === letter)?.[0];
+  const bindings = { ...DEFAULT_BINDINGS };
+  for (const control of ["a", "b", "x"] as const) bindings[control] = keyPrinting(control) ?? DEFAULT_BINDINGS[control];
+  return isBindings(bindings) ? bindings : { ...DEFAULT_BINDINGS };
+}
+
+/** A key as the controls panel names it: what `layout` prints on it; with no layout, the letter
+ *  or digit at its place on a QWERTY keyboard, marked as such; otherwise its code. */
+export function keyLabel(code: string, layout: KeyboardLayout | undefined): string {
+  const arrow = ARROWS[code];
+  if (arrow !== undefined) return arrow;
+  const printed = layout?.get(code);
+  if (printed !== undefined && printed.trim() !== "") return printed.toUpperCase();
+  const qwerty = /^(?:Key|Digit)(.)$/.exec(code)?.[1];
+  return qwerty === undefined ? code : `${qwerty} (QWERTY)`;
+}
+
+/** The stored bindings, or `defaults` when storage is missing, unreadable or invalid. */
+export function loadBindings(storage: Storage | undefined, defaults: Bindings = DEFAULT_BINDINGS): Bindings {
+  return load(storage, STORAGE_KEY, isBindings, () => ({ ...defaults }));
 }
 
 /** Stores the bindings; returns false when storage is missing or refuses, which leaves the
@@ -47,11 +86,11 @@ export function saveBindings(storage: Storage | undefined, bindings: Bindings): 
   return save(storage, STORAGE_KEY, bindings);
 }
 
-/** Binds `control` to `code`, or refuses, with a message, a key already bound to another
- *  control. */
-export function rebind(bindings: Bindings, control: Control, code: string): Bindings | string {
+/** Binds `control` to `code`, or refuses, with a message that names the key `name`, a key
+ *  already bound to another control. */
+export function rebind(bindings: Bindings, control: Control, code: string, name = code): Bindings | string {
   const holder = CONTROLS.find((other) => other !== control && bindings[other] === code);
-  if (holder !== undefined) return `${code} is already bound to ${holder}`;
+  if (holder !== undefined) return `${name} is already bound to ${holder}`;
   return { ...bindings, [control]: code };
 }
 
