@@ -2044,6 +2044,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - rejected settlements;
     - payouts, the rake sent to the treasury, and `isSolvent` after every claim;
     - suspicious patterns found in the published journals;
+    - how players use the fast cut: from the published journals, the share of each player's cutting ticks with A held, which decides the slow-cut rule (`TODO.md`, owner, 2026-11-10);
     - a summary of the tester feedback.
   - `deployments/arbitrum-sepolia.json`, with a new generation appended if anything was redeployed.
 - **Done when:**
