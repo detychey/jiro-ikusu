@@ -28,7 +28,7 @@ You begin on a small claimed island in the middle of the field instead of on the
 - An island-to-island loop with the boss inside captures everything outside it and strands the border minions. They respawn on the first rail cell in row-major order, which is on the island's rail, now the only rail: consistent.
 - State hash v1 is unchanged, since the player's cell and cut start are already in it.
 
-One flaw: (seed byte 4 >> 2) & 3 mod count is biased when count = 3. The values 0..3 map to candidates 0, 1, 2, 0, so candidate 0 is drawn half the time. Byte 4 bits 2-3 are also claimed by the twin-boss and bouncer proposals. The Level struct's +9 B exists only during start and is negligible against the 62,784 B peak.
+One flaw: (seed byte 4 >> 2) & 3 mod count is biased when count = 3. The values 0..3 map to candidates 0, 1, 2, 0, so candidate 0 is drawn half the time. Byte 4 bits 2-3 are also claimed by the twin-boss and bouncer proposals. The Level struct's +9 B exists only during start and is negligible.
 
 *Fixes.* Draw the candidate as (big-endian u32 of seed bytes 9..12) mod count, with bias under 2^-30, and register those bytes in §6.4. Alternatively, allow only count in {1, 2, 4}. Apply validity code 39 to every candidate, and require unused candidate slots to be zero so the bytes stay canonical. Keep decoding v1 bytes as count 1 at (30, 59), so existing level ids are kept.
 
@@ -95,7 +95,6 @@ The real risk is paid fairness (constraint 8). best_cut in tools/src/bots/greedy
 *Cost.* - Core: no change. No format, hash or zk change, and smaller fills.
 - Levels: new level ids, a levels/README rebuild, playtest and calibration, and possibly a bot change, which triggers the playtest-report rule.
 - Client: one flood fill at load and one void palette entry.
-- Wedgie: a larger level file only.
 
 *Conflicts.* Constraint 8 (calibration relies on bots that cannot read staircase outlines)
 
@@ -107,7 +106,7 @@ The real risk is paid fairness (constraint 8). best_cut in tools/src/bots/greedy
 
 *Fixes.* Make the twin-room neck a corridor 4-6 rows deep, so sealing it means an exposed cut the boss can sit inside. Or use two necks, so a room takes two cuts and the shape stays distinct from cross's four gaps. Correct the arm value to about 19%. Measure the unreachable rim band per shape and B, and have the authoring check bound it. Give tools a staircase-aware rectangle test before calibration, so weights reflect play rather than a bot blind spot.
 
-*Readability.* Good. A disc or octagon outline reads clearly at 60×60 cells, and staircases look jagged but legible at 4 px. Void in the background colour and the outline in the rail colour separate 'outside' from 'yours' (captured area) at a glance. It costs one palette entry of 16 and one flood fill at load, nothing per tick, and it fits the wedgie's partial redraws.
+*Readability.* Good. A disc or octagon outline reads clearly at 60×60 cells, and staircases look jagged but legible at 4 px. Void in the background colour and the outline in the rail colour separate 'outside' from 'yours' (captured area) at a glance. It costs one palette entry and one flood fill at load, nothing per tick.
 
 ## Sweepers on fixed tracks
 
@@ -153,7 +152,6 @@ Bot gap: a fully visible metronome. Search times it perfectly, a human reads it.
 - State: +12 B, hash v2 (960-byte preimage).
 - Per move tick: at most 4 sweeper steps of a few reads. Per player sub-step: at most 4 compares.
 - zk: at most about 2% on the heaviest level; proving price under +0.5%.
-- Wedgie: Game about +30 B, start stack about +100 B, negligible tick time. Two cells redrawn per sweeper move; the track drawn faintly.
 - RULES_VERSION bump, new step 4b, vectors, playtest and calibration, a sweeper term in the scripted bots' safety test.
 
 *Conflicts.* R4.4-5 (new step 4b); R4.3-1; R4.9-1; R4.8-4 (capture destroys a sweeper); PIN-04; §6.4 seed bytes 11-14 (overlap with #7); state hash v1; D4 (local fuse)
@@ -189,17 +187,17 @@ Lines of gate cells open and close on a seeded timer. A closed gate is a wall fo
 **Core engineer: feasible with changes, 3 of 5, tier 3.** The rule holds up. Gate cells stay EMPTY for the fill, the rail and the player, so capture semantics and R4.6-1 are untouched: a closed gate only adds blocked edges, and the body still covers only EMPTY cells. The gate state is a pure function of (tick, φ), like the deflection draw, so state hash v1 can keep its layout. Divergence (R4.6-12) still holds, because edge contents are deterministic.
 
 Two real problems:
-(1) The budget's 'gate kind in the grid byte's terrain field' does not exist. Cell is a 4-variant repr(u8) enum, compared with == and match in grid.rs, capture.rs, boss.rs, player.rs and minion.rs, so packing a flag touches every comparison. A per-cell plane would sit inside Game: 3,600 B as bytes, or 450 B as bits. The Recorder carries Game, and `start` peaks at 62,784 of 65,536 B because it holds about 3 copies of the large structs. A byte plane overflows that stack unless M3.10 is built, and a bit plane eats half of the ~2.7 KB headroom. A GATE cell variant fails too: the fill turns it BOSS_ZONE and then EMPTY, a lost life erases TRAIL to EMPTY, and the kind is lost.
+(1) The budget's 'gate kind in the grid byte's terrain field' does not exist. Cell is a 4-variant repr(u8) enum, compared with == and match in grid.rs, capture.rs, boss.rs, player.rs and minion.rs, so packing a flag touches every comparison. A per-cell plane would sit inside Game: 3,600 B as bytes, or 450 B as bits. A GATE cell variant fails too: the fill turns it BOSS_ZONE and then EMPTY, a lost life erases TRAIL to EMPTY, and the kind is lost.
 (2) Gates can freeze the boss. A body that overlaps a vertical and a horizontal gate line at once (a crossing or an L corner), or a band at least B+2 thick, or a gate line running along a corridor exactly as wide as the body, has both axes blocked while gates are closed. The boss then sits still for C ticks at a predictable spot: a safe zone that bots will find.
 
 The rest is fine. The φ bias from u16 mod ≤ 600 is under 1%. D14: windows depend on the seed through φ and the boss's room. Bot gap: the countdown is readable, so roughly neutral.
 
 *Fixes.* - Store gates in level v2 as up to 4 straight, 1-cell-thick segments (x0, y0, x1, y1), plus P and C. Membership is then a few bounds compares, with no terrain plane and no grid bits.
 - Add validity codes: segment cells EMPTY at start; horizontal or vertical; segments pairwise at least B+1 apart, never touching or crossing; open non-gate cells on both sides across every segment. Then a body that overlaps a gate line always has one free axis to leave by.
-- Reserve seed bytes 9-10 in §6.4. Extend the natmod paint call with the gate cells and their state.
+- Reserve seed bytes 9-10 in §6.4.
 
 *Cost.* - Level v2: about 20 B (4 segments, P, C).
-- Game: about 20 B (Recorder +20 B, start stack peak about +60 B).
+- Game: about 20 B (Recorder +20 B).
 - Per boss move: at most 2B edge cells × 4 segment compares, under 0.5% zk cycles. Proving price is unchanged within noise: about 87% of a proof's price is fixed (VERIFICATION.md fit: 0.0000153 ETH + 17,383 wei per cycle).
 - State hash v1 layout unchanged.
 - RULES_VERSION 3, level format v2, new vectors, playtest and calibration rerun, a gate-aware boss-reach margin in the scripted bots.
@@ -213,9 +211,9 @@ The rest is fine. The φ bias from u16 mod ≤ 600 is under 1%. D14: windows dep
 
 **Play: strong, 4 of 5.** This adds real new situations. No level has field state that changes over time, and a timed boss-only wall gives the level a rhythm: get into position before the close, work the room the boss isn't in, get back to the rail or close before it opens. Fast cut becomes a race against the opening and the rail becomes a waiting room. Commit gains a timing element, because you can bank right after a window. It keeps D14, since the seed sets the phase and which room the boss is in at each close. It fits the genre's feel, because shutting the boss in is the point of Qix-likes. Main risk is a dominant line. While a gate is closed, a cut along the column or row one cell past the gate, on the free side, can never be bumped (the boss bounces off the gate first) and seals the whole free room. With a doorway-style gate, that seal is 4-8 cells, so it is free every window. With a full-length gate line, it is about 29 ticks at fast cut. If C is longer than the sealing time, each window is a guaranteed capture of a whole room, and the level stops asking for decisions. Second issue: thick gate bands. A body sitting fully inside a band thicker than one cell when it closes finds gate cells on every leading edge and freezes in place until it opens. Seed bytes 9-10 don't collide with the other ideas in this batch.
 
-*Fixes.* Authoring rule: gate lines exactly one cell thick. Cap C below the fast-cut time of the gate seal, so sealing is a race that can be lost, not a free move. Avoid doorway gates, or make C a few ticks so they only buy a short cut. Have the playtest include a 'seal on close' scripted policy to catch dominance. On the wedgie there is no HUD (the 60x60 field fills 240x240), so replace the countdown with gate cells that blink for the last ~20 ticks before they change. Reserve seed bytes in one table across all accepted ideas.
+*Fixes.* Authoring rule: gate lines exactly one cell thick. Cap C below the fast-cut time of the gate seal, so sealing is a race that can be lost, not a free move. Avoid doorway gates, or make C a few ticks so they only buy a short cut. Have the playtest include a 'seal on close' scripted policy to catch dominance. Reserve seed bytes in one table across all accepted ideas.
 
-*Readability.* Good if it gets its own visual language. A one-cell gate line in a dedicated colour reads well at 4x4 px, bright when closed and dim when open. The open question is teaching that a closed gate is a wall for the boss and floor for the player. Pattern the cells, for example a lit 2x2 dot inside each 4x4 cell, so they don't read as CLAIMED blue. No room for a numeric countdown on the wedgie; blinking before a change works.
+*Readability.* Good if it gets its own visual language. A one-cell gate line in a dedicated colour reads well at 4x4 px, bright when closed and dim when open. The open question is teaching that a closed gate is a wall for the boss and floor for the player. Pattern the cells, for example a lit 2x2 dot inside each 4x4 cell, so they don't read as CLAIMED blue.
 
 ## Dormant anchor walls raised by switch cells
 
@@ -273,7 +271,7 @@ Smaller points:
 
 *Fixes.* Ship only alongside inert stone, and limit it to 1-2 links per level. Make each link obvious from the layout: put the switch next to, or in line with, its wall, or colour-code each pair. Consider letting the raised wall become rail that connects to the border rail when it touches the border, so the payoff comes without a second connecting cut. Include a switch-seeking scripted policy in calibration, as the pitch says.
 
-*Readability.* Workable but palette-hungry. STONE needs its own colour, clearly not CLAIMED blue (grey works), and a switch is one marked cell. Mapping switch to wall with up to 4 links needs 4 more pair colours, or a convention, on a 16-colour buffer already shared with other ideas. The wall changing colour when raised is easy to see.
+*Readability.* Workable but palette-hungry. STONE needs its own colour, clearly not CLAIMED blue (grey works), and a switch is one marked cell. Mapping switch to wall with up to 4 links needs 4 more pair colours, or a convention. The wall changing colour when raised is easy to see.
 
 ## Inert stone walls
 
@@ -294,17 +292,17 @@ A second kind of obstacle. Stone turns the boss and blocks your trail like a wal
 **Variety.** Today every obstacle is a free anchor: every bar or block is rail you can close on. Stone separates 'shapes the field' from 'gives you an anchor'. A stone fence splits the boss's space, but each cut must still reach real territory, and a cut hugging stone is shielded from the boss on that side. Mixing stone fences with claimed posts lets designers decide exactly where anchors exist; stone fences with gaps play like impassable water crossed only at lanes.
 
 **Core engineer: feasible with changes, 2 of 5, tier 3.** The rule set is consistent. Stone is outside claimable_cells, never rail, stops the fill, bounces the boss without a hit, and code 35 keeps the EMPTY cells one region. The costs are real:
-(1) The 2-bit, 900-byte plane makes level bytes 1,375 long. The natmod's start decodes Level onto the stack (decode, then Recorder::new(&level)). That adds at least 903 B, and up to about 1.8 KB with a by-value copy, to start's 62,784 B peak, against the 65,536 B stack and the roughly 2.7 KB that wedgie/README.md says is left for interrupt frames.
+(1) The 2-bit, 900-byte plane makes level bytes 1,375 long.
 (2) A 'terrain field above the 2 state bits' means Cell stops being a 4-variant repr(u8) enum. Every match in grid.rs must mask the byte, as must the capture pass (which overwrites whole bytes), abandon_cut's replace, the boss edge tests, is_rail, orient and the hash packing. That is about one extra AND per read in the hottest loops, roughly 1-3% of zk.
 (3) Rail components shaped like paths: at a path end the right-hand rule turns back and then walks with the field on its left, which D7's proof never covered. A simple case, a stone run along the bottom border, traces correctly by hand, but 2-wide rail bands need the property test.
 (4) Settlement calldata grows 5.4 KB on about 53 KB, still under 95,000 B.
 Greedy must stop closing cuts on stone. The idea admits a mild bot-gap widening.
 
-*Fixes.* Encode stone as a short list of rectangles (for example up to 16 x 4 B = 64 B), or as a 1-bit 450 B plane, and paint it into the grid at level start. Otherwise wait for M3.10's in-place constructors before growing Level. Pack STONE as CLAIMED in state hash v1, since it is a level constant. Redo D7's coverage proof with property tests on path-shaped rail components before adopting.
+*Fixes.* Encode stone as a short list of rectangles (for example up to 16 x 4 B = 64 B), or as a 1-bit 450 B plane, and paint it into the grid at level start. Pack STONE as CLAIMED in state hash v1, since it is a level constant. Redo D7's coverage proof with property tests on path-shaped rail components before adopting.
 
-*Cost.* As stated: level +903 B (+64 B with rectangles), start stack +0.9 to 1.8 KB, calldata +5.4 KB per six-level settlement. Game RAM 0. zk +1-3% from masking. Refactor of the Cell representation across the core, shell, web and natmod renderer. RULES_VERSION bump, level v2 vectors, D7 re-proof, bots, recalibration.
+*Cost.* As stated: level +903 B (+64 B with rectangles), calldata +5.4 KB per six-level settlement. Game RAM 0. zk +1-3% from masking. Refactor of the Cell representation across the core, shell and web renderer. RULES_VERSION bump, level v2 vectors, D7 re-proof, bots, recalibration.
 
-*Conflicts.* R4.1-2; R4.1-7; R4.1-8; R4.2-1; R4.5-3; R4.5-4; R4.5-5; R4.6-3; R4.8-3; R4.8-4; D7 / PIN-14; §5 level bytes v1; §2 / §3 wedgie stack budget
+*Conflicts.* R4.1-2; R4.1-7; R4.1-8; R4.2-1; R4.5-3; R4.5-4; R4.5-5; R4.6-3; R4.8-3; R4.8-4; D7 / PIN-14; §5 level bytes v1
 
 **Fairness: ok, 4 of 5; gap widens; D14 compliant.** D14 is unchanged: stone is static, visible level data. It adds no new kind of safe zone. Channels narrower than B already exist with CLAIMED bars, and stone channels are worse anchors than those, not better.
 
@@ -313,12 +311,10 @@ Cuts that must run on to real territory are longer, which raises exposure to the
 Side costs:
 
 - **Calldata.** 903 B more per level adds about 5.4 KB to every settlement.
-- **Device RAM.** If the app keeps all 16 levels in RAM, 22 KB of level bytes exceeds the wedgie's 18 KB free.
 - **Coverage.** Rail components that are paths break the one-closed-boundary argument. The right-hand rule still covers a path, turning back at its ends, but the property tests must check it.
 - **State hash.** Packing STONE as CLAIMED in hash v1 is safe, because level_id commits to the terrain, but it must be documented.
 
-*Fixes.* - Load levels one at a time on the wedgie.
-- Consider a run-length encoding of the terrain plane to cut calldata.
+*Fixes.* - Consider a run-length encoding of the terrain plane to cut calldata.
 - Extend M1's coverage test to path-shaped rail.
 - Prefer state hash v2, or state the v1 packing of STONE in §6.4.
 
@@ -342,7 +338,7 @@ Pressing Y drops a barricade on the rail cell you stand on. For three seconds, m
 
 **Bot effect.** Search will use barricades well; the reference bots need a rule, such as dropping one when a minion is within k rail cells. Minion pincers on the rail are where humans lose most lives on the hard levels (the reference mix clears trio 20%, swarm 21% and doom 11%, against 100% for search), and search avoids them by exact timing. A barricade gives humans a coarse, forgiving answer to the same problem, so the gap should narrow on minion-heavy levels. It is an action with a cost (two charges), not free thinking time, so D8's concern about a pause does not apply, but D8's mapping must be amended.
 
-**Budget.** 4 bytes of player state: state hash v2 (+4 bytes; the input mask is already hashed). One extra compare per minion move; no material zk change. Journal format v2 (bit 7 legal), a new decoder, regenerated vectors, a browser keybinding and the wedgie's Key3 (Y). Screen: one cell drawn as a barricade for 45 ticks.
+**Budget.** 4 bytes of player state: state hash v2 (+4 bytes; the input mask is already hashed). One extra compare per minion move; no material zk change. Journal format v2 (bit 7 legal), a new decoder, regenerated vectors and a browser keybinding. Screen: one cell drawn as a barricade for 45 ticks.
 
 **Variety.** The player's first way to shape terrain actively: choose where to put a dead end in the minions' patrol, split two minions apart, or keep one away from the rail you need for a long cut. Today the only answers to minions are timing and the single shield charge.
 
@@ -361,7 +357,7 @@ Pressing Y drops a barricade on the rail cell you stand on. For three seconds, m
 
 *Fixes.* Dam instead of turn back: compute the right-hand step with the barricade counted as rail; if that step's target is the barricade, the minion stays in place and keeps its heading (like PIN-18). The patrol then resumes unchanged after expiry and D7 coverage holds. Returning to the cut start (lost life, commit) overrides the no-re-entry rule. Respawn skips the barricade cell. Journal v2, D8 amended. Decide which idea owns Y.
 
-*Cost.* State +4 B (u16 cell, u8 countdown, u8 charges): hash v2 (952 B), Game +4 B. One compare per minion candidate move; zk ~0. Journal v2 (decoder, format vectors), browser keybinding, wedgie Key3. Screen: one barricade cell for 45 ticks. RULES_VERSION bump, vectors, bot rule, calibration.
+*Cost.* State +4 B (u16 cell, u8 countdown, u8 charges): hash v2 (952 B), Game +4 B. One compare per minion candidate move; zk ~0. Journal v2 (decoder, format vectors), browser keybinding. Screen: one barricade cell for 45 ticks. RULES_VERSION bump, vectors, bot rule, calibration.
 
 *Conflicts.* D8; D7; PIN-14; PIN-18; R4.7-1; R4.7-2; R4.7-7; R4.9-17; R4.4-7; §6.1 bit 7; §6.3 decode code 10; [human-edge#7](human-edge.md#abandon-a-cut-on-demand) (Y)
 
@@ -373,7 +369,7 @@ Pressing Y drops a barricade on the rail cell you stand on. For three seconds, m
 
 *Fixes.* Make minions wait in front of the barricade (PIN-18 style, as the flare variant does) instead of turning back, or run the orientation step on any minion that turned back when the barricade expires. Extend the PIN-14 coverage property test to cover barricade periods. Either forbid barricades on rail stretches 2 cells wide or block the parallel cell too.
 
-*Readability.* Good. One cell in a distinct colour (a white or grey block on the blue rail) for 45 ticks, with a blink in its last second. The number of charges left has no in-play HUD on the wedgie, so it needs an on-field cue.
+*Readability.* Good. One cell in a distinct colour (a white or grey block on the blue rail) for 45 ticks, with a blink in its last second.
 
 ## Bog and ice patches
 
@@ -397,7 +393,7 @@ Patches of open field change how you cut through them. Bog slows you to a crawl 
 
 *Fixes.* Store patches as up to 8 rectangles of 5 B each (kind, x0, y0, x1, y1) in level v2 and in Game (about 40 B), and check kind_at(pos) only while the cell is EMPTY or TRAIL, with no grid change. Ship bog first. Keep ice out of Challenge sets until bot-advantage has been measured on ice levels, and get an owner decision on ice against D4.
 
-*Cost.* As stated: level +903 B and RAM 0. With rectangles: level about +41 B and Game about +40 B. One terrain lookup per sub-step: zk under 0.5%. State hash v1 unchanged. Wedgie: 2 palette entries. RULES_VERSION bump (R4.5-1, R4.5-6, R4.5-7, PIN-04), level v2 vectors, per-cell cut cost in greedy, recalibration.
+*Cost.* As stated: level +903 B and RAM 0. With rectangles: level about +41 B and Game about +40 B. One terrain lookup per sub-step: zk under 0.5%. State hash v1 unchanged. RULES_VERSION bump (R4.5-1, R4.5-6, R4.5-7, PIN-04), level v2 vectors, per-cell cut cost in greedy, recalibration.
 
 *Conflicts.* R4.5-1; R4.5-6; R4.5-7; PIN-04; PIN-05; D4; §5 level bytes v1
 
@@ -451,13 +447,13 @@ The outer frame is inert stone, and the only claimed ground is a small home patc
 (2) The lasso is not new. Today a cut from the border can loop around the boss and return beside its start, and the fill (R4.8-3) then takes everything outside the loop. Search can already do this. What is new is only that there is no safe border rail at the start, and that minion pressure is concentrated on a short ring.
 (3) D7 regression. Once captured land touches the STONE frame, the rail stops being a closed boundary: it becomes a path that dead-ends at the stone. At a dead end the right-hand rule turns the minion back, so it then walks with the field on its LEFT until the next capture runs the orientation step. That is exactly the state that trapped 1.2% of minions before M1.14 (stuck circling a 2x2 block, or skipping bumps of the rail). The rationale of PIN-14 (each claimed group meets the field along one closed boundary) no longer holds, so the coverage test must be rerun on inside-out boards.
 (4) 'State hash v1 can stay' only works by giving grid code 3 a new meaning: BOSS_ZONE never appears at the end of a tick, so STONE could take code 3. That is a format change, so the hash should go to v2 with the same 948 B.
-(5) The budget is not '0 RAM'. A 900-byte terrain plane makes v2 level bytes about 1,384 B. The wedgie's level buffer grows by about 900 B out of the roughly 18 KB free. Worse, decode() returns Level by value on the 64 KB core stack, where `start` already peaks at 62,784 B, leaving about 2.7 KB for interrupt frames; the extra 900 B or more eats a third of that margin.
+(5) The budget is not '0 RAM'. A 900-byte terrain plane makes v2 level bytes about 1,384 B.
 (6) A 28-cell ring with three minions and invulnerability 0 at tick 0 allows a pincer on the first tick unless validity keeps spawns away from the start.
 (7) The scripted bots cannot lasso. Calibration then measures a policy that misses the level's main play, and the gap with search widens, which the pitch admits.
 
 *Fixes.* Drop the terrain plane. Use a 1-byte 'inert border' flag in level v2, plus a 2-byte player start that replaces PIN-01's constant. Under the flag, border cells stay CLAIMED for the boss, the fill and minion patrol, so D7's closed boundary and PIN-14 coverage survive, and minions that reach the frame simply drift off and leave the player alone. For the player only, border cells are not rail, and a step onto one is ignored, so a cut cannot close on it. That needs no new cell state, no hash change and only +3 level bytes. Add a validity rule: no minion spawn within k rail cells of the player start. Before calibration, give the scripted bots a loop-aware policy that returns to the patch. Ship it in Training first; in Challenge, pair it with a boss-path preview, since it widens the gap.
 
-*Cost.* As stated: level v2 +903 B terrain plane +9 B start list. Wedgie: level buffer +~900 B heap (of ~18 KB); core `start` stack peak +~900 B (of ~2.7 KB margin). New in-memory cell value; hash v2 reinterprets code 3 (948 B). Per tick: the boss's edge test treats STONE as solid, ~0 cycles; zk ~0. RULES_VERSION 3, vectors regenerated (level-border-obstacle code 22 changes), playtest and calibration. With the flag fix: +3 level bytes, no hash change, 0 RAM.
+*Cost.* As stated: level v2 +903 B terrain plane +9 B start list. New in-memory cell value; hash v2 reinterprets code 3 (948 B). Per tick: the boss's edge test treats STONE as solid, ~0 cycles; zk ~0. RULES_VERSION 3, vectors regenerated (level-border-obstacle code 22 changes), playtest and calibration. With the flag fix: +3 level bytes, no hash change, 0 RAM.
 
 *Conflicts.* R4.1-2; R4.1-7; PIN-01; R4.2-1; R4.6-3; R4.6-4; R4.8-3; §5 validity codes 22 and 39; D7; PIN-14; state hash v1 grid encoding; depends on the inert-stone and island-start ideas
 
@@ -469,7 +465,7 @@ The outer frame is inert stone, and the only claimed ground is a small home patc
 
 *Fixes.* Give the player a short start invulnerability (as in PIN-02), or use minion period 2 or more on inside-out levels, and space the minion spawns evenly around the rim. Re-run the minion coverage property test on boards with a stone frame and rail segments that end at stone. Ship it in Training first, or only with the visible-bumpers preview in Challenge, because the lasso is where search outscores humans most. Draw stone so it clearly reads as unwalkable.
 
-*Readability.* Yes. Stone needs one new palette entry, such as grey or a 2-tone checker inside the 4x4 cell, clearly unlike the blue CLAIMED. The wedgie uses about 7 of its 16 colours, so there is room. The home patch is ordinary blue. That stone cannot close a cut cannot be shown by colour alone and must be taught once.
+*Readability.* Yes. Stone needs one new palette entry, such as grey or a 2-tone checker inside the 4x4 cell, clearly unlike the blue CLAIMED. The home patch is ordinary blue. That stone cannot close a cut cannot be shown by colour alone and must be taught once.
 
 ## Terrain the boss crosses but the player cannot cut
 
@@ -493,11 +489,11 @@ Pits are open field that the boss glides over but you cannot cut through, and th
 
 - Bramble ground the boss can cross: Bramble patches block your cuts but not the boss, so the boss can shelter in them. You clear a patch only by fencing it off from the outside.
 
-**Core engineer: feasible with changes, 2 of 5, tier 3.** This is buildable but expensive, and the falling half is costly for modest variety. Fixed pits work as stated: a pit is EMPTY for the boss, the rail, minion orientation and the fill, and the player cannot enter it (R4.5-2, R4.5-4, PIN-05). The state hash can stay v1 if a pit is defined as a level pit bit on a cell that is EMPTY, since capture is the only thing that changes it. But the 'pit flag in the terrain field' breaks in the capture. mark_boss_zone overwrites pit cells in the boss's region with BOSS_ZONE, and the pass turns them back into plain EMPTY, so the pits are lost. It needs a fifth cell value (a pit-boss-zone) or a pit bitmap kept in the Game. The current Grid is an enum \[Cell; 3600\], so per-cell flags mean a core refactor across grid, capture, rail, boss, player, minions and hash. The level format goes to v2: a 450-byte bitmap (922 B per level) or a rectangle list. On the wedgie, start already peaks at 62,784 of 65,536 B. Each extra copy of a 450 B Level or Game field cuts into the 2.7 KB margin left for interrupt frames. Falling pits add a new step 5b, a stored announcement, state hash v2, seed bytes 15-18 and a 3,600-cell scan every P ticks. They can also wall a cutting player in between their own trail and a pit (no fuse, D4), leaving only death or commit. The bot analysis is fair.
+**Core engineer: feasible with changes, 2 of 5, tier 3.** This is buildable but expensive, and the falling half is costly for modest variety. Fixed pits work as stated: a pit is EMPTY for the boss, the rail, minion orientation and the fill, and the player cannot enter it (R4.5-2, R4.5-4, PIN-05). The state hash can stay v1 if a pit is defined as a level pit bit on a cell that is EMPTY, since capture is the only thing that changes it. But the 'pit flag in the terrain field' breaks in the capture. mark_boss_zone overwrites pit cells in the boss's region with BOSS_ZONE, and the pass turns them back into plain EMPTY, so the pits are lost. It needs a fifth cell value (a pit-boss-zone) or a pit bitmap kept in the Game. The current Grid is an enum \[Cell; 3600\], so per-cell flags mean a core refactor across grid, capture, rail, boss, player, minions and hash. The level format goes to v2: a 450-byte bitmap (922 B per level) or a rectangle list. Falling pits add a new step 5b, a stored announcement, state hash v2, seed bytes 15-18 and a 3,600-cell scan every P ticks. They can also wall a cutting player in between their own trail and a pit (no fuse, D4), leaving only death or commit. The bot analysis is fair.
 
-*Fixes.* Ship fixed pits only: level format v2 plus RULES_VERSION 3, with pits as a grid value (and a pit-boss-zone value in the fill) or a pit bitmap kept in the Game, and hash v1 kept by defining a pit as level pit bit and EMPTY. Use a compact rectangle encoding to keep levels small. Measure start's stack peak on qemu with the larger Level, or do M3.10's in-place constructors first. Defer falling pits unless playtests show fixed pits are too static.
+*Fixes.* Ship fixed pits only: level format v2 plus RULES_VERSION 3, with pits as a grid value (and a pit-boss-zone value in the fill) or a pit bitmap kept in the Game, and hash v1 kept by defining a pit as level pit bit and EMPTY. Use a compact rectangle encoding to keep levels small. Defer falling pits unless playtests show fixed pits are too static.
 
-*Cost.* RULES_VERSION bump. New rule text in README §4.1, §4.5 and §4.8. Level format v2 (+450 B per level, or a short rectangle list) with new format vectors. All game vectors regenerated. Fixed pits: hash v1, about 0 extra zk cycles, 0 RAM with a grid value, or +450 B in the Recorder and the start stack with a bitmap. Falling pits: state hash v2 (+2 B, plus pit bits that 2-bit cells cannot hold), about +1M zk cycles per level (about 3% of the heaviest level, so +3% on the proving price), one 3,600-cell scan per P ticks. Bots: scripted policies must route around pits. Playtest and full recalibration.
+*Cost.* RULES_VERSION bump. New rule text in README §4.1, §4.5 and §4.8. Level format v2 (+450 B per level, or a short rectangle list) with new format vectors. All game vectors regenerated. Fixed pits: hash v1, about 0 extra zk cycles, 0 RAM with a grid value, or +450 B in the Recorder with a bitmap. Falling pits: state hash v2 (+2 B, plus pit bits that 2-bit cells cannot hold), about +1M zk cycles per level (about 3% of the heaviest level, so +3% on the proving price), one 3,600-cell scan per P ticks. Bots: scripted policies must route around pits. Playtest and full recalibration.
 
 *Conflicts.* R4.1-2 (new cell value); R4.5-2; R4.5-4; PIN-05; R4.8-3/R4.8-4 (fill and pass must preserve pits); R4.4-5 (new step 5b, falling pits only); §6.4 seed bytes 15-18 (falling pits only); state hash v1 (falling pits only); level bytes v1
 
@@ -535,7 +531,7 @@ The left and right edges join, and the boss, your cuts and the fill all wrap acr
 - On a corner-free ring the orientation step picks W on the bottom ring, and the minion circles it forever, covering it.
 - The first top-to-bottom cut captures only its trail, as stated.
 
-The budget's 'no new state or RAM' is wrong. With columns 0 and 59 open, the open area reaches 60 × 58 = 3,480 cells, above CAPTURE_STACK = 3,364. The fill pushes every EMPTY cell connected to the boss, so the stack overflows into code 15. It must grow to 3,480 u16: +232 B in Game, about +0.7 KB on start's stack peak (62,784 of 65,536). R4.1-8's 3,364, §4.8's no-overflow rationale and the code-36 half-area all need restating.
+The budget's 'no new state or RAM' is wrong. With columns 0 and 59 open, the open area reaches 60 × 58 = 3,480 cells, above CAPTURE_STACK = 3,364. The fill pushes every EMPTY cell connected to the boss, so the stack overflows into code 15. It must grow to 3,480 u16: +232 B in Game. R4.1-8's 3,364, §4.8's no-overflow rationale and the code-36 half-area all need restating.
 
 The change is also not local. Pos::offset knows nothing of the grid, and every module calls it: neighbours, rail, fill, boss edges and body (Boss::body uses checked_add), player, minions, the respawn scan, validity. So wrap becomes a topology parameter threaded through the most consensus-critical code.
 
@@ -550,7 +546,7 @@ zk +5-15% on capture-heavy levels is plausible, but the proving price moves only
 - Renderer: draw a seam-straddling boss in two pieces.
 
 *Cost.* - Level v2: +1 flag byte.
-- Game: +232 B (capture stack); start stack about +0.7 KB of ~2.7 KB headroom.
+- Game: +232 B (capture stack).
 - Grid unchanged; hash v1 layout unchanged (the flag is level data).
 - zk: +5-15% on capture-heavy levels, about +1-2% proving price.
 - Touches grid, boss, player, minion, capture, level validity, every scripted bot, the level tool and editor, and both renderers. RULES_VERSION bump, new vectors, playtest and calibration.
@@ -565,4 +561,4 @@ zk +5-15% on capture-heavy levels is plausible, but the proving price moves only
 
 *Fixes.* Pair it with horizontal obstacle bars that span the full width (maze-like bands), so each band is its own ring and needs its own unrolling cut. That keeps the topology relevant all level instead of for one cut. Training-only first, as the pitch suggests. Show the unroll rule explicitly the first time, for example by flashing both side edges when the first vertical cut closes. Measure the zk cycle increase before committing.
 
-*Readability.* Mixed. The missing side border is a clear cue that the sides wrap. But the field fills the whole 240x240 screen, with no margin for a seam marker. A boss straddling the seam shows as two partial squares at opposite edges, and a trail crossing the seam is split across the screen. Tracking a 2-8 cell boss that leaves one edge and comes back on the other is learnable (tunnel games do it) but adds load at 4 px cells.
+*Readability.* Mixed. The missing side border is a clear cue that the sides wrap. A boss straddling the seam shows as two partial squares at opposite edges, and a trail crossing the seam is split across the screen. Tracking a 2-8 cell boss that leaves one edge and comes back on the other is learnable (tunnel games do it) but adds load at 4 px cells.

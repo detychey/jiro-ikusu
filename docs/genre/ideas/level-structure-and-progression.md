@@ -14,15 +14,15 @@ Seven short Training-only lessons each teach one rule: close a cut, fast cut, sh
 
 **Bot effect.** None on paid modes: the lessons are never in a season. Slightly narrowing for humans who take them, because L4 and L7 teach the two things search exploits and the reference mix lacks: banking under D5 and the big final capture.
 
-**Budget.** 7 x 472 bytes of level files in flash. Hint text a few hundred bytes. No RAM beyond the loaded level, no per-tick work, no zk cycles.
+**Budget.** 7 x 472 bytes of level files. Hint text a few hundred bytes. No RAM beyond the loaded level, no per-tick work, no zk cycles.
 
 **Variety.** The 16 levels assume the player already knows rail, cut, fast cut, shield and Commit. The ladder introduces one element at a time and gives Commit an explicit lesson.
 
-**Core engineer: feasible, 5 of 5, tier 1.** The data checks out. L5: bars at y = 15, 30 and 45 over x = 1..50 meet the left border and leave 8-cell doors at x = 51..58. The open area is 3,364 - 150 = 3,214 cells in one region. Spawn (20,17)-(34,23) with B=6 covers rows 17-28 inside the band of rows 16-29 (codes 25 and 37 hold). L1's spawn with B=3 stays within x1 \<= 56 and y1 \<= 56. L3, L4, L6 and L7 leave their spawn rectangles unstated, a data detail. The tooling is a bigger point than the sketch says. `level build` needs NN-name sources with NN from 01 to 16 per directory, so the lessons need their own directory (for example levels/lessons/src). Placing them in levels/src would fire CLAUDE.md's playtest and calibration rule and break make_app_levels.py, which pairs exactly 16 levels with calibration-1.json. Wedgie: make_app_levels.py must append the lessons at weight 10,000. read_levels indexes every level at start, about 130 B of heap each, so about 1 KB of the roughly 17.4 KB free. The bests dict gains 7 keys, and the level select needs paging. L6's hint is loose: a minion is stranded only when its cell loses every open 8-neighbor. No rules, format or vector change, and no effect on paid modes.
+**Core engineer: feasible, 5 of 5, tier 1.** The data checks out. L5: bars at y = 15, 30 and 45 over x = 1..50 meet the left border and leave 8-cell doors at x = 51..58. The open area is 3,364 - 150 = 3,214 cells in one region. Spawn (20,17)-(34,23) with B=6 covers rows 17-28 inside the band of rows 16-29 (codes 25 and 37 hold). L1's spawn with B=3 stays within x1 \<= 56 and y1 \<= 56. L3, L4, L6 and L7 leave their spawn rectangles unstated, a data detail. The tooling is a bigger point than the sketch says. `level build` needs NN-name sources with NN from 01 to 16 per directory, so the lessons need their own directory (for example levels/lessons/src). Placing them in levels/src would fire CLAUDE.md's playtest and calibration rule. L6's hint is loose: a minion is stranded only when its cell loses every open 8-neighbor. No rules, format or vector change, and no effect on paid modes.
 
-*Fixes.* Use a separate lessons directory with its own build target. Extend make_app_levels.py (or ship a second level file). Add paging to the wedgie level select. Reword L6's hint. Run a greedy playtest per lesson.
+*Fixes.* Use a separate lessons directory with its own build target. Reword L6's hint. Run a greedy playtest per lesson.
 
-*Cost.* 7 x 472 = 3,304 B of level data in the app's files (within the 256 KB app limit). About 1 KB of wedgie heap for the index and the bests keys. 0 per-tick work, 0 zk, no format bump, RULES_VERSION unchanged, no recalibration.
+*Cost.* 7 x 472 = 3,304 B of level data. 0 per-tick work, 0 zk, no format bump, RULES_VERSION unchanged, no recalibration.
 
 **Fairness: ok, 5 of 5; gap narrows; D14 compliant.** The lessons are Training only and never in a season, so D14, calibration and draw variance do not apply to paid play. The one paid-mode effect is good: L4 (banking under D5) and L7 (overshooting the final capture) teach the two levers where search beats the reference mix most, so humans who take them should close part of the gap. The fully specified levels hold up. L5: three 50-cell bars give 3,364 - 150 = 3,214 open cells, joined through the x = 51..58 doors, and the B = 6 body at spawn (20,17)-(34,23) stays within rows 16 to 29. L1 and L2's spawn rectangles satisfy x1, y1 ≤ 59 - B. L3 and L6 omit the boss spawn rectangle and the minion cells, so their validity cannot be checked yet. On L3, a bottom-border minion must not spawn on or next to the player start (30, 59), or it hits on tick 0. A greedy-bot clearability check is enough.
 
@@ -30,9 +30,9 @@ Seven short Training-only lessons each teach one rule: close a cut, fast cut, sh
 
 **Play: ok, 3 of 5.** It adds no new mechanics or situations for experienced players. But it makes the existing decisions discoverable, and several of them are non-obvious: losing your last life scores 0 (D5), the single shield charge, door sealing, stranding, and the big overshoot finish. That makes the 16 levels' variety reachable for humans, and it is the cheapest item here with a clear benefit to the human-versus-bot gap. The layouts check out: L5's bars leave 3,214 open cells in one region, and the B=6 spawn fits between the bars at y=15 and y=30. Two lessons can't confirm their own lesson through the level format. L4 'Bank it' is passed by committing, not clearing, so a player who commits sees no success. L7 'Big finish' passes on any clear at 7,500, overshoot or not. L4's period-1, B=6 boss with a single life is harsh for a lesson.
 
-*Fixes.* Add client-side lesson goals and stars that the level format can't express: L4 passes on a Commit at 6,000 bp or more, L7 earns a star at 9,000 bp or more. Ease L4 to boss period 2 so its lesson is about banking, not survival. Keep hints to one or two lines of about 30 characters for the wedgie. Give L6 a hint about where to cut relative to the minion's heading.
+*Fixes.* Add client-side lesson goals and stars that the level format can't express: L4 passes on a Commit at 6,000 bp or more, L7 earns a star at 9,000 bp or more. Ease L4 to boss period 2 so its lesson is about banking, not survival. Give L6 a hint about where to cut relative to the minion's heading.
 
-*Readability.* Good. It reuses the existing visuals. One-line hints fit the 240 px screen, and instant retry is a client feature.
+*Readability.* Good. It reuses the existing visuals, and instant retry is a client feature.
 
 ## Free-order run board
 
@@ -46,7 +46,7 @@ After the reveal, the six drawn levels lie face up as cards. The player picks wh
 
 **Bot effect.** Neutral for the search bot, whose score does not depend on play order. A human gains a little from warm-up and from choosing when to face the hardest level. Neutral to slightly narrowing. D14 is unchanged because seeds and journals are the same.
 
-**Budget.** Browser only, since Challenge is browser-only (D15). No RAM on the wedgie, no per-tick work, no zk cycles. Six cards drawn once between levels.
+**Budget.** Browser only, since Challenge is browser-only (D1). No per-tick work, no zk cycles. Six cards drawn once between levels.
 
 **Variety.** Adds the first run-level pacing decision. Today the six levels play in a fixed order and the run has no shape the player controls.
 
@@ -54,7 +54,7 @@ After the reveal, the six drawn levels lie face up as cards. The player picks wh
 
 *Fixes.* None needed. Compute the auto-start delay from the remaining slack, not a fixed 10 s, so a slow reveal transaction cannot make the run late.
 
-*Cost.* Browser only (D15): six cards drawn between levels and a store change. 0 wedgie RAM, 0 per-tick work, 0 zk, no format, rules or vector changes.
+*Cost.* Browser only (D1): six cards drawn between levels and a store change. 0 per-tick work, 0 zk, no format, rules or vector changes.
 
 *Conflicts.* §7.4 fresh entropy per level (designed upgrade)
 
@@ -66,7 +66,7 @@ After the reveal, the six drawn levels lie face up as cards. The player picks wh
 
 *Fixes.* Show all six drawn levels as a read-only preview at reveal and keep the fixed order, which gives the 'read the draw' benefit without the slack timer. Give free order real stakes only alongside a run-level resource, such as the boosters allocated at reveal.
 
-*Readability.* Not applicable to the wedgie, since it is a browser-only Challenge screen. Six cards in the browser are easy to read.
+*Readability.* Six cards in the browser are easy to read.
 
 ## Season levels drawn from a calibrated library
 
@@ -96,13 +96,12 @@ Corrections:
 (2) The bot_effect mislabels filter (3). Requiring search to reach at least 0.95 of the ceiling checks solvability; it does not 'reject levels only search can clear'. Filter (2), the mix's band, does that.
 (3) Filter (4), boss coverage of at least 90 %, can reject corridor motifs on purpose: a B x B body never enters a corridor narrower than B. Test the threshold on the current 16 first, since maze, labyrinth or comb may fail it.
 (4) Filter (2) at 200 seeds has about 3.5 pp of standard error at 50 %, against the ±5 pp tolerance. It is only a pre-filter, and the P11 check stays at 1,000 seeds.
-(5) Seasonal rotation means a new jiro_levels.bin, so the wedgie app has to be rebuilt and reinstalled each season.
 The compute is about right: 20 seeds x about 1,350 ticks x 50 ms of search per tick is about 22 min per finalist.
 This also revives the generator that README §5 defers with Superchallenge. That is fine offline, but say so in §5 and P10.
 
-*Fixes.* Add level sets (a directory per set with its own targets.json) to the level, playtest and calibrate tools. Validate filter (4)'s threshold on the 16 current levels and per motif. Treat filter (2) as a cheap pre-screen before the 1,000-seed check. Document the offline generator in README §5 and P10. Plan a wedgie app release per season.
+*Fixes.* Add level sets (a directory per set with its own targets.json) to the level, playtest and calibrate tools. Validate filter (4)'s threshold on the 16 current levels and per motif. Treat filter (2) as a cheap pre-screen before the 1,000-seed check. Document the offline generator in README §5 and P10.
 
-*Cost.* No runtime, RAM or screen cost. Offline per finalist: about 22 CPU-min of search, 200 mix seeds and one RISC Zero executor run for cycles. Per season: a 1,000-seed playtest, calibration and a wedgie app rebuild. Tools: SEASON_LEVELS generalization. Format and vectors: none.
+*Cost.* No runtime, RAM or screen cost. Offline per finalist: about 22 CPU-min of search, 200 mix seeds and one RISC Zero executor run for cycles. Per season: a 1,000-seed playtest and calibration. Tools: SEASON_LEVELS generalization. Format and vectors: none.
 
 *Conflicts.* P10; P11; README §5 (map generator deferred)
 
@@ -114,7 +113,7 @@ This also revives the generator that README §5 defers with Superchallenge. That
 
 *Fixes.* Treat the generator as a drafting tool. A designer curates and edits finalists, and each world gets one hand-tuned signature level. Add readability and play constraints to the grammar: doors and corridors at least 3 cells wide, at least B+1 wide where the boss is meant to travel, and no 1-cell slivers or single-cell islands. In the clear-rate filter, also reject boards where the boss rarely leaves one sub-region, which makes them luck-bound. Share the motif grammar with the endless-climb generator, so there is one generator.
 
-*Readability.* Good if the grammar keeps features of at least 3 cells. Blue walls on black read well at 4 px. Spirals and 1-cell doors become busy or nearly invisible on the 240×240 screen, so cap their density and width.
+*Readability.* Good if the grammar keeps features of at least 3 cells. Blue walls on black read well at 4 px. Spirals and 1-cell doors become busy or nearly invisible, so cap their density and width.
 
 ## Escalation at claim thresholds
 
@@ -141,7 +140,7 @@ Some minions sleep until your claim passes a marked line, then announce their re
 
 **Core engineer: feasible with changes, 4 of 5, tier 3.** This is cheap, and the trick is valid. A sleeping minion is a destroyed slot with countdown 0xFFFF, which cannot reach 0 within T ≤ 2,700. Boss period, presence and countdown are already in the v1 hash, and the work runs only at captures. Corrections:
 (1) The budget is wrong: 3 × u16 wake_bp + u16 rage_bp + u8 rage_period = 9 bytes, not 7.
-(2) 'wake_bp ≤ target − 3,000 so the escalation cannot be skipped by a clearing capture' is false. Single captures above 30% happen (maze's 32% capture in the wedgie report, captures up to 84% in the qemu fuzz), and a clear at step 3 then ends the level before any wake plays out. That is harmless, but the guarantee must be dropped.
+(2) 'wake_bp ≤ target − 3,000 so the escalation cannot be skipped by a clearing capture' is false. Single captures above 30% happen, and a clear at step 3 then ends the level before any wake plays out. That is harmless, but the guarantee must be dropped.
 (3) Rage has little headroom. A move period cannot go below 1, and levels 5 to 16 already run the boss at period 1, so rage only works on levels 1 to 4 unless later levels are re-authored with slower bases, which shifts their baseline difficulty.
 (4) Pin whether rage_period applies from step 4 of the same tick.
 (5) The flashing spawn can lie. The respawn cell is chosen when the countdown ends (the spawn, else the first rail cell in row-major order), so a capture during the countdown can move it.
@@ -159,9 +158,9 @@ Some minions sleep until your claim passes a marked line, then announce their re
 
 **Play: strong, 4 of 5.** Cheap: only level bytes change, the state hash stays v1, and the work runs only at captures. It adds a pacing decision the 16 static levels lack: which capture crosses each line, and preparing the rail before it does. Capturing a sleeping minion's spawn cell moves its respawn to the first rail cell in row-major order. The rage line works well with Commit: bank before the boss speeds up, or push through. The 'target − 3,000' rule does not make the escalation unskippable: a capture of 3,000 bp or more from below the line still skips it. That is itself an interesting high-risk choice, as the variant says. Rage by boss period only matters on levels 01-04: the other 12 already run the boss at period 1. It overlaps with the timed tide idea ([human-edge#4](human-edge.md#rising-tide-of-timed-reinforcements)), but player-controlled triggers give better decisions.
 
-*Fixes.* Reword the design rule as 'skipping the escalation needs a capture of at least 3,000 bp', not 'cannot be skipped'. Let rage change minion period or the deflection rate on levels whose boss already runs at period 1. On the wedgie, add a thin claim bar on one border row, or a flash on crossing, so the player can see the line.
+*Fixes.* Reword the design rule as 'skipping the escalation needs a capture of at least 3,000 bp', not 'cannot be skipped'. Let rage change minion period or the deflection rate on levels whose boss already runs at period 1.
 
-*Readability.* The flashing spawn cell reads well. But the wedgie has no in-play HUD: the field fills the whole 240x240 screen, so players cannot see their claim or the threshold marks during play. A 4 px claim bar over one border row, or a screen-edge flash when a line is crossed, would fix it. The browser has room for both.
+*Readability.* The flashing spawn cell reads well. The browser has room to show the claim and the threshold marks.
 
 ## Exit gate with discounted overtime
 
@@ -201,9 +200,9 @@ Cost: levels now run to the time limit. Typical runs go from about 1,330 to up t
 
 **Play: ok, 3 of 5.** The idea adds a real decision: stay or leave after the target is met. It also gives spare lives a use, since today the lives left at a clear are wasted. With 3-5 lives, overtime spends lives as a resource up to the last one, so this is more than a variant of difficulty. The decision is still the same push-your-luck question that Commit asks, moved past the target, so it adds a phase rather than new board situations. It has a feel cost. The final capture that traps the boss and overshoots the target is the genre's climax, and halving its overshoot makes that moment smaller. Qix-style bonuses for going past the target do fit the genre. No current level does anything like this. The bot claim is optimistic. Search will also carve its overtime at no risk, up to the ceiling, so its claim stays near 7,500 + (ceiling - 7,500)/2. The ratio does compress, but because the top end is squashed, not because humans gain. Most humans clear only the easy levels, so the new decision mostly appears there. Levels get longer, which raises the average proving cost per run (cycles scale with ticks, and proving already takes about 37% of the fee at the heaviest level). The budget line understates this.
 
-*Fixes.* 1. Show the open gate on the wedgie by recolouring the border. That is a one-off redraw of about 236 cells. The wedgie has no in-play HUD: the 60x60 field fills all 240x240 px, so the banked-versus-overtime bar exists only in the browser. 2. Bound overtime with an overtime_ticks field. Once it runs out the level ends as Cleared, which keeps the tempo and caps the extra zk cycles and proving cost. 3. Give the scripted bots an explicit stop rule, such as leaving at the gate unless more than one life is left, so overtime can be calibrated. 4. Pick the overtime rate by playtest, and also check whether 5,000 makes staying almost never worth it for humans.
+*Fixes.* 1. Bound overtime with an overtime_ticks field. Once it runs out the level ends as Cleared, which keeps the tempo and caps the extra zk cycles and proving cost. 2. Give the scripted bots an explicit stop rule, such as leaving at the gate unless more than one life is left, so overtime can be calibrated. 3. Pick the overtime rate by playtest, and also check whether 5,000 makes staying almost never worth it for humans.
 
-*Readability.* Mostly. A border colour change is easy to read on the device. The banked-versus-overtime bar has nowhere to go on the wedgie, because the field fills the whole screen during play. The bar is browser-only, and on the device the player sees only the gate state.
+*Readability.* Mostly. A border colour change is easy to read, and the banked-versus-overtime bar is browser-only.
 
 ## Twin bosses and the dividing wall
 
@@ -233,11 +232,11 @@ The player's body-collision check and the boss-bump hits must loop over both bos
 
 *Fixes.* Reserve seed bytes in a single registry: bits 2..3 of byte 4 are also claimed by the seeded-orientation idea. Have the level tool restrict twin bosses to layouts where separation needs a real cut, for example a minimum door width and count. Add a split-seeking scripted policy to the reference mix before calibrating. Run M1.5's divergence property test on key 2.
 
-*Cost.* Level bytes v2: about 480 B (+8: count, B2, rectangle 2, period 2). State hash v2: 955 B (+7). RAM: about 8 B in Game, negligible even with the copies made at start. Per boss-moving tick: one more fmix32 and at most 2 x B = 16 edge reads, estimated +2-4 % zk cycles at period 1 (unmeasured), with no price change. Capture: one extra cell test, plus a second seeding only on separation. Device: microseconds. Screen: a second B x B square with partial redraws.
+*Cost.* Level bytes v2: about 480 B (+8: count, B2, rectangle 2, period 2). State hash v2: 955 B (+7). RAM: about 8 B in Game. Per boss-moving tick: one more fmix32 and at most 2 x B = 16 edge reads, estimated +2-4 % zk cycles at period 1 (unmeasured), with no price change. Capture: one extra cell test, plus a second seeding only on separation. Screen: a second B x B square with partial redraws.
 
 *Conflicts.* D9; R4.6-5; R4.6-7; R4.8-2; R4.9-2; R4.9-3; R4.10-1; PIN-10; §6.4 seed bytes 21-28 and byte 4 bits 2-3 (collides with the seeded-orientation idea's bits 2-4); state hash v1; level bytes v1
 
-**Fairness: concerns, 3 of 5; gap unclear; D14 compliant.** D14 holds. Boss 2's start, direction and deflection key come from unused seed bytes (21..28 and byte 4 bits 2..3), and nothing seed-independent appears. The door geometry is fixed per layout, but whether closing the doors separates the bosses depends on where the two seeded bodies are, so it is an opening plan rather than a safe zone. Seed byte 4 bits 2..4 are also claimed by the orientation idea, so seed-byte allocation needs coordinating. The capture logic is sound: one fill from boss 0, then a second fill if boss 1's cell is not BOSS_ZONE, still pushes each cell at most once. The net effect on the gap is honestly unclear. The split pays only the target, so search ignores it, but two bosses make area play much harder for humans, and search adapts best. Calibration is the main fairness risk. Unless the reference mix includes a split-seeking policy, twin levels will be weighted on area-play medians. Humans who learn the doors would then out-score the calibration there, and drawing a twin level would become luck in the six-level draw. Separation also varies by seed: on some seeds both bosses sit on the same side for long stretches, so the split route's availability is luck. Cost is moderate (+2-4% cycles, unmeasured) and fits the state hash and device budgets.
+**Fairness: concerns, 3 of 5; gap unclear; D14 compliant.** D14 holds. Boss 2's start, direction and deflection key come from unused seed bytes (21..28 and byte 4 bits 2..3), and nothing seed-independent appears. The door geometry is fixed per layout, but whether closing the doors separates the bosses depends on where the two seeded bodies are, so it is an opening plan rather than a safe zone. Seed byte 4 bits 2..4 are also claimed by the orientation idea, so seed-byte allocation needs coordinating. The capture logic is sound: one fill from boss 0, then a second fill if boss 1's cell is not BOSS_ZONE, still pushes each cell at most once. The net effect on the gap is honestly unclear. The split pays only the target, so search ignores it, but two bosses make area play much harder for humans, and search adapts best. Calibration is the main fairness risk. Unless the reference mix includes a split-seeking policy, twin levels will be weighted on area-play medians. Humans who learn the doors would then out-score the calibration there, and drawing a twin level would become luck in the six-level draw. Separation also varies by seed: on some seeds both bosses sit on the same side for long stretches, so the split route's availability is luck. Cost is moderate (+2-4% cycles, unmeasured) and fits the state hash budget.
 
 *Fixes.* Add a split-seeking scripted policy to the reference mix, or at least to calibrate, before twin levels enter a season. Measure clear rates by route (area against split) and per spawn-rectangle placement. Make the level tool reject twin layouts where the spawn rectangles sit on opposite sides of the barrier, or where the bosses separate on most seeds at tick 0, to avoid trivial splits. Extend R4.6-12's divergence property test to key 2. Reserve the seed bits jointly with any other idea that wants byte 4.
 
@@ -253,7 +252,7 @@ The player's body-collision check and the boss-bump hits must loop over both bos
 
 On hunt levels, every minion you strand by walling off the field in front of it counts. Reach the quota and the level clears even if your area is short, but hunting means timing your cuts around the patrols.
 
-**Rule sketch.** Level bytes v2 adds hunt_goal, u8 (0 = off, 1..9). New state: strands, u8 (state hash v2, +1 byte). At step 3, each live minion destroyed by R4.7-8 adds 1. Dormant minions (see the wake thresholds idea) are not live and don't count. If hunt_goal > 0 and strands >= hunt_goal after the capture, the level ends at step 3 as Cleared with claimBp = max(claim_bp, target), the same lift as the twin-boss split. Stranded minions still return after R ticks (R4.7-9), so a quota above the minion count needs waves. Presentation: a strand counter; in the browser only, the client may highlight minions standing on rail that the current cut would wall off (a client-side fill, never on the wedgie).
+**Rule sketch.** Level bytes v2 adds hunt_goal, u8 (0 = off, 1..9). New state: strands, u8 (state hash v2, +1 byte). At step 3, each live minion destroyed by R4.7-8 adds 1. Dormant minions (see the wake thresholds idea) are not live and don't count. If hunt_goal > 0 and strands >= hunt_goal after the capture, the level ends at step 3 as Cleared with claimBp = max(claim_bp, target), the same lift as the twin-boss split. Stranded minions still return after R ticks (R4.7-9), so a quota above the minion count needs waves. Presentation: a strand counter; in the browser, the client may highlight minions standing on rail that the current cut would wall off (a client-side fill).
 
 **Inspired by:** Lightfish (2011), Blobbed Away (2025), Moonlight Territory (2026), PIX (Sega Genesis / Mega Drive) (2026), Boundarpy (c. 2019). **Mechanic families:** [Defeat, trap or separate the enemies](../taxonomy/level-structure-and-progression.md#defeat-trap-or-separate-the-enemies), [Alternate win routes besides the area goal](../taxonomy/level-structure-and-progression.md#alternate-win-routes-besides-the-area-goal), [Capture every designated target](../taxonomy/level-structure-and-progression.md#capture-every-designated-target). **Touches:** level-format, rules, state-hash, outcome, tools-bots, presentation.
 
@@ -273,7 +272,7 @@ The bot-gap reasoning is otherwise right: with the reward capped at the target, 
 
 *Fixes.* Make the minions' phase seeded. One way that adds no new state: start each minion Destroyed with a countdown drawn from free seed bytes (for example bytes 17..20, mod a level-set spread), so its first spawn tick differs per run. The same draw can jitter R on respawn, keyed fmix32(key XOR tick XOR slot). Add a hunt-seeking scripted policy before calibrating, and keep the reward capped at the target.
 
-*Cost.* Level bytes v2: 473 B (+1). State: +1 byte, state hash 949 B. Per tick: nothing; one increment per destroyed minion. zk: negligible. The seeded-phase fix reuses the respawn countdown and adds no state. The browser strand highlight runs a client-side fill while cutting, with no consensus impact; there is none on the wedgie.
+*Cost.* Level bytes v2: 473 B (+1). State: +1 byte, state hash 949 B. Per tick: nothing; one increment per destroyed minion. zk: negligible. The seeded-phase fix reuses the respawn countdown and adds no state. The browser strand highlight runs a client-side fill while cutting, with no consensus impact.
 
 *Conflicts.* D7; D14 (minion patrols are unseeded, so a strand quota can be met by a precomputed journal); R4.7-8; R4.10-1; PIN-10; PIN-16 (if the seeded phase is adopted); state hash v1; level bytes v1
 
@@ -283,6 +282,6 @@ The bot-gap reasoning is otherwise right: with the reward capped at the target, 
 
 **Play: strong, 4 of 5.** It turns an incidental rule (R4.7-8 destroys a stranded minion) into a goal, so minions become prey as well as hazards. It fits the genre: Volfied rewards enclosing small enemies. Stranding a minion on the border takes a small, well-timed capture: close a shallow cut on the far side while the minion walks the enclosed stretch of rail. The closing cell sits on the minion's path, so the player trades a timing skill for the risk of being hit. That is a real new decision that uses the existing fast cut and shield. It costs almost nothing (1 byte of state), and capping the reward at the target keeps search indifferent to it. None of the 16 levels rewards stranding. One risk: respawns go to fixed places (the spawn cell or the first rail cell in row-major order) after R ticks. With a quota above the minion count, the best way to hunt may become farming respawns near the spawn: a rote routine that does not depend on the seed.
 
-*Fixes.* 1. Cap hunt_goal at the level's minion count, so each minion must be hunted once and respawns cannot be farmed. Otherwise, make a strand count only when the capture is at least N cells. 2. Show the count on the wedgie as tally pips recoloured on the top border row, plus a one-tick flash at the stranded cell, because there is no in-play HUD. 3. Draw the target set on the start overlay, for example 'strand 3'.
+*Fixes.* 1. Cap hunt_goal at the level's minion count, so each minion must be hunted once and respawns cannot be farmed. Otherwise, make a strand count only when the capture is at least N cells. 2. Draw the target set on the start overlay, for example 'strand 3'.
 
-*Readability.* Mostly. The minions are already single green 4x4 cells, and a minion disappearing is visible. The quota and progress need a home on the device: border pips work, and a text counter does not fit on the field.
+*Readability.* Mostly. The minions are already single green 4x4 cells, and a minion disappearing is visible.

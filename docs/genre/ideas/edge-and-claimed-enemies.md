@@ -8,25 +8,25 @@ The 11 ideas proposed from the axis of the [taxonomy](../TAXONOMY.md) *edge and 
 
 Each minion casts a faint coloured trail of the next rail cells it will walk, and a destroyed minion's respawn cell blinks before it comes back. Players see a pincer forming instead of having to work the right-hand rule out in their heads.
 
-**Rule sketch.** Client only; the core's rules, state hash, journal and vectors are unchanged. After each tick, for every live minion the client applies right_hand_step (R4.7-2) to the current grid for the next K moves, where K = min(8, 15 / minion period), so about one second ahead. It tints those rail cells in that minion's dim colour, and the cell the minion will reach soonest wins where two forecasts overlap. The rail changes only on capture (R4.2-3), so the forecast stays exact until the next capture and is recomputed only on a minion move or a capture. For a destroyed minion, the cell it will respawn on (its spawn if that is still a rail cell, else the first rail cell in row-major order, R4.7-7) blinks during the last 15 ticks of its countdown. The forecast code is a read-only helper exported by jiro-wasm and jiro_core.mpy that calls the core's own right_hand_step, so the rule exists once, but the tick never calls it. Optional extra: rail cells within 3 cells of the player show the number of ticks until the next minion arrives.
+**Rule sketch.** Client only; the core's rules, state hash, journal and vectors are unchanged. After each tick, for every live minion the client applies right_hand_step (R4.7-2) to the current grid for the next K moves, where K = min(8, 15 / minion period), so about one second ahead. It tints those rail cells in that minion's dim colour, and the cell the minion will reach soonest wins where two forecasts overlap. The rail changes only on capture (R4.2-3), so the forecast stays exact until the next capture and is recomputed only on a minion move or a capture. For a destroyed minion, the cell it will respawn on (its spawn if that is still a rail cell, else the first rail cell in row-major order, R4.7-7) blinks during the last 15 ticks of its countdown. The forecast code is a read-only helper exported by jiro-wasm that calls the core's own right_hand_step, so the rule exists once, but the tick never calls it. Optional extra: rail cells within 3 cells of the player show the number of ticks until the next minion arrives.
 
 **Inspired by:** Qix (1981), Qixie (2025), RetroQix (2026), Amidar (1982), Make Trax (1981). **Mechanic families:** [Border patrollers (Sparx)](../taxonomy/edge-and-claimed-enemies.md#border-patrollers-sparx), [Respawning enemies](../taxonomy/field-enemies.md#respawning-enemies), [Telegraphed attacks and readable tells](../taxonomy/field-enemies.md#telegraphed-attacks-and-readable-tells). **Touches:** presentation.
 
 **Bot effect.** Narrows the gap. Search already simulates every minion move exactly; a human has to trace the right-hand rule around combs, mazes and islands by eye and often gets it wrong. Showing the next second of each patrol gives humans part of the lookahead the bot has. Bots and D14 are unaffected: the boss deflections, the only seeded randomness, are not shown.
 
-**Budget.** No core RAM, no extra cost per tick in the core, and 0 zk cycles. Browser: trivial. Wedgie: at most 3 minions x 8 steps x 4 rail tests x 8 neighbour reads, about 770 cell reads, in native code and only on ticks when a minion moves; well under 1 ms. Screen: one palette entry, up to 24 tinted cells, and about 2 cell redraws per minion move (one tail cell dropped, one head cell added).
+**Budget.** No core RAM, no extra cost per tick in the core, and 0 zk cycles. Browser: trivial. Screen: one palette entry, up to 24 tinted cells, and about 2 cell redraws per minion move (one tail cell dropped, one head cell added).
 
 **Variety.** Adds no new rule, but it turns minion positions from a reflex threat into something to plan around. Players can time rail walks and pick cut starts and closings against the patrols they can see coming, which matters most on maze, labyrinth, swarm and doom, where three period-1 minions are hard to trace by eye.
 
-**Merged from:** `presentation-wedgie#7`. Variants:
+**Merged from:** `presentation#7`. Variants:
 
 - Minion wakes and respawn timers: Each minion shows its next six rail cells and when it will reach each of them. A destroyed minion's respawn cell shows a shrinking ring, so the player can time leaving and rejoining the rail between patrols.
 
 **Core engineer: feasible, 5 of 5, tier 0.** This is exact as stated. Minions read only the rail, and the rail changes only at a capture (R4.2-3). So the patrol forecast, computed with the core's pub right_hand_step, holds until the next capture. The respawn cell (R4.7-7) is chosen at respawn time from the rail as it is then, so it is also exact until the next capture. Minions only ever stand on CLAIMED rail cells, so the forecast matters for rail walks, cut starts and closings, which are exactly where minions hit. One gap: K = min(8, 15/period) gives only 8 ticks (0.53 s) at minion period 1. Seven levels run period-1 minions, including the hardest ones (storm, maze, labyrinth, ring, titan, swarm, doom). D14 is unaffected, since minions are not seeded.
 
-*Fixes.* respawn() in core/src/minion.rs is private. Make it pub, or add a pub respawn_cell, rather than re-implementing it in the helper. That changes no behaviour, so RULES_VERSION and the vectors stay. Use K = 15/period, or cap the tint at about 45 cells, so period-1 minions also get one second. On the device, restore old tints and paint new ones in a single module call, so the tick stays allocation-free.
+*Fixes.* respawn() in core/src/minion.rs is private. Make it pub, or add a pub respawn_cell, rather than re-implementing it in the helper. That changes no behaviour, so RULES_VERSION and the vectors stay. Use K = 15/period, or cap the tint at about 45 cells, so period-1 minions also get one second.
 
-*Cost.* Core: one visibility change, with no rule, vector or hash change. zk: 0 cycles. Device: at most 3 x 8 right-hand steps (about 770 cell reads, under 0.3 ms), only on ticks when a minion moves or a capture happens. One palette entry, a 48-byte forecast buffer and about 0.3 KB of module code. About 2 cell redraws per minion move, up to about 48 on a capture tick. Browser: trivial.
+*Cost.* Core: one visibility change, with no rule, vector or hash change. zk: 0 cycles. Browser: trivial.
 
 **Fairness: ok, 5 of 5; gap narrows; D14 compliant.** D14 is untouched: minions are not seeded. The forecast stays exact until the next capture, because TRAIL counts as open (R4.2-3), so it shows only what a careful human could trace. The gap narrows: search simulates every minion move, while humans misread the right-hand rule around combs and mazes. The blinking respawn cell removes the respawn-at-the-first-rail-cell surprise (R4.7-7, PIN-11), which otherwise favours bots on any level where minions get stranded. That makes it a natural companion to the island and pillar levels. Calibration is unaffected. The help is uneven: largest on the period-1, 3-minion levels (maze, labyrinth, swarm, doom), which also carry the highest weights. Human scores on those draws will rise relative to the bot-derived weights.
 
@@ -80,7 +80,7 @@ One edge case: a pincer that closes on a rail cell whose only open neighbours ar
 
 *Fixes.* 1. Give each hand its own colour, or a 1-pixel heading mark inside the 4x4 cell, so a player can tell at a glance which way a minion is going. 2. Add a level-validity or playtest check that no spawn layout pinches a pincer on a stretch of rail whose cells have no 4-neighbour EMPTY to escape into, such as near corners. 3. Pair it with the T0 patrol forecast. 4. Rerun the minion_coverage property test with mixed hands before you treat D7 as unchanged.
 
-*Readability.* Good. A minion is one 4x4 cell, and the pincer is visible all along the rail. The one real need is to tell the two hands apart: one extra palette entry, or a heading pip, does it within 16 colours. Two minions passing through each other overlap for a tick, which is harmless.
+*Readability.* Good. A minion is one 4x4 cell, and the pincer is visible all along the rail. The one real need is to tell the two hands apart: one extra palette entry, or a heading pip, does it. Two minions passing through each other overlap for a tick, which is harmless.
 
 ## Guarded islands: release or remove the guard
 
@@ -118,7 +118,7 @@ A minion circles an obstacle island in the middle of the field and guards it. Yo
 
 *Fixes.* Correct the 'passes along' claim. With R >= T an enclosure is permanent, which makes the enclose branch a meaningful reward, so consider it for one level. Keep island gaps of at least B + 1 on at least one side, so the boss is not walled out of the island's surroundings. Pair it with the minion respawn blink ([edge-and-claimed-enemies#1](#minion-patrol-and-respawn-forecast)) so the teleport reads.
 
-*Readability.* Very good. A 6x6 island is 24x24 px with a 1-cell minion circling its rim, which reads at a glance on the 16-colour buffer and needs no new art.
+*Readability.* Very good. A 6x6 island is 24x24 px with a 1-cell minion circling its rim, which reads at a glance and needs no new art.
 
 ## Growing rail serpent
 
@@ -134,20 +134,19 @@ A minion grows into a serpent whose body walls off a stretch of rail. To get pas
 
 **Bot effect.** Keeps the gap. The body is drawn cell by cell and grows on a clock that is part of the level data, so humans can read the threat fully; search exploits the bypass captures exactly, as it already exploits every capture. Scripted bots need a bypass-cut routine to stay calibratable.
 
-**Budget.** State +69 bytes (3 slots x 11 ring cells x 2 bytes + len), which fits the wedgie's roughly 1.2 KB of stack headroom; state hash v2 grows to about 1,017 bytes. Per tick: at most 33 body cells x 3 player cells compared, so roughly 100-300 cycles, about 1-3% of an average tick of the heaviest level (about 11k cycles). Level +6 bytes. Screen: a body colour, 2 redraws per serpent move (new head, dropped tail).
+**Budget.** State +69 bytes (3 slots x 11 ring cells x 2 bytes + len); state hash v2 grows to about 1,017 bytes. Per tick: at most 33 body cells x 3 player cells compared, so roughly 100-300 cycles, about 1-3% of an average tick of the heaviest level (about 11k cycles). Level +6 bytes. Screen: a body colour, 2 redraws per serpent move (new head, dropped tail).
 
 **Variety.** Today a minion is a point that you dodge or outrun. A serpent blocks the rail for real, and the player must solve the block with a small cut, which also captures the strip under the serpent and strands it. Long levels get a reason to keep cutting near the border, and trapping an enemy by capture becomes a deliberate move.
 
 **Core engineer: feasible with changes, 3 of 5, tier 3.** The core idea is sound. The body sits on rail cells, and a bypass cut one row inside the rail leaves the old rail cells without open neighbours, so R4.7-8 strands the head. Resetting len on a lost life prevents two soft-locks: a respawn at a cut start inside the body, and a player pinned in a corner cell with no 4-adjacent EMPTY between two body cells. Issues:
 (1) Removing off-rail cells from the middle of the ring, while the body is the head plus the len-1 newest ring cells, pulls older, non-adjacent cells into the body and makes it discontinuous.
 (2) When the head cannot move (PIN-18) or turns back through its own body, len can exceed the number of cells in the ring, and duplicates appear. The body needs a definition for that case.
-(3) The stack figure is off. step peaks at 344 B and start at 62,784 of 65,536 B, about 2.7 KB of headroom. +69 B per Game copy (about 3 copies during start) adds about 210 B, which fits, and the Recorder on the heap grows 69 B.
-(4) Hit checks cost at most 33 body cells x 3 player cells at steps 3 and 5, about 200-400 cycles, 2-4% of zk with three Kmax = 12 serpents.
+(3) Hit checks cost at most 33 body cells x 3 player cells at steps 3 and 5, about 200-400 cycles, 2-4% of zk with three Kmax = 12 serpents.
 Greedy and CaptureBot route along the rail and must treat body cells as impassable, not only as a margin around the head.
 
 *Fixes.* At a capture, find the newest ring cell that is off the rail, drop it and every older cell, and set len to 1 + the cells kept, so the body stays a contiguous path. Define the body as the head plus the min(len - 1, ring count) newest cells. Cap Kmax at 12 so the ring is a fixed \[Pos; 11\]. Teach the scripted bots that body cells block the rail.
 
-*Cost.* State +69 B (3 slots x (11 x 2 B ring + 1 B len)). State hash v2 = 1,017 B. Level +6 B (Kmax and G per slot). zk +2-4% worst case. Wedgie: 2 cell redraws per serpent move. RULES_VERSION bump, level v2 and hash v2 vectors, bots taught body blocking, recalibration.
+*Cost.* State +69 B (3 slots x (11 x 2 B ring + 1 B len)). State hash v2 = 1,017 B. Level +6 B (Kmax and G per slot). zk +2-4% worst case. RULES_VERSION bump, level v2 and hash v2 vectors, bots taught body blocking, recalibration.
 
 *Conflicts.* R4.3-4; R4.7-7; R4.7-8 (ring cleanup at capture); R4.9-1; R4.9-3; PIN-15; PIN-17; PIN-18; §6.4 state hash v1
 
@@ -166,7 +165,7 @@ The reset to len 1 on a lost life correctly stops a respawn onto a body cell. Th
 - Bound Kmax at authoring time against the rail loops it can cover, or document that a fully covered loop is intended.
 - Add a bypass-cut policy to the scripted bots before any serpent level enters a Challenge season.
 
-**Play: strong, 4 of 5.** This turns a point threat into area denial on the rail. That changes which anchors exist from moment to moment: you can't close a cut onto a body cell, and following behind a minion stops being safe. It forces the small bypass cut, which is also how you strand the serpent. Stranding by capture already exists (R4.7-8), but today it is a side effect. With serpents it becomes the main answer to an enemy. Growth on a level clock adds a slow time pressure, because the rail clogs as the level goes on. This fits Jiro well: body cells behave like the boss's body (R4.9-3), and the length resets on a lost life and on respawn, which handles the cut-start return. The cost is moderate: T3, state hash v2 and +69 B of state against about 1.2 KB of stack headroom. Per-tick cost is small. One naming problem: level 06 is already called 'serpent', which will confuse players and docs.
+**Play: strong, 4 of 5.** This turns a point threat into area denial on the rail. That changes which anchors exist from moment to moment: you can't close a cut onto a body cell, and following behind a minion stops being safe. It forces the small bypass cut, which is also how you strand the serpent. Stranding by capture already exists (R4.7-8), but today it is a side effect. With serpents it becomes the main answer to an enemy. Growth on a level clock adds a slow time pressure, because the rail clogs as the level goes on. This fits Jiro well: body cells behave like the boss's body (R4.9-3), and the length resets on a lost life and on respawn, which handles the cut-start return. The cost is moderate: T3, state hash v2 and +69 B of state. Per-tick cost is small. One naming problem: level 06 is already called 'serpent', which will confuse players and docs.
 
 *Fixes.* 1. Rename the enemy so it doesn't collide with level 06 'serpent', and keep D13 in mind, so avoid another game's title as the name. 2. Draw the head and body in different colours so the dangerous leading cell reads first. 3. Check the edge case where a serpent at a rail dead end or corner turns back into its own body; that turn should be legal and draw cleanly. 4. Consider capping Kmax at about 8 on early levels so the bypass stays a short cut. 5. Scripted bots need a bypass-and-strand routine before calibration.
 
@@ -194,7 +193,7 @@ A small enemy bounces around inside your claimed land and bites any part of your
 
 *Fixes.* Run the hit predicates on each axis sub-move, treating the intermediate cell like the fast cut's pass cell, or move the bouncer along one axis per move. Add validity: the spawn's 4-connected CLAIMED component has at least 2 cells. Register byte 4 bits 2-5 in §6.4, since other proposals claim bits 2-3.
 
-*Cost.* State about 10 B (2 x presence, x, y, vx, vy). State hash v2 about 958 B. Level about 7 B. zk under 1% (2 single-cell tests per move). Wedgie: 1 palette entry, 2 redraws per move. A new step 5b in R4.4-5. RULES_VERSION bump, level v2 and hash v2 vectors, a bouncer margin in greedy, recalibration.
+*Cost.* State about 10 B (2 x presence, x, y, vx, vy). State hash v2 about 958 B. Level about 7 B. zk under 1% (2 single-cell tests per move). A new step 5b in R4.4-5. RULES_VERSION bump, level v2 and hash v2 vectors, a bouncer margin in greedy, recalibration.
 
 *Conflicts.* R4.4-5; R4.6-3 (reused with inverted solids); R4.9-1; PIN-15; §6.4 seed byte 4 bits 2-5
 
@@ -245,7 +244,7 @@ Player::step needs the minions' cells, so its signature changes. A field of 1 to
 
 *Fixes.* Exclude only the vaulted minion's slot from the step-5 predicates, not all minions. Trigger on A's press edge (A in this tick's mask and not in the previous mask, which Game already keeps in `mask`, so no new state) rather than on A held. Optionally add a per-level vault-enable bit so that v1 levels keep their calibration.
 
-*Cost.* State 0 (hash v1 unchanged). Level +1 B for shield charges, plus an optional enable bit. A few cell and minion-position checks on ticks where A is pressed on the rail. zk negligible. Wedgie: an optional 2-cell hop effect. RULES_VERSION bump (R4.5-6, PIN-04, D6), vectors, scripted bots taught to vault (search gets it for free), recalibration of every level if the vault is not gated per level.
+*Cost.* State 0 (hash v1 unchanged). Level +1 B for shield charges, plus an optional enable bit. A few cell and minion-position checks on ticks where A is pressed on the rail. zk negligible. RULES_VERSION bump (R4.5-6, PIN-04, D6), vectors, scripted bots taught to vault (search gets it for free), recalibration of every level if the vault is not gated per level.
 
 *Conflicts.* D6; R4.5-6; R4.5-7; PIN-04; PIN-15 / R4.9-8; R4.9-15; PIN-01 (shield charges at start)
 
@@ -265,7 +264,7 @@ On the other side, 1 to 3 charges per level are forgiveness, which helps humans 
 
 *Fixes.* 1. Trigger the vault on A's press edge (A released on the previous tick, held now), the way press_tick already tracks B, so holding A never spends the charge. 2. Skip hit checks only for the vaulted minion, and refuse the vault when another minion's next rail move lands on P0+2d. 3. Show remaining charges on the HUD. 4. Ship it alongside counter-rotating patrols or pincer-heavy layouts, where it matters.
 
-*Readability.* Clear: a 2-cell hop over a single-cell minion, with an optional flash on the skipped cell. The shield count needs a small HUD element. The device needs no new palette entry.
+*Readability.* Clear: a 2-cell hop over a single-cell minion, with an optional flash on the skipped cell. The shield count needs a small HUD element.
 
 ## Zone guardian
 
@@ -294,7 +293,7 @@ Greedy homing (larger axis first, x on a tie, the other axis if blocked) gets st
 
 *Fixes.* Apply PIN-15's share, swap and pass predicates to guardians, with a and b taken around step 5c. Add that a player entering a guardian's cell at step 3 is hit. A guardian whose chosen cell is TRAIL hits the player and stays where it is, like the boss's bounce. Wake if any of P1..Pn lies in the zone. An axis with distance 0 is never the chosen step.
 
-*Cost.* State about 6 B (2 x x, y, status). State hash v2 about 954 B. Level about 14 B (2 x zone rectangle 4 B, home 2 B, period 1 B). Per tick at most 2 greedy steps, each with 2 cell tests and a boss-body bounds check: zk under 1%. Wedgie: 1 palette entry for zone-tinted EMPTY cells and 2 redraws per move. A new step 5c. RULES_VERSION bump, vectors, zone-aware greedy, recalibration.
+*Cost.* State about 6 B (2 x x, y, status). State hash v2 about 954 B. Level about 14 B (2 x zone rectangle 4 B, home 2 B, period 1 B). Per tick at most 2 greedy steps, each with 2 cell tests and a boss-body bounds check: zk under 1%. A new step 5c. RULES_VERSION bump, vectors, zone-aware greedy, recalibration.
 
 *Conflicts.* R4.4-5; R4.8-1 (capture removes guardians); R4.9-1; PIN-15; R4.9-15 (shield vs repeated hits); R4.9-17
 
@@ -380,7 +379,7 @@ Late in the level, a minion that reaches the point where your cut left the rail 
 
 **Bot effect.** Keeps the gap, perhaps widens it slightly. Boarding happens only at the cut start, in plain sight, and the patrol that will get there is visible, more so with the patrol forecast. But a human far out in the field must keep an eye on the minions' distance to the cut start, and search tracks that exactly. Scripted bots need a rule to choose cut starts away from the minions.
 
-**Budget.** No new bytes: the rider reuses the presence value 3 and the existing u16 countdown field, so the hash stays 948 bytes but changes meaning (hash v2). Level +2 bytes. Per tick: one compare and add per slot. zk negligible. Screen: rider cells drawn on the line; the client's cut log takes at most 841 bytes on the wedgie.
+**Budget.** No new bytes: the rider reuses the presence value 3 and the existing u16 countdown field, so the hash stays 948 bytes but changes meaning (hash v2). Level +2 bytes. Per tick: one compare and add per slot. zk negligible. Screen: rider cells drawn on the line; the client's cut log takes at most 841 bytes.
 
 **Variety.** Where a cut starts matters for the first time, measured against where the patrols are heading, and a cut in progress becomes a race against a pursuer you can see. Cuts get shorter after Tb, and closing becomes an attack: it destroys the chaser and buys R ticks of a minion-free rail.
 
@@ -397,7 +396,7 @@ Late in the level, a minion that reaches the point where your cut left the rail 
 
 *Fixes.* Pin the order at step 5, for each rider: gap += n; if it moves this tick, gap −= 1; if gap == 0, set the hit flag. A minion boards if its cell at the end of step 5 is the cut start while the player is cutting. A rider whose hit is absorbed by the shield is destroyed. A rider destroyed at step 6 gets countdown R + 1, so all destructions respawn R − 1 ticks after the destruction tick. Add a per-level rider period, or reuse the minion period with a minimum gap, so the chase is real at normal speed. Get the owner to amend D4. Measure the lure-and-close minion removal with search before shipping.
 
-*Cost.* Level v2 +2 B (Tb). State: no new bytes in the core's Minion enum (a Riding{gap} variant); hash v2 (948 B, presence 3). Per tick ≤3 compares and adds; boarding does one TRAIL count (3,600 reads, rare) or keeps a u16 counter. zk \<0.1%. Client: an 841 B cut log on the wedgie heap, preallocated at start; the rider is drawn as an overlay sprite. RULES_VERSION bump, vectors, playtest, calibration.
+*Cost.* Level v2 +2 B (Tb). State: no new bytes in the core's Minion enum (a Riding{gap} variant); hash v2 (948 B, presence 3). Per tick ≤3 compares and adds; boarding does one TRAIL count (3,600 reads, rare) or keeps a u16 counter. zk \<0.1%. Client: an 841 B cut log; the rider is drawn as an overlay sprite. RULES_VERSION bump, vectors, playtest, calibration.
 
 *Conflicts.* D4; R4.3-4; R4.4-10; R4.7-1; R4.7-8; R4.7-9; PIN-17; R4.9-1; R4.9-15; §5 level bytes v1; state hash v1 presence values
 
@@ -409,7 +408,7 @@ Late in the level, a minion that reaches the point where your cut left the rail 
 
 *Fixes.* State that when the shield absorbs a rider's hit, the rider is destroyed (countdown R) and the cut continues. Define the order when two minions reach the cut start on the same tick (index order, at most one rider per slot). Tune Tb per level. If bait-farming proves too strong on levels with a long R, give a snuffed rider a shorter respawn countdown.
 
-*Readability.* Good. A green minion cell on the red trail line reads clearly at 4x4, and the shrinking red stretch between the rider and the player shows the gap directly. The client needs the cut log (at most 841 bytes) to place the rider, which fits in the wedgie's 18 KB of free RAM.
+*Readability.* Good. A green minion cell on the red trail line reads clearly at 4x4, and the shrinking red stretch between the rider and the player shows the gap directly. The client needs the cut log (at most 841 bytes) to place the rider.
 
 ## Shore nibbler
 
@@ -425,18 +424,17 @@ A harmless creature walks the rail and chews notches out of land you have captur
 
 **Bot effect.** Keeps the gap, perhaps widens it slightly. The creature is harmless and fully visible, but deciding whether to chase it, recapture or commit under a falling claim is an optimisation search solves exactly and humans only approximate. Seeded randomness and hidden information are unchanged.
 
-**Budget.** No new state fields: eaten cells live in the grid and the captured count is already in the state hash, so the layout stays the same and only the meaning changes. Borrowing &Level for the obstacle bitmap avoids a 450-byte copy, which matters with the wedgie's roughly 1.2 KB of stack headroom. Per eat: 4 neighbour reads, 1 bitmap bit and the orientation step for 3 minions, about 100 operations, at most once every period x N ticks. zk negligible. Screen: 1 redraw per eat, plus the falling claim display.
+**Budget.** No new state fields: eaten cells live in the grid and the captured count is already in the state hash, so the layout stays the same and only the meaning changes. Borrowing &Level for the obstacle bitmap avoids a 450-byte copy. Per eat: 4 neighbour reads, 1 bitmap bit and the orientation step for 3 minions, about 100 operations, at most once every period x N ticks. zk negligible. Screen: 1 redraw per eat, plus the falling claim display.
 
 **Variety.** Captured progress can go backwards for the first time, which makes Commit (D5) an active decision: bank before the losses grow. It also adds a chase on the rail that is about time, not survival, and cheap recaptures: notches one cell deep close with tiny cuts. Harmless enemies are new to the game.
 
 **Core engineer: feasible with changes, 3 of 5, tier 3.** The connectivity argument holds. a is 4-adjacent to EMPTY, so the field stays one 4-connected region and D7's premise survives. Eating only adds openness, so no other rail cell loses rail status: not the player's cell, not the cut start, not another minion's cell. captured - 1 is correct, because every non-border, non-obstacle CLAIMED cell came from a capture.
-Blocking issue: at step 5 the core cannot tell an obstacle from a captured cell. The grid has a single CLAIMED value and Game keeps no Level. The wedgie natmod drops the decoded Level right after Recorder::new (wedgie/natmod/rust/src/lib.rs, line 186); only wasm (Engine.level) and replay keep it. So 'the &Level the caller already holds' is false on the device.
-The stack reasoning is also off. step peaks at 344 B, so a 450 B copy during step is harmless. The real risk would be storing the bitmap in Game, which grows start's 62,784 B peak.
+Blocking issue: at step 5 the core cannot tell an obstacle from a captured cell. The grid has a single CLAIMED value and Game keeps no Level.
 The rail now changes outside captures (R4.2-3). Re-running orientation for every minion after each eat keeps D7's after-capture argument valid. minion_hits must separate 'hit' slots from 'caught' slots.
 
-*Fixes.* Pass the obstacle bitmap (a slice of the level, or &Level) to Game::step on every target. Replay and wasm already hold it. The natmod keeps the decoded Level on its heap (472 B) or passes the app's level buffer. Do not put the bitmap in Game until M3.10's in-place constructors land. Compute period x N in u16. Mark nibblers as harmless in greedy's and CaptureBot's minion margins.
+*Fixes.* Pass the obstacle bitmap (a slice of the level, or &Level) to Game::step on every target. Replay and wasm already hold it. Compute period x N in u16. Mark nibblers as harmless in greedy's and CaptureBot's minion margins.
 
-*Cost.* No new state. State hash v1 layout unchanged (the nibbler flag and N are level constants). Level +6 B, or +4 B packed. Game::step's signature changes across the core, natmod, wasm, referee and tools. Each eat costs about 100 ops plus 3 orientation steps, at most once every period x N ticks: zk under 0.5%. Wedgie: 1 redraw per eat. RULES_VERSION bump, level v2 vectors, recalibration.
+*Cost.* No new state. State hash v1 layout unchanged (the nibbler flag and N are level constants). Level +6 B, or +4 B packed. Game::step's signature changes across the core, wasm, referee and tools. Each eat costs about 100 ops plus 3 orientation steps, at most once every period x N ticks: zk under 0.5%. RULES_VERSION bump, level v2 vectors, recalibration.
 
 *Conflicts.* R4.2-3; R4.1-8 (captured count can fall); R4.7-8 (stranding outside captures); D7 (rail changes between captures); D5; R4.9-4; PIN-15
 
@@ -457,7 +455,7 @@ Calibration: the committer policy needs a rule for a falling claim; greedy only 
 
 *Fixes.* Tie it into the cut loop: eat only while the player is cutting, or eat a 2-cell-deep bite, so erosion competes with how long you cut and notches aren't free to refill. Require a nibbler period of at least 2 so the chase works. Show the falling claim beside the target on the HUD. Give the nibbler a colour and shape that clearly read as harmless, as opposed to the minions.
 
-*Readability.* Good: one-cell notches are visible dents at 4x4 px, and each eat is one redraw. The risk is confusing it with a lethal minion on a 16-colour palette. It needs a clearly different colour or shape, or players will avoid it, or touch real minions by mistake.
+*Readability.* Good: one-cell notches are visible dents at 4x4 px, and each eat is one redraw. The risk is confusing it with a lethal minion. It needs a clearly different colour or shape, or players will avoid it, or touch real minions by mistake.
 
 ## Stall fuse on hesitation
 
@@ -473,7 +471,7 @@ Stand still in the open field and a fuse starts burning along your line from whe
 
 **Bot effect.** Uncertain; probably keeps the gap or narrows it slightly, which needs measuring against reports/bot-advantage.md. Search parks mid-cut to wait for a boss window it can foresee; a fuse proportional to trail length limits how long it can park. Humans lose the same option. It reveals nothing hidden. The discard mode is gentler on humans than on search, which rarely runs out of fuse.
 
-**Budget.** State +3 bytes (hash v2); level +3 bytes. Per tick: about 3 integer operations. zk: negligible (under 0.1%). Screen: the burnt part of the line in a new colour, 1-3 cell redraws per stalled tick; the client's cut log takes at most 841 bytes on the wedgie.
+**Budget.** State +3 bytes (hash v2); level +3 bytes. Per tick: about 3 integer operations. zk: negligible (under 0.1%). Screen: the burnt part of the line in a new colour, 1-3 cell redraws per stalled tick; the client's cut log takes at most 841 bytes.
 
 **Variety.** Parking in the field is free today (D4). A fuse turns standing still into a resource you can see, whose budget grows with the line you have drawn: a short hop has almost none, a long sweep has some. Each cut becomes a choice between committing to a route and keeping time in reserve. The discard mode costs time instead of lives, a different kind of penalty from anything in the current levels.
 
@@ -491,7 +489,7 @@ Stand still in the open field and a fuse starts burning along your line from whe
 
 *Fixes.* stall saturates at g + 1, or is stored as min(stall, g + 1). Keep L as a u16 counter that counts trail cells laid; it is derivable, so it stays out of the hash. After a discard at step 3, set P0 = cut start and n = 0 for the hit predicate. Get the owner to amend D4 and R4.5-8. Measure both modes against reports/bot-advantage.md before choosing a default.
 
-*Cost.* Level v2 +3 B (f, g, mode). State +3 B hashed (fuse u16, stall u8) +2 B derived L counter; hash v2 (951 B). Per tick ~3-5 integer ops; zk \<0.1%. Client: an 841 B cut log on the wedgie heap, 1-3 cell redraws per stalled tick, one palette entry. RULES_VERSION bump, vectors, playtest, calibration.
+*Cost.* Level v2 +3 B (f, g, mode). State +3 B hashed (fuse u16, stall u8) +2 B derived L counter; hash v2 (951 B). Per tick ~3-5 integer ops; zk \<0.1%. Client: an 841 B cut log, 1-3 cell redraws per stalled tick, one palette entry. RULES_VERSION bump, vectors, playtest, calibration.
 
 *Conflicts.* D4; R4.5-8; R4.4-8; R4.9-1; R4.9-15; PIN-15; §5 level bytes v1; state hash v1
 
@@ -503,4 +501,4 @@ Stand still in the open field and a fuse starts burning along your line from whe
 
 *Fixes.* Make the grace a pool per cut (g stall ticks in total before the fuse burns), or reset stall only after several consecutive moves, so that inching cannot defeat it. Show the grace (the trail head blinking) as well as the burnt part.
 
-*Readability.* Good. The burnt part of the trail in a second colour is readable at 4x4, but orange next to red may merge on the 16-colour LCD, so use grey or white for burnt cells. The grace countdown is invisible unless it is drawn.
+*Readability.* Good. The burnt part of the trail in a second colour is readable at 4x4, but orange next to red may merge, so use grey or white for burnt cells. The grace countdown is invisible unless it is drawn.
