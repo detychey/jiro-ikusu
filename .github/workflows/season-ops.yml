@@ -1,0 +1,59 @@
+# Season operations on Arbitrum Sepolia (plan M5.8; M5.5 adds the bot runs and the zk settlement),
+# public CI profile (plan §1.3, P14). Daily and on workflow_dispatch: season.mjs status of every
+# season of deployments/arbitrum-sepolia.json, failing when a Season is not solvent, then close and
+# withdraw, which send nothing until a season's end plus grace has passed (README §8.4). They sign
+# with TESTER_KEY: anyone may close and withdraw, so the operator's key never reaches Actions. On
+# PRs that touch season.mjs or this file: the read-only status, with no secret. A run that may send
+# transactions is never cancelled. Never a required check.
+name: season-ops
+
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  pull_request:
+    paths:
+      - 'scripts/contracts/season.mjs'
+      - '.github/workflows/season-ops.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  season-ops:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/contracts/package-lock.json
+
+      - name: Install the contract scripts
+        run: npm --prefix scripts/contracts ci
+
+      - name: Season status and solvency
+        run: |
+          echo "=== BEGIN season-status ==="
+          node scripts/contracts/season.mjs status --network arbitrum-sepolia
+          echo "=== END season-status ==="
+
+      - name: Close the seasons and withdraw the rake that are due
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          TESTER_KEY: ${{ secrets.TESTER_KEY }}
+        run: |
+          node scripts/contracts/season.mjs close --network arbitrum-sepolia
+          node scripts/contracts/season.mjs withdraw --network arbitrum-sepolia

@@ -13,11 +13,11 @@ Round F2 creates two testnet-only keys and sets them as cloud-environment variab
 | Variable | Account | Role |
 |---|---|---|
 | `DEPLOYER_KEY` | the deployer | deploys every contract; `Season`'s operator, the only address that may `open` a season (README §8.4); `Season`'s treasury on testnet (plan M4.14 step 4); and the settler, which proves and settles runs (README §7.5) |
-| `TESTER_KEY` | the tester, a separate account | the player of the bot runs: `startRun`, `revealRun`, `commitRun`; later M5.5's claim |
+| `TESTER_KEY` | the tester, a separate account | the player of the bot runs: `startRun`, `revealRun`, `commitRun`; later its claim, and the permissionless close and rake withdrawal of `season.mjs` and `season-ops.yml` (plan M5.8) |
 
 - **Never printed.** The scripts read both from the environment, check their shape (64 hex digits, with or without `0x`) without quoting them, and delete them from the environment before running any child process; the preflight prints addresses only. Never pass a key on a command line: argv is visible in `ps`.
 - **Separate.** The preflight fails if the two are the same account.
-- **Privileged.** The deployer stays the operator of this `Season` for good, and its treasury is immutable: keep the key for M5.5 and M5.6, which open the next season and withdraw the rake.
+- **Privileged.** The deployer stays the operator of this `Season` for good, and its treasury is immutable: keep the key for M5.5 and M5.6, which settle runs and open the next season.
 
 ### Funding
 
@@ -28,7 +28,7 @@ Measured on the fork ([§5](#5-fork-rehearsal)), priced at Arbitrum Sepolia's ba
 | deployer | the four deployments, `bindChallenge` and `Season.open` (5,937,947 gas on the fork), one `settleRun` of a bot run (530,143 on the fork for the fixture run; a whole bot run's longer journals add calldata, up to about 1,000,000) | about 7.0 million | 0.00014 | **0.01 ETH** |
 | tester | up to 4 runs: up to 3 happy-path runs until one clears (step 7) and the full commit (step 8), each 0.00005 ETH of fee; per run about 230,000 gas for `startRun` and `revealRun`, a bot run's `commitRun` up to about 200,000, and the full commit's 1,940,060 | about 3.5 million | 0.00007 gas + 0.0002 fees | **0.01 ETH** |
 
-0.01 ETH each is about 70 times the deployer's cost and 37 times the tester's at today's price: it covers a base fee up to about 1.4 gwei, a second generation (§4), M5.5's claim and testnet-0 rehearsal, and the bot runs `season-ops.yml` makes from `TESTER_KEY` later. Fund both from an Arbitrum Sepolia faucet, or bridge Sepolia ETH through Arbitrum's bridge. The preflight fails on an empty account; check the balances it prints against this table.
+0.01 ETH each is about 70 times the deployer's cost and 37 times the tester's at today's price: it covers a base fee up to about 1.4 gwei, a second generation (§4), M5.8's testnet-0 rehearsal, and the bot runs `season-ops.yml` makes from `TESTER_KEY` later. Fund both from an Arbitrum Sepolia faucet, or bridge Sepolia ETH through Arbitrum's bridge. The preflight fails on an empty account; check the balances it prints against this table.
 
 ### Tools
 

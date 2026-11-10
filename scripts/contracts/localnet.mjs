@@ -104,7 +104,7 @@ async function openLocalSeason(season, referee) {
 }
 
 /** Deploys the full set, opens the local season and returns the generation that records both. */
-async function deployLocalnet(artifacts, provider, rpc) {
+export async function deployLocalnet(artifacts, provider, rpc) {
   const deployer = await provider.getSigner(0);
   const treasury = await (await provider.getSigner(1)).getAddress();
   const generation = await deployContracts({
@@ -159,7 +159,8 @@ export function eventOf(contract, receipt, name) {
   return event.args;
 }
 
-async function checkHappyPath(artifacts, provider, generation) {
+/** Plays, commits and settles a run of anvil's account 2, checked against the vectors; returns its id. */
+export async function checkHappyPath(artifacts, provider, generation) {
   const [deployer, player, settler] = await Promise.all([0, 2, 3].map((index) => provider.getSigner(index)));
   const playerAddress = await player.getAddress();
   const number = generation.seasons[SEASON_LABEL];
@@ -213,6 +214,7 @@ async function checkHappyPath(artifacts, provider, generation) {
   assertEqual("the season's fees", (await season.seasons(number)).fees, LOCAL_SEASON.runFee);
   assertEqual("Season.isSolvent()", await season.isSolvent(), true);
   console.log(`localnet --check: run ${runId} settled, score ${score}, ticks ${ticks}, clears ${clears}: every result matches the vectors`);
+  return runId;
 }
 
 async function up(port, backend) {
