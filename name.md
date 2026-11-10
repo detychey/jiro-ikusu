@@ -1,7 +1,7 @@
 Japan:
 
 
-ジロイクス (Jirō-ikusu)
+ジロイクス (Jiro-ikusu)
 
 
 China:

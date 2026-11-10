@@ -1,2 +1,4 @@
 *.trace binary
 levels/src/*.txt text eol=lf
+brand/src/*.txt text eol=lf
+web/public/**/*.svg text eol=lf

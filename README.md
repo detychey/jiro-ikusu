@@ -2,7 +2,7 @@
 
 A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It plays in the browser; a phone version comes later. An independent training app is available for the [wedgie](https://wedgie.dev/) and maintained [here](https://github.com/jdetychey/jiro-ikusu-wedgie). 
 
-Play the browser build of `main` at [jiro-ikusu.win](https://jiro-ikusu.win). Every pull request that touches the game gets its own preview, linked in a comment on the pull request.
+Play the browser build of `main` at [jiro-ikusu.win](https://jiro-ikusu.win). Every pull request that touches the game gets its own preview, linked in a comment on the pull request. A preview of the new visual identity is served at [jiro-ikusu.win/wipui](https://jiro-ikusu.win/wipui/) ([`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md)).
 
 > **Status: rules frozen (milestone M0, 2026-10-28); the browser game is done (milestone M2, 2026-10-31): all 16 levels, calibrated with bots, play in Training with local scores. The core is done (milestone M1, 2026-11-02): golden vectors, property tests, RISC Zero chosen as the zkVM with its cycle counts recorded, and the native build, wasm and RISC Zero's executor agreeing on random games. The referees and the contracts are done (milestone M4, 2026-11-09): the zk referee over RISC Zero's Groth16 verifier, and the contracts deployed on Arbitrum Sepolia, where a bot run was proven and settled end to end ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). A phone version comes later (M3, not scheduled; [§13](#13-open-decisions) D1).** This README is the project specification. It grew out of an original draft, and it fixes the parts of that draft that would break determinism or the economics, and records the decisions, taken and still open, in [§13](#13-open-decisions). A rule tied to a decision is tagged with its ID, e.g. *(D3)*.
 
@@ -879,6 +879,8 @@ M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`]
 - [`skills-import.md`](skills-import.md): the ethskills import, with each skill's source, fetch date and checksum.
 - [`TODO.md`](TODO.md): deferred work, starting with Superchallenge mode.
 - [`name.md`](name.md): the name in Japanese and Chinese.
+- [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md): the style guide, with the name in three scripts, colors, type, logo, banner and icons, and the rules for using them.
+- [`brand/`](brand/): the identity's text sources and `build.mjs`, which builds the logo, banner and icons into `web/public/`.
 - [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md): the work breakdown of milestones M0 to M5.
 - [`CLAUDE.md`](CLAUDE.md): the project instructions every agent session loads.
 - [`.claude/AGENTS_COMETH.md`](.claude/AGENTS_COMETH.md): Cometh's code philosophy, imported by `CLAUDE.md`.
