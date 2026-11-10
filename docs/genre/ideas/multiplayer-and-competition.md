@@ -255,7 +255,7 @@ Browser Training for two on one keyboard. In co-op, both players claim the same 
 
 **Inspired by:** Moonlight Territory (2026), Cacoma Knight in Bizyland (1992), XONIX 1984 2 player remake (2024), Glowfield (2026), Illgen (1989), Paint Roller (Gakken) (1982). **Mechanic families:** [Simultaneous co-op capture](../taxonomy/multiplayer-and-competition.md#simultaneous-co-op-capture), [Simultaneous shared-field versus capture](../taxonomy/multiplayer-and-competition.md#simultaneous-shared-field-versus-capture), [Simultaneous two-player play](../taxonomy/multiplayer-and-competition.md#simultaneous-two-player-play), [Player-controlled enemies (asymmetric versus)](../taxonomy/multiplayer-and-competition.md#player-controlled-enemies-asymmetric-versus), [Computer rival claimers](../taxonomy/multiplayer-and-competition.md#computer-rival-claimers). **Touches:** journal, input, rules, state-hash, presentation, tools-bots.
 
-**Decisions it reopens:** D8; D15; D4; D5; D14; §6.3 mode and tick order; R4.4-5.
+**Decisions it reopens:** D8; D4; D5; D14; §6.3 mode and tick order; R4.4-5.
 
 **Bot effect.** No effect on Challenge or D14: the mode is Training only, and journals with mode 3 are rejected by the referee. A scripted bot can play the second spark (its inputs are recorded as P2 events, so a replay stays exact), which also gives a solo co-op practice mode. No effect on the gap in paid play.
 
@@ -269,7 +269,7 @@ Browser Training for two on one keyboard. In co-op, both players claim the same 
 
 *Cost.* Game about +20 B (a second Player, its mask, the hunt cooldown), plus 450 B for claim war. Journal v2: bit 7 marks P2, two events may share a tick. State hash v2 (about +16 B) for mode 3. Per tick: a second player step, and up to 2× the worst tick when two captures land in one tick (browser only). Core code about +2 to 4 KB, which must be gated off the guest. zk 0. RULES_VERSION bump. Three sets of rule text and vectors, a P2 bot, a two-player keyboard UI.
 
-*Conflicts.* D4; D5; D6; D8; D15; R4.4-5; R4.10-1; §6.1 bit 7; §6.2 event order; §6.3 mode; §6.4 state hash v1
+*Conflicts.* D4; D5; D6; D8; R4.4-5; R4.10-1; §6.1 bit 7; §6.2 event order; §6.3 mode; §6.4 state hash v1
 
 **Fairness: ok, 4 of 5; gap neutral; D14 compliant.** Training only. The referee rejects mode 3, and Challenge settlement already requires mode = 1, so there is no effect on paid fairness, D14 or the gap. Hunt mode turning deflections off is acceptable for the same reason. Scripted bots can play the second spark, and its inputs are journaled, so replays stay exact. The real risk is to the consensus surface, not fairness. The decoder, the state hash and the core are the same code the zk guest runs. Bit 7 and same-tick events must stay invalid in modes 0-1 (code 10, strictly increasing ticks). If state hash v2 also changes the hash of solo games, every committed vector's trace moves. By CLAUDE.md that is a behavior change, which forces a RULES_VERSION bump and a new season for a mode no paid run uses.
 

@@ -312,7 +312,7 @@ Two players share one field and one boss. Race for ground, slice through your ri
 
 *Cost.* Browser only: Player +12 B, ownership 900 B (2 bits per cell), state hash v2 about 1,400 B (1,350 B grid at 3 bits), journal v2 with 4 B events (a 10,800 B buffer). Per tick about twice the player step and the hit predicate. A second capture rule set and renderer, two colours. No zk cost only if feature-gated. A new journal mode, vectors for it, and no calibration (Training).
 
-*Conflicts.* D5; D15; R4.8-3; R4.8-4; R4.9-1; R4.9-17; R4.10-1; §6.3 journal v1 mode byte; §6.4 state hash v1
+*Conflicts.* D5; R4.8-3; R4.8-4; R4.9-1; R4.9-17; R4.10-1; §6.3 journal v1 mode byte; §6.4 state hash v1
 
 **Fairness: ok, 4 of 5; gap neutral; D14 compliant.** This is a browser-only Training mode, so the paid-mode questions mostly do not apply. No weights, no draw and no pot depend on it, and the pitch is right that two inputs and a head-to-head search bot keep it out of Challenge. What does apply is the risk to the shared referee core. Ownership in grid bits 6-7 means every cell-state comparison in the one core must mask those bits, including the capture pass and the rail test that Challenge runs through. A masking bug there would change paid outcomes. Moving to state hash v2 and journal v2 everywhere would also force a new season and a recalibration for a mode that pays nothing. Scripted bots are not needed, since there is no calibration. It adds no variance to the draw.
 

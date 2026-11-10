@@ -2,7 +2,7 @@
 
 The 7 ideas proposed from the lens *presentation*: presentation only (tier T0), in the browser. Sorted by score. The [index](../IDEAS.md) lists every idea by tier and score, and [`README.md`](../README.md#the-taxonomy-and-the-ideas) explains the judges.
 
-## Edge-line HUD with commit readout
+## Commit readout HUD
 
 `presentation#8` · T0 Presentation · score 12 (core 4, fairness 5, play 3) · gap: narrows · D14: compliant
 
@@ -22,7 +22,7 @@ The browser HUD shows what pressing X would bank now compared with what a clear 
 
 **Merged from:** `reveal-and-presentation#3`. Variants:
 
-- Border gauges and commit readout: In the browser, the HUD adds the cells still needed for the target and the points a commit would bank now.
+- Gauges and commit readout: In the browser, the HUD adds the cells still needed for the target and the points a commit would bank now.
 
 **Core engineer: feasible, 4 of 5, tier 0.** level_score exists in core/src/replay.rs and takes the end reason, so 'X banks' is level_score(claim, weight, Committed). Weights are public season parameters, so showing 'x1.37' in Challenge leaks nothing. The toggle never stops the clock, so D8's reason (no free thinking time) holds, and only its wording changes.
 

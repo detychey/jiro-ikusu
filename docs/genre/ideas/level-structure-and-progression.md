@@ -46,7 +46,7 @@ After the reveal, the six drawn levels lie face up as cards. The player picks wh
 
 **Bot effect.** Neutral for the search bot, whose score does not depend on play order. A human gains a little from warm-up and from choosing when to face the hardest level. Neutral to slightly narrowing. D14 is unchanged because seeds and journals are the same.
 
-**Budget.** Browser only, since Challenge is browser-only (D15). No per-tick work, no zk cycles. Six cards drawn once between levels.
+**Budget.** Browser only, since Challenge is browser-only (D1). No per-tick work, no zk cycles. Six cards drawn once between levels.
 
 **Variety.** Adds the first run-level pacing decision. Today the six levels play in a fixed order and the run has no shape the player controls.
 
@@ -54,7 +54,7 @@ After the reveal, the six drawn levels lie face up as cards. The player picks wh
 
 *Fixes.* None needed. Compute the auto-start delay from the remaining slack, not a fixed 10 s, so a slow reveal transaction cannot make the run late.
 
-*Cost.* Browser only (D15): six cards drawn between levels and a store change. 0 per-tick work, 0 zk, no format, rules or vector changes.
+*Cost.* Browser only (D1): six cards drawn between levels and a store change. 0 per-tick work, 0 zk, no format, rules or vector changes.
 
 *Conflicts.* §7.4 fresh entropy per level (designed upgrade)
 
