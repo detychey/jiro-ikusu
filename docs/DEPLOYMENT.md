@@ -15,7 +15,7 @@ Round F2 creates two testnet-only keys and sets them as cloud-environment variab
 | `DEPLOYER_KEY` | the deployer | deploys every contract; `Season`'s operator, the only address that may `open` a season (README §8.4); `Season`'s treasury on testnet (plan M4.14 step 4); and the settler, which proves and settles runs (README §7.5) |
 | `TESTER_KEY` | the tester, a separate account | the player of the bot runs: `startRun`, `revealRun`, `commitRun`; later M5.5's claim |
 
-- **Never printed.** The scripts read both from the environment, check their shape without quoting them, and delete them from the environment before running any child process; the preflight prints addresses only. Never pass a key on a command line: argv is visible in `ps`.
+- **Never printed.** The scripts read both from the environment, check their shape (64 hex digits, with or without `0x`) without quoting them, and delete them from the environment before running any child process; the preflight prints addresses only. Never pass a key on a command line: argv is visible in `ps`.
 - **Separate.** The preflight fails if the two are the same account.
 - **Privileged.** The deployer stays the operator of this `Season` for good, and its treasury is immutable: keep the key for M5.5 and M5.6, which open the next season and withdraw the rake.
 
@@ -183,7 +183,7 @@ From `deployments/arbitrum-sepolia.json`: `deployedAt` 2026-11-09T12:14:37.563Z,
 
 ### Deviations from §2
 
-- **The keys** are set without the `0x` prefix that the scripts check for. The session ran every script with `DEPLOYER_KEY="0x${DEPLOYER_KEY#0x}"` (and the same for `TESTER_KEY`) in that command's environment, so neither key went on a command line.
+- **The keys** are set without the `0x` prefix that the scripts then checked for. The session ran every script with `DEPLOYER_KEY="0x${DEPLOYER_KEY#0x}"` (and the same for `TESTER_KEY`) in that command's environment, so neither key went on a command line. The scripts now accept a key with or without `0x`.
 - **`e2e.mjs` recompiled the `zk-host` crate** for 1 min 28 s at the start of step 5, with the same `cargo build` as §1. The image id was unchanged, and `ZkReferee.imageId()` still matched.
 
 ## 4. Redeploy and generations

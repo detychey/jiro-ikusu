@@ -16,7 +16,7 @@ import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { Contract, Wallet, getAddress } from "ethers";
 import { readProgramTimeLeft } from "./activation.mjs";
-import { JIRO_TOOLS, NETWORKS, REPO_ROOT, assertPrivateKey, connect, deploymentFileOf, sendTransaction } from "./deploy.mjs";
+import { JIRO_TOOLS, NETWORKS, REPO_ROOT, connect, deploymentFileOf, privateKeyOf, sendTransaction } from "./deploy.mjs";
 import { isEntryPoint, readDeploymentRecord, recordSeason } from "./deployments.mjs";
 import { eventOf } from "./localnet.mjs";
 
@@ -141,10 +141,9 @@ async function main() {
   }
   const network = values.network;
   const provider = await connect(network, values.rpc ?? NETWORKS[network].rpc);
-  const deployerKey = process.env.DEPLOYER_KEY;
+  const deployerKey = network === "local" ? undefined : privateKeyOf("DEPLOYER_KEY", process.env.DEPLOYER_KEY, network);
   // No child needs it: the level tool runs from here.
   delete process.env.DEPLOYER_KEY;
-  if (network !== "local") assertPrivateKey("DEPLOYER_KEY", deployerKey, network);
   const operator = network === "local" ? await provider.getSigner(0) : new Wallet(deployerKey, provider);
   await openSeason({ provider, operator, seasonFile: values.season, recordFile: deploymentFileOf(network) });
   provider.destroy();
