@@ -8,7 +8,7 @@ import type { Contracts } from "../src/chain/contracts";
 import { type Core, fromHex, hex } from "../src/core";
 import { type Control, DEFAULT_BINDINGS, HeldKeys } from "../src/input";
 import type { RunEnv } from "../src/run/flow";
-import { closeLevel, type PlayEnv, type PlayState, runLevels } from "../src/run/play";
+import { closeLevel, type PlayEnv, type PlayState, playLevels, runLevels } from "../src/run/play";
 import { openRunStore, type RunRecord, type RunStore } from "../src/run/store";
 import { repo } from "./drive";
 
@@ -46,6 +46,19 @@ export function closedRun(core: Core, levels: Uint8Array[]): RunRecord {
   const record = revealedRun(core);
   const closed = (level: Uint8Array, levelIndex: number) => closeLevel(core, level, fromHex(RUN_NONCE), { levelIndex, events: [], ticks: 0 });
   return { ...record, journals: runLevels(record, levels).map((level, levelIndex) => hex(closed(level, levelIndex))) };
+}
+
+/** Controls that claim a little of each level, then commit it at tick 60. */
+const CLAIM_STEPS: [number, Control[]][] = [
+  [0, ["up"]],
+  [40, ["right"]],
+  [60, ["x"]],
+];
+
+/** `revealedRun` with its six levels played by CLAIM_STEPS. */
+export async function playedRun(core: Core, levels: Uint8Array[]): Promise<RunRecord> {
+  const env = playEnv(core, (await freshStore()).store, levels, { controls: (_, tick) => CLAIM_STEPS.find(([at]) => at === tick)?.[1] });
+  return playLevels(env, revealedRun(core));
 }
 
 export async function freshStore(): Promise<{ factory: IDBFactory; store: RunStore }> {

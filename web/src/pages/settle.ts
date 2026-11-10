@@ -10,10 +10,11 @@
 import { isError, keccak256 } from "ethers";
 import { chainErrorMessage, confirmed, type Contracts } from "../chain/contracts";
 import type { Deployment } from "../chain/deployments";
-import { type Core, type Outcome, RUN_LEVELS } from "../core";
+import { type Core, RUN_LEVELS } from "../core";
 import { downloadJson, element, messageOf } from "../page";
 import { isOnTime } from "../run/deadline";
-import { type RunFile, replayRunFile, runFileOf } from "../run/runfile";
+import { ranksAbove, type RunScore, scoreRun } from "../run/rank";
+import { type RunFile, runFileOf } from "../run/runfile";
 import type { RunRecord, RunStore } from "../run/store";
 
 /** Tries of a settlement that fails for the network, not for a revert. */
@@ -21,38 +22,15 @@ export const SETTLE_ATTEMPTS = 3;
 /** Challenge's SettlementStatus. */
 export const SETTLEMENT_STATUS = ["unsettled", "settled", "late"] as const;
 
-export interface RankedRun {
+export interface RankedRun extends RunScore {
   record: RunRecord;
   file: RunFile;
-  outcomes: Outcome[];
-  score: number;
-  ticks: number;
-  clears: number;
-  qualified: boolean;
-}
-
-/** D10's order (README §8.4): a qualifying run ranks above one that does not, then the higher
- *  score, then fewer ticks. */
-export function ranksAbove(run: Pick<RankedRun, "qualified" | "score" | "ticks">, other: Pick<RankedRun, "qualified" | "score" | "ticks">): boolean {
-  if (run.qualified !== other.qualified) return run.qualified;
-  if (run.score !== other.score) return run.score > other.score;
-  return run.ticks < other.ticks;
 }
 
 /** A committed run, replayed with its season's weights, as settlement would score it. */
 export function rankedRun(core: Core, levels: readonly Uint8Array[], record: RunRecord, minClears: number): RankedRun {
   const file = runFileOf(record, levels);
-  const outcomes = replayRunFile(core, file, record.weightsBp);
-  const clears = outcomes.filter(({ endReason }) => endReason === "Cleared").length;
-  return {
-    record,
-    file,
-    outcomes,
-    score: outcomes.reduce((sum, { levelScore }) => sum + levelScore, 0),
-    ticks: outcomes.reduce((sum, { ticksUsed }) => sum + ticksUsed, 0),
-    clears,
-    qualified: clears >= minClears,
-  };
+  return { record, file, ...scoreRun(core, file, record.weightsBp, minClears) };
 }
 
 /** The best of `records` in season `season`: committed, on time by the contract's deadline, and

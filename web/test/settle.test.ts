@@ -7,31 +7,21 @@ import { describe, expect, it } from "vitest";
 import { CHALLENGE_ABI } from "../src/chain/bindings/Challenge";
 import type { Contracts } from "../src/chain/contracts";
 import type { Deployment } from "../src/chain/deployments";
-import type { Control } from "../src/input";
-import { bestRun, operatorHandoff, ranksAbove, settleOnchain, settlesInBrowser } from "../src/pages/settle";
-import { playLevels } from "../src/run/play";
+import { bestRun, operatorHandoff, settleOnchain, settlesInBrowser } from "../src/pages/settle";
+import { ranksAbove } from "../src/run/rank";
 import { runFileOf } from "../src/run/runfile";
 import type { RunRecord } from "../src/run/store";
-import { closedRun, freshStore, playEnv, revealedRun, shippedLevels } from "./challenge";
+import { closedRun, playedRun, shippedLevels } from "./challenge";
 import { loadEngine } from "./drive";
 
 const CHALLENGE = new Interface(CHALLENGE_ABI);
 const LEVELS = shippedLevels();
 const core = await loadEngine();
-const STEPS: [number, Control[]][] = [
-  [0, ["up"]],
-  [40, ["right"]],
-  [60, ["x"]],
-];
 
 function committed(record: RunRecord, runId: string, committedAt = 1_100): RunRecord {
   return { ...record, runId, commit: { committedAt } };
 }
 
-async function playedRun(): Promise<RunRecord> {
-  const env = playEnv(core, (await freshStore()).store, LEVELS, { controls: (_, tick) => STEPS.find(([at]) => at === tick)?.[1] });
-  return playLevels(env, revealedRun(core));
-}
 
 describe("the best run", () => {
   it("ranks a qualifying run above a higher score that does not qualify", () => {
@@ -47,12 +37,12 @@ describe("the best run", () => {
   });
 
   it("is the season's committed run with the highest score", async () => {
-    const records = [committed(closedRun(core, LEVELS), "1"), committed(await playedRun(), "2")];
+    const records = [committed(closedRun(core, LEVELS), "1"), committed(await playedRun(core, LEVELS), "2")];
     expect(bestRun(core, LEVELS, records, 1n, 6)?.record.runId).toBe("2");
   });
 
   it("leaves out a run of another season", async () => {
-    const records = [committed(closedRun(core, LEVELS), "1"), { ...committed(await playedRun(), "2"), season: "2" }];
+    const records = [committed(closedRun(core, LEVELS), "1"), { ...committed(await playedRun(core, LEVELS), "2"), season: "2" }];
     expect(bestRun(core, LEVELS, records, 1n, 6)?.record.runId).toBe("1");
   });
 
@@ -61,7 +51,7 @@ describe("the best run", () => {
   });
 
   it("leaves out a run committed after its deadline", async () => {
-    const records = [committed(closedRun(core, LEVELS), "1"), committed(await playedRun(), "2", 1_000_000)];
+    const records = [committed(closedRun(core, LEVELS), "1"), committed(await playedRun(core, LEVELS), "2", 1_000_000)];
     expect(bestRun(core, LEVELS, records, 1n, 6)?.record.runId).toBe("1");
   });
 });
