@@ -1,4 +1,4 @@
-//! Display helpers shared by the browser and the device. Nothing here is consensus: it is never
+//! Display helpers for the browser. Nothing here is consensus: it is never
 //! hashed, and replay never runs it.
 
 #![no_std]

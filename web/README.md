@@ -223,8 +223,8 @@ node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --players 2 --set
 
 ## Controls
 
-The defaults are the arrow keys for the joystick, and the keys A, B and X for the device keys of
-the same names: A cuts fast, B slows the player behind the shield, X banks the level (README §2).
+The defaults are the arrow keys for the four directions, and the keys A, B and X for the game's
+buttons of the same names: A cuts fast, B slows the player behind the shield, X banks the level (README §2).
 The Controls panel rebinds each control to any key and refuses a key already bound to another
 control. Bindings are stored in the browser's localStorage when it is available. The journal
 records controls, not keys, so a binding never changes a game's outcome (D8).

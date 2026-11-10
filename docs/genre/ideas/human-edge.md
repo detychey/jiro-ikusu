@@ -1,0 +1,330 @@
+# Ideas: human edge
+
+The 7 ideas proposed from the lens *human edge*: mechanics that reward human strengths (reading patterns, timing, nerve, planning under pressure) without safe zones or precomputable games. Sorted by score. The [index](../IDEAS.md) lists every idea by tier and score, and [`README.md`](../README.md#the-taxonomy-and-the-ideas) explains the judges.
+
+## Boss turn tells
+
+`human-edge#1` · T0 Presentation · score 12 (core 4, fairness 4, play 4) · gap: narrows · D14: compliant
+
+The boss shows when it is about to turn. A notch flashes on the side of its body about a second before each seeded deflection, a soft click marks each boss move, and an optional faint trace shows where the body goes next if nothing changes. Players read and time the boss instead of guessing.
+
+**Rule sketch.** No core change. At level start the client reads the deflection key (level seed bytes 5..8, already held by the core; expose a read-only getter in jiro-wasm or derive it in JS from the level seed). After each core step, the client projects the boss from (x, y, vx, vy, move period) over a read-only view of the current grid. For each future tick u > t with u % period == 0, up to K = 16 moves, it applies R4.6-7 (r = fmix32(key XOR u) >> 26) and then R4.6-3, treating TRAIL like CLAIMED (a bounce) and marking that move red, because the real game hits the player there. It draws: (a) a tell on the body's x-edge (r = 0) or y-edge (r = 1), shown from L = 8 moves before the deflecting move with a countdown; (b) optionally the projected top-left path, one fading dot per move; (c) audio: a click per boss move and a rising tone when a tell appears. Minion preview: the next 6 rail cells of each live minion by R4.7-2 on the current rail, exact until the next capture, and a countdown over each destroyed minion's respawn cell. The projection is exact until the player's own trail or a capture changes the grid, and the overlay labels it 'if nothing changes'. Training and Challenge use the same client, with the overlay on by default.
+
+**Inspired by:** Kritter Krawler (2009), Moonlight Territory (2026), Neon Divide (2026), Lightspace (2026), Orbis: Bubble Fill Reflex Game (2026), Project Uncover (2026), Gal Pani X (2002 (demo 2000)), VoidMania (2026), Fly Trap: Territory Game (2026). **Mechanic families:** [Telegraphed attacks and readable tells](../taxonomy/field-enemies.md#telegraphed-attacks-and-readable-tells), [Beat-synced enemy movement](../taxonomy/field-enemies.md#beat-synced-enemy-movement), [Patterned and scripted movers](../taxonomy/field-enemies.md#patterned-and-scripted-movers), [Shape-coded enemies](../taxonomy/reveal-and-presentation.md#shape-coded-enemies), [Unlockable hitbox display](../taxonomy/modes-and-meta.md#unlockable-hitbox-display), [Danger-reactive music](../taxonomy/reveal-and-presentation.md#danger-reactive-music). **Touches:** presentation.
+
+**Bot effect.** Narrows the gap from the human side; search's score does not change. D14's deflections are invisible randomness to a human but perfect knowledge to the search bot, which steps the core on a copy. Every seeded draw therefore widens the information gap by construction, and a tell hands that information back. The gap splits into two parts. Errors take the reference mix to greedy (65.7k to 103.7k, 1.58x). Prediction and precision take greedy to search (1.29x). Greedy keeps a safety margin from the boss instead of predicting it, and still reaches 77% of the ceiling against search's 98.5%. That margin-versus-prediction difference is what the forecast returns to humans, for the next 1 to 3 s. It cannot return frame-perfect execution or the two-capture finisher search. The browser client is open, so any player can already build this overlay; shipping it also makes humans equal to each other. It adds no safe zone: the forecast is per seed and per tick.
+
+**Budget.** Core and zk: nothing. Browser: at most 16 fmix32 calls and 32 edge tests of B cells per tick, under a microsecond in wasm, plus a 32-byte client buffer.
+
+**Variety.** Turns the boss from noise into a readable rhythm. New choices: start a cut the moment a tell shows the boss leaving a corridor, time a bait cut against a telegraphed turn, pick between two cut starts by which one the next turn favours. None of the 16 levels currently rewards reading the boss beyond its current heading.
+
+**Merged from:** `field-enemies#1`, `presentation#4`. Variants:
+
+- Boss forecast and turn tells: The boss shows what it will do next. Its leading side flashes a beat before a seeded quarter turn, a short dotted path shows its next few moves on the board as it stands now, and a click sounds on every boss move, with a higher tone before a turn. Players time their cuts to turns they can see coming instead of guessing.
+- Boss tells: heading eyes and turn wind-up: Two eyes on the boss's leading corner show which diagonal it is travelling. Each seeded quarter-turn is announced about 0.4 s ahead: the eyes glance toward the new side, and the body flashes as it turns.
+
+**Core engineer: feasible with changes, 4 of 5, tier 0.** The tell timing is a pure function of the key and the tick (R4.6-11). That is better than the pitch claims: tells are exact whatever the grid, and only the path depends on the board. A deflection toward a blocked edge is undone on the same move (R4.6-10), so a tell can announce a turn that never shows. Treating TRAIL as a bounce is what Boss::step does, and it is exact when the shield absorbs the hit (R4.9-15 keeps the trail). Without the shield, the projection past the first red move is fiction. The real problem is the implementation path. 'Derive it in JS from the level seed', then applying R4.6-7 and R4.6-3 in the client, re-implements fmix32, the edge test and the §6.4 keccak seed derivation outside the core. Any later RULES_VERSION change would then show a false future in a paid mode. Boss.deflection_key is already a pub field, so the core needs no getter. Minion respawn countdowns are exact only until the next capture, since R4.7-7 picks the cell at respawn time. This overlaps [reveal-and-presentation#1](reveal-and-presentation.md#boss-path-forecast-overlay) almost entirely.
+
+*Fixes.* Project the boss in jiro-shell by stepping a Copy of the core's Boss with the pub Boss::step, as #1 does. Export it through jiro-wasm. Never re-derive the key or re-implement R4.6-3, R4.6-7 or R4.6-9 in JS. Show a tell only when the projected move changes heading, or mark a tell that a wall will cancel. Merge with #1 as one overlay.
+
+*Cost.* Core: none. zk: 0 cycles. Browser: at most 16 Boss::step calls on a copy per tick, under 10 us in wasm, plus a 32-byte buffer.
+
+*Conflicts.* README §3 one core (only if the projection or the seed and key derivation is written in JS)
+
+**Fairness: ok, 4 of 5; gap narrows; D14 compliant.** D14 holds: the projection is per seed and per tick, and deflections stay unlearnable across runs. The gap narrows by the same mechanism as [reveal-and-presentation#1](reveal-and-presentation.md#boss-path-forecast-overlay). Two problems. (1) The pitch allows deriving the key in JS and applying R4.6-7 and R4.6-3 in the client. That is a second implementation of a core rule, against 'rules live once'. A forecast that differs from the core in one edge case misleads paid players at the worst moment. (2) The lead and the horizon are counted in boss moves (L = 8, K = 16). On open and sentry (period 3) that is 24/48 ticks, 1.6/3.2 s. On the twelve period-1 levels it is 8/16 ticks, 0.53/1.07 s, and those are the hard, heavily weighted levels. The help is therefore uneven across the draw and smallest where the weights are highest, which shifts per-level human difficulty against the bot-calibrated weights. Bots and calibration are unaffected.
+
+*Fixes.* Project with copies of the core's Boss through jiro-wasm, as [reveal-and-presentation#1](reveal-and-presentation.md#boss-path-forecast-overlay) does. Expose the deflection key through a read-only getter and never derive it in JS. Count L and K in ticks (for example a 15-tick tell lead and a 30-tick path), so every level gives the same reaction window. Pin the settings per season. Merge with [reveal-and-presentation#1](reveal-and-presentation.md#boss-path-forecast-overlay) rather than ship both.
+
+**Play: strong, 4 of 5.** This is the best fit among the presentation ideas. Telegraphing a random event is classic arcade design. It keeps D14's purpose: no safe zones, and the draws stay per seed and per tick. It still turns the 1-in-32 quarter turn from noise into something a player can anticipate. New micro-decisions: start a cut the moment a tell shows the boss leaving a corridor, time a bait against a telegraphed turn, pick between two cut starts by which one the next turn favours. None of the 16 levels rewards reading the boss beyond its current heading. It needs no core change. It works in Training and Challenge alike, and an open client could build it anyway, so shipping it levels the field among humans. Two weak spots. L = 8 moves is 0.53 s at boss period 1 (levels 05-16) but 1.6 s at period 3, so the 'about a second' in the pitch holds only on the easy levels. And a click on every boss move is a 15 Hz buzz at period 1.
+
+*Fixes.* Set the tell lead time in ticks (about 12-15) instead of moves, so it reads the same at every boss period. Simulate the edge tests and tell only deflections that take effect (R4.6-10 undoes some). Play audio only on tells, turns and bounces, not every move. Keep the faint path off by default in Challenge. The tell alone carries the value without killing the tension.
+
+*Readability.* Good. The tell lights one B-cell edge of a 20-32 px body in one existing palette entry, which is clearly visible at 4x4 px and needs only partial redraws.
+
+## Abandon a cut on demand
+
+`human-edge#7` · T4 Input or journal · score 11 (core 4, fairness 4, play 3) · gap: narrows · D14: compliant
+
+Y abandons the cut in progress: the trail vanishes and you are back where it started, at the cost of your shield charge. A misread becomes survivable once per level, and the shield becomes a choice between absorbing a hit and walking away.
+
+**Rule sketch.** Journal v2 makes mask bit 7 = Y (6.1's reserved bit). The browser journals it, and vectors are regenerated. New rule at step 3 (Player), before direction resolution: if the player is cutting, Y is held and shield charges > 0, the trail is erased and the player returns to the cut start and stops cutting, as in R4.9-17 but with no life lost and no invulnerability. Shield charges drop by 1 and the player takes no sub-step this tick. With no charge left, Y does nothing. X at step 2 still wins. Y held on the rail does nothing; Y held as a cut starts bails it on the next tick, so a player releases Y to cut. The trail is gone before step 4, so a boss that would have bumped it this tick does not hit. The rule adds no state field: it reuses the shield charge (state hash v1), and the input-mask byte of the state hash already carries bit 7. Option: a separate bail_charges level field (format v2) and player field (state hash v2), to allow 2 bails per level without touching the shield.
+
+**Inspired by:** In My Imagination (2026), Neon Capture (2026), Demon Wreath (2025), Volfied (1989), Perestroika Girls (1993), Late (2005), Jezz Mania: Better Jezzball (2021), Claim (DaNuTree) (2026), Gapper (1986). **Mechanic families:** [Hold-to-cut button](../taxonomy/controls-time-and-pacing.md#hold-to-cut-button), [Tap-pattern abilities](../taxonomy/controls-time-and-pacing.md#tap-pattern-abilities), [Retreat along the open trail (retractable trail)](../taxonomy/movement-and-drawing.md#retreat-along-the-open-trail-retractable-trail), [Committed vs cancellable cuts](../taxonomy/movement-and-drawing.md#committed-vs-cancellable-cuts), [Shoot your own trail to escape](../taxonomy/movement-and-drawing.md#shoot-your-own-trail-to-escape), [Score spent on safety actions](../taxonomy/scoring-and-risk.md#score-spent-on-safety-actions). **Touches:** rules, input, tools-bots, presentation, journal, economy.
+
+**Decisions it reopens:** R4.5-7; D8; D6; D4; R4.9-15; R4.9-17; README 6.1 bit 7.
+
+**Bot effect.** Narrows the gap, modestly. Forgiveness only helps whoever makes errors. Search sees every bump coming and never needs to abandon a cut. A bail is worth almost nothing to it: it returns to a cell it could walk to, at the price of a shield charge it never needs either. A trail cannot be used to deflect the boss without a hit, so bailing gives a bot no trick. Humans turn one misread per level from a lost life (on the last life, a level scored zero, D5) into a lost cut. Errors are the largest part of the gap (mix to greedy, 1.58x). Y does not pause, so D8's reason for keeping Y unused, no free thinking time, still holds. Sharing the shield charge keeps the bail from being a free retry for humans as well.
+
+**Budget.** One branch at step 3. Erasing the trail reuses the life-loss pass over 3,600 cells, and only when Y is used. No new RAM and no state hash change in the shared-charge form; journal v2. zk cycles unchanged. Screen: the shield icon doubles as the bail charge.
+
+**Variety.** A new decision at the worst moment: bail now and lose the cut, hold B and crawl slowly in the hope the shield absorbs the hit, or race the boss to the close. Deep cuts against fast bosses become a nerve play that humans can try without staking the level.
+
+**Merged from:** `controls-time-and-pacing#5`. Variants:
+
+- Retreat: abandon a cut on purpose: Hold fast and slow together while standing still mid-cut, and after one exposed second your trail vanishes and you are back at the cut start. You lose no life and capture nothing. A misread cut becomes recoverable at a price.
+
+**Core engineer: feasible with changes, 4 of 5, tier 4.** This is the cleanest of the input ideas. It adds no state, so state hash v1 stays (the mask byte already carries bit 7). It is one branch at step 3, and the trail erase reuses abandon_cut's 3,600-cell pass, only when Y is used. Issues:
+(1) The journal must go to v2. Decode rule 10 rejects bit 7, and the committed vector vectors/format/journal-reserved-bit-7.json pins that error, so this is a byte-format change (CLAUDE.md table): version bump and regenerated format vectors. The zk guest and the browser decoder change with it.
+(2) The hit predicate must be pinned. PIN-15's P0 is the player's cell at the start of step 3, but after a bail the player stands on the cut start, a rail cell where minions walk. Unless P0 = cut start and n = 0 after a bail, a minion on or arriving at the cut start does not hit.
+(3) PIN-05 / R4.5-1: say that the direction is still resolved and kept on a bail tick.
+(4) D8 (Y unused) and D6 (charge = absorb only) are owner decisions that must be amended, though D8's reason (no free thinking time) does not apply.
+(5) The bot claim holds. A bail returns the player to a cell it could have walked to and costs the shield search rarely needs, so search gains nearly nothing, while humans convert one lost life per level into a lost cut. Watch the shared charge in calibration: on levels with lives = 2 it matters.
+(6) It is mutually exclusive with [terrain-and-geometry#13](terrain-and-geometry.md#y-dropped-rail-blocker), which also claims Y.
+
+*Fixes.* Journal v2 with bit 7 = Y, and decode rule 10 retired for v2. Pin: after a bail, P0 = cut start and n = 0 for PIN-15; the direction is resolved as usual. Amend D6 and D8. Pick one owner for Y between this and the barricade.
+
+*Cost.* Journal v2 (decoder, journal-reserved-bit-7 vector and its siblings regenerated); no state change, hash v1. One branch at step 3; the erase is a 3,600-cell pass only on a bail tick. zk 0. Browser: a keybinding. RULES_VERSION bump, a new season rules version, playtest and calibration.
+
+*Conflicts.* D8; D6; R4.9-15; R4.9-17; PIN-15; PIN-05; §6.1 bit 7; §6.3 decode code 10; [terrain-and-geometry#13](terrain-and-geometry.md#y-dropped-rail-blocker) (Y)
+
+**Fairness: ok, 4 of 5; gap narrows; D14 compliant.** Pure forgiveness that search does not need. The measured search never presses B, so the shield charge the bail spends is one it never uses, and it is held at the ceiling, so bailing gains it nothing measurable. Humans turn one misread per level from a lost life, or a D5 zero on the last life, into a lost cut. Fewer zeros on hard levels also reduce variance in the six-level draw. Y does not pause the game, so D8's reason (no free thinking time) still holds, though D8's key mapping text and the journal (v2) must change. D14 is untouched. Calibration needs a bail rule in the reference mix. Without one, the weights overstate human difficulty on hard levels until a season of player journals recalibrates them. One hazard: the trigger is level-sensitive, so Y held as a cut starts spends the shield charge on the next tick, an input error only humans make.
+
+*Fixes.* Trigger the bail on Y going from released to held while cutting, not on Y held. Give committer and bold a bail rule (bail when the boss forecast hits the trail before the cut can close) before calibrating. Keep the shared-charge form, so the bail stays a once-per-level trade with the shield and is never a free retry.
+
+**Play: ok, 3 of 5.** It gives the single shield charge a second use, absorbing a hit or walking away, which is a real choice at the tensest moment of a cut. As forgiveness it helps humans more than bots, so it narrows the gap. It needs no state change and is cheap. But it is one decision per level, not new situations, and it competes for Y with the barricade idea. Gotcha: 'Y held as a cut starts bails it on the next tick', so a player still holding Y silently burns the shield on their next cut. The shield absorbs only while B is held (R4.9-15), so many humans' charges go unused today, and the bail mostly turns unused charges into saved cuts: a modest gain.
+
+*Fixes.* Trigger only on Y's released-to-held edge (the previous input mask is already in the state hash), never on Y held. Consider a separate bail charge so the shield keeps its role, at the cost of state hash v2.
+
+*Readability.* Simple. The trail vanishes and the player reappears at the cut start, like a lost life without the grey protected colour.
+
+## Rising tide of timed reinforcements
+
+`human-edge#4` · T3 New core rule · score 10 (core 3, fairness 4, play 3) · gap: neutral · D14: compliant
+
+Each level shows a tide clock. When it runs out, the boss and minions speed up step by step, and reserve minions walk onto the rail at announced cells. Waiting for the perfect moment now has a cost, and the level asks when to make the big cut.
+
+**Rule sketch.** Level bytes v2 add tide_start (u16 tick, 0 = no tide), tide_step (u16, at least 60) and arrival\[3\] (u16 per minion slot, 0 = present at start; validity: arrival \< T). New rule at step 7 (Time), before R4.4-12's end check: if tide_start > 0, tick >= tide_start and (tick - tide_start) % tide_step == 0, then lower by 1 the first period above 1, in the order boss move period, then minion move periods in index order. R4.4-2's global phase stays: an entity moves on ticks where tick % N == 0 with the new N. Minion arrival: at level start, a slot with arrival a > 0 is created destroyed (presence 2) with respawn countdown a + 1. R4.7-9 then respawns it, oriented (PIN-16), at its spawn cell or at the first rail cell in row-major order, at step 5 of tick a. Both effects only use fields already in state hash v1 (boss move period, minion move period, presence and countdown), so the state hash stays v1. The level format goes to v2 and RULES_VERSION is bumped. The client shows the tide clock and the arrival cells with countdowns.
+
+**Inspired by:** Qix (1981), Styx (1983), Area 99.9% (2022), Xonix (PICO-8) (2024), Qurvix (2026), Antix (1985), Trappy Pixel (2023), Spider Web (1989), Smokescreen (2025). **Mechanic families:** [Escalating and timer-released patrollers (Super Sparx)](../taxonomy/edge-and-claimed-enemies.md#escalating-and-timer-released-patrollers-super-sparx), [Border patrollers (Sparx)](../taxonomy/edge-and-claimed-enemies.md#border-patrollers-sparx), [Time-driven escalation](../taxonomy/controls-time-and-pacing.md#time-driven-escalation), [Reinforcements over time](../taxonomy/field-enemies.md#reinforcements-over-time). **Touches:** level-format, rules, level-data, presentation, tools-bots, economy.
+
+**Decisions it reopens:** R4.3-5; R4.7-9; PIN-16; D5; R4.4-5; R4.4-12; R4.4-2; README 7.2 padding note.
+
+**Bot effect.** Keeps the gap in principle. It narrows it only for bots limited in compute, and it may widen it against patient humans. The measured search treats idle time as thinking time, as D8 already recognised for humans: it pads about 1,200 ticks and spends the roughly 1 billion work units they accrue on one two-capture search. A tide makes padding cost difficulty, so a tide-aware search plans with a fraction of that budget. The most this can remove is the step from search to the scripted portfolio (2.03x down to about 1.65x the mix), and only for a one-core bot. The deadline limits wall time, not cores, so a multi-core bot loses nothing. The short-T level set above captures most of this effect without a rule change. Humans who wait for a good boss position lose that option, while the bot predicts the boss and never needed to wait, which can widen the gap. Its real value is variety. Measure it with search and with a tide-aware search before relying on it.
+
+**Budget.** One compare per tick and 10 bytes of level data. No new state and no new buffer. zk cycles: a few % on long levels from the extra moves after the tide. Screen: a tide clock in the HUD and up to 3 arrival markers.
+
+**Variety.** Adds a tempo decision none of the 16 levels has. The field is safest early, so the big cut should come before the tide, but early the field is widest and the plan least settled. Reserve minions make the rail itself change mid-level, so a route that was safe becomes unsafe.
+
+**Merged from:** `edge-and-claimed-enemies#4`. Variants:
+
+- Timed reinforcements and surge: Patrollers join on a schedule the level shows in advance, and at a set time every patroller speeds up. Waiting gets dearer as the level goes on, and you can steer where a latecomer appears by capturing its spawn point before it arrives.
+
+**Core engineer: feasible with changes, 3 of 5, tier 3.** The arrival mechanic is exact. A slot created destroyed with countdown a + 1 is decremented at step 5 from tick 0 and respawns at step 5 of tick a, and nothing new enters the hash. The speed-up is weaker than pitched:
+(1) The core has ONE shared minion period (`Minions.period: u8`), which the hash writes into every slot. 'Minion move periods in index order' therefore needs a per-slot period in the core. The v1 hash already has a byte per slot, so the layout survives, but its meaning changes from 'copy of the level value' to 'live per-slot value'.
+(2) There is almost no headroom. The rule lowers the first period above 1, and 1 is the floor. Levels 10, 11, 12, 14, 15 and 16 run every period at 1 already, so the tide does nothing there except arrivals. Levels 5 to 9 and 13 get one minion step from 2 to 1. Only levels 1 to 4 see a real ramp. 'Speed up step by step' needs re-authored levels with slower bases, which changes the baseline difficulty.
+(3) Pins: unused slots are skipped; the change at step 7 also runs on tick T − 1, where it is harmless but wasted; arrival slots skip orientation at level start (PIN-16).
+(4) The bot analysis is honest. The tide taxes padding and patience, which humans rely on more than a predictive search, so on balance it may widen the gap. Its value is variety.
+
+*Fixes.* Make the minion period per slot in the core (Minions.period becomes \[u8; 3\]); the v1 hash stays byte-compatible. Skip unused slots when lowering. Optionally add a per-level floor, or let the tide raise R and add arrivals instead of lowering periods already at 1. Author tide levels with base periods of 2 to 4 so the ramp exists. Pin PIN-16 for arrival slots.
+
+*Cost.* Level v2 +10 B. Core Minions +2 B (per-slot periods); hash v1 unchanged in layout. One compare a tick at step 7. zk: a few % on long levels from extra moves after the tide (each minion move is up to 4 is_rail tests of 8 neighbours). Screen: a tide clock and ≤3 arrival markers. RULES_VERSION bump, vectors, playtest, calibration.
+
+*Conflicts.* R4.3-3; R4.3-4; R4.4-2; R4.4-12; R4.7-9; PIN-16; §5 level bytes v1; README §7.2 padding note
+
+**Fairness: ok, 4 of 5; gap neutral; D14 compliant.** Announced, tick-driven and deterministic, with the boss still seeded, so D14 holds. The scripted bots need no new policy (they just meet the faster periods and the arrivals), so calibration is direct and the per-level tide is normalized like any other knob. On the gap: the measured search pads about 1,200 ticks to bank compute and would pay for that, but only a one-core bot is limited. A multi-core search stays at the ceiling. Skilled humans in playtest-human-1 cleared in 163 to 333 ticks, before any sensible tide_start, so they lose little; careful humans who wait for a good boss position lose the most. The net is about neutral. Watch the late phase: tide_step >= 60 with T = 2,700 can push periods down to 1, a reaction-time regime that favours bots. A captured spawn sends an arrival to the first rail cell in row-major order, which can put a minion near the top-left with little warning.
+
+*Fixes.* Give each level a minimum period the tide cannot go below (for example boss >= 2, minions >= 2). Redraw an arrival's marker as soon as a capture moves its cell. Before calibrating, measure clear rates with the mix and with search on tide levels.
+
+**Play: ok, 3 of 5.** It adds tempo, a cost to waiting, which none of the 16 levels have; today time running out just keeps the claim. But much of it is a plain difficulty ramp, and its speed knob has little range. Periods are integers: 12 of 16 levels already run the boss at period 1 and 7 run minions at period 1, so on the hard levels the tide adds only arrivals. On the easy levels one step from 2 to 1 doubles speed at once. The fixed order (boss first, then minions by index) limits design. The timed arrivals overlap with the claim-threshold wakes ([level-structure-and-progression#8](level-structure-and-progression.md#escalation-at-claim-thresholds)), which give the player more agency. The bot analysis is candid and sound.
+
+*Fixes.* Replace 'lower the first period above 1' with an explicit per-level schedule of up to 4 (tick, entity, new period) entries. Consider merging it with the claim-threshold idea, so one wake field can be triggered by time or by claim.
+
+*Readability.* Arrival markers are flashing rail cells, which read well. Speed-ups are visible in motion.
+
+## Seeded turn pads
+
+`human-edge#5` · T3 New core rule · score 10 (core 3, fairness 3, play 4) · gap: unclear · D14: compliant
+
+A few arrow tiles, scattered by the seed, sit in the open field. When the boss's body rolls onto one, the boss turns the way the arrow points. Players read the arrows, herd the boss with them, or claim them out of play.
+
+**Rule sketch.** Level bytes v2 add pad_count P (0..8) and deflect_bits D (6 = today's deflection rate, 7 = half that rate). At level start, let key2 be the big-endian u32 of level seed bytes 9..12 (unused today). For i in 0..P: h = fmix32(key2 XOR i). The pad cell is the (h mod E)-th EMPTY cell in row-major order, where E is the number of claimable cells (one scan per pad). Its direction is vx = +1 if bit 31 of h is set, else -1, and vy = +1 if bit 30 is set, else -1. Pads live in a 32-byte table derived from the seed, like the deflection key, so they are not in the state hash. A pad is active while its cell is not CLAIMED; claimed cells never reopen, so whether a pad is active is a function of the grid. Boss step (R4.6-3): after both axes, for each active pad, lowest index first, if the pad cell is inside the body now and was not inside it before this move, set (vx, vy) to the pad's direction and stop. Triggering only on entry stops a pad from pinning the boss in a corner. Pads set velocity, never position, so R4.6-10's argument that the body stays on EMPTY cells still holds. R4.6-7 runs with r = fmix32(key XOR tick) >> (32 - D). The remaining random deflections keep R4.6-12's divergence property, with N doubled at D = 7. The renderer draws each active pad as a diagonal arrow in its cell.
+
+**Inspired by:** Star Trigon (2002), Gotta Xonix (2026), Amidar (1982), Ballistyx (1990s), Xonix (1984). **Mechanic families:** [Force fields: currents and gravity](../taxonomy/terrain-and-geometry.md#force-fields-currents-and-gravity), [Patterned and scripted movers](../taxonomy/field-enemies.md#patterned-and-scripted-movers), [Telegraphed attacks and readable tells](../taxonomy/field-enemies.md#telegraphed-attacks-and-readable-tells), [Pocketing and herding walls](../taxonomy/capture-rules.md#pocketing-and-herding-walls), [Fixed enemy tracks](../taxonomy/terrain-and-geometry.md#fixed-enemy-tracks). **Touches:** level-format, level-data, rules, presentation, tools-bots, economy.
+
+**Decisions it reopens:** D14; R4.6-3; R4.6-6; R4.6-7; R4.6-12; README 6.4 seed bytes 9..12.
+
+**Bot effect.** Mixed; likely a net narrowing, but it must be measured. Pads move part of the boss's randomness from invisible draws into visible terrain, so a human sees most of what decides the boss's route, which the bot already knows: the reading gap narrows. Pads also add herding: choosing which pads to claim so that the boss is steered into a corner for the finisher. A bot that simulates each capture's effect on the boss's future exploits herding more precisely, which widens the execution gap somewhat. No seed-independent safe zone appears, because layouts come from the seed and no two runs share one. Fairness risk: some layouts may cycle the boss in a corner and make a level much easier for one seed, which the Challenge draw turns into luck. The playtest must report the per-seed spread of claims, and the pad count must be capped where that spread grows beyond today's.
+
+**Budget.** A 32-byte table and at most 8 rectangle tests per boss move. P scans of 3,600 cells at level start. zk cycles: under 1% more. State hash unchanged; level format v2; new level ids. Screen: up to 8 arrow glyphs in one new palette colour, redrawn only when the boss leaves them or they are claimed.
+
+**Variety.** New decisions on every level: claim a pad to stop the boss turning into the pocket you want, or keep it to drive the boss toward a corner. Plan cuts around where the boss will turn next. This is visible, seed-specific structure that rewards reading the field without being learnable from one run to the next.
+
+**Core engineer: feasible with changes, 3 of 5, tier 3.** T3, with a T2 level format bump. The safety argument holds: a pad only sets velocity, so R4.6-10's 'body only on EMPTY' still holds. D=6 gives >>26 exactly, so P=0 and D=6 reproduce today's boss trajectory, although the format bump changes every level id anyway. The pitch's R4.6-12 claim is wrong. A pad SETS (vx, vy) to an absolute value. On the divergent move, two bosses whose edges are both blocked keep the same position with opposite vx. If both then enter the same pad on the y step, they become identical again. So 'why it diverges on any board' no longer holds, and M1.5's property test and its N must be redone. At D=7, N becomes about 800 moves, which only levels with boss period 3 or less reach in 2,700 ticks. The rule also leaves two cases undefined. Two pads can draw the same cell (h mod E collides), and a pad can sit under the spawn body. Fairness: two pads facing each other can hold the boss in a loop that only a 1-in-64 deflection breaks (at D=7). That gives per-seed difficulty spread, which the Challenge draw turns into luck. On the bot gap I am more pessimistic than the pitch. Herding through several pads plus hidden deflections is forward simulation, which search does exactly. Search already knows every deflection draw. So the readable part narrows the information gap, while the planning part likely widens the execution gap, for a net gap that is unclear, more likely wider. Pads are not in the state hash (fine, like the key), and whether a pad is active is a function of the grid.
+
+*Fixes.* Use pads that turn the boss a quarter clockwise or counter-clockwise, (vx, vy) -> (-vy, vx) or (vy, -vx), instead of absolute arrows. A rotation is a bijection on velocity, so two diverged bosses at one cell stay diverged, and R4.6-12's argument holds with pads. Or keep arrows and restate R4.6-12 as an empirical bound with re-measured N. Define duplicate pad cells (skip, so a pad's index is its first occurrence). Keep D=6 unless the measured spread allows 7. Gate P in playtest on the per-seed claim spread.
+
+*Cost.* RAM: about 28-32 B more in Game (8 x u16 cell plus 2-bit direction, key2); level start: P scans of 3,600 cells (at most 28,800 reads); per boss move: at most 8 rectangle tests plus 8 grid reads; zk under 1 % (about 0.3M cycles on the heaviest level); level bytes v2 (474 B), all level ids new; RULES_VERSION 3; every game vector and trace regenerated, new pad and format vectors, M1.5 divergence test redone; state hash v1 unchanged; playtest and calibration; one new palette colour
+
+*Conflicts.* R4.6-3; R4.6-6; R4.6-7; R4.6-12 (absolute pads can re-merge diverged trajectories); README 5 level bytes v1; README 6.4 seed bytes 9..12
+
+**Fairness: concerns, 3 of 5; gap unclear; D14 compliant.** Pads come from seed bytes 9-12, which are unused today, so each run has its own layout and nothing can be copied between runs. Trajectories part at the first differing draw or the first differing pad. But D = 7 halves the random deflection rate. With q ≈ 0.031, two keys need about 800 moves, not 400, to part with probability 1 − 10^-11, so R4.6-12's bound, its property test (M1.5) and the README rationale must be redone. Levels with a slow boss or a short T fall below even that.
+
+Gap: search already sits at 98.5 % of the ceiling, so pads can only move the human side. Visible turns help humans read the boss. Herding, choosing which pads to claim, is a simulator problem that search solves exactly and humans only approximate. The net effect is uncertain.
+
+Fairness: pads trigger on entry, but two pads aiming at each other, or a corner pad, can still make a ping-pong or trap loop that only the 1/64 to 1/128 random flip breaks. That makes some seeds much easier. This per-seed luck is amplified by the six-level draw and by best-run ranking, since more runs bought means more lucky seeds.
+
+Calibration: bold and committer ignore pads, so without a pad-aware policy the weights reflect play that ignores pads.
+
+Cost: a full T3 change: level format v2, a RULES_VERSION bump, a README §4.6 rewrite, new vectors, a renderer on both targets, new level ids and recalibration.
+
+*Fixes.* - Keep D = 6, or prove and test the divergence bound for D = 7. Add a validity rule that refuses D = 7 when P = 0.
+- Refuse pad layouts in which two pads face each other in line of sight, or require a minimum spacing between pads (for example Chebyshev distance of at least 2B). Alternatively, make pads single-use; that adds spent bits to the state and needs state hash v2.
+- Gate the playtest on the spread of claims per seed against the same level with P = 0, and cap P where the spread grows.
+- Add a pad-aware scripted policy before calibration.
+- Pilot pads on Training-only levels first.
+
+**Play: strong, 4 of 5.** This adds real decisions to the boss loop. Some of the boss's randomness becomes visible, seed-specific terrain that the player reads, uses or removes with a capture: claim a pad to stop the boss turning into the pocket you are cutting, or keep one to drive the boss toward a corner for the finisher. That is herding, which no current level offers, and it rewards reading the field without being learnable between runs, so it is D14-compatible. Entry-only triggering and velocity-only effects keep R4.6-10's safety argument. The feel is close to bumpers in an arcade field and fits the Volfied-like boss. Risks: two pads pointing at each other can make loops that run until a deflection breaks them, and some seeds may place pads so that the boss gets stuck in a corner, which the Challenge draw turns into luck. The pitch already asks for per-seed spread reporting and a pad cap. A 4x4-px diagonal arrow is near the limit of legibility, and the turn happens when the boss's leading edge, not its centre, enters the pad cell.
+
+*Fixes.* Make each pad a 2x2-cell block (8x8 px), so the arrow is legible and is not missed by an 8-cell body. Keep pads out of a few cells around the rail and the player start, so a pad never fires the boss straight into a fresh cut. Cap P at about 4-6 until the per-seed claim spread has been measured. Pick the pad colour away from the reserved hues: not red, yellow or green, and not magenta. Cyan works.
+
+*Readability.* Marginal at 4x4 px: a 16-pixel diagonal arrow can be drawn (a lit corner plus a diagonal) but is hard to read at a glance. Good if pads are 2x2 cells. Redraws are local.
+
+## Short, forgiving, high-target level set
+
+`human-edge#3` · T1 Level data v1 · score 10 (core 4, fairness 4, play 2) · gap: narrows · D14: compliant
+
+A season level set in which levels are short, give 5 or 6 lives and ask for a higher claim. A misread costs a life, not the level. A clean human clear lands close to the ceiling, and there is no three-minute clock to sit on.
+
+**Rule sketch.** Level data v1 only, with new level ids. Start from the 16 sources in levels/src/. Raise lives to 5 or 6 on the levels that have 2 to 4 today (L02, L04-L06, L09-L16). Cut the time limit T from 2,700 to 900-1,350 ticks (60-90 s). Raise targets to 8,500-9,000 bp where lives rise. Boss periods are already 1 from L05, so restore each level's target clear rate in levels/targets.json for the reference mix with the remaining knobs: boss size B (up to 8), minion count (up to 3), minion period 1, respawn delay 30-45, and obstacles. Iterate with `playtest --check levels/targets.json`. Keep spawn rectangles wide so the seed still matters. Then run `calibrate` into a new calibration file and rerun the bot-advantage shards on the set to compare the pot-share ratio with calibration-1.
+
+**Inspired by:** JezzBall (1992), IceBreaker (2000), KBounce (2000), Jolly Jogger (1982). **Mechanic families:** [Per-level lives scaled to the level](../taxonomy/level-structure-and-progression.md#per-level-lives-scaled-to-the-level), [Life budget](../taxonomy/scoring-and-risk.md#life-budget), [Level countdown timer](../taxonomy/controls-time-and-pacing.md#level-countdown-timer), [Per-level enemy ramp](../taxonomy/level-structure-and-progression.md#per-level-enemy-ramp). **Touches:** level-data, tools-bots, economy.
+
+**Bot effect.** Narrows the gap, through three separate effects, and adds no rule. (a) Extra lives are worth nothing to search, which clears 6.0 levels per run and never loses one to lives. The reference mix's 1.58x deficit to greedy is mostly levels lost to lives (D5's zero) and missed clears. bold-sweep shows the size of the lever: on the 8-cell, period-1 boss with three period-1 minions, the mix clears 18.6% of runs with 3 lives and 54.1% with 5. (b) A shorter T shrinks the search bot's compute bank. It pads half of the spare ticks (T - 300), so T = 1,050 cuts its first pad from about 1,200 ticks to 375 of accrued units, about a third, while the shared human clears took 163 and 333 ticks, so humans are not bound by T. This effect only binds a bot limited to one core. It is also capped by the scripted portfolio, which needs almost no search and already scores 1.65x the mix. (c) A higher target compresses the overshoot range: a human clear starts at 9,000 bp against search's ~9,800 (about 1.09x) instead of 7,500 (about 1.3x). Risk: higher targets raise the bar for humans to clear at all. This needs a human baseline (M4.13's 'Needs user'), not only the scripted mix.
+
+**Budget.** No code, RAM or format change. Bigger bosses add a few edge reads per boss move. zk cycles fall, because shorter time limits cap the ticks (cycles scale with ticks). The real cost is the playtest loop, the calibration and about 15 h of bot-advantage shards.
+
+**Variety.** Short, intense levels where a human can survive a misread and keep playing, so a deep cut against a fast boss becomes a choice, not the end of the run. Commit shifts from 'bank before I die' to 'bank before the clock'. The higher target asks for one more bold capture rather than a squeeze.
+
+**Core engineer: feasible, 4 of 5, tier 1.** T1 is right: lives, T (1..2,700), target, B, minion count and period, and R are all v1 fields. Claims I checked: L01, L03, L07 and L08 already have 5 lives, and the listed levels have 2 to 4. Boss period is 1 from L05 on. bold-sweep's 8-cell, period-1, three-minion row is 18.6 % with 3 lives and 54.1 % with 5. The mix's deficit to greedy is 103,695 / 65,683 = 1.579. Today's mix median ticks are 260-674, so T = 900-1,350 seldom turns mix runs into time-limit ends. Tuning is feasible, but the knob space is near its edge on L11-L16. Boss period is already 1, minion period is 1 on eight levels, and B tops out at 8. With 5 lives, the harshest open-field setup still clears 54 % at 7,500 bp, so 9,000 bp targets or obstacles must do the work to reach 15-23 %. One claim is wrong: Commit does not shift to 'bank before the clock'. A time-limit end keeps the claim (R4.10-4), so there is nothing to bank before the clock. With 5-6 lives, D5's zero rarely binds, so Commit loses most of its purpose (README: the zero 'is what gives Commit its purpose'). The committer bot will then rarely commit, and the mix drifts toward bold. Effect (b) binds only a one-core bot, and effect (c) only helps on cleared levels. A human who fails to clear now keeps a partial claim at time-out instead of scoring 0, which also narrows the gap. The net effect on the human-vs-search gap still needs the human baseline, as the pitch says.
+
+*Fixes.* Keep 3 lives on some levels so that D5's bank-or-risk decision survives. Drop the 'bank before the clock' claim. Pre-register the pot-share endpoint against calibration-1 before tuning. Collect a human baseline (M4.13's 'Needs user') before a paid season.
+
+*Cost.* RAM 0; per-tick work 0; format v1, new level ids; vectors unchanged; zk cycles fall on padded runs (search's ~1,330 ticks per level today become at most ~675 at T=1,050); playtest loop, calibrate, about 15 h of bot-advantage shards
+
+*Conflicts.* D5 rationale (Commit's purpose weakens with 5-6 lives; not a rule conflict)
+
+**Fairness: ok, 4 of 5; gap narrows; D14 compliant.** Pure level data: the seed derivation and deflections are untouched. Extra lives are worth nothing to search, which never dies, and they directly cut the zero scores of running out of lives (D5), which dominate the mix's losses. Bold-sweep shows the size of this lever: 18.6 % clears with 3 lives, 54.1 % with 5. The biggest fairness gain is in the draw. More lives make effective claims less bimodal, which raises the mix's medians on the hard slots and compresses the weights. Today doom (64,620) against maze (13,692) is 4.7x, so drawing doom, swarm or trio is a jackpot for strong players; with flatter weights, a run score depends less on which six levels came up.
+
+Caveats:
+
+- Effect (b), the smaller compute bank, binds only a one-core bot, so it is negligible under README §7.4's threat model.
+- Effect (c) is overstated. The two human journals already overshoot their targets (8,444 and 8,644 bp), so today's search-to-human ratio on a clear is about 1.15x, not 1.3x; a 9,000 bp target gives about 1.09x.
+- Restoring clear rates with period-1 minions, R = 30 and B = 8 moves difficulty onto reaction speed, where scripted bots are perfect and humans are not, and the mix will not show that cost.
+- 60 s against a 9,000 bp target on a doom-class level may bind humans. The cited 163- and 333-tick human clears were at 7,500-8,000 bp on easier levels.
+- With 5-6 lives, Commit loses most of its meaning. 'Bank before the clock' is not a real decision: the time limit keeps the claim (R4.10-4), so X only saves tiebreak ticks.
+- T = 900 at boss period 3 gives 300 boss moves, under R4.6-12's N = 400. The chance of two runs sharing a game is still negligible, but the README should say so.
+
+Scripted bots play it unchanged, and calibration is routine.
+
+*Fixes.* - Restore clear rates with obstacles, boss size and minion count first; use period-1 minions and R = 30 last.
+- Keep T at 1,350 or more on levels whose target is 9,000 bp or more, until human journals show that clears fit in time.
+- Keep one or two levels at 3 lives, so that Commit stays a live decision.
+- Make two numbers acceptance criteria: the calibration's max/min weight ratio against calibration-1's 4.7x, and the rerun pot-share ratio.
+- Get the human baseline (M4.13) before a paid season uses the set.
+
+**Play: weak, 2 of 5.** This is a set-wide retune of lives, T and target. It homogenises the levels rather than adding new situations: L01, L03, L07 and L08 already have 5 lives, and every level would become 60-90 s with 5-6 lives and an 8,500-9,000 bp target. The variety claim rests on a misreading. A time-out already keeps the claim (R4.10-4), so there is no 'bank before the clock' decision: committing before the clock gains nothing. Commit's purpose comes from D5's zero when the lives run out, and 5-6 lives weaken exactly that tension. The higher target and the short clock add some urgency, but the urgency is speed pressure, not new decisions about the boss, minions or rail. The bot-gap reasoning (lives are worth nothing to search, overshoot compression) is a legitimate economy argument, but it is not play variety.
+
+*Fixes.* Make 'sprint' one archetype for 2-3 slots of a set rather than the whole set. Keep several 2-3-life levels so that Commit keeps its D5 tension. If clock pressure is wanted, give commit a reason, such as a clear-time component in scoring. That is a T5 change, so say so.
+
+*Readability.* No change. Same field, entities and colours. The shorter clock only matters if the HUD shows the time left clearly.
+
+## Capture cap with snap-back
+
+`human-edge#6` · T3 New core rule · score 8 (core 3, fairness 2, play 3) · gap: widens · D14: compliant
+
+Each level caps how much one capture may take. A cut that would claim more snaps back to its start, with no life lost. Clearing becomes a series of bites, planned around a boss that you squeeze step by step.
+
+**Rule sketch.** Level bytes v2 add capture_cap (u16 cells; 0 = no cap; otherwise at least 200). Capture (R4.8) gains a check between steps 2 and 3. The would-be capture size is S = (claimable - captured) - F, where F counts the cells the fill marked BOSS_ZONE, so no extra pass is needed. If capture_cap > 0 and S > capture_cap, the cut snaps: one pass turns BOSS_ZONE and TRAIL back into EMPTY, and the player returns to the cut start and stops cutting. Nothing is captured, no life is lost and invulnerability stays 0. The rail does not change, because TRAIL already counted as open (R4.2-3), so minions keep their state and need no orientation step. A snap ends the player's sub-steps for the tick, like a close (R4.4-8, PIN-04). Otherwise step 3 runs as today. Example: a cap of 1,000 cells on a 3,364-cell field means at least 3 captures to reach 7,500 bp. It pairs with the pending-capture preview, which shows an over-cap close in red.
+
+**Inspired by:** Enveloping Darkness (2025), Pokémon Ranger (2006), Spider: The Secret of Bryce Manor (2009), Late (2005). **Mechanic families:** [Capture-size penalty](../taxonomy/scoring-and-risk.md#capture-size-penalty), [Per-stroke length cap](../taxonomy/movement-and-drawing.md#per-stroke-length-cap), [Squeeze capture](../taxonomy/capture-rules.md#squeeze-capture), [Pocketing and herding walls](../taxonomy/capture-rules.md#pocketing-and-herding-walls). **Touches:** level-format, level-data, rules, presentation, tools-bots, economy.
+
+**Decisions it reopens:** R4.8-1; R4.8-4; R4.4-8; PIN-04.
+
+**Bot effect.** Narrows the gap against generic search for a while, not against a purpose-built bot. Today's search wins with a two-capture plan (a setup and a finisher) funded by padding. With a cap, a level needs 3 to 5 captures whose order matters. A search two captures deep then falls back to its best setup again and again, and plans less of the level at once, while humans plan 'bite off the corridors, then corner the boss' well. A bot author who adds a planner for capture order wins the gap back. The ceiling (claimable - B^2) stays reachable whenever the boss's last region is at most cap + B^2. Without the preview overlay this widens the gap: humans cannot count 1,000 cells by eye, and the bot can.
+
+**Budget.** One subtraction per capture. A snap costs one 3,600-cell pass, the same as a capture. No new RAM and no new state, since a snap leaves the grid as it was before the cut. Level format v2. zk cycles: a few % more per level, from extra captures.
+
+**Variety.** Reverses the reflex of cutting off the big side, because the big side is now the one you may not take. Players nibble toward the boss, choose which pocket to take first, and set up a last bite that fits the cap. Every level gains planning decisions, not just a harder field.
+
+**Core engineer: feasible with changes, 3 of 5, tier 3.** T3, with a T2 level field. The arithmetic is sound. Each cell is pushed once in step 2, so F is a counter, and S = (claimable - captured) - F is the would-be capture, trail included. The cost is one compare per capture, plus one revert pass per snap. Several things the sketch leaves out or gets wrong. (1) Hits after a snap are unpinned. R4.9-6..11 use P0..Pn, the cells entered at step 3, but the player ends on the cut start. Share, swap and pass need new PINs (is the cut start Pn?), and so do the previous direction and the step-6 'return to cut start' wording. (2) The snap is a free abort. Early in a level almost every real cut leaves more than the cap on the non-boss side. A player whose trail the boss threatens can therefore close onto any rail cell and erase the trail with no life lost, and is teleported back to the cut start, which is also an escape from a minion at the closing cell. This removes much of the risk in D4 and D5 for big cuts, and search will exploit it perfectly. (3) Today's scripted bots pick the largest safe rectangle. They would close over-cap cuts and snap forever, scoring about 0, so a cap-aware greedy is required before any playtest or calibration. (4) The preview the pitch pairs with this is required, not optional. Cycles: a snap costs a fill and a pass, like a capture, and leaves the grid unchanged, so it can repeat. Today's 1-cell nibble journals already allow about 1,350 fills per level, so the worst-case class is unchanged. The ceiling stays reachable as stated: at 7,500 bp with a 1,000-cell cap, the remaining 841 cells are at most cap + B^2. Bot gap: narrower against today's search, but a capture-order planner wins it back. I expect a modest widening once bots adapt.
+
+*Fixes.* Pin the snap: the player ends on the cut start, and minion hits on that tick test the cut start as Pn, with no pass or swap through the trail. Make the abort cost something, for example the snap ends any invulnerability and the player cannot move for N ticks, or it spends the shield charge, so it is not a free panic button. Ship cap-aware greedy, bold and committer bots in the same PR. Make the preview part of the idea, at least in the browser. Validate cap >= 200 and cap \<= claimable as new level error codes.
+
+*Cost.* RAM 0 (u16 cap in level bytes); per capture: +1 counter per pushed cell and a compare; per snap: fill plus one 3,600-cell revert pass (about a capture's cost); worst tick unchanged; zk +2-5 % per level from extra captures and snaps; level bytes v2 (474 B), new ids; RULES_VERSION bump; new PINs; every game vector and trace regenerated; bot code change, playtest, calibration; preview overlay in the client (one flood fill per tick)
+
+*Conflicts.* R4.8-1; R4.8-4; R4.4-8; PIN-04; R4.9-6..R4.9-11 (hit cells after a snap); D4/D5 risk balance (free abort); README 5 level bytes v1
+
+**Fairness: concerns, 2 of 5; gap widens; D14 compliant.** The seeding is untouched, so D14 holds.
+
+Gap: search is at 98.5 % of the ceiling. A capture-order planner over the cheap simulator wins back anything a two-capture search loses, and sizing each bite exactly to the cap is what bots do best. On the human side:
+
+- 3 to 5 captures instead of 2 or 3 means more trail-drawing exposure per level, and each cut is a death risk; search never dies.
+- Humans cannot count 1,000 cells. Without the preview, which is a separate idea, a snap throws away the whole trail and the time spent drawing it.
+- The cap removes the big cornering capture, the human's best tool.
+
+So the gap widens, as the pitch itself concedes against a purpose-built bot.
+
+Budget, missed by the pitch: snaps are unbounded, and each one costs a full fill plus a 3,600-cell pass. On a board where a short seal, such as a 3-wide corridor mouth, encloses more than the cap, a journal can snap about every 3 ticks: hundreds of fills per level, where today a level has a handful of captures. Even on an open field, one snap about every 30 ticks is possible. That multiplies zk cycles over today's 30M worst level, and with them the proving price of every best run the operator proves. The M4 gate's synthetic worst-case journals do not cover it.
+
+Scripted bots need cap-aware cut sizing, a tools change, before calibration.
+
+*Fixes.* - Bound snaps. Options: a snap blocks new cuts for N ticks; a per-level snap budget after which an over-cap close costs a life; or an over-cap close that costs a life outright.
+- Add a snap-loop synthetic journal to the gate set and re-measure cycles.
+- Ship the over-cap preview in the same release, as a precondition.
+- Teach the mix cap-aware cutting before calibration.
+- Pilot on a Training-only level before any season uses it.
+
+**Play: ok, 3 of 5.** This adds real planning decisions. It reverses the reflex of taking the big side, forces a sequence of 3 or more bites, and makes capture order and the last bite matter, which no current level asks for. As a per-level archetype ('bites') it is clearly distinct from the 16 levels. It clashes with the genre's main payoff, though: the big capture is the thrill. A snap is also an invisible-rule failure, where your cut simply vanishes, unless a live preview tells you the close is over the cap. Humans cannot count 1,000 cells at 4 px. There is also a side effect. The snap returns the player to the cut start, so a deliberate over-cap close becomes a free teleport and trail erase that lets the player escape a minion or an approaching boss without losing a life. And the boss slipping around the trail's end, today a windfall capture of the other side, now becomes a snap.
+
+*Fixes.* Ship it only together with the capture-size preview. Consider a blocked close instead of a snap: the step onto CLAIMED does not happen and the trail stays live, so the player must find another closing point. That removes the teleport escape and keeps the risk. Use it on 1-3 slots as an archetype, not set-wide.
+
+*Readability.* Poor without a preview: the cap is a cell count, invisible on screen. With a preview (the over-cap region tinted, or a HUD meter of capture vs cap) it is readable. A snap needs a clear flash, so it does not look like a hit.
+
+## Per-level entropy and in-level beacons
+
+`human-edge#10` · T5 Mode, scoring or contracts · score 6 (core 2, fairness 3, play 1) · gap: neutral · D14: needs-seeding
+
+Each level's seed would come from a fresh block hash fetched when the previous level ends, and the boss's deflection key could even rotate mid-level to later block hashes. Nobody, bot or human, would know a level, or its second half, before reaching it.
+
+**Rule sketch.** Contracts: after revealRun, the client calls advanceRun(runId, k, keccak256(journal of level k-1)) before each level k >= 1. That call commits to the hash of the block 40 ahead (ArbBlockhashEntropy) as entropy_k, readable about 10 s later. Level seed v2 = keccak256('jiro.level' || runNonce || k || entropy_k). Journal header v2 carries entropy_k and the Outcome binds it. commitRun checks the per-level journal hashes against the advance commitments. The deadline becomes a sum of per-level windows, and commitSlack covers the waits. Beacon variant: the deflection key for ticks \[s\*S, (s+1)\*S) is derived with fmix32 from the hash of a block numbered advanceBlock_k + 40 + 4 \* s \* S / 15 (blocks every 0.25 s). The client then has to read block hashes in real time, and the contract has to keep them past the 256-block window.
+
+**Inspired by:** Jezzball NES (2026), Ink Fill (2026), Containment (2026). **Mechanic families:** [Replay-verifiable runs](../taxonomy/multiplayer-and-competition.md#replay-verifiable-runs), [Seeded deterministic play and replays](../taxonomy/modes-and-meta.md#seeded-deterministic-play-and-replays), [Deterministic fixed-tick simulation](../taxonomy/controls-time-and-pacing.md#deterministic-fixed-tick-simulation). **Touches:** contracts, journal, outcome, economy, tools-bots.
+
+**Decisions it reopens:** D14; P6; README 6.4 level seed; README 7.2 deadline; README 7.4.
+
+**Bot effect.** Keeps the measured gap. ECONOMY.md 5's rule F already bounds per-level entropy to at most 1.5% (the ceiling over search's score), because the measured search never previews later levels. In-level beacons would shorten the bot's look-ahead, but its decisive search covers a setup and a finisher of roughly 100 to 150 ticks after padding. A beacon would need a period under 10 s to cut that. Such a period collides with block timing, real-time RPC latency and the sequencer's influence over hashes. It also invites grinding by delaying whatever fixes which block applies, which a bot can afford and a human cannot, so it would likely widen the gap. Verdict for this lens: no game mechanic in a deterministic, fully visible game with a cheap simulator can give a human an edge over unbounded search. Mechanics narrow the gap only by (1) giving humans the information the bot computes (forecast, preview, pads), (2) forgiving errors only humans make (lives, bail), (3) not paying for precision beyond human resolution (banded scoring, higher targets) or (4) limiting compute banks, which is capped at the scripted portfolio's 1.65x the mix. Entropy timing guards against preview, practice and copying (D14), not against real-time search.
+
+**Budget.** 5 extra transactions per run and roughly 10 to 20 s of waiting at each level transition. Journal header and Outcome grow by 32 B each, plus contract storage per level. In the core, one key derivation per segment and no per-tick cost. The beacon variant needs a block-hash store onchain and real-time RPC in the client.
+
+**Variety.** No new decisions within a level. It changes the run's meta: no studying level 6's seed while playing level 1. It closes the 'practice later levels' and 'parallel attempts' rows of the threat table.
+
+**Core engineer: feasible with changes, 2 of 5, tier 5.** T5 is right. Per-level entropy is README §7.4's 'designed upgrade', but ECONOMY.md §5 rule F already measured H = 1.5 %. It removes at most 1.5 % of search's score, so it is not a bot mitigation, as the pitch concedes. The transaction count is too low. The contract can read blockhash(b_k) only for 256 blocks (about 64 s), and a level lasts up to 180 s. So each level needs its own reveal transaction after its entropy block, besides advanceRun: about 2 per level change, about 10 per run. Only the player may reveal and commit (README §7.2), so that means about 10 wallet prompts mid-run, or a session key, which is another contract change. Add 10-20 s of waiting per level, about 50-100 s per run. It also does not close the 'parallel attempts' row: once entropy_k is known, a farm can play level k several times in parallel and advance with the best journal. It only removes practice on later levels (the deadline-gaming row). The beacon variant is infeasible. Settlement happens days later, long past the 256-block window, so every segment's hash must be stored onchain: about 18 hashes per level x 5 levels, about 90 SSTOREs, about 2M gas per run, plus someone sending them in real time. The core would need a key list as input (the journal header grows), and sequencer and timing grinding favours bots. Outcome, IReferee, ZkReferee, Challenge, Season, the journal header and the level seed all change, which means a new contract generation. D14 is complementary to this, not in conflict with it.
+
+*Fixes.* Drop the beacon variant. If per-level entropy is kept, frame it only as removing practice on later levels. Budget 2 transactions per level change, or add a blockhash store. Use a player-registered session key so play is not interrupted by wallet prompts. Record in ECONOMY.md that it does not address real-time bots or parallel attempts.
+
+*Cost.* Contracts: Challenge v2 (advanceRun plus a per-level reveal, about 10 extra transactions per run at roughly 50-100k gas each, per-level storage of at least 2 x 32 B), Outcome +32 B, new IReferee/ZkReferee/Season generation; journal header v2 (+32 B), level seed v2, new derivation vectors; core: 0 per tick, zk about 0; 50-100 s of waiting per run. Beacon: about 90 stored hashes per run (about 2M gas), real-time RPC and a keeper: ruinous
+
+*Conflicts.* README 6.4 level seed; README 6.3 journal header; README 7.2 run flow and deadline; README 7.3 Outcome/IReferee; P6; README 7.4
+
+**Fairness: concerns, 3 of 5; gap neutral; D14 needs-seeding.** Per-level entropy strengthens D14 and the economic rows. Nobody can study level 6 while playing level 1, and committing keccak(journal k-1) before level k's entropy stops a player replaying a finished level. But by ECONOMY.md §5 rule F it removes at most 1.5 % of search's score, so it is not a bot mitigation, and the gap stays neutral. It also does not close parallel attempts, as the pitch claims: a farm can still play the current level in parallel and commit the best journal hash at the next advance.
+
+The costs fall on humans. Each committed block hash must be read onchain within 256 blocks (about a minute), and a level can last 720 blocks, so each level also needs its own reveal. That is about 10 extra player-signed transactions per run, not 5, plus 10-20 s of waiting per transition, plus a lapse rule for each level.
+
+The beacon variant has three problems:
+
+- Arbitrum makes blocks only for transactions, so a segment's hash can be known early on a busy chain or missing on a quiet one.
+- The sequencer can influence those hashes, and delaying the advance is a grind that bots can afford.
+- As written, a segment's key comes from the block hash alone. Two runs that advance in the same block share every segment key on that level. A farm that times its advances can produce pairs of runs with the same level, boss start and keys: the same game, so one run's journal can be copied into the other. D14 forbids that.
+
+Scripted bots are unaffected, and the six-level draw is unchanged.
+
+*Fixes.* - Drop the beacon variant. If it is kept, mix each segment key with the level seed, for example key_s = fmix32(seed key XOR beacon_s).
+- For per-level entropy: budget the per-level reveal transactions and a lapse rule, and use a registered session key so the player does not sign about 10 times per run.
+- Correct the threat-table claim: per-level entropy removes practice on later levels, but parallel attempts on the current level remain.
+- Keep it as the pre-mainnet prerequisite it already is (ECONOMY.md §4), not as a bot fix.
+
+**Play: weak, 1 of 5.** By its own account it adds no decisions within a level, and the beacon variant changes nothing a player can see or use. For play it is a net loss: 5 extra transactions per run and 10-20 s waits at every level transition break the flow of a 6-level run. The beacon variant brings real-time RPC dependencies and grinding risks that, as the pitch says, favour bots. Its value is threat-model hygiene (preview, practice, parallel attempts), and ECONOMY.md rule F already bounds that at about 1.5 %. That belongs to the contracts track, not to game design.
+
+*Fixes.* Drop it from the play-variety track. If preview of later levels becomes a measured problem, handle it as a contracts and threat-table item, with at most one extra transaction per run. Do not add any per-level wait.
+
+*Readability.* No visual change. Its only visible effect is wait screens and wallet prompts between levels, which harm the experience.

@@ -11,12 +11,11 @@ Probe record of work item M0.2, made on 2026-10-28 in the agents' cloud containe
 
 ## Decisions
 
-- **P1, Rust pin: 1.98.0.** The pin exists and installs, with its four targets and three components, in 35 to 49 s: 49 s in the probe, 35 s for `RUSTUP_HOME=<empty directory> bash scripts/bootstrap.sh core` (228 MB download, 1.1 GB on disk).
+- **P1, Rust pin: 1.98.0.** The pin exists and installs, with its targets and three components, in 35 to 49 s: 49 s in the probe, 35 s for `RUSTUP_HOME=<empty directory> bash scripts/bootstrap.sh core` (228 MB download, 1.1 GB on disk).
 - **P2, contract toolchain: Foundry v1.8.6.** `forge` installs from its release asset and runs: build, tests and fuzzing with solc 0.8.28 (fetched by forge from `binaries.soliditylang.org`), and `anvil` answers RPC calls. ethblockdigger's harness is not used, so the plan's M4 test file names stay as written. CI uses `foundry-rs/foundry-toolchain` with `version: v1.8.6`.
 - **P14, repository and CI profile: private, on the free plan's minutes, with the private CI profile** (plan §1.3). The owner keeps the repository private until a working version exists, then makes it public (owner, 2026-10-28; plan §15, question 18). M0.4 builds the private profile. When the repository becomes public, a follow-up PR switches CI to the public profile: the plan's round F3 schedules both once M4.14 has settled a run on Arbitrum Sepolia (owner, 2026-11-08).
   - The `detychey` organization's private repositories share 2,000 Actions minutes a month on GitHub Free, ethblockdigger included. Jobs run on 2-vCPU runners and are billed rounded up to the minute.
   - **Monthly budget for jiro-ikusu: 1,500 minutes** (a proposal; the owner can change it in review), leaving 500 for ethblockdigger.
-- **D1 superseded (2026-11-02).** The device is now a wedgie app, with the core as a MicroPython native module (README §13 D1). The rows below that served the `firmware` tier (elf2uf2-rs, uf2conv.py, the embassy-rp blinky, rp2040js, the RP2040 bootrom) stay as M0.2's record; no remaining item uses them. M3.8 replaced the tier with the `wedgie` tier, whose tools are the four `wedgie` rows below.
 - **Core MSRV input (plan §3.2).** The oldest zkVM rustc is 1.96 (SP1), so M1.1 sets `rust-version = "1.96"` in `core/Cargo.toml`. Caveat for M1.17: risc0-build 3.0.6 builds guests in Docker with `r0.1.88.0` (rustc 1.88), not with the 1.97 toolchain recorded here. If M1.17 needs that Docker build, `rust-version = "1.96"` is too new for it; M1.17 reports it, and lowering the MSRV needs a plan change, since plan §3.2 takes it only from this record.
 
 ## Probe results
@@ -24,22 +23,14 @@ Probe record of work item M0.2, made on 2026-10-28 in the agents' cloud containe
 | Tool | Version | Status | Tier | Affected items |
 |---|---|---|---|---|
 | Rust toolchain | rustc 1.98.0 (88d9e12ae 2026-08-18), LLVM 22.1.8; cargo 1.98.0; clippy 0.1.98; rustfmt 1.9.0 | PASS | core | all |
-| Rust targets | `thumbv6m-none-eabi`, `wasm32-unknown-unknown`, `riscv32im-unknown-none-elf`, `riscv64imac-unknown-none-elf` | PASS | core | M0.4, M1, M3, M4.1 |
-| llvm-tools | LLVM 22.1.8-rust-1.98.0 | PASS | core | M0.4 (float probe, `llvm-nm`), M3.1 memory gate |
+| Rust targets | `wasm32-unknown-unknown`, `riscv32im-unknown-none-elf`, `riscv64imac-unknown-none-elf` | PASS | core | M0.4, M1, M4.1 |
+| llvm-tools | LLVM 22.1.8-rust-1.98.0 | PASS | core | M0.4 (float probe, `llvm-nm`) |
 | cargo-stylus | 0.10.10 | PASS | contracts | M4.1, M4.2, M4.11, M4.14, M4.16 |
-| elf2uf2-rs (chosen UF2 converter) | 2.2.0 | PASS | firmware | M3.1-M3.5 |
-| uf2conv.py (fallback converter) | microsoft/uf2 at commit 90e9741f | PASS, not used | none | M3, if elf2uf2-rs breaks |
-| [embassy-rp blinky](#d1-evidence-embassy-rp-blinky) | embassy-rp 0.10.0, embassy-executor 0.10.0, embassy-time 0.5.1, embassy-usb 0.6.0, cortex-m-rt 0.7.7 | PASS | firmware | M3.1 |
-| Node, npm | v22.22.0, 10.9.4 | PASS (preinstalled) | web | M0.6, M1.2, M1.11, M2, M3.3, M4 |
+| Node, npm | v22.22.0, 10.9.4 | PASS (preinstalled) | web | M0.6, M1.2, M1.11, M2, M4 |
 | binaryen (`wasm-opt`) | 120 | PASS | contracts | M4.1 |
 | solc (solcjs) | 0.8.28+commit.7893614a | PASS, not used | none | none: only ethblockdigger's harness needs it, and P2 chose Foundry |
-| rp2040js | 1.4.1 | PASS | firmware (`firmware/emu` package, M3.3) | M3.3 |
 | Playwright | 1.63.0; Chrome for Testing 153.0.8010.12 (chromium revision 1243) | PASS (preinstalled browser) | web | M2.2 |
 | wrangler | 4.154.0 | PASS | web (`web/package.json`, M2.2) | M2.2 |
-| arm-none-eabi-gcc, binutils | gcc 13.2.1 20231009 (Ubuntu package `gcc-arm-none-eabi` 15:13.2.rel1-2); GNU ld 2.42 (`binutils-arm-none-eabi` 2.42-1ubuntu1+23) | PASS | wedgie | M3.8, M3.9 |
-| qemu-system-arm | 8.2.2 (Ubuntu package 1:8.2.2+ds-0ubuntu1.18) | PASS | wedgie | M3.8, M3.9 |
-| MicroPython (`mpy_ld`, `mpy-cross`, the qemu port) | v1.29.0, commit 0fd6c573ea815774668bbb16b8e197c8822368b2 | PASS | wedgie | M3.8, M3.9 |
-| pyelftools | 0.32, in a venv | PASS | wedgie | M3.8, M3.9 |
 | Foundry (forge, cast, anvil, chisel) | 1.8.6 (6bad0a66, 2026-10-21) | PASS, through the direct asset | contracts | M4 |
 | Docker | 29.9.2; containerd 2.4.2; runc 1.5.2 | PASS, through a registry mirror | none (started by hand) | M1.16, M1.17, M4.2, M4.8, M4.14, M4.16 |
 | nitro-devnode (M4.2) | `run-dev-node.sh` at OffchainLabs/nitro-devnode commit ebb523d4; `offchainlabs/nitro-node:v3.12.2-5f02f3f` | PASS, through a registry mirror | contracts (`stylus-gas.yml`, `e2e.yml`) | M4.2, M4.9, M4.14, M4.15, M4.16 |
@@ -53,7 +44,7 @@ Each route lists the commands the bootstrap runs, the URLs they fetch, and what 
 
 ### Rust (core)
 
-- **Install:** `rustup toolchain install 1.98.0 --profile minimal --component clippy,rustfmt,llvm-tools --target thumbv6m-none-eabi,wasm32-unknown-unknown,riscv32im-unknown-none-elf,riscv64imac-unknown-none-elf --no-self-update`. rustup checks every tarball against the channel manifest.
+- **Install:** `rustup toolchain install 1.98.0 --profile minimal --component clippy,rustfmt,llvm-tools --target wasm32-unknown-unknown,riscv32im-unknown-none-elf,riscv64imac-unknown-none-elf --no-self-update`. rustup checks every tarball against the channel manifest.
 - **URLs:** `static.rust-lang.org/dist/channel-rust-1.98.0.toml` and the component tarballs under `static.rust-lang.org/dist/2026-08-20/`.
 - **Implicit installs.** rustup 1.28.2 installs the toolchain of `rust-toolchain.toml` as soon as any proxied command runs in the repository. The bootstrap sets `RUSTUP_AUTO_INSTALL=0`, so its checks never install anything and only its explicit install step does.
 - **llvm-tools path.** The tools are not on `PATH`: use `$(rustc --print sysroot)/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-nm` (and `llvm-size`, `llvm-objcopy`, `llvm-readobj`). The system `llvm-nm` is LLVM 18.1.3, four major versions behind rustc.
@@ -62,15 +53,9 @@ Each route lists the commands the bootstrap runs, the URLs they fetch, and what 
 
 - **Install:** `cargo install --locked cargo-stylus --version 0.10.10`. URLs: `index.crates.io` and `static.crates.io`, with no GitHub host. It builds from source in about 6.5 minutes, so CI caches `~/.cargo/bin/cargo-stylus`.
 
-### UF2 converter (firmware)
-
-- **Install:** `apt-get install -y libudev-dev pkg-config`, then `cargo install --locked elf2uf2-rs --version 2.2.0` (26 s). URLs: `libudev-dev` from `archive.ubuntu.com` (noble-updates), then `index.crates.io` and `static.crates.io`. The binary has no `--version` flag; `cargo install --list` shows it. Usage: `elf2uf2-rs <elf> <out.uf2>`.
-- **Fallback:** Microsoft's `uf2conv.py` at [commit 90e9741f](https://raw.githubusercontent.com/microsoft/uf2/90e9741f217f5a40c98ba74d663e408041037578/utils/uf2conv.py) (sha256 `ad36ba2d61fb2ea371832262392088281eee474c609df4142adbee4ea3c20f26`), with its `uf2families.json` (sha256 `9d8f561e050507c5909063005cd6f5b157e6fe6db1e8d25b5d9027d57064c194`). It reads a flat binary, not an ELF, so it runs after rustup's `llvm-objcopy` (path above): `llvm-objcopy -O binary -R .bss -R .uninit -R .data <elf> flash.bin && python3 -I uf2conv.py flash.bin --base 0x10000000 --family RP2040 --convert --output out.uf2`. It needs no crate or apt package, and on the blinky its output was byte-identical to elf2uf2-rs's.
-
-### npm tools (web, contracts, firmware)
+### npm tools (web, contracts)
 
 - **binaryen:** `npm install --global binaryen@120.0.0` puts `wasm-opt` on `PATH` (contracts tier).
-- **rp2040js:** `npm install --save-exact rp2040js@1.4.1` in `firmware/emu/` (M3.3). The package ships no bootrom; [RP2040 bootrom](#rp2040-bootrom-for-m33) below.
 - **Playwright:**
   - In the container, pin `@playwright/test@1.63.0` in `web/`, the version of the preinstalled Playwright, with `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` and `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`. Never run `playwright install` there.
   - A headless test on a `data:` URL passed this way, on `chromium_headless_shell-1243`.
@@ -141,152 +126,6 @@ Only each framework's Rust toolchain was installed; M1.16 and M1.17 install the 
   - **Toolchain:** its target is `riscv32im-risc0-zkvm-elf`.
   - **The zk tier (M1.12)** runs step 2, then writes `~/.risc0/settings.toml` and runs `rustup toolchain link risc0 ~/.risc0/toolchains/v1.97.0-rust-x86_64-unknown-linux-gnu`, which makes the symlink of step 1. It skips the rzup binary and step 3: risc0-build reads rzup's settings as a library (M1.17). `RISC0_HOME` moves `~/.risc0`, as it does for risc0-build. The host's `prove` feature also needs a C++ compiler, which the tier checks for.
 
-### wedgie tools (wedgie)
-
-- **apt:** `apt-get install -y gcc-arm-none-eabi qemu-system-arm`, through `sudo` when not root, as on the runners. URLs: `archive.ubuntu.com` (noble universe and noble-updates); 57.5 MB for `gcc-arm-none-eabi` (505 MB installed), 11.0 MB for `qemu-system-arm`. Ubuntu 24.04 has no other `gcc-arm-none-eabi`, so the tier checks that the packages are installed and CI prints both versions; the glue's object code, and so `jiro_core.mpy`'s sha256, follow the compiler's version.
-- **MicroPython:** `git clone --depth 1 --branch v1.29.0 https://github.com/micropython/micropython.git ~/.cache/jiro-wedgie/micropython` (65 MB), checked against commit `0fd6c573ea815774668bbb16b8e197c8822368b2`; `JIRO_WEDGIE_HOME` moves `~/.cache/jiro-wedgie`. No submodule is needed: the qemu port is built without a frozen manifest, which would need `lib/micropython-lib`. `wedgie/scripts/build-qemu.sh` then builds `mpy-cross` and the qemu port's MICROBIT firmware in 16 s on 4 CPUs.
-- **pyelftools** for `mpy_ld`: `python3 -m venv ~/.cache/jiro-wedgie/venv`, then its `pip install pyelftools==0.32` (from `pypi.org` and `files.pythonhosted.org`; 15 MB with pip). A venv, because the runners' system Python refuses global installs (PEP 668). `wedgie/natmod/glue/Makefile` runs `mpy_ld` with the venv's Python.
-- **Time:** the tier took 11 s from an empty `~/.cache/jiro-wedgie` with the apt packages and the Rust toolchain present: the clone, then the venv.
-
-### RP2040 bootrom (for M3.3)
-
-- **Source:** rp2040js 1.4.1 needs a bootrom from the caller. The upstream demo's [`bootrom.ts`](https://raw.githubusercontent.com/wokwi/rp2040js/8693315df527adce8bf2bc315aeb4a1ca61c02a3/demo/bootrom.ts) (sha256 `99f8a1f813ce3aa9415884de3fb6c5b962d3c6fa0394b05413ad3c7b3c39ec62`) holds 4,096 words built from pico-bootrom revision B1.
-- **Probe:** loaded with `loadBootrom`, it reset to PC 0xee and ran 10,000 steps.
-- **Caveat:** current Pico boards use B2 silicon, and building a B2 image needs `arm-none-eabi-gcc`, so the B1 image is the practical pin.
-
-## D1 evidence: embassy-rp blinky
-
-Built on 2026-10-28 in the container, and not committed.
-
-- **No ARM GCC.** `command -v arm-none-eabi-gcc` exits 1. The ELF's `.comment` reads `Linker: LLD 22.1.8` and `rustc version 1.98.0`: rust-lld linked it.
-- **What it does.** It blinks GPIO 25 every 500 ms and runs an embassy-usb CDC-ACM echo, so the USB stack the firmware needs also builds and links.
-- **Build.** A clean `cargo build --release` takes 39 s, and clippy is clean. Sizes: text 18,408 B, data 0, bss 2,152 B.
-- **UF2.** elf2uf2-rs wrote 36,864 bytes in 72 blocks, every one with the UF2 magics and family 0xE48BFF56. The payload equals the `llvm-objcopy` flash image, and the boot2 CRC (0x7a4eb274) checks.
-- **For M3.1:**
-  - embassy-executor 0.10 renamed the feature `arch-cortex-m` to `platform-cortex-m`.
-  - embassy-rp 0.10 still needs `-Tlink-rp.x`.
-  - These are the newest versions on crates.io on 2026-10-28.
-
-<details>
-<summary>Blinky sources</summary>
-
-`Cargo.toml`:
-
-```toml
-[package]
-name = "blinky"
-version = "0.1.0"
-edition = "2024"
-publish = false
-
-[dependencies]
-cortex-m-rt = "0.7.5"
-embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
-embassy-futures = "0.1.2"
-embassy-rp = { version = "0.10.0", features = ["rp2040", "time-driver", "critical-section-impl"] }
-embassy-time = "0.5.1"
-embassy-usb = { version = "0.6.0", default-features = false }
-panic-halt = "1.0.0"
-
-[profile.dev]
-overflow-checks = true
-
-[profile.release]
-overflow-checks = true
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = true
-```
-
-`.cargo/config.toml`:
-
-```toml
-[build]
-target = "thumbv6m-none-eabi"
-
-[target.thumbv6m-none-eabi]
-rustflags = ["-C", "link-arg=--nmagic", "-C", "link-arg=-Tlink.x", "-C", "link-arg=-Tlink-rp.x"]
-```
-
-`memory.x`:
-
-```text
-MEMORY {
-    BOOT2 : ORIGIN = 0x10000000, LENGTH = 0x100
-    FLASH : ORIGIN = 0x10000100, LENGTH = 2048K - 0x100
-    RAM   : ORIGIN = 0x20000000, LENGTH = 256K
-}
-```
-
-`src/main.rs`:
-
-```rust
-#![no_std]
-#![no_main]
-
-use embassy_executor::Spawner;
-use embassy_futures::join::join;
-use embassy_rp::bind_interrupts;
-use embassy_rp::gpio::{Level, Output};
-use embassy_rp::peripherals::USB;
-use embassy_rp::usb::{Driver, InterruptHandler};
-use embassy_time::Timer;
-use embassy_usb::class::cdc_acm::{CdcAcmClass, State};
-use embassy_usb::{Builder, Config};
-use panic_halt as _;
-
-bind_interrupts!(struct Irqs {
-    USBCTRL_IRQ => InterruptHandler<USB>;
-});
-
-#[embassy_executor::task]
-async fn blink(mut led: Output<'static>) {
-    loop {
-        led.toggle();
-        Timer::after_millis(500).await;
-    }
-}
-
-#[embassy_executor::main]
-async fn main(spawner: Spawner) {
-    let p = embassy_rp::init(Default::default());
-    spawner.spawn(blink(Output::new(p.PIN_25, Level::Low)).unwrap());
-
-    let mut config = Config::new(0xc0de, 0xcafe);
-    config.product = Some("blinky");
-    let mut config_descriptor = [0; 256];
-    let mut bos_descriptor = [0; 256];
-    let mut control_buf = [0; 64];
-    let mut state = State::new();
-    let mut builder = Builder::new(
-        Driver::new(p.USB, Irqs),
-        config,
-        &mut config_descriptor,
-        &mut bos_descriptor,
-        &mut [],
-        &mut control_buf,
-    );
-    let mut serial = CdcAcmClass::new(&mut builder, &mut state, 64);
-    let mut usb = builder.build();
-
-    let echo = async {
-        let mut packet = [0; 64];
-        loop {
-            serial.wait_connection().await;
-            while let Ok(len) = serial.read_packet(&mut packet).await {
-                if serial.write_packet(&packet[..len]).await.is_err() {
-                    break;
-                }
-            }
-        }
-    };
-    join(usb.run(), echo).await;
-}
-```
-
-</details>
-
 ## Bootstrap tiers
 
 `bash scripts/bootstrap.sh <tier>` installs only what is missing, checks each tool again after installing it, and prints `nothing to install` when the tier is complete.
@@ -298,7 +137,6 @@ The SessionStart hook in `.claude/settings.json` runs the core tier at the start
 | core | the Rust toolchain of `rust-toolchain.toml` | 35 to 49 s |
 | web | core, then checks for Node 22 and the preinstalled Chromium, and runs `npm install` in `web/` once it has a lockfile | under 1 s until `web/` exists |
 | contracts | core, cargo-stylus 0.10.10, binaryen 120.0.0, Foundry v1.8.6, slither 0.11.6 | about 8 min, mostly cargo-stylus |
-| wedgie | core, `gcc-arm-none-eabi` and `qemu-system-arm` from apt, MicroPython v1.29.0 cloned at commit 0fd6c573, pyelftools 0.32 in a venv (wedgie tools, above). M3.8 replaced the `firmware` tier (libudev-dev, pkg-config, elf2uf2-rs) with it | 11 s with the apt packages and the core tier present (M3.8) |
 | zk | core, a check for a C++ compiler (`g++`), the RISC Zero Rust toolchain `r0.1.97.0` from its release asset with its sha256, rzup's `settings.toml` and the `risc0` rustup toolchain (zkVM toolchains, above). The first build of `referee/zk/` then takes about an hour (docs/VERIFICATION.md, RISC Zero) | 1 min 7 s with an empty `RUSTUP_HOME` and `RISC0_HOME`, the core tier's Rust install included (M1.12) |
 
 ## Actions minutes
@@ -320,7 +158,6 @@ Monthly budget: 1,500 minutes for this repository (see Decisions, P14). The `get
 | `ci.yml`, job `contracts`, from M4.11 | 3, an estimate until this PR's run is measured. On `main` at M4.7's merge the job took 129 s, of which the forge build and tests 116 s. M4.11 adds `setup-node` with its npm cache, `npm ci` of `scripts/contracts` (1.4 s locally), the deployment-record tests (0.4 s) and `localnet.mjs --check` (2.8 s locally, from an empty `contracts/out`: the build, anvil's start, 18 transactions and the checks), a few seconds in all | M4.7's run [41343860951](https://github.com/detychey/jiro-ikusu/actions/runs/41343860951) on `main`, and local timing |
 | `ci.yml`, job `zk-exec` | 4 with its cache warm: the job took 3 min 41 s, of which restoring the RISC Zero toolchain (501 MB) 15 s and the build cache (1.45 GB) 49 s, the build 39 s (the guests, and the host relinked), the executor on the 51 format vectors and 4 game vectors 13 s, and the dev-mode round trip 1 min 19 s. 70 on a cold cache: 69 min 52 s, of which the host build 62 min 58 s, almost all of it `g++` on RISC Zero's circuit kernels, and the round trip 5 min 13 s, since `cargo test` builds the dependencies again with `panic = "unwind"`. A cold run happens when `referee/zk/Cargo.lock`, `referee/zk/host/Cargo.toml` or a toolchain changes, on a branch with no cache to restore, and after GitHub evicts the cache, 7 days after its last use. The build step's time limit follows: 20 minutes on an exact cache hit, 80 otherwise, under a 95-minute job limit. The first push to `main` after M1.12 merges runs cold and seeds `main`'s cache, which later PRs restore. When its steps skip, the job bills 1 minute | M1.12, runs [41368126873](https://github.com/detychey/jiro-ikusu/actions/runs/41368126873) (cold) and [41375427775](https://github.com/detychey/jiro-ikusu/actions/runs/41375427775) (warm) |
 | `ci.yml`, jobs `rust` and `zk-exec`, from M1.13 | Unchanged in whole minutes with their caches warm: `rust` took 6 min 0 s, of which the new difffuzz step 26 s (`npm ci` of `web` 25 s with setup-node's npm cache, then the 200 fixed cases through jiro-wasm under 1 s); `zk-exec` took 5 min 44 s, of which the 20 fixed cases 28 s (a debug build of `jiro-tools` 7 s, writing the cases 2 s, the executor 18 s) | M1.13, run [41414509413](https://github.com/detychey/jiro-ikusu/actions/runs/41414509413) |
-| `ci.yml`, job `wedgie` | 4 on a cold cache: the job took 3 min 2 s on M3.8's scratch run, which stopped after the vector run: the toolchain 79 s (Rust 1.98.0 17 s, the apt packages 56 s, the MicroPython clone 2 s, the pyelftools venv 4 s), mpy-cross and the qemu port 29 s, `jiro_core.mpy` 2 s, and the 75 vectors on qemu 65 s. About 3 with its MicroPython cache warm, an estimate: the apt packages are not cached. The cache is saved only by a job that succeeds. When its steps skip, the job bills 1 minute | M3.8, run [41501449808](https://github.com/detychey/jiro-ikusu/actions/runs/41501449808) |
 | `pages.yml` | 3: job `build` took 66 s (2 minutes), of which the smoke test 31 s; job `deploy` took 22 s (1 minute), of which wrangler 13 s | M2.2, run [40975816996](https://github.com/detychey/jiro-ikusu/actions/runs/40975816996) |
 | `stylus-gas.yml`, on the `ci:heavy` label | 10 on a cold cache: the job took 9 min 16 s, mostly building cargo-stylus and the release builds of `difffuzz` and the referee, with the 4.97 GB image pull overlapping them. About 5 with its caches warm, an estimate until a warm run is measured. The label also starts `nightly.yml`'s `heavy` job (1 minute on this run). 12 on a `workflow_dispatch` of a new branch: 11 min 44 s, of which 9 min building cargo-stylus, since its cache is saved per branch and `main` has none | M4.2, run [41335622698](https://github.com/detychey/jiro-ikusu/actions/runs/41335622698); M4.9, run [41412617292](https://github.com/detychey/jiro-ikusu/actions/runs/41412617292) |
 | `e2e.yml`, on the `ci:heavy` label | 15 on a cold cache: the job took 14 min 42 s, of which 8 min 44 s to build cargo-stylus, with the image pull overlapping the builds. 5 with its caches warm: 4 min 29 s, of which the suite 3 min 19 s, about half of it the wait for the season's end + grace (30 s + 120 s). The label also starts `stylus-gas.yml` and `nightly.yml`, which this PR cancelled | M4.16, runs [41348621860](https://github.com/detychey/jiro-ikusu/actions/runs/41348621860) (cold) and [41350044090](https://github.com/detychey/jiro-ikusu/actions/runs/41350044090) (warm) |

@@ -13,14 +13,3 @@ contracts/cache/
 # Records of local chains, which exist only while their node runs (deployments/README.md)
 deployments/local.json
 deployments/nitro-devnode.json
-
-# wedgie build outputs (wedgie/README.md)
-wedgie/natmod/glue/build/
-wedgie/natmod/glue/jiro_core.mpy
-wedgie/check/jiro_check.mpy
-wedgie/check/jiro_core.mpy
-wedgie/check/jiro_vectors.bin
-wedgie/app/jiro_app.mpy
-wedgie/app/jiro_core.mpy
-wedgie/app/jiro_levels.bin
-wedgie/scripts/__pycache__/
