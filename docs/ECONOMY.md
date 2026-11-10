@@ -91,7 +91,6 @@ Each row names its mitigation, the item that builds or measures it, and what cov
 - an Arbitrum One deployment in native ETH, with seasons of likely 14 days, whose first season takes its weights from bot data;
 - weights for later seasons from the previous season's public journals plus bot data (README §8.4), through a `calibrate --from-season <season>` mode;
 - fresh entropy per level (README §7.4);
-- journal signing with a device key on the RP2350 (README §7.1);
 - season proof aggregation, if M4.9 did not adopt it for testnet and zk becomes the mainnet path;
 - a reactivation policy for the Stylus referee.
 

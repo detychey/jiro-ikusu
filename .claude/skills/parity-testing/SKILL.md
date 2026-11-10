@@ -1,13 +1,13 @@
 ---
 name: parity-testing
-description: Use when writing tests for game logic or checking that targets agree — golden vectors, per-tick state-hash traces, property tests, differential fuzzing, playtest bots. One mismatched tick between the Pico, the browser and the referee invalidates a game.
+description: Use when writing tests for game logic or checking that targets agree — golden vectors, per-tick state-hash traces, property tests, differential fuzzing, playtest bots. One mismatched tick between the browser and the referee invalidates a game.
 ---
 
 # Parity testing
 
 ## Golden vectors (`vectors/`)
 
-Each vector maps (level bytes, run nonce, journal bytes) to a per-tick trace of state hashes plus the final outcome (`claim_bp`, score, end reason). The native core generates the vectors and they are committed. Every target replays them: native, wasm, the wedgie's native module (in MicroPython's qemu port, and its check app on a wedgie), the zkVM executor and the onchain referee.
+Each vector maps (level bytes, run nonce, journal bytes) to a per-tick trace of state hashes plus the final outcome (`claim_bp`, score, end reason). The native core generates the vectors and they are committed. Every target replays them: native, wasm, the zkVM executor and the onchain referee.
 
 **Compare per-tick traces,** not just final hashes. The first tick that differs locates the bug.
 

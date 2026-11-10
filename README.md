@@ -1,15 +1,15 @@
 # Jiro-ikusu
 
-A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It runs on a [wedgie](https://wedgie.dev), a Raspberry Pi Pico fitted with a Waveshare Pico-LCD-1.3, and in the browser.
+A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It plays in the browser; a phone version comes later.
 
 Play the browser build of `main` at [jiro-ikusu.win](https://jiro-ikusu.win). Every pull request that touches the game gets its own preview, linked in a comment on the pull request.
 
-> **Status: rules frozen (milestone M0, 2026-10-28); the browser game is done (milestone M2, 2026-10-31): all 16 levels, calibrated with bots, play in Training with local scores. The core is done (milestone M1, 2026-11-02): golden vectors, property tests, RISC Zero chosen as the zkVM with its cycle counts recorded, and the native build, wasm and RISC Zero's executor agreeing on random games. The referees and the contracts (M4) are under way. The device is done (milestone M3, 2026-11-02): a wedgie app plays the 16 levels in Training, offline, at 15 Hz, with the core as a native module that reproduces every vector on qemu's Cortex-M0; Challenge runs are played in the browser ([§13](#13-open-decisions) D1, D15).** This README is the project specification. It is built from [`plan-draft.md`](plan-draft.md), the original draft (kept for reference). It also fixes the parts of the draft that would break determinism or the economics, and records the decisions, taken and still open, in [§13](#13-open-decisions). A rule tied to a decision is tagged with its ID, e.g. *(D3)*.
+> **Status: rules frozen (milestone M0, 2026-10-28); the browser game is done (milestone M2, 2026-10-31): all 16 levels, calibrated with bots, play in Training with local scores. The core is done (milestone M1, 2026-11-02): golden vectors, property tests, RISC Zero chosen as the zkVM with its cycle counts recorded, and the native build, wasm and RISC Zero's executor agreeing on random games. The referees and the contracts (M4) are under way. A phone version comes later (M3, not scheduled; [§13](#13-open-decisions) D1).** This README is the project specification. It grew out of an original draft, and it fixes the parts of that draft that would break determinism or the economics, and records the decisions, taken and still open, in [§13](#13-open-decisions). A rule tied to a decision is tagged with its ID, e.g. *(D3)*.
 
 ## Contents
 
 1. [Concept](#1-concept)
-2. [Hardware target](#2-hardware-target)
+2. [Platform](#2-platform)
 3. [Architecture](#3-architecture)
 4. [Game rules](#4-game-rules)
 5. [Levels](#5-levels)
@@ -29,87 +29,66 @@ The player moves along the edge of a 60×60 field. Leaving the edge draws a trai
 Every game must be replayable, bit for bit, by a smart contract:
 
 - **A game is a pure function** of (level, seed, input journal). It uses integer math only, no wall-clock time, and a fixed 15 Hz tick.
-- **The device records only input changes** (the journal). A referee replays the journal and computes the score itself, so a submitted score is never trusted.
-- **One core implementation** runs on the device, in the browser and in the referee.
+- **The browser records only input changes** (the journal). A referee replays the journal and computes the score itself, so a submitted score is never trusted.
+- **One core implementation** runs in the browser and in the referee.
 
 There are three modes ([§8](#8-game-modes-and-economy)):
 
-- **Training:** free, all 16 levels, on the device or in the browser.
+- **Training:** free, all 16 levels, in the browser.
 - **Challenge:** 0.00005 ETH for 6 random levels, with a seasonal ranking and rewards, played in the browser.
 - **Superchallenge:** player-minted maps with bounties, deferred ([`TODO.md`](TODO.md)).
 
-## 2. Hardware target
+## 2. Platform
 
-| | |
-|---|---|
-| Device | [wedgie](https://wedgie.dev): the board and display below in a case, running the wedgie's own MicroPython firmware (firmware 0.3.76, MicroPython 1.29.0 in the spike of [§13](#13-open-decisions) D1). It boots straight into one app, and Jiro is that app ([§3](#3-architecture)). |
-| Board | Raspberry Pi Pico: RP2040, dual Cortex-M0+, 264 KB SRAM, **no FPU**. The hat also fits the Pico 2 (RP2350). |
-| Display | [Waveshare Pico-LCD-1.3](https://www.waveshare.com/wiki/Pico-LCD-1.3): 240×240 IPS, ST7789VW controller, 4-wire SPI. The wedgie uses this display. |
-| Inputs | 5-way joystick (4 directions + press) and keys A, B, X, Y, all active-low. The wedgie's keys carry no letters: A is green, B and X are grey, Y is red. |
-| Power and link | USB: power, and the wedgie's link for installing and debugging apps. In v1 the device has no link to the dApp ([§6.5](#65-device-to-browser-link)). |
+The game plays in the browser *(D1)*: [jiro-ikusu.win](https://jiro-ikusu.win) serves the build of `main`. A phone version comes later ([§9](#9-roadmap)).
 
-Pin map, from the Waveshare wiki; the wedgie's [code guide](https://wedgie.dev/code.md) gives the same input pins:
-
-| LCD signal | GPIO | Input | GPIO |
-|---|---|---|---|
-| DIN (MOSI) | GP11 | Keys A / B / X / Y | GP15 / GP17 / GP19 / GP21 |
-| CLK | GP10 | Joystick up / down | GP2 / GP18 |
-| CS | GP9 | Joystick left / right | GP16 / GP20 |
-| DC | GP8 | Joystick press | GP3 |
-| RST | GP12 | | |
-| BL (backlight) | GP13 | | |
-
-The draft names the keys Key0–Key3. They map to A, B, X, Y in that order *(D8)*:
+The draft names the controls a joystick and Key0–Key3. The keys map to A, B, X, Y in that order *(D8)*:
 
 | Control | Action |
 |---|---|
-| Joystick | Move one cell per tick |
+| Directions | Move one cell per tick |
 | Key0 = A | **Fast cut:** two cells per tick while cutting |
 | Key1 = B | **Slow shield:** one cell every second tick, absorbs one hit *(D6)* |
 | Key2 = X | **Commit:** end the level now and keep its claim |
-| Key3 = Y, joystick press | Unused and not journaled |
+| Key3 = Y | Unused and not journaled |
 
 The draft's Key2 is "Commit/Forfeit (ends game immediately)". Here it ends the current level, not the whole run, and the level keeps its claim.
 
-**In the browser, the keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome.
+**The keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome.
 
-The core allocates nothing: its buffers have fixed sizes. The RP2040 has 270,336 bytes of SRAM:
+The core allocates nothing: its buffers have fixed sizes.
 
 | Buffer | Bytes |
 |---|---|
 | Grid: 3,600 cells × 1 byte | 3,600 |
 | Capture stack: at most 3,364 cells × 2 bytes ([§4.8](#48-capture)) | 6,728 |
 | Journal: at most 1 event per tick × 2,700 ticks × 3 bytes ([§6.2](#62-events)) | 8,100 |
-| Full-screen RGB565 framebuffer (not used) | 115,200, about 43 % of SRAM |
 
-On the wedgie, the firmware owns the screen: a 16-color buffer of 240 × 240 × 4 bits, 28,800 bytes, and a full-screen push takes about 25 ms ([wedgie code guide](https://wedgie.dev/code.md)). About 137 KB of RAM is left for an app: the spike's wedgie reported 137,760 bytes free with no app. Jiro's app holds the core's 64 KB stack, its 18.5 KB Recorder, the 18.2 KB module and the 3.6 KB shadow of the dirty-cell diff ([§3](#3-architecture)); on qemu, with the heap filled down to 137,760 bytes free, about 18 KB stay free after it starts.
-
-A tick changes only a handful of cells. So the app redraws the changed 4×4-pixel cells and pushes only the regions that changed.
+A tick changes only a handful of cells, so the browser redraws only the cells that changed: `jiro-shell`'s dirty-cell diff ([§3](#3-architecture)).
 
 ## 3. Architecture
 
-**One deterministic core, compiled for every target.** The draft implies three implementations of the rules: C++ on the Pico, the browser version, and Solidity in the verifier. Any disagreement between them would silently invalidate games. With a single core there is nothing to keep in sync, and golden test vectors prove that every build still agrees (M1 in [§9](#9-roadmap)).
+**One deterministic core, compiled for every target.** The draft implies three implementations of the rules: one in C++, the browser version, and one in Solidity in the verifier. Any disagreement between them would silently invalidate games. With a single core there is nothing to keep in sync, and golden test vectors prove that every build still agrees (M1 in [§9](#9-roadmap)).
 
 ```text
                  ┌──────────────────────────────────────────────────┐
                  │  core: Rust, no_std, no heap, integer-only       │
                  │  rules · capture · scoring · codec · seeds       │
                  └──────────────────────────────────────────────────┘
-                      │              │              │             │
-                      ▼              ▼              ▼             ▼
-                  wedgie app     web (wasm)      referee        native
-                  native module  game, replays,  Stylus or      tests, vectors,
-                  + MicroPython  editor, dApp    zkVM guest     playtest bots
-                  (Training)              │          ▲
-                                          └─ wallet ─┴─ contracts (Solidity)
+                        │                │                │
+                        ▼                ▼                ▼
+                    web (wasm)        referee          native
+                    game, replays,    Stylus or        tests, vectors,
+                    editor, dApp      zkVM guest       playtest bots
+                         │                ▲
+                         └──── wallet ────┴─ contracts (Solidity)
 ```
 
 | Directory (planned) | Built from the core as | Responsibilities outside the core |
 |---|---|---|
 | `core/` | the crate itself | All game rules, capture, scoring, journal codec, seed derivation, state hash |
-| `shell/` | `no_std` library, `jiro-shell` | Code shared by the web app and the wedgie's native module that is not consensus: the dirty-cell diff. Never hashed. |
+| `shell/` | `no_std` library, `jiro-shell` | Code the web app uses that is not consensus: the dirty-cell diff. Never hashed. |
 | `tools/` | native binary, `jiro-tools` | The native target: vectors, replay, level tool, playtest bots, calibration, differential fuzzing. `tools/xcheck/` (Node and ethers) computes the worked examples and fixtures independently of the core. |
-| `wedgie/` | `thumbv6m-none-eabi` object in a MicroPython native module, `jiro_core.mpy` | The wedgie app, in MicroPython: screen, inputs, the 15 Hz tick, level select, local best scores in `/saves/jiro/` |
 | `web/` | `wasm32` module | Canvas rendering, keyboard, replay viewer, level editor, wallet |
 | `referee/` | Stylus contract or zkVM guest *(D2)* | `IReferee`: `verifyRun`, `verify` and `rulesVersion` ([§7.3](#73-verification-cost)) |
 | `contracts/` | (Solidity) | Payments, entropy, runs, seasons, maps |
@@ -121,15 +100,6 @@ A tick changes only a handful of cells. So the app redraws the changed 4×4-pixe
 - **Existing pipeline.** ethblockdigger already has a `no_std` Rust referee crate, its Stylus packaging, pinned wasm builds and cross-language conformance tests ([§10](#10-reuse-from-ethblockdigger)). Jiro can reuse that pipeline instead of building one.
 - **On-chain targets are Rust-first.** Stylus contracts and zkVM guests (RISC Zero, SP1) are written in Rust, so the core can become the onchain referee or a proof guest without a port.
 - **No undefined behavior.** Overflow can be made explicit everywhere: `wrapping_*` and `checked_*` in the code, plus `overflow-checks = true` in every build profile so that debug and release builds behave the same.
-
-**Device: a wedgie app** *(D1)*. The wedgie keeps its own MicroPython firmware, and Jiro is an app on it:
-
-- **The app,** in MicroPython, draws the screen, samples the inputs once per tick, keeps the 15 Hz tick, and keeps local best scores. It never computes game state: it passes each tick's mask to the core's Recorder and draws what the core reports.
-- **The core** is jiro-core compiled for `thumbv6m-none-eabi` and linked by MicroPython v1.29.0's `mpy_ld`, with C glue, into a native module, `jiro_core.mpy`. The rules still exist exactly once.
-- **Its stack.** The rp2 port gives C code an 8 KB stack, and the core needs about 63 KB (`start` peaks at 62,784 bytes), so the glue runs the core on a 64 KB stack the app allocates on the heap.
-- **Evidence:** the spike of 2026-11-02 ([PR #42](https://github.com/detychey/jiro-ikusu/pull/42), `spikes/wedgie-natmod/README.md` on branch `claude/wedgie-app-spike`). All 75 golden vectors replay bit for bit through the module in MicroPython on qemu's Cortex-M0, and a real wedgie showed "Jiro PASS" on 4 of 4 vectors. The worst tick is estimated at about 22 ms, against the 66.7 ms tick.
-
-D1's first answer, Rust firmware on `embassy-rp` flashed as a UF2, is superseded ([§13](#13-open-decisions)).
 
 ## 4. Game rules
 
@@ -297,7 +267,7 @@ When a cut reaches `CLAIMED`: [R4.8-1]
 
 Why this procedure: <!-- rationale -->
 
-- **No recursion.** A cell is marked when it is pushed, not when it is popped, so it is pushed at most once. A static stack of 3,364 entries can therefore never overflow. A recursive fill needs up to 3,364 nested calls, far beyond the RP2040's small default stack. <!-- rationale -->
+- **No recursion.** A cell is marked when it is pushed, not when it is popped, so it is pushed at most once. A static stack of 3,364 entries can therefore never overflow. A recursive fill needs up to 3,364 nested calls, so its stack use would depend on the level. <!-- rationale -->
 - **Visit order doesn't matter.** The result depends only on which `EMPTY` cells are 4-connected to the boss's body. A stack, a queue or a scanline fill all give the same grid. <!-- rationale -->
 - **The boss's side stays open, as one region.** Since the boss moves one axis at a time, it cannot cross a gap that is only diagonal, so it never reaches a cell that the fill treats as a separate region. The fill may include pockets narrower than the body, which the boss can't physically enter. They stay open because they connect to the boss's side: as in *Qix* and *Volfied*, a capture takes the regions without the boss, not the cells the boss can't reach. <!-- rationale -->
 - **One pass instead of three.** The draft's steps 3–5 (claim unreached cells, convert the trail, revert `BOSS_ZONE`) collapse into the single pass of step 3. <!-- rationale -->
@@ -413,7 +383,7 @@ Inputs are sampled once per tick, at the tick boundary. Sampling at 15 Hz also d
 
 - **Format.** An event is `(u16 tick, u8 mask)`, recorded only when the mask changes, as in the draft. A mask applies from its tick until the next event. Before the first event, the mask is 0, so every event must change the mask; a first event with mask 0 is invalid.
 - **Capacity.** Ticks strictly increase, so a level has at most one event per tick. Time limits are capped at 2,700 ticks ([§5](#5-levels)), so a static array of 2,700 events (8,100 bytes) can never overflow. This replaces the "dynamic array" that the draft's Phase 2 asks for, which contradicts the draft's own no-heap rule.
-- **Single input path.** The core reads the journal, never the raw inputs: inputs → journal → core, on every target. The device and the referee therefore run on identical inputs by construction.
+- **Single input path.** The core reads the journal, never the raw inputs: inputs → journal → core, on every target. The browser and the referee therefore run on identical inputs by construction.
 
 ### 6.3 Journal bytes (v1)
 
@@ -528,16 +498,9 @@ run nonce entropy: 0xdf60591bfe4f361c147f862a9a94eb17a8a7288bfc32fe85e746df6da70
 run nonce (runId 1): 0xde7b230b4cdb45439578e3b94628bb69f470fd84bf8424e123e8db198378fbd8
 ```
 
-### 6.5 Device-to-browser link
+### 6.5 Clients
 
-**Not in v1** *(D15)*. The device plays Training only, offline, and Challenge runs are played in the browser, which also holds the wallet. A device Challenge can come back in a later version ([§7.5](#75-later-version-proving-service)), over the link designed for it:
-
-- **Transport:** USB serial on the device, the Web Serial API in the dApp. Web Serial works in desktop Chrome and Edge, not in Firefox or Safari. The wedgie's firmware already speaks JSON lines over its USB serial port, and its docs let an app read USB itself ([wedgie USB guide](https://wedgie.dev/usb.md)); Jiro has not tried it.
-- **Down:** the dApp sends the level bytes and the run nonce.
-- **Up:** the device streams journal events as they happen.
-- **Commit:** the dApp commits the six journals as soon as the run ends, and the contract derives the run commitment from them ([§6.4](#64-seeds-and-commitments), [§7.2](#72-run-flow)).
-
-This has to happen live: the commit deadline counts the time the journals actually took to play ([§7.2](#72-run-flow)), so a journal cannot wait for a later sync.
+A client samples the controls once per tick and records the journal ([§6.2](#62-events)); it never computes game state or a score. In v1 the browser is the only client, and it also holds the wallet. A phone version comes later ([§9](#9-roadmap)).
 
 ### 6.6 Vector files
 
@@ -561,9 +524,9 @@ A **trace** (`.trace`, binary) holds the 32-byte state hash of every processed t
 
 ### 7.1 What verification proves
 
-The referee replays (level, run nonce, journal) and computes the claim and score itself. That proves the journal produces the score. It does **not** prove that a human, or a device, produced the journal: any program can write a journal.
+The referee replays (level, run nonce, journal) and computes the claim and score itself. That proves the journal produces the score. It does **not** prove that a human produced the journal: any program can write a journal.
 
-In v1, paid runs are played in the browser *(D15)*. A device in a paid mode would therefore be a controller and a screen, not a security device: its journal would verify exactly like one from the browser. The RP2040 has no secure boot or attestation. An RP2350 (Pico 2) could sign journals with a device key, which would raise the bar for cheating without closing it.
+Paid runs are played in the browser, which attests nothing: its journal verifies exactly like one a program wrote.
 
 ### 7.2 Run flow
 
@@ -637,7 +600,6 @@ So the verifier runs the Rust core itself, in one of two ways:
   - it has a verifier contract on Arbitrum, with Foundry test support.
 
   Among the frameworks that pass, measured cycles and price decide. If the best-tooled zkVM still targets 32-bit RISC-V, that's fine: the core builds unchanged for either width. M1.12 chose RISC Zero, which targets RV32IM *(D2)*.
-- **A naming clash.** Brevis's zkVM is also called Pico. In this repository, "Pico" always means the Raspberry Pi board.
 
 **Agreed approach *(D2)*:**
 
@@ -706,7 +668,7 @@ The levers are economic and social:
 
 ### 7.5 Later version: proving service
 
-Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadmap)). In v1, whoever settles a run produces its proof. On Stylus there is no proof. On zk, the operator rebuilds each committed run's file from chain data (owner, 2026-11-08, "Rebuild from chain (Recommended)"): the six journals of its `commitRun` calldata *(P5)*, the run nonce of its reveal, and its drawn levels, whose ids its season holds. With the season's weights, it replays the runs offline with the core, then proves and settles each player's best run, on its own machines or through a hosted prover network on its own capped account ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M4.8, M5.5). Players do nothing after committing, and any player can still prove and settle their own run until the season's end plus grace ([§7.2](#72-run-flow)). In the later version, a third-party proving service replaces the operator's proving. The player, or the dApp, sends the run file (run id, run nonce, level bytes, journals) to the service's API, and the service returns the proof and settles the run. Prover marketplaces such as Succinct's prover network and RISC Zero's Boundless already sell proofs this way. Neither the device nor the browser ever proves anything: proving needs gigabytes of memory, and ideally a GPU.
+Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadmap)). In v1, whoever settles a run produces its proof. On Stylus there is no proof. On zk, the operator rebuilds each committed run's file from chain data (owner, 2026-11-08, "Rebuild from chain (Recommended)"): the six journals of its `commitRun` calldata *(P5)*, the run nonce of its reveal, and its drawn levels, whose ids its season holds. With the season's weights, it replays the runs offline with the core, then proves and settles each player's best run, on its own machines or through a hosted prover network on its own capped account ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M4.8, M5.5). Players do nothing after committing, and any player can still prove and settle their own run until the season's end plus grace ([§7.2](#72-run-flow)). In the later version, a third-party proving service replaces the operator's proving. The player, or the dApp, sends the run file (run id, run nonce, level bytes, journals) to the service's API, and the service returns the proof and settles the run. Prover marketplaces such as Succinct's prover network and RISC Zero's Boundless already sell proofs this way. The browser never proves anything: proving needs gigabytes of memory, and ideally a GPU.
 
 **The service is an untrusted prover, not an oracle.** An oracle's answer is believed; a proof is checked by the contract. So:
 
@@ -717,7 +679,6 @@ Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadma
 - **The commit never waits for the service.** The dApp commits the run itself, as in v1 ([§7.2](#72-run-flow)), and the service only receives the run after the commit. Proving can happen any time before the season's end plus its settlement grace: days after the commit, for a run played early in the season.
 - **Proving stays permissionless.** If the service refuses, the player, a second provider or the operator can produce the same proof.
 - **Effect on the backend.** v1 can already use zk without running prover infrastructure, through the operator's hosted-prover account. The service takes the operator out of the loop: players no longer depend on the operator to prove and settle their best run, and proving is paid per run *(D2)*. The deciding number is the proving price per verified run, which M1 and M4 measure, against the payout it unlocks, which the testnet season shows (M5).
-- **The device.** In v1 the device plays Training only *(D15)*. A later version can bring device Challenge back over the link of [§6.5](#65-device-to-browser-link): the journals reach the dApp over USB, and the dApp commits them. A Pico W or Pico 2 W could upload the run file to the service over Wi-Fi after the commit. Leaving the browser only to buy the run would need another contract change: v1's reveal and commit accept only the player, so the device would need a reveal and a commit signed by the player, or a session key the player registers.
 
 **Unchanged:** determinism, the journal format, the one core, and the bot risk ([§7.4](#74-bots)). A proof shows that a score is reachable, not that a human played.
 
@@ -727,11 +688,11 @@ Amounts are in native ETH *(D12)*, and the contracts hold them in wei: 0.00005 E
 
 ### 8.1 Training: free
 
-All 16 levels, offline, on the wedgie or in the browser. Scores stay local, in `/saves/jiro/` on the wedgie, and no wallet is needed. Training uses the current season's rules and scoring, so practice carries over.
+All 16 levels, in the browser. Scores stay local, in the browser, and no wallet is needed. Training uses the current season's rules and scoring, so practice carries over.
 
 ### 8.2 Challenge: 0.00005 ETH per run
 
-Challenge runs are played in the browser, which holds the wallet *(D15)*.
+Challenge runs are played in the browser, which holds the wallet.
 
 - **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a forward partial Fisher–Yates shuffle. Only the core computes it:
   1. The deck is [0, 1, …, 15].
@@ -797,7 +758,7 @@ The upper bounds catch a typo in a season that nothing can pause or edit.
 
 ## 9. Roadmap
 
-The draft builds hardware first (its Phases 1–7). This roadmap puts the core and its test vectors first instead: they are the contract every other target is checked against, and a 240×240 screen with an install cycle is the slowest place to debug game rules. The device app can still be built in parallel at any time.
+This roadmap puts the core and its test vectors first: they are the contract every other target is checked against.
 
 [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) breaks these milestones into work items, one pull request each, with their dependencies, acceptance checks and the steps that need the owner.
 
@@ -806,12 +767,11 @@ The draft builds hardware first (its Phases 1–7). This roadmap puts the core a
 | **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
 | **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; a hands-on tooling trial of two or three zkVMs, and cycle counts per level in the one chosen | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; zkVM chosen; cycle counts recorded |
 | **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots; served at [jiro-ikusu.win](https://jiro-ikusu.win) | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
-| **M3** wedgie app | The core as a MicroPython native module; the wedgie app, with the 16 levels in Training *(D1, D15)* | 1, 2 | The module reproduces every vector's outcome and trace on qemu's Cortex-M0, and its vector check passes on a wedgie; all 16 levels play in Training on a wedgie |
+| **M3** Phone version | The game on phones *(D1)* | none | Not scheduled |
 | **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
 | **M5** dApp and season 1 | Wallet, Challenge UX in the browser, a testnet season | none | A full season closes and pays out on testnet |
 | **M6** Superchallenge | Deferred, see [`TODO.md`](TODO.md) | none | Not scheduled |
 | **Later** Proving service | A third-party service proves and settles runs through an API, with gasless claims ([§7.5](#75-later-version-proving-service)) | none | Not scheduled |
-| **Later** Device Challenge | Challenge runs played on the wedgie, linked to the dApp over USB ([§6.5](#65-device-to-browser-link), D15) | none | Not scheduled |
 
 ## 10. Reuse from ethblockdigger
 
@@ -865,11 +825,10 @@ What Jiro takes from them, by mechanic:
 
 ### Project skills
 
-The draft's five system prompts, revised, live in [`.claude/skills/`](.claude/skills/) as Claude Code skills. They point to this README for the rules instead of restating them, so each rule has exactly one home.
+Four of the draft's five system prompts, revised, live in [`.claude/skills/`](.claude/skills/) as Claude Code skills; the fifth, for embedded C++, has no target here. They point to this README for the rules instead of restating them, so each rule has exactly one home.
 
 | Skill | Draft prompt | Main changes |
 |---|---|---|
-| [`rp2040-firmware`](.claude/skills/rp2040-firmware/SKILL.md) | Embedded C++ Optimizer | Rewritten for the wedgie app: MicroPython around the core's native module, with the real pin map and RAM budget, and no full redraw per tick. Inputs are sampled once per tick and reach the core through the journal. The app never re-implements a rule, and the module runs the test vectors on the device. |
 | [`deterministic-core`](.claude/skills/deterministic-core/SKILL.md) | Deterministic Engine Architect | Adds what breaks determinism besides floats: tick order, iteration order, hidden inputs, panics, and rule changes without a version bump. |
 | [`onchain-referee`](.claude/skills/onchain-referee/SKILL.md) | EVM / Solidity Gas Optimizer | Drops the Solidity replay: verification runs the one core, on Stylus or behind a zk proof, with the draft's 1M gas as a per-level gate on Stylus. Never trusts a client seed or score, and binds journals to their run so their bytes can't be reused. |
 | [`journal-codec`](.claude/skills/journal-codec/SKILL.md) | Cryptographic State Mapper | One codec for all targets, with strict decoding. keccak256 serves for seed derivation and commitments only, not as a per-tick PRNG. |
@@ -891,21 +850,21 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 
 | ID | Decision | Recommendation |
 |---|---|---|
-| D1 | Language of the core, and the device software | **Decided:** one Rust core for every target. **Device: a wedgie app** (owner, 2026-10-31: "Let's do Jiro as a wedgie app"; GO on 2026-11-02, after the device test). The app is MicroPython on the wedgie's own firmware, and the core runs in it as a native module, `jiro_core.mpy` ([§3](#3-architecture)). Evidence: the spike of [PR #42](https://github.com/detychey/jiro-ikusu/pull/42) (`spikes/wedgie-natmod/README.md` on branch `claude/wedgie-app-spike`). All 75 vectors replayed bit for bit through the module on qemu's Cortex-M0. On a real wedgie (firmware 0.3.76, MicroPython 1.29.0), the test app showed "Jiro PASS" on 4 of 4 vectors on 2026-11-02. An import crash on the first device test came from the module's link order, and is fixed. **Superseded:** the firmware shell in Rust on `embassy-rp`, built with cargo alone and flashed as a UF2 (owner, 2026-10-28), confirmed by M0.2's blinky build ([`docs/TOOLING.md`](docs/TOOLING.md#d1-evidence-embassy-rp-blinky)). |
+| D1 | Language of the core, and the platform | **Decided:** one Rust core for every target. **Platform: the browser** (owner, 2026-11-10); a phone version comes later ([§9](#9-roadmap), M3). |
 | D2 | Verification backend | **Agreed on 2026-10-28:** Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. **Part 1, the zkVM framework: Decided:** RISC Zero (owner, 2026-11-02; [plan](IMPLEMENTATION_PLAN.md) M1.12), version 3.0.6, guests built for RV32IM. RISC Zero and SP1 both pass the four tooling checks, so cycles and price decided ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#m112-the-choice)). Cycles are within 5% of each other: the heaviest level, `10-worst`, takes 29.6 million user cycles (30.9 million proving cycles) on RISC Zero and 31.2 million on SP1; a six-level run, 130.7 million (136.6 million proving) against 136.9 million. M1.17 priced a proof of that run at about 0.000011 ETH ($0.024) at the averages of RISC Zero's Boundless market, taking them for aggregated proofs; M4.8 found them to be raw Groth16 seals (1,370 of 1,376 fulfilled requests in a week), at a median of 0.0000184 ETH ($0.042) per run proof, 37% of the run fee ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#prover-network-price)). SP1's network asks 0.433 PROVE ($0.090) for a Groth16 proof. RISC Zero also wrapped a proof for onchain verification in the agents' container and on a 2-vCPU runner, where SP1 ran out of memory. **Part 2, the backend: Decided:** zk for testnet (owner, 2026-11-02, "Approve D2 = zk (Recommended)"; [plan](IMPLEMENTATION_PLAN.md) M4.9). Stylus activations stay paused on Arbitrum Sepolia and Arbitrum One (`activationGas` 2^64 − 1 at blocks 325,258,195 and 520,513,231 on 2026-11-02), and the Stylus gas gate failed: 11.6 million gas on `10-worst`, against 1 million. So testnet seasons settle through `ZkReferee`, with one Groth16 proof per verified run and no aggregation (owner, 2026-11-02, "No aggregation (Recommended)"): 227,591 gas to verify and 0.0000184 ETH to prove, or with settlement about 0.0000345 ETH per verified run at Arbitrum One's fees of 2026-11-02, 69% of its fee ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#d2-the-backend)). The Stylus gas optimization waits for activations to reopen. Switching backends later means opening a new season with the other referee ([§8.4](#84-season-scoring)). |
 | D3 | Player movement on claimed cells | **Decided:** rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. |
 | D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
 | D5 | Level defaults, and running out of lives | **Decided:** 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
 | D6 | Shield (B) | **Decided:** one charge per level; an absorbed hit costs the charge and nothing else. |
 | D7 | Minion patrol rule, and minions stranded by a capture | **Decided:** approved in M1.14 on 2026-10-29, under the owner's standing instruction of that day to proceed, and built in M1.15 (`RULES_VERSION` 2). The right-hand rule, with an orientation step that faces open field on the right or behind the right ([§4.7](#47-minions)). The patrol then traces the field's boundary and covers the rail (PIN-14). M1.7 measured the earlier orientation step, which trapped a minion on about 1.2 % of boards (131 of 10,000; 1,213 of 100,000); this rule traps none on the same boards. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([§4.7](#47-minions), PIN-17). |
-| D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y and the joystick press stay unused: a pause button would give human players free thinking time in paid modes. In the browser, players can rebind the keyboard keys ([§2](#2-hardware-target)). |
+| D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y stays unused: a pause button would give human players free thinking time in paid modes. Players can rebind the keyboard keys ([§2](#2-platform)). |
 | D9 | Boss size | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. |
 | D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players (owner, 2026-10-28). Decided in M0.7: ties go to fewer ticks, and a qualifying run is a settled run that cleared at least `minClears` levels, a season parameter that defaults to 1. Qualifying runs rank first, so settling another of a player's runs never lowers that player's payout ([§8.4](#84-season-scoring)). |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)); 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
-| D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-natmod` (the wedgie's native module, replacing `jiro-firmware` and `jiro-firmware-drivers` with D1), `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
+| D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
 | D14 | Seed space | **Decided** (owner, 2026-10-29): the level seed keeps driving the boss through the level, so that no two runs share a game and inputs can be neither copied from another run nor precomputed ([§7.4](#74-bots)). [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 wrote the rule, seeded deflections ([§4.6](#46-boss), R4.6-6 to R4.6-12; [§6.4](#64-seeds-and-commitments)): a stateless draw from level seed bytes 5 to 8 and the tick turns the boss a quarter turn on 1 move in 32. |
-| D15 | Device scope | **Decided** (owner, 2026-11-02, "Offline Training only (Recommended)"): the device plays Training only, offline, and Challenge runs are played only in the browser, which already holds the wallet and sends `startRun`, `revealRun` and `commitRun`. The device-to-browser link ([§6.5](#65-device-to-browser-link)) leaves v1. Device Challenge can come back in a later version ([§7.5](#75-later-version-proving-service)). |
+| D15 | Device scope | **Withdrawn** (owner, 2026-11-10): the game plays in the browser, and a phone version comes later *(D1)*. |
 
 M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §11):
 
@@ -917,7 +876,6 @@ M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`]
 
 ## Repository files
 
-- [`plan-draft.md`](plan-draft.md): the original draft this README is built from.
 - [`GUIDELINES.md`](GUIDELINES.md): workflow rules for coding agents.
 - [`skills-import.md`](skills-import.md): the ethskills import, with each skill's source, fetch date and checksum.
 - [`TODO.md`](TODO.md): deferred work, starting with Superchallenge mode.

@@ -3,20 +3,19 @@
 # - tokens: an f32 or f64 token in core/src or shell/src, the literal suffixes
 #   (0.5f32, 2.0_f64) included;
 # - symbols: an undefined soft-float symbol in the archive members of the float probe's
-#   own crates, built for thumbv6m-none-eabi and riscv32im-unknown-none-elf: __aeabi_f*,
-#   __aeabi_d*, the __aeabi_*2f/*2d conversions, the __*sf*/__*df* family, and the
-#   fmax*/fmin*/fmod* calls that max, min and % lower to. The crates come from the
-#   probe's dependency tree; core, compiler_builtins and compiler-rt members always carry
-#   soft-float references and are not scanned. The probe is built with
-#   -C link-dead-code, so a function nothing calls is compiled and scanned too; a
-#   generic function is scanned once something instantiates it.
+#   own crates, built for riscv32im-unknown-none-elf, which has no floating-point unit: the
+#   __*sf*/__*df* family, and the fmax*/fmin*/fmod* calls that max, min and % lower to. The
+#   crates come from the probe's dependency tree; core, compiler_builtins and compiler-rt
+#   members always carry soft-float references and are not scanned. The probe is built with
+#   -C link-dead-code, so a function nothing calls is compiled and scanned too; a generic
+#   function is scanned once something instantiates it.
 # CHECK_TOKENS=0 skips the token check, to show the symbol check alone.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 readonly PROBE=scripts/float-probe
-readonly TARGETS="thumbv6m-none-eabi riscv32im-unknown-none-elf"
-readonly SOFT_FLOAT='^(__aeabi_[fd][a-z0-9_]*|__aeabi_[a-z]+2[fd]|__[a-z0-9_]*[sd]f[a-z0-9_]*|f(max|min)(imum)?(_num)?f?|fmodf?)$'
+readonly TARGETS="riscv32im-unknown-none-elf"
+readonly SOFT_FLOAT='^(__[a-z0-9_]*[sd]f[a-z0-9_]*|f(max|min)(imum)?(_num)?f?|fmodf?)$'
 readonly FLOAT_TOKEN='(^|[^A-Za-z0-9_])([0-9][0-9_.eE+-]*)?f(32|64)([^A-Za-z0-9_]|$)'
 
 found=0

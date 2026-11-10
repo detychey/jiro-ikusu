@@ -1,13 +1,12 @@
 //! The dirty-cell diff: the cells whose state changed since the last redraw, found by comparing
-//! the core grid with a shadow copy, in row-major order. `Shadow` is the diff itself, which the
-//! wedgie's native module runs with its own drawing; `DirtyCells` keeps the changed indices for
-//! the browser.
+//! the core grid with a shadow copy, in row-major order. `Shadow` is the diff itself, and
+//! `DirtyCells` keeps the changed indices for the browser.
 
 use jiro_core::consts::CELLS;
 use jiro_core::grid::Grid;
 use jiro_core::types::{Cell, CellIndex};
 
-/// One byte per cell, nothing else: the wedgie's native module uses a caller's buffer as one.
+/// One byte per cell, nothing else.
 #[repr(transparent)]
 pub struct Shadow {
     /// Each cell's state plus one, as last reported; 0 for a cell never reported. All zero at
