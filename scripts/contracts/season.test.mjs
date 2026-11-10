@@ -43,6 +43,14 @@ test("seasons/testnet-0.json holds plan M4.14's provisional season, its referee 
   );
 });
 
+test("seasons/testnet-1.json holds plan M5.5's season of testers, its referee null until open", () => {
+  const { network, referee, runFee, rakeBp, length, grace, commitSlack, minClears } = readSeasonFile(join(REPO_ROOT, "seasons", "testnet-1.json"));
+  assert.deepEqual(
+    { network, referee, runFee, rakeBp, length, grace, commitSlack, minClears },
+    { network: "arbitrum-sepolia", referee: null, runFee: "50000000000000", rakeBp: 1_000, length: 1_209_600, grace: 604_800, commitSlack: 120, minClears: 1 },
+  );
+});
+
 test("a season file with weights other than its calibration file's is refused", () => {
   const weightsBp = testnet0().weightsBp.map((weight, slot) => (slot === 3 ? weight + 1 : weight));
   assert.throws(() => readSeasonFile(seasonFileWith({ weightsBp })), /its weightsBp are not those of seasons\/calibration-1.json/);
