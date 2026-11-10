@@ -397,4 +397,5 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 - **Traditional Chinese.** Is a 極絡益克司 form ever wanted for Taiwan and Hong Kong, or is 极络益克司 the only Chinese name?
 - **Trademark.** Should a name and mark clearance be run for Jiro-ikusu, ジロイクス, 极络益克司 and the monogram before stores, merchandise or paid promotion?
 - **README and accounts.** Should `banner-1920x480.png` head README.md, and `avatar-400.png` become the repository's or the organization's avatar?
+- **Wide game rows.** [§8](#8-interface-planned) caps content at 960 px, but from field scale 3 (a 720-px field, at 1440 × 900) the field and its side column span 1,096 px, on the root site as in the preview. Does the cap leave the game row out, or does the side column go under the field there?
 - **Trust lines.** Runs are verified by exception (README §7.3). Are "Every cut checks out." and "Every ranked run is verified onchain." the claims the owner wants to make?
