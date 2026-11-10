@@ -1,7 +1,6 @@
 # CLAUDE.md
 
 @.claude/AGENTS_COMETH.md
-@GUIDELINES.md
 
 ## Project
 

@@ -1,6 +1,6 @@
 # Jiro-ikusu
 
-A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It plays in the browser; a phone version comes later. An independant training app is available for the [wedgie](https://wedgie.dev/) and maintained [here](https://github.com/jdetychey/jiro-ikusu-wedgie). 
+A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and *Volfied*. It plays in the browser; a phone version comes later. An independent training app is available for the [wedgie](https://wedgie.dev/) and maintained [here](https://github.com/jdetychey/jiro-ikusu-wedgie). 
 
 Play the browser build of `main` at [jiro-ikusu.win](https://jiro-ikusu.win). Every pull request that touches the game gets its own preview, linked in a comment on the pull request.
 
@@ -876,7 +876,6 @@ M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`]
 
 ## Repository files
 
-- [`GUIDELINES.md`](GUIDELINES.md): workflow rules for coding agents.
 - [`skills-import.md`](skills-import.md): the ethskills import, with each skill's source, fetch date and checksum.
 - [`TODO.md`](TODO.md): deferred work, starting with Superchallenge mode.
 - [`name.md`](name.md): the name in Japanese and Chinese.

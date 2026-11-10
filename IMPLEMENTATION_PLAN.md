@@ -51,7 +51,7 @@ Item count: M0 7, M1 18, M2 11, M3 0 (not scheduled), M4 16, M5 6. Review findin
   | M | up to 1,000 | 2 |
   | L | up to 2,000, and finishable in one session | 3 |
 
-- **Scope.** A PR contains only its item's deliverables ([`GUIDELINES.md`](GUIDELINES.md) §3). If an item outgrows L, or this plan is wrong, the PR updates this file, splits the item and explains why.
+- **Scope.** A PR contains only its item's deliverables. If an item outgrows L, or this plan is wrong, the PR updates this file, splits the item and explains why.
 
 Each work item block has these fields:
 
