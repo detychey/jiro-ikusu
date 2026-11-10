@@ -51,3 +51,42 @@ The project's currency is native ETH ([README §13](README.md#13-open-decisions)
 ## Proving service
 
 Planned on 2026-10-28 for a version after v1, and not scheduled. A third-party service takes a player's run through an API, proves it and settles it for the player. Its design is in [README §7.5](README.md#75-later-version-proving-service).
+
+## Slow cuts
+
+Deferred on 2026-11-10 by the owner, to a later stage, and not scheduled.
+
+### The problem
+
+The fast cut (A) costs almost nothing, so most players will hold it on every cut: a level's score depends only on its claim ([README §8.4](README.md#84-season-scoring)). Its only costs are:
+
+- **Control:** both sub-steps of a tick go the same way, so a fast cut turns only on every second cell ([README §4.5](README.md#45-player)).
+- **No shield:** with A and B held, B wins.
+- **Minions:** a minion that stops on the cell a fast cut skipped still hits (the pass case, [README §4.9](README.md#49-hits-lives-and-respawn)). That is about the same risk per cell as a normal cut.
+
+Against these, a fast cut halves the time its trail is open to the boss. It also saves time against the level's limit and the run's deadline. The reference mix's greedy and search bots hold A on every cut (`tools/src/bots/`).
+
+### Proposal: a slow-cut bonus
+
+In the reference game, Qix, an area closed entirely with Slow Draw scores double ([`docs/genre/CATALOG.md`](docs/genre/CATALOG.md#taito-releases-and-official-ports)). Here, the cells a cut captures without a single fast sub-step would count double in the level score, while the clear target stays on the plain claim.
+
+- **Scoring only.** The bonus folds into `levelScore`, so the Outcome layout, the contracts and their ABI stay as they are. README §4.8 and §8.4 change.
+- **Open questions:**
+  - The factor: double, as in Qix, or less.
+  - How does calibration's median effective claim (README §8.4, P11) count the bonus?
+
+### A smaller alternative: one fast cut per level
+
+A fast-cut charge per level, like the shield's *(D6)*: A takes effect while the charge is unspent, and the charge is spent when a cut that took a fast sub-step closes. It changes movement only, not scoring, so it is the smaller change in play. It costs as much as the bonus to build, though: the fixed cost below.
+
+### What any rule change costs
+
+Both options change the core's behavior, so each pays the same fixed cost ([`CLAUDE.md`](CLAUDE.md), sync table):
+
+- **The rules:** `RULES_VERSION` from 2 to 3 and README §4. Each option adds player state, which the state hash covers, so the state hash goes to v2 ([README §6.4](README.md#64-seeds-and-commitments)) and every vector's trace is regenerated.
+- **Bots and levels:** the bots change, which forces a new playtest report and a new check of the clear rates against `levels/targets.json`. Levels that leave their target need retuning.
+- **Calibration:** a new calibration file, since `testnet-0` opened with `calibration-1.json`.
+- **The zk referee:** a new image id, which means a new contract generation on Arbitrum Sepolia ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4) and new proof fixtures for the contract tests.
+- **The client:** the HUD shows any new charge, and Training's bests restart, since they are kept per rules version.
+
+Each rules version pays this once. The cheapest moment is before a season opens on the new rules, with any other core change in the same version. Testnet-1's journals record every A press, so its report (plan M5.6) can show how testers actually use the fast cut before this is decided.
