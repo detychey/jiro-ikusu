@@ -47,7 +47,10 @@ const SCENE_TOKENS = ["field", "claim", "trail", "player", "boss", "boss-ghost-1
 const OPEN_TOKENS = ["field", "boss", "boss-ghost-1", "boss-ghost-2"];
 // The cell values of web/src/render.ts: EMPTY, CLAIMED, TRAIL, and BOSS_ZONE, which is drawn as EMPTY.
 const CELL_COLOR_TOKENS = ["field", "claim", "trail", "field"];
-// style.css :root names that alias a palette token.
+// The stylesheets whose :root variables the palette owns: style.css, then the stylesheet of the
+// wipui preview build, which loads after it (docs/STYLE_GUIDE.md §16).
+const STYLESHEETS = ["web/src/style.css", "web/src/wipui/style.css"];
+// :root names that alias a palette token.
 const CSS_ALIASES = { accent: "claim", focus: "player" };
 // The keys of the rules paragraph that opens lockups.txt.
 const RULE_KEYS = ["bands", "shelf", "hanzi-tile", "plate"];
@@ -560,13 +563,15 @@ function checkPalette(palette) {
   const editorTs = readFileSync(join(ROOT, "web/src/pages/editor.ts"), "utf8");
   const spawnArea = /SPAWN_AREA_COLOR = ([^;\n]*)/.exec(editorTs)?.[1] ?? fail("web/src/pages/editor.ts", "SPAWN_AREA_COLOR not found");
   compareLiteral("web/src/pages/editor.ts SPAWN_AREA_COLOR", spawnArea.trim(), "boss", 8);
-  // Every :root block counts, a later one or one inside a media query included.
-  const styleCss = readFileSync(join(ROOT, "web/src/style.css"), "utf8");
-  const roots = [...styleCss.matchAll(/:root\b[^{}]*\{([^}]*)\}/g)].map(([, body]) => body);
-  if (roots.length === 0) fail("web/src/style.css", ":root not found");
-  const declarations = roots.flatMap((body) => [...body.matchAll(/--([\w-]+)\s*:\s*([^;]*?)\s*(?:;|$)/g)]
-    .map(([, name, value]) => [name, value]));
-  const variables = new Map(declarations);
+  // Every :root block counts, a later one or one inside a media query included, and a later
+  // stylesheet's variable replaces an earlier one's, as in the cascade.
+  const declarations = STYLESHEETS.flatMap((file) => {
+    const roots = [...readFileSync(join(ROOT, file), "utf8").matchAll(/:root\b[^{}]*\{([^}]*)\}/g)].map(([, body]) => body);
+    if (roots.length === 0) fail(file, ":root not found");
+    return roots.flatMap((body) => [...body.matchAll(/--([\w-]+)\s*:\s*([^;]*?)\s*(?:;|$)/g)]
+      .map(([, name, value]) => [file, name, value]));
+  });
+  const variables = new Map(declarations.map(([, name, value]) => [name, value]));
   // An alias to a missing variable, or a cycle, stays unresolved and is reported as it is.
   const resolve = (value, seen = new Set()) => {
     const alias = /^var\(--([\w-]+)\)$/.exec(value);
@@ -574,9 +579,9 @@ function checkPalette(palette) {
     seen.add(alias[1]);
     return resolve(variables.get(alias[1]), seen);
   };
-  for (const [name, value] of declarations) {
+  for (const [file, name, value] of declarations) {
     const token = palette.hex.has(name) ? name : CSS_ALIASES[name];
-    if (token) compare(`web/src/style.css --${name}`, resolve(value), token);
+    if (token) compare(`${file} --${name}`, resolve(value), token);
   }
 }
 

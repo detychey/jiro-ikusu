@@ -1,6 +1,7 @@
 // The browser smoke test (plan M2.2): the built site, on the open-field level with a vector's run
 // nonce, plays the vector's keys on Playwright's fake clock, so that every key lands on its tick,
-// and must end on the vector's final state hash.
+// and must end on the vector's final state hash. The wipui preview build (docs/STYLE_GUIDE.md §16)
+// must load its assets and its font under /wipui/, start a game, and scroll the field to the top.
 
 import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
@@ -67,4 +68,26 @@ test(`plays ${VECTOR}'s keys to its final state hash`, async ({ page }) => {
   }
   const end = await field(page);
   expect([end.ticksUsed, end.stateHash]).toEqual([String(vector.outcome.ticksUsed), finalHash]);
+});
+
+test("the wipui build loads its assets and font, and a game's start scrolls the field to the top", async ({ page }) => {
+  const failed: string[] = [];
+  page.on("response", (response) => {
+    if (response.status() >= 400) failed.push(`${response.status()} ${response.url()}`);
+  });
+  // On a phone the whole field is in view before the game starts, and autoplay starts it without
+  // a click, which would scroll the page itself: only the wipui script scrolls the field.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/wipui/index.html?autoplay");
+  await expect.poll(async () => Number((await field(page)).ticksUsed)).toBeGreaterThan(0);
+  const shown = await page.evaluate(async () => {
+    const canvas = document.getElementById("field");
+    if (canvas === null) throw new Error("#field is missing from the page");
+    const top = canvas.getBoundingClientRect().top + window.scrollY;
+    const end = document.documentElement.scrollHeight - window.innerHeight;
+    // The canvas's scroll-margin-top is 8 px.
+    const scrolledToTop = Math.abs(window.scrollY - Math.min(top - 8, end)) < 1 && window.scrollY > 0;
+    return { scrolledToTop, fontFaces: (await document.fonts.load('24px "Jiro Pixel 12"')).length };
+  });
+  expect([shown, failed]).toEqual([{ scrolledToTop: true, fontFaces: 1 }, []]);
 });

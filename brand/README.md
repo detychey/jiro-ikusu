@@ -17,7 +17,8 @@ with exit code 1, writing nothing, when any of these fails:
 
 - **Palette.** Every color of `CELL_COLORS` and `ENTITY_COLORS` in `web/src/render.ts`, each a
   quoted 6-digit hex, and every variable named after a token in any `:root` block of
-  `web/src/style.css`, with its `var()` aliases followed, equals `palette.txt`. `--accent` must
+  `web/src/style.css` and of `web/src/wipui/style.css`, the wipui preview's stylesheet, which loads
+  after it, with its `var()` aliases followed, equals `palette.txt`. `--accent` must
   equal `claim`, and `--focus` must equal `player`. The level editor's `SPAWN_AREA_COLOR`, in
   `web/src/pages/editor.ts`, must be a quoted 8-digit hex whose first 6 digits equal `boss`.
   Colors written elsewhere in `style.css`, such as the link color, are not checked.
@@ -175,8 +176,9 @@ to the glyphs of `glyphs-cjk.txt`. No glyph has ink outside its rows and columns
 
 ### Font subset
 
-For Jiro Pixel 12, the UI's pixel face, which a later pull request ships: a renamed subset of the
-same file, renamed because the font reserves its name.
+For Jiro Pixel 12, the UI's pixel face, which the wipui preview build serves
+([`docs/STYLE_GUIDE.md`](../docs/STYLE_GUIDE.md) §16): a renamed subset of the same file, renamed
+because the font reserves its name.
 
 1. Subset it to 106 code points:
 
@@ -191,6 +193,10 @@ same file, renamed because the font reserves its name.
 3. Save it as `web/public/fonts/jiro-pixel-12.woff2`, next to the package's `LICENSE`, copied whole
    as `web/public/fonts/LICENSE-fusion-pixel.txt`: it holds the licenses and notices of Fusion
    Pixel, of Ark Pixel and of the other fonts that Fusion Pixel draws on (Credits).
+
+The committed `jiro-pixel-12.woff2` came out of these steps with fontTools 4.68.0, run as
+`python3 -I -m fontTools.subset` for `pyftsubset`: 2,528 bytes, sha256
+`3b5a13678ce05874229094fca69e4d3a0842bc63680e60914f04bff792349ee4`.
 
 ## Credits
 

@@ -4,7 +4,7 @@ The visual identity of Jiro-ikusu (ジロイクス, 极络益克司): the name i
 
 This guide owns the rules. [`brand/src/`](../brand/src/) owns the numbers: every coordinate, glyph bitmap, palette hex value and checksum of the identity. The guide quotes hex values, contrast ratios and headline sizes, never a checksum or a glyph's coordinates; where a quoted value and `brand/src/` differ, `brand/src/` wins. `node brand/build.mjs` builds every asset from it ([§12](#12-assets-and-build)).
 
-> **Status: a proposal under owner review (2026-11-10).** This pull request adds `brand/`, the generated assets, one CI check and this guide, and replaces the placeholder favicon. The pages, interface and game canvas adopt the identity in follow-up pull requests ([§16](#16-adoption)), which the sections marked *planned* describe.
+> **Status: a proposal under owner review (2026-11-10).** This pull request adds `brand/`, the generated assets, one CI check and this guide, replaces the placeholder favicon, and builds a preview of the pages in the identity, served at [jiro-ikusu.win/wipui](https://jiro-ikusu.win/wipui/). The pages, interface and game canvas adopt the identity in follow-up pull requests ([§16](#16-adoption)), which the sections marked *planned* describe.
 
 <img alt="Jiro-ikusu (ジロイクス, 极络益克司): a red cut about to close around the name" src="../web/public/brand/banner.svg" width="720" height="180">
 
@@ -50,7 +50,7 @@ Five directions were drawn up: Claimed Chrome (chrome cell letters over an attra
 
 ## 3. Color
 
-[README §4.1](../README.md#41-grid) freezes the field's colors as rule text: open field black (R4.1-3), claimed land blue (R4.1-4), trail red (R4.1-5). [`brand/src/palette.txt`](../brand/src/palette.txt) owns every hex value, and the build fails when `CELL_COLORS` or `ENTITY_COLORS` in render.ts, or a `:root` variable of style.css, disagrees with it, or when `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits ([§12](#12-assets-and-build)). Contrast is WCAG 2.2.
+[README §4.1](../README.md#41-grid) freezes the field's colors as rule text: open field black (R4.1-3), claimed land blue (R4.1-4), trail red (R4.1-5). [`brand/src/palette.txt`](../brand/src/palette.txt) owns every hex value, and the build fails when `CELL_COLORS` or `ENTITY_COLORS` in render.ts, or a `:root` variable of style.css or of the preview's stylesheet ([§16](#16-adoption)), disagrees with it, or when `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits ([§12](#12-assets-and-build)). Contrast is WCAG 2.2.
 
 **Game colors,** in `CELL_COLORS` and `ENTITY_COLORS` of render.ts:
 
@@ -206,7 +206,7 @@ The monogram, First Cut, is a level at its first move on 8 × 8 cells: the claim
 
 ## 8. Interface *(planned)*
 
-A follow-up adopts these rules in `web/src/style.css` and the pages ([§16](#16-adoption)).
+A follow-up adopts these rules in `web/src/style.css` and the pages ([§16](#16-adoption)). The preview at [jiro-ikusu.win/wipui](https://jiro-ikusu.win/wipui/) already shows them on the pages' current markup, but for what needs new markup or the pages' scripts: the claim meter, the run squares, the ロ mark (no page has a section `h2` yet), the end-of-level status region and the "Error: " prefix.
 
 - **Units:** a cell is 4 CSS px; every length is a multiple of 4 px but 1- and 2-px strokes and offsets (hairlines, borders, rings, outlines), type sizes, line heights and letter-spacing, and the pixel-voice drop of one font pixel; `border-radius` is 0; content is at most 960 px wide with 16-px gutters; the field keeps `integerScale`. Pixel art shows at whole CSS px per cell by media query ([§5](#5-logo)): banner 4, 3 or 2; stacked lockup 2; wordmark 2, or 1 below a 400-px viewport.
 - **Tokens:** `:root` gains `--field`, `--claim`, `--player`, `--claim-deep`, `--line`, `--link`, `--accent-hover` (from palette.txt), `--accent: var(--claim)`, `--focus: var(--player)`, `--cell: 4px`, `--tick: 66.667ms`, `--font-ui` (system-ui, -apple-system, "Segoe UI", Roboto, sans-serif), `--font-pixel` ("Jiro Pixel 12", ui-monospace, monospace) and `--font-code` (ui-monospace, monospace). Trail, boss, minion and the other art tones get no token.
@@ -291,7 +291,7 @@ node brand/build.mjs          # writes every output that is missing or stale
 node brand/build.mjs --check  # writes nothing, and exits 1 when an output is stale
 ```
 
-Both rebuild everything in memory and exit 1, writing nothing, when a palette hex disagrees with `CELL_COLORS` or `ENTITY_COLORS` in render.ts or with a style.css `:root` variable of the same name (`--accent` must equal claim, `--focus` player), `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits, a scene breaks a legality rule ([§6](#6-banner-icon-and-social-card)), the shelf leaves no empty cell before a kana or a tile, a checksum (the cells per color that `brand/src/` records for each full-color lockup and scene) differs, or `web/public/brand/` holds a file that is not an output. `--check` also fails on a stale output: SVG and ICO byte for byte, PNG by decoded pixels as this build encodes them, so a zlib update can make only `favicon.ico`, which holds deflated PNGs, stale.
+Both rebuild everything in memory and exit 1, writing nothing, when a palette hex disagrees with `CELL_COLORS` or `ENTITY_COLORS` in render.ts or with a `:root` variable of the same name in style.css or in the preview's `web/src/wipui/style.css` (`--accent` must equal claim, `--focus` player), `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits, a scene breaks a legality rule ([§6](#6-banner-icon-and-social-card)), the shelf leaves no empty cell before a kana or a tile, a checksum (the cells per color that `brand/src/` records for each full-color lockup and scene) differs, or `web/public/brand/` holds a file that is not an output. `--check` also fails on a stale output: SVG and ICO byte for byte, PNG by decoded pixels as this build encodes them, so a zlib update can make only `favicon.ico`, which holds deflated PNGs, stale.
 
 CI runs `--check` as the step "Brand assets are up to date (web)" of the web job in `.github/workflows/ci.yml`, whose path filter includes `brand/**`. A pull request that changes `brand/**` commits the rebuilt `web/public/` with it, and updates this guide when a rule, or a value it quotes, changes (`CLAUDE.md`).
 
@@ -377,7 +377,7 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 
 ## 16. Adoption
 
-**This pull request** adds `brand/`; the generated assets in `web/public/brand/` and the icons in `web/public/`, whose `favicon.svg` and `favicon.ico` replace the placeholders under the pages' unchanged icon links; the CI step "Brand assets are up to date (web)"; this guide, with two entries in the README's "Repository files"; and the sync rows and owners of numbers in `CLAUDE.md`.
+**This pull request** adds `brand/`; the generated assets in `web/public/brand/` and the icons in `web/public/`, whose `favicon.svg` and `favicon.ico` replace the placeholders under the pages' unchanged icon links; the CI step "Brand assets are up to date (web)"; this guide, with two entries in the README's "Repository files"; the sync rows and owners of numbers in `CLAUDE.md`; and the preview below.
 
 **Follow-up pull requests,** one each:
 
@@ -385,6 +385,8 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 2. **UI tokens and components:** [§8](#8-interface-planned), in `web/src/style.css` and the pages.
 3. **The Jiro Pixel 12 font:** the subset, its license, `@font-face` and the preload ([§4](#4-type)).
 4. **Renderer stamps:** [§9](#9-game-canvas-presentation-planned), in `web/src/render.ts`, with the tests that check them. `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` then derives from `ENTITY_COLORS.boss`, so the copy of the boss hex, and its check in the build, go away.
+
+**The preview** at [jiro-ikusu.win/wipui](https://jiro-ikusu.win/wipui/) shows follow-ups 1 to 3 on the pages as they stand, without the manifest of follow-up 1; the renderer stamps wait for follow-up 4. `npm --prefix web run build` builds the site twice from the same pages: as it is into `web/dist`, then in the Vite mode `wipui`, with the base `/wipui/`, into `web/dist/wipui`, so every deploy serves both. In that mode `web/src/wipui/plugin.ts` rewrites each page before Vite processes it: the head tags and the font's preload; the header bar, its links relative so that they stay under `/wipui/`; the page's own `header` as a `div`, so that the bar is the one banner landmark; and on Training the banner `h1` and `web/src/wipui/play.ts`, which scrolls the field to the top once a game starts. `web/src/wipui/style.css`, loaded after style.css, holds the tokens, the components and the `@font-face`. A page that lacks what the plugin rewrites fails the build, which names it. **The switch:** move the markup the plugin adds into the pages and the stylesheet into style.css, then drop the mode, with its build pass, `web/src/wipui/` and the stylesheet's entry in `brand/build.mjs`.
 
 **Phone, later** (M3): the maskable and apple-touch icons give the app icon; the splash centers the stacked lockup on field, at the largest whole px per cell within 60 % of the screen's width; the header carries the wordmark at 1 CSS px per cell.
 
