@@ -4,7 +4,7 @@
 // D10's order, unless Season already holds that run or one that ranks as high. Players hand
 // nothing off.
 
-import type { Core } from "../core";
+import { type Core, CoreError } from "../core";
 import { isOnTime } from "../run/deadline";
 import { ranksAbove, type RunScore, scoreRun } from "../run/rank";
 import type { RunFile } from "../run/runfile";
@@ -25,8 +25,11 @@ export interface OperatorRun extends RunScore {
 export interface Selection {
   /** The runs to settle, one per player at most, in run id order. */
   runs: OperatorRun[];
-  /** The committed, unsettled runs that could not be read or replayed, with the error. */
+  /** The committed, unsettled runs that could not be read, with the error: the operator fixes
+   *  their cause, such as an RPC that serves no traces, and settles again. */
   unread: { runId: bigint; error: unknown }[];
+  /** The committed runs whose journals the core rejects, as the referee would: they never settle. */
+  rejected: { runId: bigint; error: CoreError }[];
 }
 
 /** The runs the operator settles in season `season`, from the runs `read` reads. */
@@ -36,16 +39,24 @@ export async function runsToSettle(contracts: Pick<Contracts, "challenge" | "sea
   const runCount = await challenge.runCount();
   const best = new Map<string, OperatorRun>();
   const unread: Selection["unread"] = [];
+  const rejected: Selection["rejected"] = [];
   for (let runId = 1n; runId <= runCount; runId++) {
     const run = await challenge.runs(runId);
     if (run.season !== season || run.committedAt === 0n) continue;
     if ((await challenge.settlements(runId)).status !== UNSETTLED) continue;
-    let candidate: OperatorRun;
+    let committed: Awaited<ReturnType<CommittedReader>>;
     try {
-      const { file, weightsBp } = await read(runId);
-      candidate = { runId, player: run.player, file, ...scoreRun(core, file, weightsBp, Number(minClears)) };
+      committed = await read(runId);
     } catch (error) {
       unread.push({ runId, error });
+      continue;
+    }
+    let candidate: OperatorRun;
+    try {
+      candidate = { runId, player: run.player, file: committed.file, ...scoreRun(core, committed.file, committed.weightsBp, Number(minClears)) };
+    } catch (error) {
+      if (!(error instanceof CoreError)) throw error;
+      rejected.push({ runId, error });
       continue;
     }
     const ticksUsed = candidate.outcomes.map(({ ticksUsed }) => ticksUsed);
@@ -59,5 +70,5 @@ export async function runsToSettle(contracts: Pick<Contracts, "challenge" | "sea
     const recordedRank = { qualified: recorded.qualified, score: Number(recorded.score), ticks: Number(recorded.ticks) };
     if (recorded.runId === 0n || ranksAbove(candidate, recordedRank)) runs.push(candidate);
   }
-  return { runs: runs.sort((a, b) => (a.runId < b.runId ? -1 : 1)), unread };
+  return { runs: runs.sort((a, b) => (a.runId < b.runId ? -1 : 1)), unread, rejected };
 }

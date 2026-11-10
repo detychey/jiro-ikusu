@@ -94,6 +94,13 @@ describe("the operator's settlement", () => {
     expect(await selected([{ record: await playedRun(core, LEVELS) }], recorded)).toEqual([1n]);
   });
 
+  it("reports a run whose journals the core rejects as one that never settles", async () => {
+    const closed = closedRun(core, LEVELS);
+    const swapped = { ...closed, journals: [closed.journals[1], closed.journals[0], ...closed.journals.slice(2)] as string[] };
+    const { runs, unread, rejected } = await runsToSettle(chainOf([{ record: swapped }]), core, SEASON, readerOf([{ record: swapped }]));
+    expect([runs.length, unread.length, rejected.map(({ runId }) => runId)]).toEqual([0, 0, [1n]]);
+  });
+
   it("reports a run it cannot read, and still settles the others", async () => {
     const runs = [{ record: closedRun(core, LEVELS) }, { record: closedRun(core, LEVELS), player: OTHER }];
     const read: CommittedReader = async (runId) => {

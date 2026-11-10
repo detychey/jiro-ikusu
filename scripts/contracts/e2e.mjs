@@ -44,11 +44,11 @@
 // jiro-tools and, in the zk mode, zk-host are built with cargo into $CARGO_TARGET_DIR (default
 // target/, and referee/zk/target for zk-host).
 import { execFileSync, spawnSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { AbiCoder, Contract, Wallet, concat, formatEther, getBytes, hexlify, keccak256, parseEther, toQuantity } from "ethers";
+import { Contract, Wallet, concat, formatEther, getBytes, hexlify, keccak256, parseEther, toQuantity } from "ethers";
 import {
   JIRO_TOOLS,
   NETWORKS,
@@ -63,6 +63,7 @@ import {
 import { isEntryPoint, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 import { CALIBRATION, assertEqual, eventOf, startAnvil } from "./localnet.mjs";
 import { isReady, preflight, renderRows } from "./preflight.mjs";
+import { encodeProof, fixtureOf, realProof, zkHost } from "./zk-host.mjs";
 
 // The season of the suite. length covers the five startRun calls just after open, and grace the
 // reveals, the play, the late commit's wait and the settlements, so the close follows within
@@ -80,7 +81,6 @@ const BACKEND_OF = { local: "mock", "nitro-devnode": "stylus" };
 const FUNDING = parseEther("1");
 // The reference mix of levels/targets.json first; a level keeps the first journal that clears.
 const POLICIES = ["bold", "committer", "greedy", "edge-nibbler"];
-const ZK_HOST = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "referee", "zk", "target"), "release", "zk-host");
 const CALIBRATION_FILE = join(REPO_ROOT, "seasons", "calibration-1.json");
 const OUTCOME_FIELDS = ["journalHash", "levelId", "runNonce", "levelIndex", "drawSlot", "mode", "rulesVersion", "endReason", "claimBp", "ticksUsed", "levelScore"];
 const READ_WINDOW = 256n;
@@ -199,25 +199,6 @@ function jiroTools(args) {
   const result = spawnSync(JIRO_TOOLS, args, { cwd: REPO_ROOT, encoding: "utf8" });
   if (result.error) throw result.error;
   return result;
-}
-
-function zkHost(args, env = process.env) {
-  const result = spawnSync(ZK_HOST, args, { cwd: REPO_ROOT, encoding: "utf8", env });
-  if (result.error) throw result.error;
-  if (result.status !== 0) throw new Error(`zk-host ${args.join(" ")} failed:\n${result.stderr}`);
-  return result.stdout;
-}
-
-/** The seal and public values that `zk-host prove` prints between its zk-fixture markers. */
-function fixtureOf(output) {
-  const fixture = output.match(/=== BEGIN zk-fixture ===\n(.*)\n=== END zk-fixture ===/)?.[1];
-  if (fixture === undefined) throw new Error(`zk-host prove printed no fixture:\n${output}`);
-  return JSON.parse(fixture);
-}
-
-/** A proof as settlement takes it: abi.encode(seal, publicValues). */
-export function encodeProof({ seal, publicValues }) {
-  return AbiCoder.defaultAbiCoder().encode(["bytes", "bytes"], [seal, publicValues]);
 }
 
 /** The dev-mode proof of `zk-host prove <args>`. */
@@ -702,21 +683,6 @@ export function botRun(context, runNonce, short) {
   return levels.map((level, index) => (index === kept ? level : closedAt(context, level, SHORT_CLOSE_TICK)));
 }
 
-/** The real Groth16 proof of a run file, kept next to it as <run file>.proof.json so that a later session reuses it. */
-export function realProof(runFile) {
-  const proofFile = runFile.replace(/\.json$/, ".proof.json");
-  if (!existsSync(proofFile)) {
-    if (process.env.RISC0_DEV_MODE) throw new Error("RISC0_DEV_MODE is set: a dev-mode seal never verifies through RISC Zero's Groth16 verifier");
-    console.log(`[e2e] proving ${runFile} with zk-host, about 2 h on 4 CPUs for a --short run (docs/DEPLOYMENT.md)`);
-    const proved = spawnSync(ZK_HOST, ["prove", "--run", runFile, "--season", LIVE_SEASON_FILE], { cwd: REPO_ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
-    if (proved.error) throw proved.error;
-    if (proved.status !== 0) throw new Error(`zk-host prove --run ${runFile} exited ${proved.status ?? proved.signal}`);
-    process.stdout.write(proved.stdout);
-    writeFileSync(proofFile, `${JSON.stringify(fixtureOf(proved.stdout), null, 2)}\n`);
-  }
-  return encodeProof(JSON.parse(readFileSync(proofFile, "utf8")));
-}
-
 /** A run file's six levels, at their season weights, scored by the native replay. */
 export function levelsOfRunFile(context, file) {
   return file.levels.map((level, index) => scored(context, { level, journal: file.journals[index], weightBp: CALIBRATION.weightsBp[file.drawSlots[index]] }));
@@ -825,7 +791,7 @@ async function runLive(network, rpc, cases, { short, resume }) {
     if (cases.includes("happy-path")) {
       assertEqual("zk-host image-id, the verify program ZkReferee pins", zkHost(["image-id"]).trim(), await context.referee.imageId());
       mkdirSync(context.runsDir, { recursive: true });
-      await liveHappyPath(context, { play: (_, runNonce) => botRun(context, runNonce, short), prove: realProof, resume });
+      await liveHappyPath(context, { play: (_, runNonce) => botRun(context, runNonce, short), prove: (runFile) => realProof(runFile, LIVE_SEASON_FILE), resume });
     }
     if (cases.includes("full-commit")) await liveFullCommit(context);
     assertEqual("Season.isSolvent()", await context.season.isSolvent(), true);
