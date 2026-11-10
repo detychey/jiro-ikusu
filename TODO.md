@@ -54,7 +54,7 @@ Planned on 2026-10-28 for a version after v1, and not scheduled. A third-party s
 
 ## Slow cuts
 
-Deferred on 2026-11-10 by the owner, to a later stage, and not scheduled.
+Deferred on 2026-11-10 by the owner, to a later stage, and not scheduled. Testnet-1 keeps the current rules, and its data decides (owner, 2026-11-10): its report measures how players use the fast cut (plan M5.6).
 
 ### The problem
 
@@ -89,4 +89,4 @@ Both options change the core's behavior, so each pays the same fixed cost ([`CLA
 - **The zk referee:** a new image id, which means a new contract generation on Arbitrum Sepolia ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) §4) and new proof fixtures for the contract tests.
 - **The client:** the HUD shows any new charge, and Training's bests restart, since they are kept per rules version.
 
-Each rules version pays this once. The cheapest moment is before a season opens on the new rules, with any other core change in the same version. Testnet-1's journals record every A press, so its report (plan M5.6) can show how testers actually use the fast cut before this is decided.
+Each rules version pays this once. The cheapest moment is before a season opens on the new rules, with any other core change in the same version. Testnet-1's journals record every A press, so its report shows how testers actually use the fast cut before this is decided.
