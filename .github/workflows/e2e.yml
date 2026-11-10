@@ -1,10 +1,9 @@
-# The end-to-end suite of Challenge runs on nitro-devnode (plan M4.16, README §7.2), private CI
-# profile (plan §1.3, P14): when the `ci:heavy` label is added to a PR, and on workflow_dispatch.
-# In the public profile it would run on PRs that touch contracts/, scripts/contracts/, referee/
-# or this file. It starts nitro-devnode with the vendored script of M4.2, and e2e.mjs deploys a
-# fresh generation with the real Stylus referee through cargo-stylus, with nitro-devnode's public
-# prefunded development key, which is not a secret. The six cases then call the referee's
-# verifyRun and verify for real, and the gas of every transaction goes between
+# The end-to-end suite of Challenge runs on nitro-devnode (plan M4.16, README §7.2), public CI
+# profile (plan §1.3, P14): on PRs that touch contracts/, scripts/contracts/, referee/ or this
+# file, and on workflow_dispatch. It starts nitro-devnode with the vendored script of M4.2, and
+# e2e.mjs deploys a fresh generation with the real Stylus referee through cargo-stylus, with
+# nitro-devnode's public prefunded development key, which is not a secret. The six cases then call
+# the referee's verifyRun and verify for real, and the gas of every transaction goes between
 # `=== BEGIN e2e-gas ===` and `=== END e2e-gas ===`. The e2e-zk job runs the same cases in the zk
 # mode (plan M4.10) on anvil: ZkReferee over RISC Zero's mock verifier, settled with the dev-mode
 # proofs of the zk host, built with ci.yml's zk-exec cache. Never a required check.
@@ -12,7 +11,11 @@ name: e2e
 
 on:
   pull_request:
-    types: [labeled]
+    paths:
+      - 'contracts/**'
+      - 'scripts/contracts/**'
+      - 'referee/**'
+      - '.github/workflows/e2e.yml'
   workflow_dispatch:
 
 concurrency:
@@ -24,7 +27,6 @@ permissions:
 
 jobs:
   e2e:
-    if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'ci:heavy' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     defaults:
@@ -96,7 +98,6 @@ jobs:
             node scripts/contracts/e2e.mjs --network nitro-devnode --rpc "$RPC"
 
   e2e-zk:
-    if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'ci:heavy' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 100
     defaults:

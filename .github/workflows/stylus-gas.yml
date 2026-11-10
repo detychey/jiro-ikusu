@@ -1,6 +1,6 @@
-# Stylus gas on nitro-devnode (plan M4.2, README §7.3), private CI profile (plan §1.3, P14): when
-# the `ci:heavy` label is added to a PR, and on workflow_dispatch. In the public profile it would
-# run on PRs that touch core/, referee/, vectors/, scripts/contracts/stylus-gas.mjs or this file.
+# Stylus gas on nitro-devnode (plan M4.2, README §7.3), public CI profile (plan §1.3, P14): on PRs
+# that touch core/, referee/, vectors/, scripts/contracts/stylus-gas.mjs or this file, and on
+# workflow_dispatch.
 # It deploys and activates referee/build-wasm.sh's module on a local Nitro dev node, with
 # nitro-devnode's public prefunded development key, which is not a secret. stylus-gas.mjs then
 # checks every vector's and every fixed difffuzz case's Outcome against native, and prints the
@@ -10,7 +10,12 @@ name: stylus-gas
 
 on:
   pull_request:
-    types: [labeled]
+    paths:
+      - 'core/**'
+      - 'referee/**'
+      - 'vectors/**'
+      - 'scripts/contracts/stylus-gas.mjs'
+      - '.github/workflows/stylus-gas.yml'
   workflow_dispatch:
 
 concurrency:
@@ -22,7 +27,6 @@ permissions:
 
 jobs:
   stylus-gas:
-    if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'ci:heavy' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     defaults:

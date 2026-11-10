@@ -13,9 +13,9 @@ Probe record of work item M0.2, made on 2026-10-28 in the agents' cloud containe
 
 - **P1, Rust pin: 1.98.0.** The pin exists and installs, with its targets and three components, in 35 to 49 s: 49 s in the probe, 35 s for `RUSTUP_HOME=<empty directory> bash scripts/bootstrap.sh core` (228 MB download, 1.1 GB on disk).
 - **P2, contract toolchain: Foundry v1.8.6.** `forge` installs from its release asset and runs: build, tests and fuzzing with solc 0.8.28 (fetched by forge from `binaries.soliditylang.org`), and `anvil` answers RPC calls. ethblockdigger's harness is not used, so the plan's M4 test file names stay as written. CI uses `foundry-rs/foundry-toolchain` with `version: v1.8.6`.
-- **P14, repository and CI profile: private, on the free plan's minutes, with the private CI profile** (plan §1.3). The owner keeps the repository private until a working version exists, then makes it public (owner, 2026-10-28; plan §15, question 18). M0.4 builds the private profile. When the repository becomes public, a follow-up PR switches CI to the public profile: the plan's round F3 schedules both once M4.14 has settled a run on Arbitrum Sepolia (owner, 2026-11-08).
+- **P14, repository and CI profile: public since 2026-11-10, with the public CI profile** (plan §1.3). The owner keeps the repository private until a working version exists, then makes it public (owner, 2026-10-28; plan §15, question 15). M0.4 builds the private profile. When the repository becomes public, a follow-up PR switches CI to the public profile: the plan's round F3 schedules both once M4.14 has settled a run on Arbitrum Sepolia (owner, 2026-11-08). The owner made the repository public on 2026-11-10, and round F3's follow-up switched CI to the public profile: the heavy workflows run on the PRs that touch their paths, and `nightly.yml` runs daily.
   - The `detychey` organization's private repositories share 2,000 Actions minutes a month on GitHub Free, ethblockdigger included. Jobs run on 2-vCPU runners and are billed rounded up to the minute.
-  - **Monthly budget for jiro-ikusu: 1,500 minutes** (a proposal; the owner can change it in review), leaving 500 for ethblockdigger.
+  - **Monthly budget for jiro-ikusu while it was private: 1,500 minutes** (a proposal; the owner can change it in review), leaving 500 for ethblockdigger.
 - **Core MSRV input (plan §3.2).** The oldest zkVM rustc is 1.96 (SP1), so M1.1 sets `rust-version = "1.96"` in `core/Cargo.toml`. Caveat for M1.17: risc0-build 3.0.6 builds guests in Docker with `r0.1.88.0` (rustc 1.88), not with the 1.97 toolchain recorded here. If M1.17 needs that Docker build, `rust-version = "1.96"` is too new for it; M1.17 reports it, and lowering the MSRV needs a plan change, since plan §3.2 takes it only from this record.
 
 ## Probe results
@@ -143,7 +143,7 @@ The SessionStart hook in `.claude/settings.json` runs the core tier at the start
 
 Billed minutes per run of each workflow, read from `actions_list` job timings, rounded up per job. Items that add or change a workflow add its row.
 
-Monthly budget: 1,500 minutes for this repository (see Decisions, P14). The `get_workflow_run_usage` method reports 0 ms for this organization's runs, so the minutes come from each job's start and end times.
+Monthly budget: none since 2026-11-10, when the repository became public: GitHub does not bill standard runners on public repositories. While it was private, the budget was 1,500 minutes (see Decisions, P14). The `get_workflow_run_usage` method reports 0 ms for this organization's runs, so the minutes come from each job's start and end times.
 
 | Workflow | Billed minutes per run | Measured in |
 |---|---|---|
