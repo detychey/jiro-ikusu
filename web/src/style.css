@@ -296,6 +296,7 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 #pad-x { position: relative; grid-area: x; justify-self: center; width: 56px; }
 /* X's hold, filled one tick at a time. */
 #x-hold { position: absolute; bottom: 0; left: 0; width: 0; height: var(--cell); background: var(--player); }
+/* A and B are 72 px once the button zone, the bar less the stick's 144 px and a gap, is 152 px wide. */
 @media (width >= 336px) {
   .pads { grid-template-rows: 56px 72px; grid-template-columns: 72px 72px; }
 }

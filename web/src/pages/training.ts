@@ -1,5 +1,5 @@
 // Training (README §8.1, plan M2.10), the game page: picks a level, plays it in Training mode
-// on the tick clock with the bound keys and, on touchscreens, the touch controls, draws the field and the HUD, and ends on the outcome,
+// on the tick clock by key or touch, draws the field and the HUD, and ends on the outcome,
 // the state hash, the score and the journal download. The 16 levels are scored as a season
 // scores them (README §8.4): the core replays the attempt's journal with the level's weight from
 // seasons/calibration-1.json, and each level's best score stays in localStorage. Other levels
