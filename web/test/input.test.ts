@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type Bindings,
   type Control,
@@ -7,7 +7,6 @@ import {
   DEFAULT_BINDINGS,
   defaultBindings,
   HeldKeys,
-  type InputSource,
   type KeyboardLayout,
   keyLabel,
   loadBindings,
@@ -93,40 +92,28 @@ describe("input", () => {
   });
 });
 
-/** A source that holds `mask` and counts its samples and clears. */
-function fixedSource(mask: number) {
-  const counts = { samples: 0, clears: 0 };
-  const source: InputSource = {
-    sample: () => {
-      counts.samples += 1;
-      return mask;
-    },
-    clear: () => {
-      counts.clears += 1;
-    },
-  };
-  return { source, counts };
-}
+/** A source that holds `mask`, its calls recorded. */
+const fixedSource = (mask: number) => ({ sample: vi.fn(() => mask), clear: vi.fn() });
 
 describe("combined sources", () => {
   it("sample the OR of the keys and another source", () => {
     const keys = new HeldKeys(DEFAULT_BINDINGS);
     keys.down("ArrowUp");
-    expect(combined(keys, fixedSource(0x30).source).sample()).toBe(0x31);
+    expect(combined(keys, fixedSource(0x30)).sample()).toBe(0x31);
   });
 
   it("sample each source exactly once per tick", () => {
     const sources = [fixedSource(0x01), fixedSource(0x01), fixedSource(0x40)];
-    const input = combined(...sources.map(({ source }) => source));
+    const input = combined(...sources);
     input.sample();
     input.sample();
-    expect(sources.map(({ counts }) => counts.samples)).toEqual([2, 2, 2]);
+    expect(sources.map(({ sample }) => sample.mock.calls.length)).toEqual([2, 2, 2]);
   });
 
   it("clear every source", () => {
     const sources = [fixedSource(0), fixedSource(0)];
-    combined(...sources.map(({ source }) => source)).clear();
-    expect(sources.map(({ counts }) => counts.clears)).toEqual([1, 1]);
+    combined(...sources).clear();
+    expect(sources.map(({ clear }) => clear.mock.calls.length)).toEqual([1, 1]);
   });
 });
 

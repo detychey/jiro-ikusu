@@ -87,7 +87,7 @@ main { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 
 /* Cabinet buttons: claim blue on a claim-deep shelf drawn below the 40-px target. */
-button, a.button, ::file-selector-button {
+button, a.button, ::file-selector-button, .pad > div {
   min-height: 40px;
   margin: 0 0 var(--cell);
   padding: 12px 16px;
@@ -101,7 +101,7 @@ button, a.button, ::file-selector-button {
 }
 a.button { display: inline-block; box-sizing: border-box; text-decoration: none; }
 button:hover, a.button:hover { background: var(--accent-hover); }
-button:active, a.button:active { transform: translateY(var(--cell)); box-shadow: none; }
+button:active, a.button:active, .pad.pressed > div { transform: translateY(var(--cell)); box-shadow: none; }
 button:disabled {
   background: var(--line);
   box-shadow: none;
@@ -251,7 +251,7 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
    scrolls or selects. */
 .touch, .touch-help { display: none; }
 @media (pointer: coarse) {
-  .keys-help { display: none; }
+  .keys-help, #bindings, #bindings-message { display: none; }
   .touch-help { display: block; }
   .touch {
     display: flex;
@@ -269,31 +269,31 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 .touch.mirrored { flex-direction: row-reverse; }
 .stick { position: relative; width: 144px; height: 144px; overflow: hidden; background: var(--panel); }
 .stick > div { position: absolute; top: 50%; left: 50%; box-sizing: border-box; transform: translate(-50%, -50%); }
-/* The ring is twice the follow radius wide, the knob twice the dead zone (docs/PHONE.md §3.4). */
-#stick-ring { width: 96px; height: 96px; border: 2px solid var(--claim); }
-#stick-knob { width: 24px; height: 24px; background: var(--player); }
+#stick-ring { border: 2px solid var(--claim); }
+#stick-knob { background: var(--player); }
 .pads { display: grid; grid: ". x" 56px "a b" 64px / 64px 64px; gap: 24px 8px; }
 .touch.mirrored .pads { grid-template-areas: "x ." "b a"; }
-.pad {
+/* A pad takes the pointers and stays in place; its face, a cabinet button, drops on a press. */
+.pad { display: grid; }
+.pad > div {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   gap: 4px;
-  box-sizing: border-box;
-  background: var(--accent);
-  box-shadow: 0 var(--cell) 0 var(--claim-deep);
-  color: var(--player);
+  margin: 0;
+  padding: 0;
   font: 12px/12px var(--font-pixel);
   font-synthesis: none;
   letter-spacing: 0;
 }
-.pad.pressed { transform: translateY(var(--cell)); box-shadow: none; }
-/* Centered labels start on a whole pixel: COMMIT (47 px) and B (7 px) take a pixel more, to even widths. */
-#pad-x > :first-child, #pad-b > :last-child { padding-right: 1px; }
+/* Centered labels start on a whole pixel: COMMIT (47 px) and B (7 px) take even widths. */
+#pad-x span:first-child { width: 48px; }
+#pad-b span:last-child { width: 8px; }
 #pad-a { grid-area: a; }
 #pad-b { grid-area: b; }
-#pad-x { position: relative; grid-area: x; justify-self: center; width: 56px; }
+#pad-x { grid-area: x; justify-self: center; width: 56px; }
 /* X's hold, filled one tick at a time. */
 #x-hold { position: absolute; bottom: 0; left: 0; width: 0; height: var(--cell); background: var(--player); }
 /* A and B are 72 px once the button zone, the bar less the stick's 144 px and a gap, is 152 px wide. */
@@ -329,9 +329,11 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 @media (forced-colors: active) {
   .bar nav a[aria-current="page"] { padding-bottom: 0; border-bottom: var(--cell) solid; }
   button, a.button, ::file-selector-button { padding: 10px 14px; border: 2px solid; }
-  .pad { border: 2px solid; }
+  .pad > div { border: 2px solid; }
+  .stick { outline: 2px solid; outline-offset: -2px; }
+  #stick-knob, #x-hold { forced-color-adjust: none; background: CanvasText; }
 }
 @media (prefers-reduced-motion: reduce) {
   .end { animation: none; }
-  button:active, a.button:active, .pad.pressed { transform: none; }
+  button:active, a.button:active, .pad.pressed > div { transform: none; }
 }

@@ -1,14 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CONTROL_BITS } from "../src/input";
-import {
-  loadTouchSetting,
-  PAGE_RELEASES,
-  POINTER_RELEASES,
-  saveTouchSetting,
-  stickBits,
-  TOUCH_DEFAULTS,
-  type TouchSetting,
-} from "../src/touch";
+import { loadTouchSetting, PAGE_RELEASES, POINTER_RELEASES, saveTouchSetting, stickBits, TOUCH_DEFAULTS, type TouchSetting } from "../src/touch";
 import { centerOf, fingers } from "./fingers";
 
 const { up: UP, down: DOWN, left: LEFT, right: RIGHT, a: A, b: B, x: X } = CONTROL_BITS;
@@ -17,6 +9,19 @@ const BUTTON = 2;
 const CENTER = centerOf("stick");
 /** A point `dx`, `dy` px from the stick pad's center. */
 const fromCenter = (dx: number, dy: number) => ({ x: CENTER.x + dx, y: CENTER.y + dy });
+/** A point 30 px from the stick pad's center, `degrees` counterclockwise from right. */
+const toward = (degrees: number) => fromCenter(30 * Math.cos((degrees * Math.PI) / 180), -30 * Math.sin((degrees * Math.PI) / 180));
+
+/** The stick's samples, a finger down at its center moving, before each sample, through one of
+ *  `ticks`, its angles in degrees, 30 px out. */
+function steer(...ticks: number[][]): number[] {
+  const hand = fingers();
+  hand.down(STICK, CENTER);
+  return ticks.map((angles) => {
+    for (const degrees of angles) hand.move(STICK, toward(degrees));
+    return hand.controls.sample();
+  });
+}
 
 /** [angle, directions sent from rest], 30 px from the origin, outside the diagonal bands. */
 const AXES = [
@@ -25,9 +30,9 @@ const AXES = [
 ];
 /** [angle, directions sent from rest], in the diagonal bands. */
 const BANDS_FROM_REST = [[40, RIGHT], [50, UP], [130, UP], [140, LEFT], [-140, LEFT], [-130, DOWN], [-50, DOWN], [-40, RIGHT]];
-/** [angle, previous sample's directions, directions sent], in the bands, after one adjacent direction. */
+/** [angle, previous sample's direction, directions sent], in the bands, after one adjacent direction. */
 const BANDS_HELD = [
-  [40, RIGHT, UP | RIGHT], [50, UP, UP | RIGHT], [35, RIGHT, UP | RIGHT], [55, UP | RIGHT, UP | RIGHT],
+  [40, RIGHT, UP | RIGHT], [50, UP, UP | RIGHT], [35, RIGHT, UP | RIGHT], [55, RIGHT, UP | RIGHT],
   [140, UP, UP | LEFT], [-140, DOWN, DOWN | LEFT], [-40, RIGHT, DOWN | RIGHT],
 ];
 /** The same, after a direction from the other side of the band. */
@@ -88,16 +93,16 @@ describe("the stick's directions", () => {
   });
 
   it("holds both directions while a finger drifts through a band it entered from one side", () => {
-    const hand = fingers();
-    hand.down(STICK, CENTER);
-    hand.move(STICK, fromCenter(30, 0));
-    const samples = [hand.controls.sample()];
-    for (const degrees of [40, 50]) {
-      const radians = (degrees * Math.PI) / 180;
-      hand.move(STICK, fromCenter(30 * Math.cos(radians), -30 * Math.sin(radians)));
-      samples.push(hand.controls.sample());
-    }
-    expect(samples).toEqual([RIGHT, UP | RIGHT, UP | RIGHT]);
+    expect(steer([0], [40], [50])).toEqual([RIGHT, UP | RIGHT, UP | RIGHT]);
+  });
+
+  it.each([[180, 140, 40, RIGHT], [90, 130, -140, LEFT]])("from %i through the band at %i, sends the nearest direction alone in the band at %i", (from, band, other, bits) => {
+    expect(steer([from], [band], [other]).at(-1)).toBe(bits);
+  });
+
+  const SWEEPS = [{ from: "rest", ticks: [[120, 150]], sent: [LEFT] }, { from: "right", ticks: [[0], [30, 60, 90, 120, 150, 180]], sent: [RIGHT, LEFT] }];
+  it.each(SWEEPS)("sends the direction a finger ends in, not those it swept through within a tick, from $from", ({ ticks, sent }) => {
+    expect(steer(...ticks)).toEqual(sent);
   });
 });
 
@@ -124,8 +129,8 @@ describe("the buttons", () => {
     expect(hand.controls.sample()).toBe(0);
   });
 
-  it.each([["a", A], ["b", B]] as const)("a tap on %s shorter than a tick counts in the next sample only", (pad, bit) => {
-    const hand = fingers();
+  it.each([["a", 4, A], ["b", 4, B], ["x", 4, 0], ["x", 0, X]] as const)("a tap on %s shorter than a tick, at xHold %i, gives mask %i in the next sample only", (pad, xHold, bit) => {
+    const hand = fingers({ ...TOUCH_DEFAULTS, xHold });
     hand.down(BUTTON, centerOf(pad));
     hand.up(BUTTON);
     expect([hand.controls.sample(), hand.controls.sample()]).toEqual([bit, 0]);
@@ -139,18 +144,11 @@ describe("the buttons", () => {
     expect([hand.controls.sample(), hand.controls.sample()]).toEqual([UP, 0]);
   });
 
-  it("a tap on X shorter than a tick commits nothing", () => {
+  it("a press on A cancelled within a tick counts nothing", () => {
     const hand = fingers();
-    hand.down(BUTTON, centerOf("x"));
-    hand.up(BUTTON);
-    expect([hand.controls.sample(), hand.controls.sample()]).toEqual([0, 0]);
-  });
-
-  it("a tap on X shorter than a tick counts once when X needs no hold", () => {
-    const hand = fingers({ ...TOUCH_DEFAULTS, xHold: 0 });
-    hand.down(BUTTON, centerOf("x"));
-    hand.up(BUTTON);
-    expect([hand.controls.sample(), hand.controls.sample()]).toEqual([X, 0]);
+    hand.down(BUTTON, centerOf("a"));
+    hand.send("pointercancel", BUTTON);
+    expect(hand.controls.sample()).toBe(0);
   });
 });
 
@@ -180,14 +178,11 @@ describe("X's hold", () => {
     expect(samples.map((mask) => mask & X)).toEqual([0, 0, 0, 0, X]);
   });
 
-  it("shows X's hold in whole ticks, up to xHold", () => {
+  it("shows X's hold in whole ticks, full on the sample X enters the mask on", () => {
     const hand = fingers();
     hand.down(BUTTON, centerOf("x"));
-    const shown = Array.from({ length: TOUCH_DEFAULTS.xHold + 2 }, () => {
-      hand.controls.sample();
-      return hand.controls.xHeld;
-    });
-    expect(shown).toEqual([1, 2, 3, 4, 4, 4]);
+    const shown = Array.from({ length: TOUCH_DEFAULTS.xHold + 2 }, () => [hand.controls.sample(), hand.controls.xHeld]);
+    expect(shown).toEqual([[0, 1], [0, 2], [0, 3], [0, 4], [X, 5], [X, 5]]);
   });
 });
 
@@ -243,10 +238,7 @@ describe("releases", () => {
 describe("the touch setting", () => {
   it("restores the setting it stored", () => {
     const items = new Map<string, string>();
-    const storage = {
-      getItem: (key: string) => items.get(key) ?? null,
-      setItem: (key: string, value: string) => void items.set(key, value),
-    };
+    const storage = { getItem: (key: string) => items.get(key) ?? null, setItem: (key: string, value: string) => void items.set(key, value) };
     saveTouchSetting(storage, "mirrored");
     expect(loadTouchSetting(storage)).toBe<TouchSetting>("mirrored");
   });

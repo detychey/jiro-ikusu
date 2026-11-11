@@ -5,10 +5,8 @@
 
 import { describe, expect, it } from "vitest";
 import { fromHex, hex } from "../src/core";
-import { CONTROL_BITS, controlsOf } from "../src/input";
-import { journalEvents } from "../src/journal";
 import { type Point, TOUCH_DEFAULTS } from "../src/touch";
-import { finalHash, loadEngine, playInput, vector } from "./drive";
+import { finalHash, loadEngine, playInput, schedule, vector } from "./drive";
 import { centerOf, fingers } from "./fingers";
 
 const VECTOR = "open-field-capture";
@@ -26,15 +24,13 @@ const REACH: Record<string, Point> = {
 describe("touch journal equivalence", () => {
   it.each([0, 2, 4, 8])(`reproduces the journal and final hash of ${VECTOR} by touch, at xHold %i`, async (xHold) => {
     const recorded = vector(VECTOR);
-    const events = journalEvents(fromHex(recorded.journal));
-    const commit = events.at(-1);
-    expect(commit?.mask).toBe(CONTROL_BITS.x);
-    const commitTick = commit?.tick ?? 0;
-    const directions = new Map(events.slice(0, -1).map(({ tick, mask }) => [tick, controlsOf(mask)]));
+    const controls = schedule(fromHex(recorded.journal));
+    const [commitTick = 0, commit] = [...controls].at(-1) ?? [];
+    expect(commit).toEqual(["x"]);
     const hand = fingers({ ...TOUCH_DEFAULTS, xHold });
     const played = playInput(await loadEngine(), fromHex(recorded.level), fromHex(recorded.runNonce), hand.controls, (tick) => {
-      const [direction, ...others] = directions.get(tick) ?? [];
-      if (direction !== undefined) {
+      const [direction, ...others] = controls.get(tick) ?? [];
+      if (direction !== undefined && tick !== commitTick) {
         const reach = REACH[direction];
         if (reach === undefined || others.length > 0) throw new Error(`${VECTOR} holds ${direction} ${others} at tick ${tick}`);
         if (hand.controls.stickAt === undefined) hand.down(STICK, ORIGIN);

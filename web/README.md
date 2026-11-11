@@ -310,19 +310,19 @@ once: `session.ts` and `run/play.ts` take one source.
 
 ## Touch controls
 
-On touchscreens, `(pointer: coarse)`, Training shows the touch controls of `docs/PHONE.md` §3 in
-a bar after the field until M3.14's play view; Challenge gets them in M3.18 (OD7). `src/touch.ts`
+On touchscreens, `(pointer: coarse)`, Training shows the touch controls of `docs/PHONE.md` §3 in a
+bar after the field until M3.14's play view; Challenge gets them in M3.18 (OD7). `src/touch.ts`
 holds `TouchControls`, the touch input source: the floating stick, with the dead zone, the
 conditional diagonal band and the follow radius; A and B, held under a pointer, which may slide
 between them; and X, which enters the mask once a pointer has been down on it through `xHold`
-earlier samples (`TOUCH_DEFAULTS`: 4, until M3.14's playtest). A tap shorter than a tick counts
-once, as for keys, but X needs its full hold. A pointer is released on pointerup, pointercancel
-and lostpointercapture, every control on blur, pagehide and a hidden page. The layer is
-`aria-hidden`, out of the tab order, with `touch-action: none`. The Controls panel turns it on,
-off or mirrored, stored per browser, and explains it on coarse pointers; the bindings table stays
-for a keyboard. Tests: `test/touch.test.ts`, on synthetic pointer events (`test/fingers.ts`);
-`test/touch-journal.test.ts`, `open-field-capture`'s journal and final hash by touch at each
-`xHold` M3.14 may choose (A2); and `e2e/touch.spec.ts`, in the phone projects only.
+earlier samples, all set by `docs/PHONE.md` §3.4. Taps shorter than a tick count once, as keys do,
+but X needs its full hold and a cancelled pointer counts nothing. A press drops a pad's face, never
+the pad, whose box takes the pointers. The layer is `aria-hidden`, out of the tab order, with
+`touch-action: none`. The Controls panel turns it on, off or mirrored, stored per browser, and on
+coarse pointers explains it in place of the keys and their bindings. Tests: `test/touch.test.ts`, on
+synthetic pointer events (`test/fingers.ts`); `test/touch-journal.test.ts`, `open-field-capture`'s
+journal and final hash by touch at each `xHold` M3.14 may choose (A2); and `e2e/touch.spec.ts`, in
+the phone projects only.
 
 ## Layout
 

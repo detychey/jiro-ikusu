@@ -126,7 +126,14 @@ export function mount(): void {
 
   let bindings: Bindings = loadBindings(storage);
   const keys = new HeldKeys(bindings);
-  const input = combined(keys, mountTouchControls());
+  const controls = combined(keys, mountTouchControls());
+  showTouchSetting(loadTouchSetting(storage));
+  for (const setting of TOUCH_SETTINGS) {
+    element(`touch-${setting}`).addEventListener("change", () => {
+      showTouchSetting(setting);
+      element("touch-message").textContent = saveTouchSetting(storage, setting) ? "" : "Setting kept for this page only.";
+    });
+  }
   /** The layout the browser reports, or else what the keys pressed on this page printed. */
   let layout: KeyboardLayout | undefined;
   const printedHere = new Map<string, string>();
@@ -152,18 +159,11 @@ export function mount(): void {
     keys.setBindings(bindings);
     element("layout-note").textContent = layoutNote(layout);
     showBindings();
-    showTouchSetting(loadTouchSetting(storage));
     fitField(renderer);
     window.addEventListener("resize", () => fitField(renderer));
     window.addEventListener("keydown", onKey);
     window.addEventListener("keyup", (event) => keys.up(event.code));
     window.addEventListener("blur", () => keys.clear());
-    for (const setting of TOUCH_SETTINGS) {
-      element(`touch-${setting}`).addEventListener("change", () => {
-        showTouchSetting(setting);
-        element("touch-message").textContent = saveTouchSetting(storage, setting) ? "" : "Setting kept for this page only.";
-      });
-    }
     levelSelect.addEventListener("change", () => {
       levelFile.value = "";
     });
@@ -224,14 +224,14 @@ export function mount(): void {
       const [name, level] = await chosenLevel();
       const levelId = hex(core.levelId(level));
       const weightBp = training.find((scored) => scored.levelId === levelId)?.weightBp;
-      loop = startSession(core, level, runNonce(fixedNonce), input, () => performance.now());
+      loop = startSession(core, level, runNonce(fixedNonce), controls, () => performance.now());
       attempt = { name, level, levelId, weightBp };
     } catch (error) {
       setupError.textContent = messageOf(error);
       return;
     }
     endScreen.hidden = true;
-    input.clear();
+    controls.clear();
     canvas.dataset.ticksUsed = "0";
     delete canvas.dataset.endReason;
     canvas.focus();

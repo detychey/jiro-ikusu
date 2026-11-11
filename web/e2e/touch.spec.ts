@@ -3,24 +3,31 @@
 // taps, so drags and holds are PointerEvents of pointerType "touch" dispatched in the page.
 
 import { expect, type Page, test } from "@playwright/test";
+import { TOUCH_DEFAULTS } from "../src/touch";
 
 test.skip(({ hasTouch }) => !hasTouch, "the touch controls show on touchscreens only");
 
-/** A touch pointer event: its type, the id of the element it lands on, its pointerId, and its
- *  offset from that element's center. */
-type Touch = [type: string, id: string, pointerId: number, dx?: number, dy?: number];
-
-/** Dispatches `touches` in one task, so that no tick runs between them. */
-async function touch(page: Page, ...touches: Touch[]): Promise<void> {
-  await page.evaluate((list) => {
-    for (const [type, id, pointerId, dx = 0, dy = 0] of list) {
-      const target = document.getElementById(id);
-      if (target === null) throw new Error(`#${id} is missing`);
-      const { left, top, width, height } = target.getBoundingClientRect();
-      const at = { clientX: left + width / 2 + dx, clientY: top + height / 2 + dy };
-      target.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId, pointerType: "touch", ...at }));
-    }
-  }, touches);
+/** A finger, in the page: it goes down on element `id` at `from`, an offset from the element's
+ *  top-left corner, moves to `to`, and moves there in place on every frame until `ticks` ticks have
+ *  run or the level has ended, then lifts. Returns the ticks used at its down and at its lift. */
+async function finger(page: Page, id: string, from: number[], to: number[], ticks: number): Promise<[number, number]> {
+  return page.evaluate(([id, from, to, ticks]) => new Promise<[number, number]>((resolve) => {
+    const field = document.getElementById("field") as HTMLElement;
+    const target = document.getElementById(id) as HTMLElement;
+    const { left, top } = target.getBoundingClientRect();
+    const send = (type: string, [x = 0, y = 0]: number[]) =>
+      target.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 2, pointerType: "touch", clientX: left + x, clientY: top + y }));
+    const used = () => Number(field.dataset.ticksUsed);
+    const down = used();
+    send("pointerdown", from);
+    const frame = () => {
+      const done = used() >= down + ticks || field.dataset.endReason !== undefined;
+      send(done ? "pointerup" : "pointermove", to);
+      if (done) resolve([down, used()]);
+      else requestAnimationFrame(frame);
+    };
+    frame();
+  }), [id, from, to, ticks] as const);
 }
 
 async function field(page: Page): Promise<Record<string, string | undefined>> {
@@ -43,8 +50,8 @@ async function playerCell(page: Page): Promise<{ x: number; y: number }> {
 /** Opens Training on the open field and starts the level with a tap on Play. */
 async function startByTap(page: Page): Promise<void> {
   await page.goto("/?level=Open%20field");
-  // The page checks the setting's radio button just before it listens for Play.
-  await expect(page.locator("#touch-on")).toBeChecked();
+  // The page names the keyboard's layout just before it listens for Play.
+  await expect(page.locator("#layout-note")).not.toBeEmpty();
   await expect(page.locator("#touch"), "(pointer: coarse) shows the touch controls").toBeVisible();
   await page.locator("#play").tap();
   await expect.poll(() => ticksUsed(page)).toBeGreaterThan(0);
@@ -53,24 +60,22 @@ async function startByTap(page: Page): Promise<void> {
 test("a tap on Play starts the level, and the stick steers the player", async ({ page }) => {
   await startByTap(page);
   const start = await playerCell(page);
-  await touch(page, ["pointerdown", "stick", 1], ["pointermove", "stick", 1, -32, 0]);
-  await expect.poll(async () => (await playerCell(page)).x).toBeLessThan(start.x - 3);
-  await touch(page, ["pointerup", "stick", 1]);
-  expect((await playerCell(page)).y).toBe(start.y);
+  await finger(page, "stick", [72, 72], [40, 72], 8);
+  const end = await playerCell(page);
+  expect([end.x < start.x - 3, end.y]).toEqual([true, start.y]);
 });
 
-test("a tap on COMMIT shorter than X's hold does not end the level", async ({ page }) => {
+test("a tap on COMMIT for 2 ticks, shorter than X's hold, does not end the level", async ({ page }) => {
   await startByTap(page);
-  await touch(page, ["pointerdown", "pad-x", 2], ["pointerup", "pad-x", 2]);
-  const tapped = await ticksUsed(page);
-  await expect.poll(() => ticksUsed(page)).toBeGreaterThan(tapped + 15);
+  const [, lifted] = await finger(page, "pad-x", [28, 28], [28, 28], 2);
+  await expect.poll(() => ticksUsed(page)).toBeGreaterThan(lifted + 15);
   expect((await field(page)).endReason).toBeUndefined();
 });
 
-test("holding COMMIT ends the level", async ({ page }) => {
+test("holding COMMIT 2 px inside its top edge, moving in place, ends the level after X's hold", async ({ page }) => {
   await startByTap(page);
-  await touch(page, ["pointerdown", "pad-x", 2]);
-  await expect.poll(async () => (await field(page)).endReason).toBe("Committed");
+  const [down, lifted] = await finger(page, "pad-x", [28, 2], [28, 2], 60);
+  expect([(await field(page)).endReason, lifted]).toEqual(["Committed", down + TOUCH_DEFAULTS.xHold + 1]);
 });
 
 /** The distance between two boxes, 0 when they overlap. */

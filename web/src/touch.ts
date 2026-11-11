@@ -32,9 +32,9 @@ function nearest(angle: number): number {
 }
 
 /** The directions the stick sends at `distance` from its origin and `angle` degrees
- *  counterclockwise from right, given those it sent on the previous sample (docs/PHONE.md §3.2):
- *  none inside the dead zone; in the band centered on a diagonal, both adjacent directions when
- *  one of them was sent on the previous sample; otherwise the nearest direction. */
+ *  counterclockwise from right, given the direction it sent on the previous sample, as R4.5-1
+ *  resolves it (docs/PHONE.md §3.2): none inside the dead zone; in the band centered on a diagonal,
+ *  both adjacent directions when one of them is that direction; otherwise the nearest direction. */
 export function stickBits(angle: number, distance: number, previous: number, params: TouchParams = TOUCH_DEFAULTS): number {
   if (distance <= params.deadZone) return 0;
   const diagonal = Math.round((angle - 45) / 90) * 90 + 45;
@@ -79,10 +79,11 @@ function buttonAt(point: Point, boxes: Boxes): Button | undefined {
 export class TouchControls implements InputSource {
   private stick: { pointerId: number; origin: Point; at: Point } | undefined;
   private readonly buttons = new Map<number, Button | undefined>();
-  /** The directions of the previous sample, for the diagonal bands. */
+  /** The direction of the previous sample, as R4.5-1 resolves it, for the diagonal bands. */
   private previous = 0;
   /** The controls held after the last event, and those pressed since the last sample: as for
-   *  keys, a tap shorter than a tick still counts once. */
+   *  keys, a tap shorter than a tick still counts once; for the stick, a flick, the directions it
+   *  sent last before it stopped sending any, if it began sending them since the last sample. */
   private heldBefore = 0;
   private tapped = 0;
   /** The samples taken while a pointer was down on X, since it went down. */
@@ -121,6 +122,13 @@ export class TouchControls implements InputSource {
     this.update();
   }
 
+  /** The browser took the pointer over: what it held does not count, not even as a tap. */
+  cancel(pointerId: number): void {
+    const held = this.held();
+    this.release(pointerId);
+    this.tapped &= ~held | this.held();
+  }
+
   /** Releases every pointer, for example when the page is hidden. */
   clear(): void {
     this.stick = undefined;
@@ -152,7 +160,8 @@ export class TouchControls implements InputSource {
     const x = (pressed & X) !== 0 && this.xSamples >= this.params.xHold ? X : 0;
     this.xSamples = (held & X) !== 0 ? this.xSamples + 1 : 0;
     const mask = (pressed & ~X) | x;
-    this.previous = mask & DIRECTIONS;
+    const sent = mask & DIRECTIONS;
+    this.previous = (sent & this.previous) !== 0 ? this.previous : sent & -sent;
     this.tapped = 0;
     this.heldBefore = this.held();
     this.changed();
@@ -164,14 +173,15 @@ export class TouchControls implements InputSource {
     return this.stick;
   }
 
-  /** X's hold so far, in whole ticks, up to xHold. */
+  /** X's hold so far, in whole ticks, up to xHold + 1, the sample X enters the mask on. */
   get xHeld(): number {
-    return Math.min(this.xSamples, this.params.xHold);
+    return Math.min(this.xSamples, this.params.xHold + 1);
   }
 
   private update(): void {
     const held = this.held();
     this.tapped |= held & ~this.heldBefore;
+    if ((held & DIRECTIONS) !== 0) this.tapped &= held | ~DIRECTIONS;
     this.heldBefore = held;
     if ((held & X) === 0) this.xSamples = 0;
     this.changed();
@@ -193,7 +203,7 @@ export function listenTouch(
 ): void {
   root.addEventListener("pointerdown", (event) => controls.down(event as PointerEvent));
   page.addEventListener("pointermove", (event) => controls.move(event as PointerEvent));
-  for (const type of POINTER_RELEASES) page.addEventListener(type, (event) => controls.release((event as PointerEvent).pointerId));
+  for (const type of POINTER_RELEASES) page.addEventListener(type, (event) => controls[type === "pointercancel" ? "cancel" : "release"]((event as PointerEvent).pointerId));
   for (const type of PAGE_RELEASES) page.addEventListener(type, () => controls.clear());
   doc.addEventListener("visibilitychange", () => {
     if (doc.visibilityState === "hidden") controls.clear();
@@ -211,6 +221,7 @@ function place(part: HTMLElement, at: Point | undefined, zone: Box): void {
 export function mountTouchControls(params: TouchParams = TOUCH_DEFAULTS): TouchControls {
   const pads: Record<Pad, HTMLElement> = { stick: element("stick"), a: element("pad-a"), b: element("pad-b"), x: element("pad-x") };
   const [ring, knob, hold] = [element("stick-ring"), element("stick-knob"), element("x-hold")];
+  for (const [part, radius] of [[ring, params.follow], [knob, params.deadZone]] as const) part.style.width = part.style.height = `${2 * radius}px`;
   const rect = (pad: Pad) => pads[pad].getBoundingClientRect();
   const boxes = (): Boxes => ({ stick: rect("stick"), a: rect("a"), b: rect("b"), x: rect("x") });
   const controls: TouchControls = new TouchControls(boxes, params, () => {
@@ -219,7 +230,7 @@ export function mountTouchControls(params: TouchParams = TOUCH_DEFAULTS): TouchC
     place(knob, controls.stickAt?.at, zone);
     const held = controls.held();
     for (const button of ["a", "b", "x"] as const) pads[button].classList.toggle("pressed", (held & CONTROL_BITS[button]) !== 0);
-    hold.style.width = params.xHold === 0 ? "0" : `${(100 * controls.xHeld) / params.xHold}%`;
+    hold.style.width = `${(100 * controls.xHeld) / (params.xHold + 1)}%`;
   });
   listenTouch(controls, element("touch"));
   return controls;
@@ -231,9 +242,7 @@ export type TouchSetting = (typeof TOUCH_SETTINGS)[number];
 
 const SETTING_KEY = "jiro-ikusu.touch";
 
-function isTouchSetting(value: unknown): value is TouchSetting {
-  return TOUCH_SETTINGS.some((setting) => setting === value);
-}
+const isTouchSetting = (value: unknown): value is TouchSetting => TOUCH_SETTINGS.some((setting) => setting === value);
 
 /** The stored setting, or on when storage is missing, unreadable or invalid. */
 export function loadTouchSetting(storage: Storage | undefined): TouchSetting {
