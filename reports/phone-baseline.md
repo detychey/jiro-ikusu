@@ -2,7 +2,7 @@
 
 The baseline of the phone version: whether the unchanged core and client run on phone engines, and the platform facts that M3.14 and M3.16-M3.18 depend on, measured before any phone rule text is written ([`docs/PHONE.md`](../docs/PHONE.md)). It holds checks 1-9 and 11 of [`docs/PHONE.md` Appendix A](../docs/PHONE.md#appendix-a-device-checklist), on today's site and on the probe and vectors pages, for each context of [§9.5](../docs/PHONE.md#95-devices): rows 1 and 3 are required, rows 2, 4 and 5 optional. A1 and A3 ([§10](../docs/PHONE.md#10-acceptance-criteria)) are read from checks 1 and 2.
 
-**Status: a skeleton for the owner's round H2.** Every cell marked "to fill on device (owner)" waits for a phone. The only measurements so far are in [Emulation (Chromium, container)](#emulation-chromium-container), which is emulation, not device evidence, and settles none of the facts below. If A3 fails on row 1 or 3, the pull request stops for the owner's decision under [`docs/PHONE.md` §1.3](../docs/PHONE.md#13-what-would-change-the-answer).
+**Status: the owner's round H2 has started.** The first device results, from the owner's Android phone in a Chrome tab on 2026-11-11, fill row 3's Chrome-tab features and part of the back-gesture check. Every cell still marked "to fill on device (owner)" waits for a phone. The only measurements so far are in [Emulation (Chromium, container)](#emulation-chromium-container), which is emulation, not device evidence, and settles none of the facts below. If A3 fails on row 1 or 3, the pull request stops for the owner's decision under [`docs/PHONE.md` §1.3](../docs/PHONE.md#13-what-would-change-the-answer).
 
 ## How to run the checks (owner)
 
@@ -159,7 +159,7 @@ iPhone, 6.1-inch class, current iOS. Device, OS version, and browser or app vers
 
 ### Row 3: Chrome tab
 
-Pixel-class Android, current Chrome. Device, OS version, and browser or app version: to fill on device (owner).
+Pixel-class Android, current Chrome. The owner's phone, 2026-11-11: Chrome 157, the current major; a 360 × 840 CSS px screen at a device pixel ratio of 3 (1,080 × 2,520 pixels), a 360 × 754 viewport in the tab. Chrome's reduced user agent ("Android 10; K") hides the model and the Android version: to fill (owner). Build `2f149b6`, this pull request's preview (`refs/pull/94/merge` of `053a689`); [probe JSON](phone-probes/2026-11-11-row3-chrome-tab.json).
 
 | Check | Result |
 |---|---|
@@ -173,7 +173,7 @@ Pixel-class Android, current Chrome. Device, OS version, and browser or app vers
 | 3. The lock button: events, hidden span | to fill on device (owner) |
 | 3. The screen timeout: events, hidden span | to fill on device (owner) |
 | 4. performance.now() across a 60-s sleep: perfMs against dateMs | to fill on device (owner) |
-| 5. Features: IndexedDB, Web Locks, wake lock, service workers, persist() and persisted(), display mode, safe-area insets, EIP-6963, file sharing | to fill on device (owner) |
+| 5. Features: IndexedDB, Web Locks, wake lock, service workers, persist() and persisted(), display mode, safe-area insets, EIP-6963, file sharing | IndexedDB ok; Web Locks granted; wake lock granted; service workers present; `persist()` false, `persisted()` false before and after; display mode "browser"; safe-area insets 0 on every side; EIP-6963 none and no `window.ethereum`, as expected in a browser tab; `share` and `canShare` with a `.jrn` file both true. A secure context with WebAssembly; the engine loads. [probe JSON](phone-probes/2026-11-11-row3-chrome-tab.json) |
 | 5. Training's journal download | to fill on device (owner) |
 | 5. The Challenge run file's download | n/a: not a wallet browser |
 | 6. The log after an app kill | to fill on device (owner) |
@@ -186,7 +186,7 @@ Pixel-class Android, current Chrome. Device, OS version, and browser or app vers
 | 9. A 30-s hide mid-level: the journal's events around it | to fill on device (owner) |
 | 11. Connect, and switch the network | n/a: not a wallet browser |
 | 11. A run on Arbitrum Sepolia: margins, and whether the signing sheet hides the page | n/a: not a wallet browser |
-| §14 fact 17. The back gesture: on each side, the largest `px` that went back and the smallest that did not | to fill on device (owner) |
+| §14 fact 17. The back gesture: on each side, the largest `px` that went back and the smallest that did not | Partial. Touches that started 51 and 60 px from the left edge and 64 px from the right reached the page as `touchstart`, and none went back: the log has no `pagehide`. A touch at 73 px from the right ended in `touchcancel`, the browser taking it. So, if those were inward swipes with gesture navigation on, the zone is under 51 px on the left and under 64 px on the right. Its lower bound needs swipes that start at the very edge (to fill on device, owner). [probe JSON](phone-probes/2026-11-11-row3-chrome-tab.json) |
 
 ### Row 3: WebAPK
 
@@ -488,9 +488,9 @@ Each is untested until the owner's round H2; the emulation below settles none of
 | 4 | Whether wallet-browser storage survives an app kill and an app update, and whether the wallet reloads the tab on return | untested | check 6; a reload on return is any new "load" entry after a return in check 3, whatever its `navigation`: "navigate" where the wallet makes its view anew, "reload" otherwise. Its `wasDiscarded`, where the browser has it, says whether the browser discarded the page |
 | 5 | Whether a wallet's signing sheet keeps the page visible | untested: settled here only if a season accepts runs during the round, otherwise in M3.18 | check 11 |
 | 6 | iOS Low Power Mode's cap on `requestAnimationFrame` (30 fps in 2020), against 15 Hz | untested | check 2 with Low Power Mode on: `frames` × 1,000 ÷ `perfMs`, in frames a second |
-| 7 | `persist()`'s outcome in each context | untested | check 5: `features.storage` |
+| 7 | `persist()`'s outcome in each context | row 3, Chrome tab: refused (`persist()` false, `persisted()` false), 2026-11-11; the other contexts untested | check 5: `features.storage` |
 | 8 | Touch latency on 2025-2026 phones | untested: optional, Appendix A's check 12, which this report does not carry | none |
-| 17 | The width of Android's back-gesture zone under gesture navigation, and whether a swipe that starts on a control near it goes back | untested: the width from the back-gesture swipes on `/probe`, on rows 3 and 4; the controls part waits for M3.13's touch controls | [the back gesture](#how-to-run-the-checks-owner): the probe's `touchstart`, `touchcancel` and `pagehide` entries |
+| 17 | The width of Android's back-gesture zone under gesture navigation, and whether a swipe that starts on a control near it goes back | partial: row 3, Chrome tab, 2026-11-11, under 51 px on the left and 64 px on the right if the touches were inward swipes, with no lower bound yet; untested otherwise: the width from the back-gesture swipes on `/probe`, on rows 3 and 4; the controls part waits for M3.13's touch controls | [the back gesture](#how-to-run-the-checks-owner): the probe's `touchstart`, `touchcancel` and `pagehide` entries |
 | 18 | Journal and run-file downloads in Android wallet browsers, whose WebView has no Web Share API | untested | check 5's downloads, row 3's wallet browsers |
 
 ## Emulation (Chromium, container)
