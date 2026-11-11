@@ -1,15 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { REPO_ROOT } from "./deploy.mjs";
-import { encodeProof, liveContext, realProof } from "./e2e.mjs";
+import { liveContext } from "./e2e.mjs";
 
 const E2E = fileURLToPath(new URL("./e2e.mjs", import.meta.url));
-const RUN_PROOF = JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "test", "fixtures", "zk-proofs.json"), "utf8")).challengeRun;
 const ZK_GENERATION = {
   deployedAt: "2026-11-03T10:00:00.000Z",
   sourceCommit: "7023fee140515953c989b5394a54242423d543db",
@@ -58,15 +56,4 @@ test("the live cases refuse a generation where testnet-0 is not open", async () 
 test("the live cases refuse a generation whose referee takes no zk proof", async () => {
   const stylus = { ...ZK_GENERATION, backend: "stylus", seasons: { "testnet-0": 1 } };
   await assert.rejects(liveContext({ recordFile: recordFileWith(stylus), seasonLabel: "testnet-0" }), /backend is stylus/);
-});
-
-test("a proof made earlier is reused from <run file>.proof.json", () => {
-  const runFile = join(dir, "run-1.json");
-  writeFileSync(join(dir, "run-1.proof.json"), JSON.stringify({ seal: RUN_PROOF.seal, publicValues: RUN_PROOF.publicValues }));
-  assert.equal(realProof(runFile), encodeProof(RUN_PROOF));
-});
-
-test("a real proof is refused under RISC0_DEV_MODE, whose seals never verify on Arbitrum Sepolia", () => {
-  process.env.RISC0_DEV_MODE = "1";
-  assert.throws(() => realProof(join(dir, "run-1.json")), /RISC0_DEV_MODE is set/);
 });

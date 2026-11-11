@@ -237,7 +237,7 @@ It buys offline Training and nothing else, so it comes last. Hand-written, with 
 
 ### 5.4 Builds and runs (M3.17)
 
-A run's journals are valid on the season's referee if the client's core has the season's `RULES_VERSION` (decode code 4, [README §6.3](../README.md#63-journal-bytes-v1)) and plays the season's 16 levels (settlement check 3, [§7.2](../README.md#72-run-flow)). M5.2's season check refuses a mismatch at Buy, and M5.5's runbook freezes `core/` and `levels/` while a season is open.
+A run's journals are valid on the season's referee if the client's core has the season's `RULES_VERSION` (decode code 4, [README §6.3](../README.md#63-journal-bytes-v1)) and plays the season's 16 levels (settlement check 3, [§7.2](../README.md#72-run-flow)). M5.2's season check refuses a mismatch at Buy, and the season runbook freezes `core/` and `levels/` while a season is open ([`SEASON_RUNBOOK.md` §2](SEASON_RUNBOOK.md#2-freeze-rule)).
 
 - Each run record stores, at purchase, the core's `RULES_VERSION`, the 16 shipped level ids and the run store's schema version.
 - Resuming refuses a run whose rules version or level ids differ from the build's, and says why, instead of writing journals the season would reject. Any other deploy, a CSS fix or a new service worker, resumes runs as today.
@@ -256,7 +256,7 @@ With testnet-0's values (`commitSlack` 120 s, `commitRun`'s bound at `revealedAt
 | Commit: signing and inclusion **[estimate]** | 5-15 |
 | Left for interruptions and reloads | about 85-98 |
 
-M3.19 measures the real values on phones. Phones must fit the season's slack: it is one value for every client. The next season's slack is sized from both desktop and phone measurements, and testnet-1's stays as M5.5 sizes it.
+M3.19 measures the real values on phones. Phones must fit the season's slack: it is one value for every client. The next season's slack is sized from both desktop and phone measurements, and testnet-1's stays at the 120 s M5.5 set ([`seasons/testnet-1.json`](../seasons/testnet-1.json)).
 
 ### 6.2 Interruptions, by phase
 
@@ -292,7 +292,7 @@ Standing still is not safe: minions walk the rail ([R4.7-1]), and a minion that 
 
 - Levels with slower or fewer minions cost (a) less; level 01 has none.
 - A close under (b) or (c) is a commit without the X hold. It happens only when the player left, and it is the client's §7.2 duty for an abandoned level, so this is acceptable.
-- The policy applies to every client, desktop included, so M3.16 merges while no season accepts runs: a season never mixes two honest-client policies. Later changes to the policy, to H, to the 1,000-ms frame-gap bound (§6.5) or to `xHold` (§3.3) merge under the same condition: M3.11 adds them to the runbook's season freeze (M5.5) and to `CLAUDE.md`'s sync row.
+- The policy applies to every client, desktop included, so M3.16 merges while no season accepts runs: a season never mixes two honest-client policies. Later changes to the policy, to H, to the 1,000-ms frame-gap bound (§6.5) or to `xHold` (§3.3) merge under the same condition: M3.11 adds them to the runbook's freeze rule ([`SEASON_RUNBOOK.md` §2](SEASON_RUNBOOK.md#2-freeze-rule)) and to `CLAUDE.md`'s sync row.
 - **Recommended: (c),** with H chosen in M3.16 from the measured costs and M3.12's interruption lengths; 10 s is the candidate. M3.16 writes the README §7.2 client-duty sentence for the chosen policy.
 
 ### 6.4 Training pauses on hide
@@ -439,7 +439,7 @@ Changes outside this file, by item:
 | Style guide | §4: touch-control names and letters among Jiro Pixel 12's uses; §8: the "Touch controls" component; §10: X's hold in whole ticks; no haptics | M3.13 |
 | Style guide | §8: whole CSS px per cell on phones, the play view and the compact HUD, and in Units the stacked lockup at 1 px per cell at a device pixel ratio of 2 or more; §9: stamps at every whole cell size; §14: phone targets | M3.14 |
 | Style guide | §16: follow-up 1's manifest text and the "Phone" line | M3.15 |
-| Plan | Status line, item count, §1.4's milestone-closing PRs (M3.19), §4's M3 row, §8 scheduled, §11 rows (D16, with OD6's store presence; P18 service worker; P19 touch scheme; P20 phone wallet path; P21 hidden-page policy; P22 field scale on phones; P23 phones in testnet-1), §12, §13 round H, §14 risks, §16 store builds deferred; M5.5's runbook freeze extended to the hidden-page policy, H, the frame-gap bound and `xHold` | M3.11 |
+| Plan | Status line, item count, §1.4's milestone-closing PRs (M3.19), §4's M3 row, §8 scheduled, §11 rows (D16, with OD6's store presence; P18 service worker; P19 touch scheme; P20 phone wallet path; P21 hidden-page policy; P22 field scale on phones; P23 phones in testnet-1), §12, §13 round H, §14 risks, §16 store builds deferred; `SEASON_RUNBOOK.md` §2's freeze rule extended to the hidden-page policy, H, the frame-gap bound and `xHold` | M3.11 |
 | `CLAUDE.md` | This file among the owners of numbers, and a sync row: a change to the touch module, the play view, the run store's save interval or the service worker updates this file where it owns the number or the policy; a change to the hidden-page policy, H, the frame-gap bound or `xHold` merges only while no season accepts runs | M3.11 |
 | `web/README.md` | Touch controls, installing, offline behavior and the kill switch | M3.13, M3.15, M3.20 |
 
@@ -493,7 +493,7 @@ A second review, of the work items against the plan's rules and of the platform 
 | A hide during the entropy wait or the `revealRun` prompt forfeits the run | The reveal sent at once on return; a pre-buy notice; the wake lock | M3.16, M3.17 |
 | A slack sized on desktop is too tight on phones | Phone runs measured; the next season's slack sized from both | M3.19 |
 | A revealed run lost to a kill, eviction or the storage silos | `persist()`; the pre-buy notice; saving every 250 ms; refusal without IndexedDB. Accepted residual: journals are local until the commit. | M3.16, M3.17 |
-| A cached or newly deployed build resumes a run under other rules | The resume guard; network-first navigations; the season check at Buy (M5.2); the freeze while a season is open (M5.5) | M3.17, M3.20 |
+| A cached or newly deployed build resumes a run under other rules | The resume guard; network-first navigations; the season check at Buy (M5.2); the freeze while a season is open ([`SEASON_RUNBOOK.md` §2](SEASON_RUNBOOK.md#2-freeze-rule)) | M3.17, M3.20 |
 | Wallet browsers lack a feature, reload the tab or clear data | Feature checks with their own messages; device checks | M3.12, M3.18 |
 | Touch players are handicapped in a shared ranking: X's hold, small-screen precision | X's hold measured; touch against keyboard compared in the report | M3.14, M3.19 |
 | An accidental commit or Stop by touch | X's hold and placement; the Stop hold | M3.13, M3.14, M3.18 |
