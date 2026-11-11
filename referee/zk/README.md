@@ -100,7 +100,7 @@ The `cuda` feature (plan M5.9) builds `zk-host` with RISC Zero's GPU prover: the
 
 On RunPod, a community RTX 4090 pod started from RunPod's PyTorch image for CUDA 12.8.1 on Ubuntu 24.04, such as `runpod/pytorch:2.1.0-cu1281-torch280-ubuntu2404`, has all of them. Its image configuration shows NVIDIA's CUDA 12.8.1 devel image, `build-essential`, `git`, `curl` and Python 3.12 (2026-11-11). Pick a host whose driver supports CUDA 12.8.
 
-**Set up.** Clone at the fixed path, which needs no bind mount on a fresh machine, then build and measure with one script. It installs rustup when it is missing and the zk tier of `scripts/bootstrap.sh`, builds with `--features cuda`, and proves M5.9's two runs under `peak-memory.sh`. Each session clones and builds again: the build gives the deployed image id only at the fixed path itself, and a symbolic link to a disk kept between sessions builds from another path.
+**Set up.** Clone at the fixed path, which needs no bind mount on a fresh machine, then build and measure with one script. It installs rustup when it is missing and the zk tier of `scripts/bootstrap.sh`, builds with `--features cuda`, and proves M5.9's two runs under `peak-memory.sh`. Each session clones and builds again: the build gives the deployed image id only at the fixed path itself, and a symbolic link to a disk kept between sessions builds from another path. The build is long, mostly RISC Zero's CUDA kernels: 42 min on 4 CPUs without the guest (2026-11-11), less on a machine with more CPUs.
 
 ```bash
 git clone https://github.com/detychey/jiro-ikusu /home/runner/work/jiro-ikusu/jiro-ikusu
