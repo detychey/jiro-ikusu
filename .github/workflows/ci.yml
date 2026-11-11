@@ -314,6 +314,14 @@ jobs:
           done
           rm deployments/local.json
 
+      - name: The operator settles a season's best runs from chain data, on a local chain (web)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: |
+          node scripts/contracts/localnet.mjs --up --backend zk --port 8546
+          timeout 300 node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8546 --players 2 --settle --backend zk ||
+            { status=$?; tail -n 40 /tmp/jiro-localnet-anvil-8546.log; exit "$status"; }
+          rm deployments/local.json
+
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         run: bash scripts/check-drift.sh .

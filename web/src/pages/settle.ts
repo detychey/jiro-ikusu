@@ -3,17 +3,19 @@
 // ranked in D10's order. The deployment's backend decides who settles it:
 // - Stylus, and the local chain's MockReferee: the page, with one settleRun, or six settleLevel
 //   when settleRun does not fit in one transaction, with progress, retries and decoded reverts;
-// - zk: the operator (D2), because proving needs credentials that cannot live in a browser, so
-//   the page exports the run file and shows the cutoff, the season's end plus grace. Challenge
-//   still takes a settlement from anyone (README §7.2).
+// - zk: the operator (D2, README §7.5), which settles each player's best run from chain data
+//   (src/chain/operator.ts, scripts/settle.mjs): a proof takes hours and gigabytes that a browser
+//   does not have. The page shows the cutoff, the season's end plus grace, and exports the run
+//   file for a player who proves their own: Challenge takes a settlement from anyone (README §7.2).
 
 import { isError, keccak256 } from "ethers";
 import { chainErrorMessage, confirmed, type Contracts } from "../chain/contracts";
 import type { Deployment } from "../chain/deployments";
-import { type Core, type Outcome, RUN_LEVELS } from "../core";
+import { type Core, RUN_LEVELS } from "../core";
 import { downloadJson, element, messageOf } from "../page";
 import { isOnTime } from "../run/deadline";
-import { type RunFile, replayRunFile, runFileOf } from "../run/runfile";
+import { ranksAbove, type RunScore, scoreRun } from "../run/rank";
+import { type RunFile, runFileOf } from "../run/runfile";
 import type { RunRecord, RunStore } from "../run/store";
 
 /** Tries of a settlement that fails for the network, not for a revert. */
@@ -21,38 +23,15 @@ export const SETTLE_ATTEMPTS = 3;
 /** Challenge's SettlementStatus. */
 export const SETTLEMENT_STATUS = ["unsettled", "settled", "late"] as const;
 
-export interface RankedRun {
+export interface RankedRun extends RunScore {
   record: RunRecord;
   file: RunFile;
-  outcomes: Outcome[];
-  score: number;
-  ticks: number;
-  clears: number;
-  qualified: boolean;
-}
-
-/** D10's order (README §8.4): a qualifying run ranks above one that does not, then the higher
- *  score, then fewer ticks. */
-export function ranksAbove(run: Pick<RankedRun, "qualified" | "score" | "ticks">, other: Pick<RankedRun, "qualified" | "score" | "ticks">): boolean {
-  if (run.qualified !== other.qualified) return run.qualified;
-  if (run.score !== other.score) return run.score > other.score;
-  return run.ticks < other.ticks;
 }
 
 /** A committed run, replayed with its season's weights, as settlement would score it. */
 export function rankedRun(core: Core, levels: readonly Uint8Array[], record: RunRecord, minClears: number): RankedRun {
   const file = runFileOf(record, levels);
-  const outcomes = replayRunFile(core, file, record.weightsBp);
-  const clears = outcomes.filter(({ endReason }) => endReason === "Cleared").length;
-  return {
-    record,
-    file,
-    outcomes,
-    score: outcomes.reduce((sum, { levelScore }) => sum + levelScore, 0),
-    ticks: outcomes.reduce((sum, { ticksUsed }) => sum + ticksUsed, 0),
-    clears,
-    qualified: clears >= minClears,
-  };
+  return { record, file, ...scoreRun(core, file, record.weightsBp, minClears) };
 }
 
 /** The best of `records` in season `season`: committed, on time by the contract's deadline, and
@@ -174,7 +153,7 @@ export interface SettleEnv {
 /** What the page says on zk, where the operator settles: the cutoff, from `settlementCutoff`. */
 export function operatorHandoff(chainName: string, cutoff: bigint): string {
   const at = new Date(Number(cutoff) * 1000).toISOString();
-  return `On ${chainName}, the operator proves and settles runs: proving needs credentials that cannot live in a browser. Send the operator the run file; the season's settlement closes at ${at} (block time ${cutoff}).`;
+  return `On ${chainName}, the operator settles each player's best run from the chain's data, so you have nothing to send: the season's settlement closes at ${at} (block time ${cutoff}). To prove and settle this run yourself before then, download its run file.`;
 }
 
 function runSummary({ record, score, ticks, clears, qualified }: RankedRun): string {

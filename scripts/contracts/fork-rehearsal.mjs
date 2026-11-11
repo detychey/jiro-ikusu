@@ -30,7 +30,6 @@ import { NETWORKS, REPO_ROOT, SENT_TRANSACTIONS, buildContracts, connect, deploy
 import { isEntryPoint, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 import {
   chainClockOf,
-  encodeProof,
   levelsOfRunFile,
   liveContext,
   liveFullCommit,
@@ -43,6 +42,7 @@ import {
 import { CALIBRATION, assertEqual, startAnvil } from "./localnet.mjs";
 import { RISC_ZERO_GROTH16_VERIFIER, isReady, preflight, renderRows } from "./preflight.mjs";
 import { openSeason } from "./season.mjs";
+import { encodeProof } from "./zk-host.mjs";
 
 const NETWORK = "arbitrum-sepolia";
 const FIXTURE_DEPLOYER = "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496";

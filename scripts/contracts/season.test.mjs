@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
@@ -12,6 +12,7 @@ import {
   claimShare,
   closeSeasons,
   countRuns,
+  playBotRuns,
   printStatus,
   readSeasonFile,
   readStatus,
@@ -39,6 +40,14 @@ test("seasons/testnet-0.json holds plan M4.14's provisional season, its referee 
   assert.deepEqual(
     { network, referee, runFee, length, grace, commitSlack, minClears },
     { network: "arbitrum-sepolia", referee: deployedReferee, runFee: "50000000000000", length: 86_400, grace: 86_400, commitSlack: 120, minClears: 1 },
+  );
+});
+
+test("seasons/testnet-1.json holds plan M5.5's season of testers, its referee null until open", () => {
+  const { network, referee, runFee, rakeBp, length, grace, commitSlack, minClears } = readSeasonFile(join(REPO_ROOT, "seasons", "testnet-1.json"));
+  assert.deepEqual(
+    { network, referee, runFee, rakeBp, length, grace, commitSlack, minClears },
+    { network: "arbitrum-sepolia", referee: null, runFee: "50000000000000", rakeBp: 1_000, length: 1_209_600, grace: 172_800, commitSlack: 120, minClears: 1 },
   );
 });
 
@@ -85,12 +94,15 @@ describe("season operations on the local chain", () => {
   const PLAYER = 2;
   const BUYER = 4;
   const KEEPER = 5;
+  const BOT = 6;
   const LABEL = "local";
   let anvil;
   let provider;
   let record;
   let season;
+  let challenge;
   let recordDir;
+  let zkRecordFile;
   let snapshot;
   let rakeBp;
 
@@ -103,12 +115,16 @@ describe("season operations on the local chain", () => {
     recordDir = mkdtempSync(join(tmpdir(), "season-ops-test-"));
     prependGeneration(join(recordDir, "local.json"), "local", NETWORKS.local.chainId, generation);
     record = readDeploymentRecord(join(recordDir, "local.json"));
+    // The same contracts, recorded as `localnet.mjs --up --backend zk` records them, as bots needs.
+    mkdirSync(join(recordDir, "zk"));
+    zkRecordFile = join(recordDir, "zk", "local.json");
+    prependGeneration(zkRecordFile, "local", NETWORKS.local.chainId, { ...generation, backend: "zk" });
     await checkHappyPath(artifacts, provider, generation);
     season = new Contract(generation.Season, artifacts.Season.abi, provider);
+    challenge = new Contract(generation.Challenge, artifacts.Challenge.abi, provider);
     const params = await season.paramsOf(generation.seasons[LABEL]);
     rakeBp = params.rakeBp;
-    const challenge = new Contract(generation.Challenge, artifacts.Challenge.abi, await provider.getSigner(BUYER));
-    await (await challenge.startRun(generation.seasons[LABEL], { value: params.runFee })).wait();
+    await (await challenge.connect(await provider.getSigner(BUYER)).startRun(generation.seasons[LABEL], { value: params.runFee })).wait();
     snapshot = await provider.send("evm_snapshot", []);
   });
 
@@ -125,6 +141,11 @@ describe("season operations on the local chain", () => {
 
   const addressOf = async (index) => (await provider.getSigner(index)).getAddress();
   const keeper = () => provider.getSigner(KEEPER);
+
+  // Six one-byte journals: commitRun never parses the journals, so these tests need no jiro-tools.
+  const placeholderLevels = () => Array.from({ length: 6 }, () => ({ journal: "0x00", outcome: { levelScore: 0, ticksUsed: 0, endReason: 1 } }));
+  const playBots = async (runs) =>
+    playBotRuns({ network: "local", provider, player: await provider.getSigner(BOT), recordFile: zkRecordFile, label: LABEL, runs, play: placeholderLevels });
 
   async function closeAfterSettlement() {
     await provider.send("evm_setNextBlockTimestamp", [Number((await season.settlementEndOf(1)) + 1n)]);
@@ -199,6 +220,25 @@ describe("season operations on the local chain", () => {
 
   test("withdraw sends nothing while no rake is owed", async () => {
     assert.deepEqual(await withdrawRakes({ signer: await keeper(), record }), []);
+  });
+
+  test("bots commits each of its runs in the season, as the signer", async () => {
+    const runs = await playBots(2);
+    const onchain = await Promise.all(runs.map(({ runId }) => challenge.runs(runId)));
+    const bot = await addressOf(BOT);
+    assert.deepEqual(
+      onchain.map(({ player, season: number, committedAt }) => [player, number, committedAt > 0n]),
+      [
+        [bot, 1n, true],
+        [bot, 1n, true],
+      ],
+    );
+  });
+
+  test("bots plays nothing once the season's end has passed", async () => {
+    await provider.send("evm_setNextBlockTimestamp", [Number(await season.endOf(1))]);
+    await provider.send("evm_mine", []);
+    assert.deepEqual(await playBots(1), []);
   });
 
   test("status fails when a Season is not solvent", async () => {

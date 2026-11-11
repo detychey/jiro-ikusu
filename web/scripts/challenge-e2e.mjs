@@ -5,8 +5,8 @@
 // in-memory IndexedDB, and a reload while startRun confirms leaves the page's wallet unanswered. Account 2 plays, account 0 advances MockArbSys (0.25 s per block) and
 // account 3 settles against MockReferee. With --players n, accounts 2 to n + 1 each play a run.
 // With --settle (plan M5.3), the players' best runs settle through src/pages/settle.ts instead:
-// each player settles their own on the mock backend, and the operator settles the exported run
-// file on the zk backend, as M5.5's operator will. Then the runs replay from their commit
+// each player settles their own on the mock backend; on the zk backend, the operator settles the
+// season from chain data with web/scripts/settle.mjs (plan M5.5). Then the runs replay from their commit
 // calldata, a run committed through MockForwarder (account 8's stand-in for a smart account)
 // replays from its embedded call and its trace, the leaderboard is checked against Season, and
 // account 9 closes the season once its settlement has ended, which leaves no season accepting runs.
@@ -25,6 +25,7 @@ import { IDBFactory } from "fake-indexeddb";
 import { createServer } from "vite";
 import { buildContracts } from "../../scripts/contracts/deploy.mjs";
 import { nodeWallet, rpcClient } from "./node-wallet.mjs";
+import { settleBestRuns } from "./settle.mjs";
 
 const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -378,29 +379,23 @@ async function e2e(load, options) {
     const number = BigInt(played[0].record.season);
     const minClears = Number((await season.paramsOf(number)).minClears);
     const challengeAddress = await challenge.getAddress();
-    for (const [index, run] of played.entries()) {
+    const bests = [];
+    for (const run of played) {
       const best = bestRun(checker, levels, await run.env.store.runsOf(network.chainId, challengeAddress, run.player), number, minClears);
       if (best === undefined) fail(`settle.ts finds no best run of ${run.player}`);
       check(`${run.player}'s best run`, best.record.runId, run.record.runId);
       await setRefereeOutcomes(best.record, run.outcomes);
-      // The second player's settleRun is refused for gas, so that it settles level by level.
-      const gasCap = index === 1 ? 1n : undefined;
-      const progress = (text) => log(`  ${text}`);
-      const firstBlock = await reader.getBlockNumber();
+      bests.push(best);
+    }
+    const firstBlock = await reader.getBlockNumber();
+    if (!settlesInBrowser(deployment)) await operatorSettles(played, bests, number, season);
+    for (const [index, run] of played.entries()) {
+      const best = bests[index];
       if (settlesInBrowser(deployment)) {
+        // The second player's settleRun is refused for gas, so that it settles level by level.
+        const gasCap = index === 1 ? 1n : undefined;
         log(`${run.player} settles run ${best.record.runId} through settle.ts${gasCap === undefined ? "" : ", with a gas cap of 1 for settleRun"}:`);
-        await settleOnchain(run.contracts, best.file, progress, gasCap);
-      } else {
-        const cutoff = await settlementCutoff(run.contracts, number);
-        check("the cutoff settle.ts shows", cutoff, await season.settlementEndOf(number));
-        const handoff = operatorHandoff(network.chainName, cutoff);
-        if (!handoff.includes(`block time ${cutoff}`)) fail(`settle.ts does not show the cutoff ${cutoff}: ${handoff}`);
-        log(`settle.ts, on the zk backend: ${handoff}`);
-        const file = parseRunFile(JSON.stringify(best.file, null, 2));
-        const reloaded = replayRunFile(checker, file, run.record.weightsBp);
-        check("the exported run file's Outcomes", JSON.stringify(reloaded), JSON.stringify(run.outcomes));
-        log(`the run file settle.ts exports reloads to the six Outcomes; the operator settles it${gasCap === undefined ? "" : ", with a gas cap of 1 for settleRun"}:`);
-        await settleOnchain(connectContracts(deployment, operator), file, progress, gasCap);
+        await settleOnchain(run.contracts, best.file, (text) => log(`  ${text}`), gasCap);
       }
       const settlement = await challenge.settlements(BigInt(best.record.runId));
       check(`run ${best.record.runId}'s settlement status`, settlement.status, 1n);
@@ -440,6 +435,33 @@ async function e2e(load, options) {
     }
     check("Season.isSolvent()", await season.isSolvent(), true);
     reader.destroy();
+  }
+
+  /** On zk, settle.ts shows each player the cutoff and exports the run file, and the operator
+   *  settles the season from chain data with web/scripts/settle.mjs: each run it rebuilds is the
+   *  run file the dApp wrote at commit, and it settles exactly the players' best runs. */
+  async function operatorSettles(played, bests, number, season) {
+    for (const [index, run] of played.entries()) {
+      const cutoff = await settlementCutoff(run.contracts, number);
+      check("the cutoff settle.ts shows", cutoff, await season.settlementEndOf(number));
+      const handoff = operatorHandoff(network.chainName, cutoff);
+      if (!handoff.includes(`block time ${cutoff}`)) fail(`settle.ts does not show the cutoff ${cutoff}: ${handoff}`);
+      log(`settle.ts, on the zk backend: ${handoff}`);
+      const file = parseRunFile(JSON.stringify(bests[index].file, null, 2));
+      const reloaded = replayRunFile(checker, file, run.record.weightsBp);
+      check("the exported run file's Outcomes", JSON.stringify(reloaded), JSON.stringify(run.outcomes));
+    }
+    const label = Object.keys(deployment.seasons).find((name) => BigInt(deployment.seasons[name]) === number);
+    log(`the operator settles ${label} from chain data (web/scripts/settle.mjs):`);
+    const { runs, failed } = await settleBestRuns(load, { network: options.network, season: label, rpc: options.rpc, signer: operator, log: (line) => log(`  ${line}`) });
+    if (failed.length > 0) fail(`the operator did not settle ${failed.map(({ runId, error }) => `run ${runId} (${error.message})`).join(", ")}`);
+    const ids = (list) => list.map(String).sort().join(", ");
+    check("the runs the operator settles", ids(runs.map(({ runId }) => runId)), ids(bests.map(({ record }) => record.runId)));
+    for (const best of bests) {
+      const rebuilt = runs.find(({ runId }) => String(runId) === best.record.runId);
+      check(`run ${best.record.runId}'s file, rebuilt from chain data`, JSON.stringify(rebuilt.file), JSON.stringify(best.file));
+    }
+    log("each run file the operator rebuilt from chain data is the one the dApp wrote at commit");
   }
 
   /** A run committed from its commit calldata replays to the Outcomes the referee returned when
