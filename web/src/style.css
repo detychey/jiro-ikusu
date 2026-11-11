@@ -246,6 +246,59 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 }
 #field[data-end-reason="Out of lives"] ~ .end #end-title { text-shadow: 0 calc(1em / 12) 0 var(--danger); }
 
+/* The touch controls (docs/PHONE.md §3.4), on coarse pointers only, after the field until M3.14's
+   play view: the stick's pad, then X over A and B, mirrored for the left hand. A drag on them never
+   scrolls or selects. */
+.touch, .touch-help { display: none; }
+@media (pointer: coarse) {
+  .keys-help { display: none; }
+  .touch-help { display: block; }
+  .touch {
+    display: flex;
+    flex: 1 1 288px;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 8px 0 16px;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+.touch.mirrored { flex-direction: row-reverse; }
+.stick { position: relative; width: 144px; height: 144px; overflow: hidden; background: var(--panel); }
+.stick > div { position: absolute; top: 50%; left: 50%; box-sizing: border-box; transform: translate(-50%, -50%); }
+#stick-ring { width: 96px; height: 96px; border: 2px solid var(--claim); }
+#stick-knob { width: 24px; height: 24px; background: var(--player); }
+.pads { display: grid; grid: ". x" 56px "a b" 64px / 64px 64px; gap: 24px 8px; }
+.touch.mirrored .pads { grid-template-areas: "x ." "b a"; }
+.pad {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  background: var(--accent);
+  box-shadow: 0 var(--cell) 0 var(--claim-deep);
+  color: var(--player);
+  font: 12px/12px var(--font-pixel);
+  font-synthesis: none;
+  letter-spacing: 0;
+}
+.pad.pressed { transform: translateY(var(--cell)); box-shadow: none; }
+/* Centered labels start on a whole pixel: COMMIT (47 px) and B (7 px) take a pixel more, to even widths. */
+#pad-x > :first-child, #pad-b > :last-child { padding-right: 1px; }
+#pad-a { grid-area: a; }
+#pad-b { grid-area: b; }
+#pad-x { position: relative; grid-area: x; justify-self: center; width: 56px; }
+/* X's hold, filled one tick at a time. */
+#x-hold { position: absolute; bottom: 0; left: 0; width: 0; height: var(--cell); background: var(--player); }
+@media (width >= 336px) {
+  .pads { grid-template-rows: 56px 72px; grid-template-columns: 72px 72px; }
+}
+
 /* page.ts's fitField shows the field at scale 1 below these sizes, too small to hold the end of a
    level, which then follows the field as a panel, aligned left as panels are. */
 @media (width < 512px), (height < 640px) {
@@ -274,8 +327,9 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 @media (forced-colors: active) {
   .bar nav a[aria-current="page"] { padding-bottom: 0; border-bottom: var(--cell) solid; }
   button, a.button, ::file-selector-button { padding: 10px 14px; border: 2px solid; }
+  .pad { border: 2px solid; }
 }
 @media (prefers-reduced-motion: reduce) {
   .end { animation: none; }
-  button:active, a.button:active { transform: none; }
+  button:active, a.button:active, .pad.pressed { transform: none; }
 }

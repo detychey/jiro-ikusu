@@ -1,5 +1,5 @@
 // Training (README §8.1, plan M2.10), the game page: picks a level, plays it in Training mode
-// on the tick clock with the bound keys, draws the field and the HUD, and ends on the outcome,
+// on the tick clock with the bound keys and, on touchscreens, the touch controls, draws the field and the HUD, and ends on the outcome,
 // the state hash, the score and the journal download. The 16 levels are scored as a season
 // scores them (README §8.4): the core replays the attempt's journal with the level's weight from
 // seasons/calibration-1.json, and each level's best score stays in localStorage. Other levels
@@ -11,6 +11,7 @@ import calibration from "../../../seasons/calibration-1.json";
 import { type Core, CoreError, type EndReason, fromHex, hex } from "../core";
 import {
   type Bindings,
+  combined,
   type Control,
   CONTROLS,
   defaultBindings,
@@ -28,6 +29,7 @@ import { Renderer } from "../render";
 import { runNonce, startSession } from "../session";
 import { shippedLevels, TEST_LEVELS, type TrainingLevel, trainingLevels } from "../shipped";
 import { browserStorage, load, save, type Storage } from "../storage";
+import { loadTouchSetting, mountTouchControls, saveTouchSetting, showTouchSetting, TOUCH_SETTINGS } from "../touch";
 
 /** An attempt's level score (README §8.4), as the referee computes it: the core replays its
  *  journal with the level's weight. The page recorded the journal, so a rejection throws. */
@@ -124,6 +126,7 @@ export function mount(): void {
 
   let bindings: Bindings = loadBindings(storage);
   const keys = new HeldKeys(bindings);
+  const input = combined(keys, mountTouchControls());
   /** The layout the browser reports, or else what the keys pressed on this page printed. */
   let layout: KeyboardLayout | undefined;
   const printedHere = new Map<string, string>();
@@ -149,11 +152,18 @@ export function mount(): void {
     keys.setBindings(bindings);
     element("layout-note").textContent = layoutNote(layout);
     showBindings();
+    showTouchSetting(loadTouchSetting(storage));
     fitField(renderer);
     window.addEventListener("resize", () => fitField(renderer));
     window.addEventListener("keydown", onKey);
     window.addEventListener("keyup", (event) => keys.up(event.code));
     window.addEventListener("blur", () => keys.clear());
+    for (const setting of TOUCH_SETTINGS) {
+      element(`touch-${setting}`).addEventListener("change", () => {
+        showTouchSetting(setting);
+        element("touch-message").textContent = saveTouchSetting(storage, setting) ? "" : "Setting kept for this page only.";
+      });
+    }
     levelSelect.addEventListener("change", () => {
       levelFile.value = "";
     });
@@ -214,14 +224,14 @@ export function mount(): void {
       const [name, level] = await chosenLevel();
       const levelId = hex(core.levelId(level));
       const weightBp = training.find((scored) => scored.levelId === levelId)?.weightBp;
-      loop = startSession(core, level, runNonce(fixedNonce), keys, () => performance.now());
+      loop = startSession(core, level, runNonce(fixedNonce), input, () => performance.now());
       attempt = { name, level, levelId, weightBp };
     } catch (error) {
       setupError.textContent = messageOf(error);
       return;
     }
     endScreen.hidden = true;
-    keys.clear();
+    input.clear();
     canvas.dataset.ticksUsed = "0";
     delete canvas.dataset.endReason;
     canvas.focus();
