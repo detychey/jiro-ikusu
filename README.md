@@ -767,7 +767,7 @@ This roadmap puts the core and its test vectors first: they are the contract eve
 | **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
 | **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; a hands-on tooling trial of two or three zkVMs, and cycle counts per level in the one chosen | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; zkVM chosen; cycle counts recorded |
 | **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots; served at [jiro-ikusu.win](https://jiro-ikusu.win) | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
-| **M3** Phone version | The game on phones *(D1)* | none | Not scheduled |
+| **M3** Phone version | The game on phones *(D1)*, drafted in [`docs/PHONE.md`](docs/PHONE.md) | none | Not scheduled |
 | **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
 | **M5** dApp and season 1 | Wallet, Challenge UX in the browser, a testnet season | none | A full season closes and pays out on testnet |
 | **M6** Superchallenge | Deferred, see [`TODO.md`](TODO.md) | none | Not scheduled |
@@ -882,6 +882,7 @@ M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`]
 - [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md): the style guide, with the name in three scripts, colors, type, logo, banner and icons, and the rules for using them.
 - [`brand/`](brand/): the identity's text sources and `build.mjs`, which builds the logo, banner and icons into `web/public/`.
 - [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md): the work breakdown of milestones M0 to M5.
+- [`docs/PHONE.md`](docs/PHONE.md): the phone version's draft specification (M3, not scheduled), whose proposed work items are in the plan's §8.
 - [`CLAUDE.md`](CLAUDE.md): the project instructions every agent session loads.
 - [`.claude/AGENTS_COMETH.md`](.claude/AGENTS_COMETH.md): Cometh's code philosophy, imported by `CLAUDE.md`.
 - [`LICENSE`](LICENSE): MIT.
