@@ -230,7 +230,8 @@ so that both can be opened from the Home Screen or as a WebAPK, the installed co
 Playwright runs in three projects: `chromium`, desktop, the only one the smoke test runs in;
 `chromium-phone`, a Pixel 7 with touch; and `webkit-iphone`, an iPhone 15 in WebKit, which only CI
 installs. The vectors and probe specs run in all three, and skip on a build without the preview
-pages; `pages.yml` installs WebKit for pull requests only, whose builds have them.
+pages; `pages.yml` installs WebKit for pull requests only, whose builds have them. The touch spec
+runs in the two phone projects only.
 
 ## Chain
 
@@ -303,7 +304,32 @@ already bound to another control. Bindings are stored in the browser's localStor
 records controls, not keys, so a binding never changes a game's outcome (D8).
 
 Each tick samples the controls once (README §6.1). A key pressed and released between two
-samples still counts in the next one, so a quick tap of X is never lost.
+samples still counts in the next one, so a quick tap of X is never lost. The keys and the touch
+controls are input sources, `sample()` and `clear()`, and the tick samples their OR, each source
+once: `session.ts` and `run/play.ts` take one source.
+
+## Touch controls
+
+On touchscreens, `(pointer: coarse)`, Training shows the touch controls of `docs/PHONE.md` §3 in
+a bar after the field, until M3.14's play view; Challenge keeps the keys until M3.18 (OD7).
+`src/touch.ts` is `TouchControls`, the touch input source: the floating stick, its origin where
+the thumb lands, with the dead zone, the conditional diagonal band and the follow radius; A and
+B, held while a pointer is on them, a pointer sliding between them; and X, which enters the mask
+only once a pointer has been down on it through `xHold` earlier samples. A tap shorter than a
+tick counts once, as for keys, but X needs its full hold. pointerup, pointercancel and
+lostpointercapture release a pointer; blur, pagehide and a hidden page release every control.
+Its geometry is pure, angle and distance in and bits out, and `TOUCH_DEFAULTS` holds §3.4's
+defaults, `xHold` 4 until M3.14's playtest. The layer is `aria-hidden` and out of the tab order,
+with `touch-action: none`. The Controls panel turns it on, off or mirrored, stored per browser
+like the bindings, and on coarse pointers explains it in place of the keys; the bindings table
+stays, for a keyboard.
+
+`test/touch.test.ts` covers the stick's angles, dead zone, band and follow, the releases, X's
+hold, taps and multi-touch, on synthetic pointer events (`test/fingers.ts`).
+`test/touch-journal.test.ts` plays `open-field-capture`'s controls by touch, its finger on X
+down `xHold` ticks early, at each `xHold` M3.14 chooses from, and gets the vector's journal and
+final hash (A2). `e2e/touch.spec.ts` runs in the phone projects only: a tap on Play, the stick
+steering, X's hold, the sizes of §3.4 and the mirrored setting.
 
 ## Layout
 
@@ -311,12 +337,13 @@ samples still counts in the next one, so a quick tap of X is never lost.
 |---|---|
 | `src/core.ts` | Typed loader of the `jiro-wasm` exports |
 | `src/loop.ts` | The 15 Hz tick clock: tick k is due at t0 + k × 1000 / 15 ms; late ticks run as soon as possible, none is skipped or run twice |
-| `src/input.ts` | Controls, bindings and the held keys |
+| `src/input.ts` | Controls, bindings, the held keys, and the input source that ORs several |
+| `src/touch.ts` | The touch controls: the stick, A, B and X, their releases, the setting, and the page's wiring |
 | `src/storage.ts` | Values kept in localStorage as JSON, with a fallback when storage is missing or refuses |
-| `src/session.ts` | One level in play, in Training or Challenge mode: core, clock and keys on the single input path |
+| `src/session.ts` | One level in play, in Training or Challenge mode: core, clock and input source on the single input path |
 | `src/shipped.ts` | The levels the site ships: the 16 of `levels/*.bin`, by name in index order, with their calibration weights, and Training's two test levels |
 | `src/render.ts` | The 240 × 240 field at an integer scale, redrawing only the changed cells |
-| `src/pages/training.ts` | The game page, Training: level picker, HUD, end screen, score and local bests, journal download, bindings panel |
+| `src/pages/training.ts` | The game page, Training: level picker, HUD, end screen, score and local bests, journal download, bindings and touch panel |
 | `src/pages/replay.ts` | The replay viewer: the view of a replayed journal, the trace comparison and the page |
 | `src/pages/editor.ts` | The level editor: painting, fields, live validation, import, export and Play |
 | `src/level.ts` | The editor's model of a level, its cells and fields, which the core encodes and decodes |
@@ -351,9 +378,10 @@ samples still counts in the next one, so a quick tap of X is never lost.
 | `public/fonts/` | Jiro Pixel 12, the subset of Fusion Pixel that `brand/README.md` builds, with its license |
 | `public/site.webmanifest` | The web app manifest: the name, the colors and the icons |
 | `public/_redirects` | Cloudflare Pages redirects: the old `/wipui` preview's URLs to the root |
-| `test/*.test.ts` | vitest: the clock, the bindings, play, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, what a reload resumes, the run store and its lock, the run file, and the gate that plays one run at a time in a tab; the leaderboard and chunked logs, the season page's phases, close and pot, the best run and its settlement, the runs the operator settles, and a committed run's journals from calldata or a trace; the pages' header bar, head tags and banner; the vectors page's replay, and the probe's clock probe, frame gaps and edge distances |
+| `test/*.test.ts` | vitest: the clock, the bindings, the touch controls, play by keys and by touch, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, what a reload resumes, the run store and its lock, the run file, and the gate that plays one run at a time in a tab; the leaderboard and chunked logs, the season page's phases, close and pot, the best run and its settlement, the runs the operator settles, and a committed run's journals from calldata or a trace; the pages' header bar, head tags and banner; the vectors page's replay, and the probe's clock probe, frame gaps and edge distances |
 | `test/challenge.ts` | Plays a revealed run's levels without a chain, on a fake clock, with scripted keys and reloads |
-| `test/drive.ts` | Plays a level through the page's session on a fake clock, with the controls of a journal or a script |
+| `test/drive.ts` | Plays a level through the page's session on a fake clock, with the controls of a journal or a script, or any input source |
+| `test/fingers.ts` | Synthetic pointer events on the touch controls |
 | `test/vectors.mjs` | The wasm parity runner of M1.11 (plain Node), with the checks of `src/vectors.mjs` |
 | `test/difffuzz.mjs` | The wasm side of M1.13's differential fuzzing: M1.10's random cases against native's Outcomes and trace digests (Node, with `ethers` for keccak256) |
 | `test/wasm.mjs` | The jiro-wasm loader of the two Node runners |

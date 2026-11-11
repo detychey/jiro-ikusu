@@ -138,7 +138,7 @@ The README states only that X may need a short hold, set in this file (M3.13); t
 | X | 56 × 56 CSS px, at least 24 px from A and B |
 | Gaps between controls | 8 px at least |
 | Edge clearance | 16 px from the screen's side edges **[estimate]**, against edge back-swipes, which a page cannot turn off on Android [35]; resized from M3.12's measurement of the back-gesture zone (§14). Controls stay inside the bottom safe area. |
-| `xHold` | Chosen in M3.14 from 0, 2, 4 and 8 ticks (OD3) |
+| `xHold` | 4, provisional until M3.14's playtest (A7), which chooses it from 0, 2, 4 and 8 ticks (OD3) |
 | Stop hold | 15 ticks |
 
 Every length is a multiple of 4 px ([STYLE_GUIDE.md §8](STYLE_GUIDE.md#8-interface)), and 64 px clears Apple's 44-pt minimum [24]. The defaults are tuned in M3.14's playtest. **The look** goes into the style guide as a new §8 component, "Touch controls", which cites this table for its sizes: cabinet buttons on a 4-px shelf, each named by its action, CUT, SHIELD and COMMIT, over its letter, A, B or X, both in Jiro Pixel 12 at 12 px (COMMIT is 47 px wide, inside X's 56), which the guide's §4 adds to the face's uses; Apple's guidelines advise against controller letters as a button's only art [24]. The stick is a 2-px `--claim` ring with a `--player` knob, and X's hold shows in whole ticks. Nothing blinks, and `prefers-reduced-motion` removes the press translate.
