@@ -269,6 +269,7 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 .touch.mirrored { flex-direction: row-reverse; }
 .stick { position: relative; width: 144px; height: 144px; overflow: hidden; background: var(--panel); }
 .stick > div { position: absolute; top: 50%; left: 50%; box-sizing: border-box; transform: translate(-50%, -50%); }
+/* The ring is twice the follow radius wide, the knob twice the dead zone (docs/PHONE.md §3.4). */
 #stick-ring { width: 96px; height: 96px; border: 2px solid var(--claim); }
 #stick-knob { width: 24px; height: 24px; background: var(--player); }
 .pads { display: grid; grid: ". x" 56px "a b" 64px / 64px 64px; gap: 24px 8px; }

@@ -93,7 +93,7 @@ export class TouchControls implements InputSource {
 
   constructor(
     private readonly boxes: () => Boxes,
-    readonly params: TouchParams = TOUCH_DEFAULTS,
+    private readonly params: TouchParams = TOUCH_DEFAULTS,
     private readonly changed: () => void = () => undefined,
   ) {}
 
@@ -185,8 +185,9 @@ export class TouchControls implements InputSource {
 export const POINTER_RELEASES = ["pointerup", "pointercancel", "lostpointercapture"] as const;
 export const PAGE_RELEASES = ["blur", "pagehide"] as const;
 
-/** Feeds `controls` the pointer events of `root`, the controls' element, and releases every
- *  control on `page`'s blur and pagehide and when `doc` turns hidden. */
+/** Feeds `controls` the pointers that go down on `root`, the controls' element, and follows them
+ *  on `page`, wherever they move or end; releases every control on `page`'s blur and pagehide and
+ *  when `doc` turns hidden. */
 export function listenTouch(
   controls: TouchControls,
   root: EventTarget,
@@ -194,8 +195,8 @@ export function listenTouch(
   doc: EventTarget & Pick<Document, "visibilityState"> = document,
 ): void {
   root.addEventListener("pointerdown", (event) => controls.down(event as PointerEvent));
-  root.addEventListener("pointermove", (event) => controls.move(event as PointerEvent));
-  for (const type of POINTER_RELEASES) root.addEventListener(type, (event) => controls.release((event as PointerEvent).pointerId));
+  page.addEventListener("pointermove", (event) => controls.move(event as PointerEvent));
+  for (const type of POINTER_RELEASES) page.addEventListener(type, (event) => controls.release((event as PointerEvent).pointerId));
   for (const type of PAGE_RELEASES) page.addEventListener(type, () => controls.clear());
   doc.addEventListener("visibilitychange", () => {
     if (doc.visibilityState === "hidden") controls.clear();

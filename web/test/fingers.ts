@@ -1,5 +1,6 @@
 // Fingers on the touch controls: synthetic pointer events on a layout of the pads, which reach
-// TouchControls through listenTouch, as the page's events do.
+// TouchControls through listenTouch, as the page's events do: a pointer goes down on the
+// controls' element, and moves and ends on the page.
 
 import { type Boxes, listenTouch, type Pad, type Point, TOUCH_DEFAULTS, TouchControls, type TouchParams } from "../src/touch";
 
@@ -24,7 +25,7 @@ export function fingers(params: TouchParams = TOUCH_DEFAULTS) {
   const root = new EventTarget();
   listenTouch(controls, root, page, doc);
   const send = (type: string, pointerId: number, { x, y }: Point = { x: 0, y: 0 }) =>
-    root.dispatchEvent(Object.assign(new Event(type), { pointerId, clientX: x, clientY: y }));
+    (type === "pointerdown" ? root : page).dispatchEvent(Object.assign(new Event(type), { pointerId, clientX: x, clientY: y }));
   return {
     controls,
     page,

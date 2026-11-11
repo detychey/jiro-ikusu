@@ -141,6 +141,12 @@ describe("the buttons", () => {
     expect([a, hand.controls.sample()]).toEqual([A, B]);
   });
 
+  it("a finger that went down elsewhere on the page holds nothing it moves over", () => {
+    const hand = fingers();
+    hand.move(BUTTON, centerOf("a"));
+    expect(hand.controls.sample()).toBe(0);
+  });
+
   it.each([
     ["a", A],
     ["b", B],
