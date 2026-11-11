@@ -42,7 +42,7 @@
   "runFee": "50000000000000",
   "rakeBp": 1000,
   "length": 1209600,
-  "grace": 604800,
+  "grace": 172800,
   "commitSlack": 120,
   "minClears": 1
 }

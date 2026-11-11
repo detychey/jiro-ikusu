@@ -33,7 +33,7 @@ A, B and X are the keys that print those letters on your keyboard layout, where 
 3. **Play** the six levels. The clock runs from the reveal: the run must commit within its playing time plus 120 s, which covers the level transitions, a reload and the transactions.
 4. **Commit.** After level 6, confirm `commitRun` at once. The page shows how many seconds were left before the deadline.
 5. **Nothing else to do.** The operator settles each player's best run from the chain's data, so you send nothing. If you want to prove and settle a run yourself, download its run file from the [season page](https://jiro-ikusu.win/season.html) and settle it before the season's settlement ends.
-6. **Claim.** Once the season has closed, a week after its end, connect to the season page and claim your share if your best run qualified.
+6. **Claim.** Once the season has closed, two days after its end, connect to the season page and claim your share if your best run qualified.
 
 ## 5. Feedback
 

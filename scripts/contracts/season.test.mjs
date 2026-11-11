@@ -47,7 +47,7 @@ test("seasons/testnet-1.json holds plan M5.5's season of testers, its referee nu
   const { network, referee, runFee, rakeBp, length, grace, commitSlack, minClears } = readSeasonFile(join(REPO_ROOT, "seasons", "testnet-1.json"));
   assert.deepEqual(
     { network, referee, runFee, rakeBp, length, grace, commitSlack, minClears },
-    { network: "arbitrum-sepolia", referee: null, runFee: "50000000000000", rakeBp: 1_000, length: 1_209_600, grace: 604_800, commitSlack: 120, minClears: 1 },
+    { network: "arbitrum-sepolia", referee: null, runFee: "50000000000000", rakeBp: 1_000, length: 1_209_600, grace: 172_800, commitSlack: 120, minClears: 1 },
   );
 });
 
