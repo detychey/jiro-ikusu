@@ -21,8 +21,8 @@ Two direct checks ran beside the checkers:
 
 - **A** read `third-check-findings.md`, the whole diff between the two commits, and each new statement against the default branch and pull request 91. It confirmed S2, S4, S6, P2, P5, P6 and P7 as applied and correct.
 - **B** read the whole report, every table included, and checked every cross-reference and every count stated in prose: 10 findings, 11 options, 11 conception steps, 15 decisions split 4, 6 and 5, and 10 work items.
-- **C** ran `report/recompute.py` and checked every figure of sections 1, 3 to 6, 8 to 11, 13 and 15 against it, against the notes and against the other places where the same quantity appears: the 21 rows of the cost table, the 11 rows of times by card, the home-card table, the ranking and the economics.
-- **D** checked 35 file and line references of section 3, of the findings table and of appendix B at `f52a60a`: all hold what the report says. It then checked the statements about M5.5, M5.8, M5.9, the settle tool, the runbook, testnet-1 and the documents of work item 2 against the default branch, and the statements about pull request 91 against its head, in both directions.
+- **C** ran `report/recompute.py` and checked every figure of sections 1, 3 to 6, 8 to 11, 13 and 15 against it, against the notes and against the other places where the same quantity appears: the 19 rows of the cost table, the 11 rows of times by card, the home-card table, the ranking and the economics.
+- **D** checked the file and line references of section 4, the findings table included, and of appendix B at `f52a60a`: all hold what the report says. It then checked the statements about M5.5, M5.8, M5.9, the settle tool, the runbook, testnet-1 and the documents of work item 2 against the default branch, and the statements about pull request 91 against its head, in both directions.
 - **E** ran the commands that the pull request's description quotes, counted the folder's files against it and against the notes index, and listed the archive.
 
 ## Findings that held
@@ -73,7 +73,7 @@ Two direct checks ran beside the checkers:
 - Quote: "The project starts on a GPU rented online, by the hour." Then: "Decided on 11 November: start on a GPU rented online, by the hour."
 - Problem: the owner decided to start on a GPU rented online and named no billing period. Renting by the hour is the report's recommendation.
 - Evidence: the owner's words, which the pull request's description quotes: "we will rent GPU online a priori as a starter". The report's own ranking keeps the two apart: "rented by the hour, for example on RunPod", then "Renting is the owner's choice".
-- Change made: "The project starts on a GPU rented online. This report recommends renting it by the hour." Then: "Decided on 11 November: start on a GPU rented online. Rent it by the hour."
+- Change made: "The project starts on a GPU rented online. This report recommends renting it by the hour." Then: "Decided on 11 November: start on a GPU rented online. This report recommends renting it by the hour."
 
 ### C2 [low] The RTX 5060 Ti was called the cheapest rented card
 
@@ -144,6 +144,19 @@ Two direct checks ran beside the checkers:
 - The report's first line read "after two independent reviews". It now reads "after four rounds of independent review".
 - Section 2's row "This report" now ends: "Five more then re-checked that copy, and a further reviewer tried to refute each of their findings".
 - The pull request's description said that no value of the session's "15 key, token or secret variables" appears in the notes. Fifteen variable names match those words, but two of them hold a value too short to search for. The description now gives what was searched for: 13 values and the token file.
+
+## A check of these corrections
+
+The third check's fixes had introduced four of the errors above, so three more checkers read the corrections of this check once they were committed, at `27a2484`: the changed lines of the report, this record with the notes index, and the pull request's description. A further reviewer again tried to refute each finding. Of six findings, three held, all low, and none was in the report.
+
+- **This record gave two wrong counts.** It said that checker C had checked "the 21 rows of the cost table": the table has 19 rows, and 21 counts its header and separator lines. It said that checker D had checked "35 file and line references of section 3, of the findings table and of appendix B": section 3 holds none, and section 4 and appendix B hold 33. Both sentences are corrected above.
+- **The pull request's description still said "M5.9's small run".** Only pull request 91 gives M5.9 that run. The description now says "the small run that #91 adds to M5.9".
+
+Three findings on the report were refuted. Two of them still led to a clearer sentence:
+
+- **Daily settlement.** The sentence added for A3 is true of the default branch. Pull request 91 changes the runbook to "In one session at mid-season, and in one after the end". The "Since the review" paragraph now says so: "It also replaces the daily settlement with one session at mid-season and one after the end."
+- **Decision 9.** "Rent it by the hour." followed "Decided on 11 November:" and could still be read as part of the decision. It now reads as in section 10: "This report recommends renting it by the hour." The entry of B6 above gives that final wording.
+- **The escrow's status in section 8** says "84 new tests and five invariants passing", without the eleven failing tests that the appendix now names. It was left as it is: the sentence is limited to the new tests.
 
 ## Not covered
 
