@@ -3,7 +3,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { Contracts } from "../src/chain/contracts";
-import { type CommittedReader, runsToSettle } from "../src/chain/operator";
+import { type CommittedReader, runsToSettle, stillToSettle } from "../src/chain/operator";
 import { runFileOf } from "../src/run/runfile";
 import type { RunRecord } from "../src/run/store";
 import { closedRun, playedRun, shippedLevels } from "./challenge";
@@ -53,6 +53,18 @@ function chainOf(runs: ChainRun[], recorded: Record<string, Recorded> = {}): Pic
   } as unknown as Pick<Contracts, "challenge" | "season">;
 }
 
+/** The journal header's mode byte (README §6.3). */
+const MODE_OFFSET = 3;
+
+/** `record` with level `levelIndex`'s journal in Training mode: the core replays it, and Challenge refuses its Outcome. */
+function inTrainingMode(record: RunRecord, levelIndex: number): RunRecord {
+  const journals = [...record.journals];
+  const journal = journals[levelIndex] as string;
+  const at = 2 + 2 * MODE_OFFSET;
+  journals[levelIndex] = `${journal.slice(0, at)}00${journal.slice(at + 2)}`;
+  return { ...record, journals };
+}
+
 /** Reads each run's file from its record, as committedRun reads it from chain data. */
 function readerOf(runs: ChainRun[]): CommittedReader {
   return async (runId) => {
@@ -99,6 +111,18 @@ describe("the operator's settlement", () => {
     const swapped = { ...closed, journals: [closed.journals[1], closed.journals[0], ...closed.journals.slice(2)] as string[] };
     const { runs, unread, rejected } = await runsToSettle(chainOf([{ record: swapped }]), core, SEASON, readerOf([{ record: swapped }]));
     expect([runs.length, unread.length, rejected.map(({ runId }) => runId)]).toEqual([0, 0, [1n]]);
+  });
+
+  it("reports a run whose Outcomes Challenge refuses, and settles the player's best run it accepts", async () => {
+    const runs = [{ record: closedRun(core, LEVELS) }, { record: inTrainingMode(await playedRun(core, LEVELS), 0) }];
+    const { runs: settled, rejected } = await runsToSettle(chainOf(runs), core, SEASON, readerOf(runs));
+    expect([settled.map(({ runId }) => runId), rejected]).toEqual([[1n], [{ runId: 2n, reason: "Challenge refuses its Outcomes: level 0's journal is of mode 0, not a Challenge's" }]]);
+  });
+
+  it("no longer settles a run settled since the selection", async () => {
+    const runs: ChainRun[] = [{ record: await playedRun(core, LEVELS) }];
+    const [run] = (await runsToSettle(chainOf(runs), core, SEASON, readerOf(runs))).runs;
+    expect(await stillToSettle(chainOf([{ ...runs[0], status: 1n } as ChainRun]), SEASON, run as NonNullable<typeof run>)).toBe(false);
   });
 
   it("reports a run it cannot read, and still settles the others", async () => {

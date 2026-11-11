@@ -1,15 +1,17 @@
 // The operator's settlement of a season (plan M5.5, README §7.5). src/chain/operator.ts picks,
 // from chain data, each player's best on-time run that Season does not already hold or beat; this
 // script settles each with one settleRun. On zk it first proves the run on this machine with
-// zk-host, which takes hours per run on 4 CPUs (docs/DEPLOYMENT.md), and keeps the run file and
-// its proof under seasons/<label>/runs/, so that a settlement cut short resumes without proving
-// again. On Stylus, and on the local chain, whose MockReferee takes any proof, it settles the run
-// as the dApp does (src/pages/settle.ts). A run whose journals the core rejects is reported: it
-// never settles, as the referee rejects it too. A run it cannot read or settle is reported, the
-// others still settle, and the script exits 1. --dry-run lists the runs and sends nothing.
-// Usage: [TESTER_KEY=…] node web/scripts/settle.mjs --network <network> --season <label> [--rpc <url>] [--dry-run]
-// Anyone may settle a run (README §7.2). On the local chain the settler is anvil's account 0;
-// elsewhere TESTER_KEY holds its key, as for season.mjs's close, withdraw and claim.
+// zk-host, in minutes on a GPU and hours on 4 CPUs (docs/SEASON_RUNBOOK.md), and keeps the run
+// file and its proof under seasons/<label>/runs/, so that a settlement cut short resumes without
+// proving again. On Stylus, and on the local chain, whose MockReferee takes any proof, it settles
+// the run as the dApp does (src/pages/settle.ts). Before each run it checks that settlement is
+// still open and that the run is still to settle. A run that never settles is reported, with the
+// reason. A run it cannot read or settle is reported, the others still settle, and the script
+// exits 1. --dry-run lists the runs and sends nothing.
+// Usage: [DEPLOYER_KEY=…] node web/scripts/settle.mjs --network <network> --season <label> [--rpc <url>] [--dry-run]
+// Anyone may settle a run (README §7.2); the operator does, with DEPLOYER_KEY (docs/DEPLOYMENT.md),
+// so that it never shares a signer with season-ops.yml's TESTER_KEY. On the local chain the
+// settler is anvil's account 0.
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,7 +26,7 @@ const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const WASM = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "wasm32-unknown-unknown", "release", "jiro_wasm.wasm");
 const LEVELS_DIR = join(REPO_ROOT, "levels");
-const USAGE = "usage: [TESTER_KEY=…] node web/scripts/settle.mjs --network <network> --season <label> [--rpc <url>] [--dry-run]";
+const USAGE = "usage: [DEPLOYER_KEY=…] node web/scripts/settle.mjs --network <network> --season <label> [--rpc <url>] [--dry-run]";
 
 const messageOf = (error) => (error instanceof Error ? error.message : String(error));
 
@@ -53,9 +55,8 @@ export async function settleBestRuns(load, { network: name, season: label, rpc, 
   const { bundledDeployment } = await load("/src/chain/deployments.ts");
   const { confirmed, connectContracts } = await load("/src/chain/contracts.ts");
   const { committedRun } = await load("/src/chain/calldata.ts");
-  const { runsToSettle } = await load("/src/chain/operator.ts");
+  const { runsToSettle, stillToSettle } = await load("/src/chain/operator.ts");
   const { Core } = await load("/src/core.ts");
-  const { describeError } = await load("/src/errors.ts");
   const { settleOnchain } = await load("/src/pages/settle.ts");
 
   const network = networkNamed(name);
@@ -76,7 +77,7 @@ export async function settleBestRuns(load, { network: name, season: label, rpc, 
       const rank = run.qualified ? "qualifies" : "does not qualify";
       log(`  run ${run.runId} of ${run.player}: score ${run.score}, ${run.ticks} ticks, ${run.clears} cleared, ${rank}`);
     }
-    for (const { runId, error } of rejected) log(`  run ${runId} never settles: the core rejects it, as the referee would: ${error.call}, ${describeError(error.code)}`);
+    for (const { runId, reason } of rejected) log(`  run ${runId} never settles: ${reason}`);
     const failed = unread.map(({ runId, error }) => ({ runId, error: new Error(`cannot be read: ${messageOf(error)}`, { cause: error }) }));
     if (dryRun) return { runs, rejected, failed };
 
@@ -85,8 +86,17 @@ export async function settleBestRuns(load, { network: name, season: label, rpc, 
     const proves = deployment.backend === "zk" && network.name !== "local";
     if (proves && runs.length > 0) await checkProverImage((await reader.season.paramsOf(BigInt(number))).referee, provider);
     const runsDir = join(REPO_ROOT, "seasons", label, "runs");
+    const settlementEnd = await reader.season.settlementEndOf(BigInt(number));
     for (const run of runs) {
       try {
+        // A proof can take hours: the season's settlement may end, or the run be settled or beaten, meanwhile.
+        if (BigInt((await provider.getBlock("latest")).timestamp) > settlementEnd) {
+          throw new Error(`the season's settlement ended at ${new Date(Number(settlementEnd) * 1000).toISOString()}`);
+        }
+        if (!(await stillToSettle(reader, BigInt(number), run))) {
+          log(`  run ${run.runId} was settled, or beaten by the best run Season holds, since the selection: skipped`);
+          continue;
+        }
         if (!proves) {
           await settleOnchain(contracts, run.file, (text) => log(`  ${text}`));
           continue;
@@ -114,7 +124,7 @@ async function main() {
   });
   if (values.network === undefined || values.season === undefined) throw new Error(USAGE);
   const dryRun = values["dry-run"];
-  const key = dryRun || values.network === "local" ? undefined : privateKeyOf("TESTER_KEY", process.env.TESTER_KEY, values.network);
+  const key = dryRun || values.network === "local" ? undefined : privateKeyOf("DEPLOYER_KEY", process.env.DEPLOYER_KEY, values.network);
   // No child needs them: zk-host runs from here.
   delete process.env.DEPLOYER_KEY;
   delete process.env.TESTER_KEY;

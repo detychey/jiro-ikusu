@@ -187,7 +187,7 @@ network if needed.
 - **The operator's settlement** (`src/chain/operator.ts`, `scripts/settle.mjs`, plan M5.5): every
   committed run of the season, rebuilt from its commit transaction as the replay viewer loads it,
   replayed with the season's weights, and each player's best on-time run in D10's order that
-  `Season` does not already hold or beat. `scripts/settle.mjs` settles each with one `settleRun`;
+  `Season` does not already hold or beat, among the runs whose Outcomes `Challenge` accepts. `scripts/settle.mjs` settles each with one `settleRun`, signed by the operator's key, after checking it again;
   on zk, outside the local chain, it first proves the run with `zk-host`, keeping the run file and
   its proof under `seasons/<label>/runs/`. `docs/SEASON_RUNBOOK.md` says when it runs.
 

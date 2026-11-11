@@ -1,13 +1,15 @@
 // The operator's settlement of a season (plan M5.5, README §7.5): each run of the season that is
-// committed and not yet settled, read from chain data as the replay viewer reads it (calldata.ts)
-// and replayed by the core with the season's weights; then each player's best on-time run in
-// D10's order, unless Season already holds that run or one that ranks as high. Players hand
-// nothing off.
+// committed and not yet settled, read from chain data as the replay viewer reads it (calldata.ts),
+// replayed by the core with the season's weights, and checked as Challenge checks its Outcomes;
+// then each player's best on-time run in D10's order, unless Season already holds that run or one
+// that ranks as high. Players hand nothing off.
 
-import { type Core, CoreError } from "../core";
+import { type Core, CoreError, type Outcome } from "../core";
+import { describeError } from "../errors";
 import { isOnTime } from "../run/deadline";
 import { ranksAbove, type RunScore, scoreRun } from "../run/rank";
 import type { RunFile } from "../run/runfile";
+import { CHALLENGE } from "../session";
 import type { Contracts } from "./contracts";
 
 /** Challenge's SettlementStatus of a run not yet settled. */
@@ -28,12 +30,41 @@ export interface Selection {
   /** The committed, unsettled runs that could not be read, with the error: the operator fixes
    *  their cause, such as an RPC that serves no traces, and settles again. */
   unread: { runId: bigint; error: unknown }[];
-  /** The committed runs whose journals the core rejects, as the referee would: they never settle. */
-  rejected: { runId: bigint; error: CoreError }[];
+  /** The committed runs that never settle, and why: the core rejects their journals, as the
+   *  referee would, or Challenge refuses their Outcomes. */
+  rejected: { runId: bigint; reason: string }[];
+}
+
+type SeasonReader = Pick<Contracts, "challenge" | "season">;
+
+/**
+ * Why Challenge refuses the Outcomes of `file`'s journals although the core replays them: each
+ * must be a Challenge journal of the run's nonce, at its level index, playing its drawn slot
+ * (README §7.2, settlement's check 5). Undefined when all six match.
+ */
+export function outcomeMismatch(file: RunFile, outcomes: readonly Outcome[]): string | undefined {
+  for (const [i, outcome] of outcomes.entries()) {
+    if (outcome.mode !== CHALLENGE) return `level ${i}'s journal is of mode ${outcome.mode}, not a Challenge's`;
+    if (outcome.runNonce.toLowerCase() !== file.runNonce.toLowerCase()) return `level ${i}'s journal names another run's nonce, ${outcome.runNonce}`;
+    if (outcome.levelIndex !== i) return `level ${i}'s journal names level index ${outcome.levelIndex}`;
+    if (outcome.drawSlot !== file.drawSlots[i]) return `level ${i}'s journal plays draw slot ${outcome.drawSlot}, and the run draws ${file.drawSlots[i]}`;
+  }
+  return undefined;
+}
+
+/** Whether `run` ranks above `recorded`, the best run Season holds for its player (none when its runId is 0). */
+function ranksAboveRecorded(run: RunScore, recorded: { runId: bigint; qualified: boolean; score: bigint; ticks: bigint }): boolean {
+  return recorded.runId === 0n || ranksAbove(run, { qualified: recorded.qualified, score: Number(recorded.score), ticks: Number(recorded.ticks) });
+}
+
+/** Whether `run`, selected earlier, is still to settle: not settled since, and above the best run Season holds. */
+export async function stillToSettle({ challenge, season: seasons }: SeasonReader, season: bigint, run: OperatorRun): Promise<boolean> {
+  if ((await challenge.settlements(run.runId)).status !== UNSETTLED) return false;
+  return ranksAboveRecorded(run, await seasons.bestRunOf(season, run.player));
 }
 
 /** The runs the operator settles in season `season`, from the runs `read` reads. */
-export async function runsToSettle(contracts: Pick<Contracts, "challenge" | "season">, core: Core, season: bigint, read: CommittedReader): Promise<Selection> {
+export async function runsToSettle(contracts: SeasonReader, core: Core, season: bigint, read: CommittedReader): Promise<Selection> {
   const { challenge, season: seasons } = contracts;
   const { minClears, commitSlack } = await seasons.paramsOf(season);
   const runCount = await challenge.runCount();
@@ -56,7 +87,12 @@ export async function runsToSettle(contracts: Pick<Contracts, "challenge" | "sea
       candidate = { runId, player: run.player, file: committed.file, ...scoreRun(core, committed.file, committed.weightsBp, Number(minClears)) };
     } catch (error) {
       if (!(error instanceof CoreError)) throw error;
-      rejected.push({ runId, error });
+      rejected.push({ runId, reason: `the core rejects it, as the referee would: ${error.call}, ${describeError(error.code)}` });
+      continue;
+    }
+    const mismatch = outcomeMismatch(committed.file, candidate.outcomes);
+    if (mismatch !== undefined) {
+      rejected.push({ runId, reason: `Challenge refuses its Outcomes: ${mismatch}` });
       continue;
     }
     const ticksUsed = candidate.outcomes.map(({ ticksUsed }) => ticksUsed);
@@ -66,9 +102,7 @@ export async function runsToSettle(contracts: Pick<Contracts, "challenge" | "sea
   }
   const runs: OperatorRun[] = [];
   for (const candidate of best.values()) {
-    const recorded = await seasons.bestRunOf(season, candidate.player);
-    const recordedRank = { qualified: recorded.qualified, score: Number(recorded.score), ticks: Number(recorded.ticks) };
-    if (recorded.runId === 0n || ranksAbove(candidate, recordedRank)) runs.push(candidate);
+    if (ranksAboveRecorded(candidate, await seasons.bestRunOf(season, candidate.player))) runs.push(candidate);
   }
   return { runs: runs.sort((a, b) => (a.runId < b.runId ? -1 : 1)), unread, rejected };
 }

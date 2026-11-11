@@ -63,13 +63,13 @@ jobs:
           node scripts/contracts/season.mjs close --network arbitrum-sepolia
           node scripts/contracts/season.mjs withdraw --network arbitrum-sepolia
 
-      - name: Whether the bots' season is open on the newest generation
+      - name: Whether the bots' season is recorded on the newest generation
         id: bots
         if: ${{ github.event_name != 'pull_request' }}
         run: |
           season="$(node -p "require('./deployments/arbitrum-sepolia.json').generations[0].seasons[process.env.BOT_SEASON] ?? ''")"
           echo "season=$season" >> "$GITHUB_OUTPUT"
-          [ -n "$season" ] || echo "$BOT_SEASON is not open on the newest generation: no bot run"
+          [ -n "$season" ] || echo "$BOT_SEASON is not recorded on the newest generation: no bot run"
 
       - name: Toolchain, for the bots
         if: ${{ steps.bots.outputs.season != '' }}
@@ -78,10 +78,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2.9.3
         if: ${{ steps.bots.outputs.season != '' }}
 
+      # Without the key: build scripts run as children of cargo.
+      - name: Build jiro-tools, for the bots
+        if: ${{ steps.bots.outputs.season != '' }}
+        run: cargo build -p jiro-tools --release --locked
+
       - name: The tester's bot run in the bots' season, which plays nothing after its end
         if: ${{ steps.bots.outputs.season != '' }}
         env:
           TESTER_KEY: ${{ secrets.TESTER_KEY }}
-        run: |
-          cargo build -p jiro-tools --release --locked
-          node scripts/contracts/season.mjs bots --network arbitrum-sepolia --season "$BOT_SEASON" --runs 1
+        run: node scripts/contracts/season.mjs bots --network arbitrum-sepolia --season "$BOT_SEASON" --runs 1

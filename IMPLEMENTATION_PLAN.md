@@ -118,7 +118,7 @@ Each work item block has these fields:
   | Secret | Store | Used by | Set in round (§13) | First item |
   |---|---|---|---|---|
   | `CLOUDFLARE_API_TOKEN` (Cloudflare Pages Edit on the account, DNS Edit on the `jiro-ikusu.win` zone), `CLOUDFLARE_ACCOUNT_ID` | GitHub Actions repository secrets | `pages.yml` | A1 | M2.2 |
-  | `DEPLOYER_KEY` | Cloud-environment variable | `scripts/contracts/deploy.mjs` in the container | F2 | M4.14 |
+  | `DEPLOYER_KEY` | Cloud-environment variable; on the operator's proving machine for M5.6 | `scripts/contracts/deploy.mjs` in the container; `season.mjs open`; `web/scripts/settle.mjs` | F2 | M4.14 |
   | `TESTER_KEY` | Cloud-environment variable; also an Actions secret for `season-ops.yml` | e2e on Sepolia; `season.mjs` close, withdraw and claim; bot runs | F2 | M4.14, M5.8 |
   | Prover-network credential (name set by the framework) | Cloud-environment variable; also an Actions secret if a workflow proves | `prove`, `settle.mjs` | B3 or F0; G2 for the Actions secret | M4.8, M4.10 |
 
