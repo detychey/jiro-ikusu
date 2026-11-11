@@ -11,6 +11,7 @@ The order:
 3. **The core** (M1): one rule area per PR, then golden vectors with per-tick traces that every later target must reproduce.
 4. **Parallel tracks.** The contracts follow M0 (M4.3), and the level tool follows the format vectors (M2.4). Bots and levels follow replay (M1.8). Stylus gas and the zk trials follow the gameplay vectors (M1.9), and the zk proving pipeline follows the zk choice (M1.12). The browser follows the wasm build (M1.11). Measurements feed back into the work; they never block rule work.
 5. **dApp and a testnet season** (M5).
+6. **Phone version** (M3), from M3.11: the same web client made touch-first, on its own chain off M5's critical path (§12); phone Challenge after testnet-1 (P23).
 
 Item count: M0 7, M1 18, M2 11, M3 13, M4 16, M5 8. Review findings split out of M4.12 add items from M4.17 on.
 
@@ -1459,12 +1460,12 @@ The items below are part of this plan: they are in the item count, §4, §11-§1
 | M3.13 | Touch controls | M3.12 | M | Approve the README §2 sentence and the guide amendments |
 | M3.14 | Phone play view and field scale | M3.13 | M | The touch playtest, with two other players; approve the parameters and the guide amendments |
 | M3.15 | Installable app; Training on phones | M3.14 | S | Install on two phones |
-| M3.16 | Hidden-page policy and Training pause | M3.12 | M | Choose the policy; approve the README text; merge while no season accepts runs |
+| M3.16 | Hidden-page policy and Training pause | M3.12 | M | Choose the policy; approve the README text; merge while no run can be bought or committed on time |
 | M3.17 | Wake lock, storage and the resume guard | M3.11 | M | The 60-s idle check on two phones |
 | M3.18 | Challenge on phones, in wallet browsers | M3.14, M3.16, M3.17; M5.6, unless behind a flag (OD7) | M | Connect from a wallet browser on the preview |
 | M3.19 | Phone runs on testnet; M3 closes | M3.15, M3.18, a season accepting runs after testnet-1 | S | Fund the wallets and play runs on phones; provide the season |
-| M3.20 | Offline Training: the service worker (optional) | M3.15 | M | Play Training in airplane mode on two phones |
-| M3.21 | Wallet connector spike (only if OD5 asks for Challenge outside wallet browsers) | M3.18 | M | Devices, wallet apps, a Reown project id if AppKit is tried; choose |
+| M3.20 | Offline Training: the service worker (optional) | M3.15, M3.19 | M | Play Training in airplane mode on two phones |
+| M3.21 | Wallet connector spike (only if Challenge outside wallet browsers is wanted, P20) | M3.18 | M | Devices, wallet apps, a Reown project id if AppKit is tried; choose |
 | M3.22 | Wallet connector (only if M3.21 chooses one) | M3.21 | M | Play two runs through it |
 | M3.23 | Gamepad controls (optional) | M3.13 | S | none |
 
@@ -1477,14 +1478,14 @@ The items below are part of this plan: they are in the item count, §4, §11-§1
     - the status line;
     - §2's first paragraph, which points to D16;
     - §6.5's last sentence: "On phones it is the same client *(D16)*." The PR states that this is not rule text, so `RULES_VERSION` stays and no vector moves;
-    - §9's M3 row, as `docs/PHONE.md` §11 proposes it;
+    - §9's M3 row, as quoted in `docs/PHONE.md` §11;
     - §13: D1 extended, and a D16 row.
   - This plan:
     - the status line; the item count, M3 13 (two conditional, two optional), 73 items in all; §1.1's conditional and optional items; §1.4's milestone-closing PRs, with M3.19; §4's M3 row, closed by M3.19; this section's status;
     - §11 rows: D16 (OD1, with OD6's store presence); P18 (service worker); P19 (touch scheme and X's guard, OD3: M3.11, and M3.14 for the hold; needed by M3.13); P20 (phone wallet path, OD5); P21 (hidden-page policy, OD2: decided in M3.16, needed by M3.18); P22 (field scale on phones, OD4: M3.11, needed by M3.14); P23 (phones in testnet-1, OD7: M3.11, needed by M3.18);
     - §12's graph and critical path; §13's round H; §14's risks, from `docs/PHONE.md` §13; §16, store builds deferred;
-    - [`docs/SEASON_RUNBOOK.md` §2](docs/SEASON_RUNBOOK.md#2-freeze-rule), the freeze rule: while a season accepts runs, no PR that changes the hidden-page policy, H, the frame-gap bound or `xHold` merges (`docs/PHONE.md` §6.3).
-  - `CLAUDE.md`: `docs/PHONE.md` among the owners of numbers, and its sync row, with the same merge condition (`docs/PHONE.md` §11).
+    - [`docs/SEASON_RUNBOOK.md` §2](docs/SEASON_RUNBOOK.md#2-freeze-rule), the freeze rule: from a season's open until no run of it can still be committed on time, no PR that changes the hidden-page policy, H, the frame-gap bound or, once the touch controls are live on Challenge, `xHold` merges (`docs/PHONE.md` §6.3).
+  - `CLAUDE.md`: the project line, which names M3; `docs/PHONE.md` among the owners of numbers, and its sync row, with the same merge condition (`docs/PHONE.md` §11).
 - **Done when:**
   - the README diff touches no line of §4, §5, §6.1-§6.4 or §6.6, and only the last sentence of §6.5;
   - the M3 items follow §1.1's fields;
@@ -1516,7 +1517,7 @@ The items below are part of this plan: they are in the item count, §4, §11-§1
 - **Goal:** the game playable by touch, on the single input path, with journals identical to keyboard play of the same controls.
 - **Deliverables:**
   - `web/src/input.ts`: an input source (`sample()`, `clear()`) that `HeldKeys` implements, and one that ORs several; `session.ts` and `run/play.ts` take it.
-  - `web/src/touch.ts`: the stick with both band variants behind a setting, A, B, and X with `xHold` as a parameter, the releases, and the defaults of `docs/PHONE.md` §3.4.
+  - `web/src/touch.ts`: the stick with the conditional diagonal band, A, B, and X with `xHold` as a parameter, the releases, and the defaults of `docs/PHONE.md` §3.4.
   - The controls' markup on `index.html` only, shown on `(pointer: coarse)`, with the on, off and mirrored setting stored per browser, and the Controls panel's touch text. Until M3.14 they sit in a bar under the field. The Challenge page gets them in M3.18 (OD7).
   - Style guide §4: touch-control names and letters among Jiro Pixel 12's uses; §8: the "Touch controls" component, which cites `docs/PHONE.md` for its sizes; §10: X's hold in whole ticks, and no haptics.
   - README §2: on a touchscreen, on-screen controls produce the same controls, and X may need a short hold, set in `docs/PHONE.md`.
@@ -1537,14 +1538,14 @@ The items below are part of this plan: they are in the item count, §4, §11-§1
   - `web/src/render.ts` draws whole cells of c CSS px; `fitField` in `web/src/page.ts` applies `docs/PHONE.md` §4.1 on coarse pointers and is unchanged on fine ones; the "turn the phone" panel.
   - `web/src/style.css` and the pages: the play view in portrait and landscape; the compact HUD; the end panel in view; gesture suppression; `viewport-fit=cover` and safe areas on the five pages; phone targets and 16-px textareas; the stacked lockup at 1 CSS px per cell under `(min-resolution: 2dppx)`; the field and HUD hidden until Play, so Play is on the first screen.
   - The playtest build, behind a preview-only flag: after each X commit it asks "Did you mean to commit?" and logs the answer for A7.
-  - `docs/PHONE.md`: §4.3 derived again on devices; §3.4's defaults, `xHold` and the band variant, from the playtest.
+  - `docs/PHONE.md`: §4.3 derived again on devices; §3.4's defaults and `xHold`, from the playtest.
   - Style guide §8 (scale, play view, compact HUD, and in Units the stacked lockup at 1 px per cell at a device pixel ratio of 2 or more), §9 (stamps at every whole cell size) and §14 (phone targets).
   - Tests: `web/test/layout.test.ts`; `web/test/pages.test.ts` and `web/e2e/smoke.spec.ts` updated; `web/e2e/phone-layout.spec.ts`.
 - **Done when:**
   - A4a holds in `chromium-phone`;
   - the desktop smoke test is unchanged but for the viewport tag;
   - **(user)** A4b holds on the owner's phones;
-  - **(user)** A7 holds, and the owner approved the scheme and its parameters, or named the changes, which the PR then makes.
+  - **(user)** A7 holds, and the owner approved the touch parameters, or named the changes, which the PR then makes.
 - **Verify with:** `npm --prefix web test -- layout pages`, and `npm --prefix web run e2e -- phone-layout smoke`.
 - **Skills:** none; tier `web`. **README:** none. **Needs user:** the touch playtest, with two other players, and the guide amendments (round H3, with M3.13's text).
 
@@ -1579,7 +1580,7 @@ The items below are part of this plan: they are in the item count, §4, §11-§1
   - A8 and A9 hold in unit tests and in the local-chain e2e, with `--hide-at 2 5` and `--hide-at 2 30`;
   - a test shows that Challenge has no path to a pause;
   - **(user)** the owner chose the policy from the measured table;
-  - **(user)** on the day of merge, `node scripts/contracts/season.mjs status --network arbitrum-sepolia` shows no season accepting runs, pasted in the PR.
+  - **(user)** on the day of merge, `node scripts/contracts/season.mjs status --network arbitrum-sepolia`, pasted in the PR, shows that no run can be bought or committed on time: no season accepting runs, and the last season's end past by more than 296 blocks, 1,080 s and its `commitSlack` ([`docs/SEASON_RUNBOOK.md` §2](docs/SEASON_RUNBOOK.md#2-freeze-rule)).
 - **Verify with:** `npm --prefix web test -- loop play training reload`; local chain: `node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --hide-at 2 30`.
 - **Skills:** `parity-testing`, `frontend-ux`; tiers `web`, `contracts`. **README:** §7.2, §8.1. **Needs user:** choose the policy (OD2), approve the README text, and merge between seasons (round H5).
 
@@ -1606,7 +1607,7 @@ The items below are part of this plan: they are in the item count, §4, §11-§1
   - `web/src/chain/wallet.ts`: EIP-6963 discovery, then `window.ethereum`; on a phone without a wallet, the message with links into wallet browsers, on Challenge and Season.
   - The Challenge run view on coarse pointers: the run's status and margin in the HUD; the panels collapsed during a run; the entropy wait and the reveal prompt in view; Stop behind its hold; the outcomes and the run file's share after the commit.
   - The touch controls on `challenge.html`, which M3.13 left out.
-  - If OD7 chose the flag: the touch controls on Challenge, the phone run view and the links behind a flag that stays off until testnet-1 closes.
+  - If this PR merges before M5.6's report (P23): the touch controls on Challenge, the phone run view and the links behind a flag that stays off until testnet-1 closes.
   - [`docs/TESTNET.md`](docs/TESTNET.md)'s known gaps: phones in wallet browsers replace "Desktop and keyboard only".
   - README §8.2: on a phone, Challenge is played in a wallet app's own browser *(D16)*.
   - `web/e2e/challenge-phone.spec.ts`: the local-chain run in both phone projects, and in `chromium-phone` at 375 × 548, with an injected wallet that forwards to the local chain.
@@ -1646,7 +1647,7 @@ The items below are part of this plan: they are in the item count, §4, §11-§1
 - **Verify with:** `npm --prefix web test -- sw`, and `npm --prefix web run e2e -- pwa`.
 - **Skills:** none; tier `web`. **README:** §8.1. **Needs user:** the airplane-mode check on two phones (round H9).
 
-#### M3.21 Wallet connector spike (only if OD5 asks for Challenge outside wallet browsers)
+#### M3.21 Wallet connector spike (only if Challenge outside wallet browsers is wanted, P20)
 
 - **Goal:** measured evidence to choose a connector or a session-key smart account, or to stay with wallet browsers.
 - **Deliverables:**
@@ -2389,10 +2390,10 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | P15 | License | M0.1 | M2.2 | The owner's choice; no default |
 | P16 | Settlement shape | M0.7 | M4.4, M4.7, M4.8 | Decided in M0.7 (README §7.3): (a) per run, `settleRun` with one `verifyRun`, and `settleLevel` as the fallback; season aggregation decided in M4.9. The alternative was (b), per level only. |
 | P17 | Draw check | M0.7 | M1.8, M4.4, M4.7 | Decided in M0.7 (README §8.2): the core returns `drawSlot`; the contract looks up the slot and weight by level id and checks the slot. No Solidity draw. |
-| P18 | Service worker | Owner, 2026-11-11 (`docs/PHONE.md` OD1) | M3.20 | Decided: offline Training only, hand-written with no new dependency, network-first for navigations and with no build pinning (`docs/PHONE.md` §5.2). It is M3.20, an optional last step after M3.19. |
+| P18 | Service worker | Owner, 2026-11-11 (`docs/PHONE.md` OD1), the order and scope; `docs/PHONE.md` S2, the design | M3.20 | Decided: offline Training only, hand-written with no new dependency, network-first for navigations and with no build pinning (`docs/PHONE.md` §5.2). It is M3.20, an optional last step after M3.19. |
 | P19 | Touch scheme and X's guard | Owner, 2026-11-11 (`docs/PHONE.md` OD3), the scheme; M3.14, the hold | M3.13 | Decided: the floating stick with the conditional diagonal band, A and B held, and X placed apart from them; a mirrored layout as an option. Open until M3.14: X's hold, `xHold`, which M3.14's playtest chooses from 0, 2, 4 and 8 ticks (A7). |
 | P20 | Phone wallet path | Owner, 2026-11-11 (`docs/PHONE.md` OD5) | M3.18 | Decided: wallet browsers only for now. M3.21 and M3.22 stay conditional: built only if Challenge outside wallet browsers is wanted later. |
-| P21 | Hidden-page policy, and its threshold H | M3.16, after M3.12's measurements (`docs/PHONE.md` OD2) | M3.18 | Open. Recommended: (c), a hide of at most H seconds catches up with no control held and a longer one closes the level, with H from M3.16's measured costs; 10 s is the candidate (`docs/PHONE.md` §6.3). M3.16 merges while no season accepts runs. |
+| P21 | Hidden-page policy, and its threshold H | M3.16, after M3.12's measurements (`docs/PHONE.md` OD2) | M3.18 | Open. Recommended: (c), a hide of at most H seconds catches up with no control held and a longer one closes the level, with H from M3.16's measured costs; 10 s is the candidate (`docs/PHONE.md` §6.3). M3.16 merges while no run can be bought or committed on time. |
 | P22 | Field scale on phones | Owner, 2026-11-11 (`docs/PHONE.md` OD4) | M3.14 | Decided: whole CSS px per cell on coarse pointers, at least 4 where it fits. M3.14 builds it and amends the style guide. |
 | P23 | Phones in testnet-1 | Owner, 2026-11-11 (`docs/PHONE.md` OD7) | M3.18 | Decided: phone Challenge after testnet-1. M3.18 waits for M5.6's report, or ships behind a flag that stays off during testnet-1, and chooses which; the touch controls reach the Challenge page only in M3.18, under the same condition. |
 
@@ -2442,9 +2443,9 @@ dApp and season
 
 Phone version
   M3.11 -> M3.12, M3.17 ; M3.12 -> M3.13, M3.16
-  M3.13 -> M3.14 -> M3.15 -> M3.20 (optional) ; M3.13 -> M3.23 (optional)
+  M3.13 -> M3.14 -> M3.15 ; M3.13 -> M3.23 (optional)
   M3.14 + M3.16 + M3.17 (+ M5.6's report, or a flag that stays off during testnet-1: P23) -> M3.18
-  M3.15 + M3.18 (+ a season accepting runs after testnet-1) -> M3.19
+  M3.15 + M3.18 (+ a season accepting runs after testnet-1) -> M3.19 ; M3.15 + M3.19 -> M3.20 (optional)
   M3.18 -> M3.21 (if Challenge outside wallet browsers is wanted: P20) -> M3.22 (if M3.21 chooses one)
 ```
 
@@ -2481,7 +2482,7 @@ M3.11 1 > M3.12 3 > M3.13 5 > M3.14 7 > M3.18 9 > M3.19 10
 
 - **Slack:** M3.15 1, M3.16 2, M3.17 4. M3.20, M3.21, M3.22 and M3.23 feed no closing item.
 - **Outside gates.** M3 stays off M5's critical path, but two of its edges wait on M5: M3.18 on M5.6's report, unless it ships behind a flag that stays off during testnet-1 (P23), and M3.19 on a season accepting runs after testnet-1.
-- **M3.16 merges between seasons:** while no season accepts runs ([`docs/SEASON_RUNBOOK.md` §2](docs/SEASON_RUNBOOK.md#2-freeze-rule)).
+- **M3.16 merges between seasons:** while no run can be bought or committed on time ([`docs/SEASON_RUNBOOK.md` §2](docs/SEASON_RUNBOOK.md#2-freeze-rule)).
 - **Owner latency.** Rounds H1, H2, H3, H6 and H7 (§13) sit on this chain.
 
 ## 13. Human-in-the-loop checklist
@@ -2569,7 +2570,7 @@ Device steps run on the PR's HTTPS preview, on your own phones: rows 1 and 3 of 
   - Run the touch playtest with two other players on their own phones (A7), check A4b on your phones, and approve the touch parameters, `xHold` among them, and the guide amendments (M3.14).
 - [ ] **H4** (M3.15 ready; slack 1): install the app on an iPhone and an Android phone, and check that it opens standalone.
 - [ ] **H5** (M3.16, M3.17 ready; slack 2):
-  - Choose the hidden-page policy and its threshold from the measured costs (OD2, P21), and approve the README §7.2 and §8.1 text. Merge M3.16 only on a day no season accepts runs.
+  - Choose the hidden-page policy and its threshold from the measured costs (OD2, P21), and approve the README §7.2 and §8.1 text. Merge M3.16 only when no run can be bought or committed on time.
   - The 60-s idle check on an iPhone and an Android phone (M3.17).
 - [ ] **H6, critical** (M3.18 ready): connect from MetaMask's in-app browser on a phone, and check that the season shows.
 - [ ] **H7, critical** (M3.19 open): provide a season accepting runs after testnet-1, such as testnet-2; fund the wallets; play Sepolia runs on phones in wallet browsers, at least one yourself, and name the run ids.
@@ -2617,7 +2618,7 @@ Device steps run on the PR's HTTPS preview, on your own phones: rows 1 and 3 of 
 | On a phone, an interruption costs a paid run ticks, lives or slack: iOS suspends a hidden page, a hide during the entropy wait or the `revealRun` prompt forfeits the run, and a slack sized on desktop may be too tight | The hidden-page policy (P21); controls released on hide; the reveal sent on return; the wake lock; saving every 250 ms; pre-buy notices; phone runs measured, and the next season's slack sized from desktop and phone runs | M3.16, M3.17, M3.19 |
 | A revealed run is lost on a phone to a kill, eviction or the separate storage of Safari, the installed app and each wallet browser | `persist()`; the pre-buy notice; saving every 250 ms; Buy refused without IndexedDB. Accepted residual: journals are local until the commit. | M3.16, M3.17 |
 | A cached or newly deployed build resumes a run under other rules | The resume guard; network-first navigations; the season check at Buy (M5.2); the runbook's freeze while a season is open | M3.17, M3.20 |
-| Two honest-client policies in one season | M3.16 merges while no season accepts runs; later changes to the policy, H, the frame-gap bound or `xHold` fall under the runbook's freeze (M3.11) | M3.11, M3.16 |
+| Two honest-client policies in one season | M3.16 merges while no run can be bought or committed on time; later changes to the policy, H, the frame-gap bound or, once the touch controls are live on Challenge, `xHold` fall under the runbook's freeze (M3.11) | M3.11, M3.16 |
 | Wallet browsers lack a feature, reload the tab or clear data | Feature checks with their own messages; device checks | M3.12, M3.18 |
 | Touch players are handicapped in the shared ranking, or commit or stop a run by accident | X's hold measured and X placed apart from A and B (P19); the Stop hold; touch against keyboard compared in the report | M3.13, M3.14, M3.18, M3.19 |
 | Browser or system gestures reload or leave the page mid-level | `touch-action` and `overscroll-behavior`; edge clearance. Residual: the edge gestures of iOS and Android that a page cannot block (A4b). | M3.14 |

@@ -6,7 +6,7 @@ The phone version of Jiro-ikusu: why it is the web client and not an app, what i
 
 **Owner of numbers.** This file owns the phone client's parameters: the touch geometry and holds (§3.4), the play view's reserves and the compact HUD (§4), the bound that marks a frame gap as hidden, the run store's save interval and the hidden-page threshold (§6), the service worker's navigation timeout (§5.2) and the device matrix (§9.5). The README owns the rules, the style guide owns the look, and `seasons/*.json` own `commitSlack`.
 
-> **Status: adopted (2026-11-11). M3 is scheduled,** with D16 (README §13), and the items of the plan's §8 build this file. The owner answered the decisions of [§12.1](#121-the-owners-decisions) on 2026-11-11, all but OD2, which M3.16 decides after M3.12's measurements; M3.11 records the answers here and in the README and the plan. Facts marked **[verify]** need a device or a primary source; [§14](#14-unverified-facts) lists each with the item that settles it. **[estimate]** marks our own arithmetic.
+> **Status: adopted (2026-11-11). M3 is scheduled,** with D16 (README §13), and the items of the plan's §8 build what it specifies. The owner answered the decisions of [§12.1](#121-the-owners-decisions) on 2026-11-11, all but OD2, which M3.16 decides after M3.12's measurements; M3.11 records the answers here and in the README and the plan. Facts marked **[verify]** need a device or a primary source; [§14](#14-unverified-facts) lists each with the item that settles it. **[estimate]** marks our own arithmetic.
 
 ## 1. Is a progressive web app the right first step?
 
@@ -106,7 +106,7 @@ Touch produces controls, never keys, and the journal records controls *(D8)*. So
 - **Single direction.** Outside the diagonal bands, the stick sends the direction nearest its angle.
 - **Diagonal bands.** In a band centered on a diagonal, the stick sends both adjacent directions only when one of them is the direction it sent on the previous sample. With two held, R4.5-1 keeps the previous one, so the band is hysteresis: a thumb drifting toward a diagonal does not turn the player. Otherwise, from rest or from the opposite side, it sends the nearest single direction. Sending both from rest would let R4.5-1's order (up, down, left, right) turn an up-left thumb up even when the player meant left.
 - **Follow.** The origin follows the finger once it is more than the follow radius away, so a reversal costs little travel.
-- Both this variant and a plain band (two bits whenever in the band) are rules-neutral. M3.14's playtest tries both and keeps one.
+- A plain band, two bits whenever in the band, is rules-neutral too. The owner chose the conditional band (OD3).
 
 ### 3.3 X, and what its guard costs
 
@@ -292,7 +292,7 @@ Standing still is not safe: minions walk the rail ([R4.7-1]), and a minion that 
 
 - Levels with slower or fewer minions cost (a) less; level 01 has none.
 - A close under (b) or (c) is a commit without the X hold. It happens only when the player left, and it is the client's §7.2 duty for an abandoned level, so this is acceptable.
-- The policy applies to every client, desktop included, so M3.16 merges while no season accepts runs: a season never mixes two honest-client policies. Later changes to the policy, to H, to the 1,000-ms frame-gap bound (§6.5) or, once Challenge can be played by touch (M3.18), to `xHold` (§3.3) merge under the same condition, which the runbook's freeze rule ([`SEASON_RUNBOOK.md` §2](SEASON_RUNBOOK.md#2-freeze-rule)) and `CLAUDE.md`'s sync row state (M3.11).
+- The policy applies to every client, desktop included, so M3.16 merges while no run can be bought or committed on time: a season never mixes two honest-client policies. Later changes to the policy, to H, to the 1,000-ms frame-gap bound (§6.5) or, once the touch controls are live on Challenge (M3.18, with its flag on if it has one), to `xHold` (§3.3) merge under the same condition, which the runbook's freeze rule ([`SEASON_RUNBOOK.md` §2](SEASON_RUNBOOK.md#2-freeze-rule)) and `CLAUDE.md`'s sync row state (M3.11).
 - **Recommended: (c),** with H chosen in M3.16 from the measured costs and M3.12's interruption lengths; 10 s is the candidate. M3.16 writes the README §7.2 client-duty sentence for the chosen policy.
 
 ### 6.4 Training pauses on hide
@@ -347,7 +347,7 @@ Any of these is a new dependency or a custody decision, reviewed with the ethski
 
 ### 9.1 Unit tests (vitest)
 
-- `touch.test.ts`: the angle-to-bits table, the dead zone, both band variants, follow, each release event, X through `xHold` − 1 and `xHold` samples, taps shorter than a tick, multi-touch.
+- `touch.test.ts`: the angle-to-bits table, the dead zone, the conditional band, follow, each release event, X through `xHold` − 1 and `xHold` samples, taps shorter than a tick, multi-touch.
 - `input.test.ts`: the combined sources.
 - `loop.test.ts`: the hidden-page policy; a frame gap above the bound counts as hidden; Training's pause keeps ticks continuous; Challenge cannot pause.
 - `sw.test.ts`: the precache list equals the build's files under their served URLs; no entry is a `.html` path; the cache name carries the sha; an `/assets/` file of the previous cache is copied, not fetched.
@@ -413,14 +413,15 @@ The items, in the plan's §1.1 format, are in [`IMPLEMENTATION_PLAN.md` §8](../
 Phone
   M3.11 -> M3.12, M3.17
   M3.12 -> M3.13, M3.16
-  M3.13 -> M3.14 -> M3.15 -> M3.20 (optional)
+  M3.13 -> M3.14 -> M3.15
   M3.13 -> M3.23 (optional)
   M3.14 + M3.16 + M3.17 (+ M5.6's report, or a flag that stays off during testnet-1: OD7) -> M3.18
   M3.15 + M3.18 (+ a season accepting runs after testnet-1) -> M3.19
+  M3.15 + M3.19 -> M3.20 (optional)
   M3.18 -> M3.21 (if Challenge outside wallet browsers is wanted: OD5) -> M3.22
 ```
 
-M3.13 follows M3.12, which adds the `chromium-phone` and `webkit-iphone` projects that M3.13's tests run in. M3.19 follows M3.15, because README §9's M3 row, which M3.19 closes, includes installing.
+M3.13 follows M3.12, which adds the `chromium-phone` and `webkit-iphone` projects that M3.13's tests run in. M3.19 follows M3.15, because README §9's M3 row, which M3.19 closes, includes installing. M3.20 follows M3.19: the service worker comes last (OD1).
 
 - **Critical path** (S = 1, M = 2): M3.11 1 > M3.12 3 > M3.13 5 > M3.14 7 > M3.18 9 > M3.19 10. Slack: M3.15 1, M3.16 2, M3.17 4. M3 stays off M5's critical path; its outside gates are OD7 and a season accepting runs.
 - **Owner rounds** ([plan §13](../IMPLEMENTATION_PLAN.md#round-h-phone-version), round H): H1, critical, the open decisions (M3.11), answered on 2026-11-11; H2, critical, the device checklist (M3.12); H3, critical, the touch controls' README and guide text (M3.13) and the touch playtest (M3.14); H4 installing on two phones (M3.15); H5 the hidden-page policy and its README text (M3.16), and the 60-s idle check on two phones (M3.17); H6, critical, a wallet-browser check (M3.18); H7, critical, phone runs on testnet and the season they need (M3.19); H8, conditional, a connector (M3.21) and two runs through it (M3.22); H9, optional, Training in airplane mode on two phones (M3.20).
@@ -439,8 +440,8 @@ Changes outside this file, by item:
 | Style guide | §4: touch-control names and letters among Jiro Pixel 12's uses; §8: the "Touch controls" component; §10: X's hold in whole ticks; no haptics | M3.13 |
 | Style guide | §8: whole CSS px per cell on phones, the play view and the compact HUD, and in Units the stacked lockup at 1 px per cell at a device pixel ratio of 2 or more; §9: stamps at every whole cell size; §14: phone targets | M3.14 |
 | Style guide | §16: follow-up 1's manifest text and the "Phone" line | M3.15 |
-| Plan | Status line, item count, §1.4's milestone-closing PRs (M3.19), §4's M3 row, §8 scheduled, §11 rows (D16, with OD6's store presence; P18 service worker; P19 touch scheme; P20 phone wallet path; P21 hidden-page policy; P22 field scale on phones; P23 phones in testnet-1), §12, §13 round H, §14 risks, §16 store builds deferred; `SEASON_RUNBOOK.md` §2's freeze rule extended to the hidden-page policy, H, the frame-gap bound and `xHold` | M3.11 |
-| `CLAUDE.md` | This file among the owners of numbers, and a sync row: a change to the touch module, the play view, the run store's save interval or the service worker updates this file where it owns the number or the policy; a change to the hidden-page policy, H, the frame-gap bound or `xHold` merges only while no season accepts runs | M3.11 |
+| Plan | Status line, item count, §1.4's milestone-closing PRs (M3.19), §4's M3 row, §8 scheduled, §11 rows (D16, with OD6's store presence; P18 service worker; P19 touch scheme; P20 phone wallet path; P21 hidden-page policy; P22 field scale on phones; P23 phones in testnet-1), §12, §13 round H, §14 risks, §16 store builds deferred; `SEASON_RUNBOOK.md` §2's freeze rule extended to the hidden-page policy, H, the frame-gap bound and, once the touch controls are live on Challenge, `xHold` | M3.11 |
+| `CLAUDE.md` | The project line names M3 (D16). This file among the owners of numbers, and a sync row: a change to the touch module, the play view, the run store's save interval or the service worker updates this file where it owns the number or the policy; a change to the hidden-page policy, H, the frame-gap bound or, once the touch controls are live on Challenge, `xHold` merges only while no run can be bought or committed on time | M3.11 |
 | `web/README.md` | Touch controls, installing, offline behavior and the kill switch | M3.13, M3.15, M3.20 |
 
 README §9's M3 row, as M3.11 writes it: the deliverable "The game on phones *(D16)*: touch controls, a phone layout and an installable app; Challenge runs in wallet browsers", done when "Training plays by touch and installs on iOS and Android; Challenge runs played by touch on phones commit on time on testnet".
@@ -501,7 +502,7 @@ A second review, of the work items against the plan's rules and of the platform 
 | An accidental commit or Stop by touch | X's hold and placement; the Stop hold | M3.13, M3.14, M3.18 |
 | Browser or system gestures reload or leave the page mid-level | `touch-action` and `overscroll-behavior`; edge clearance. Residual: the edge gestures of iOS and Android that a page cannot block (A4b). | M3.14 |
 | JavaScriptCore runs the wasm differently | WebKit parity in CI; the vectors page on every device | M3.12 |
-| Two honest-client policies in one season | M3.16 merges while no season accepts runs; later changes to the policy, H, the frame-gap bound or `xHold` fall under the season freeze (§6.3) | M3.11, M3.16 |
+| Two honest-client policies in one season | M3.16 merges while no run can be bought or committed on time; later changes to the policy, H, the frame-gap bound or, once the touch controls are live on Challenge, `xHold` fall under the season freeze (§6.3) | M3.11, M3.16 |
 | Phone players skew testnet-1's fast-cut measurement | OD7 | M5.6 |
 | Training bests split between the browser and the installed app | The install hint says so | M3.15 |
 | An installed iOS app with a service worker freezes after backgrounding, as reported in 2020 [36] | Backgrounding the installed app checked on row 1 with the worker; the kill switch | M3.20 |
