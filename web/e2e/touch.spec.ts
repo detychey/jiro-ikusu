@@ -1,8 +1,6 @@
-// Play by touch (plan M3.13, docs/PHONE.md §9.4), in the phone projects only: Play starts the open
-// field on a tap, the stick steers the player, COMMIT ends the level once held through X's hold
-// and not on a shorter tap, the controls' sizes meet §3.4 (A5), and the mirrored setting stays.
-// Playwright's touchscreen only taps, so drags and holds are PointerEvents of pointerType
-// "touch" dispatched in the page, which Chromium and WebKit both accept.
+// Play by touch (plan M3.13, docs/PHONE.md §9.4), in the phone projects only: a tap on Play, the
+// stick, COMMIT's hold, §3.4's sizes (A5) and the mirrored setting. Playwright's touchscreen only
+// taps, so drags and holds are PointerEvents of pointerType "touch" dispatched in the page.
 
 import { expect, type Page, test } from "@playwright/test";
 
@@ -47,6 +45,7 @@ async function startByTap(page: Page): Promise<void> {
   await page.goto("/?level=Open%20field");
   // The page checks the setting's radio button just before it listens for Play.
   await expect(page.locator("#touch-on")).toBeChecked();
+  await expect(page.locator("#touch"), "(pointer: coarse) shows the touch controls").toBeVisible();
   await page.locator("#play").tap();
   await expect.poll(() => ticksUsed(page)).toBeGreaterThan(0);
 }
@@ -89,16 +88,12 @@ for (const width of [320, 412]) {
       Object.fromEntries(["touch", "stick", "pad-a", "pad-b", "pad-x"].map((id) => [id, document.getElementById(id)?.getBoundingClientRect().toJSON()])),
     );
     const { touch: bar, stick, "pad-a": a, "pad-b": b, "pad-x": x } = boxes;
-    const button = bar.width - stick.width - 8 >= 152 ? 72 : 64;
-    expect({
-      stick: stick.width >= 144 && stick.height >= 144,
-      a: [a.width, a.height],
-      b: [b.width, b.height],
-      x: [x.width, x.height],
-      xClear: Math.min(distance(x, a), distance(x, b)) >= 24,
-      gaps: Math.min(distance(stick, a), distance(stick, x), distance(a, b)) >= 8,
-      edges: Math.min(stick.left, width - b.right) >= 16,
-    }).toEqual({ stick: true, a: [button, button], b: [button, button], x: [56, 56], xClear: true, gaps: true, edges: true });
+    const side = bar.width - stick.width - 8 >= 152 ? 72 : 64;
+    const sizes = [a, b, x].map((box) => `${box.width} x ${box.height}`);
+    expect([stick.width >= 144 && stick.height >= 144, ...sizes]).toEqual([true, `${side} x ${side}`, `${side} x ${side}`, "56 x 56"]);
+    expect(Math.min(distance(x, a), distance(x, b))).toBeGreaterThanOrEqual(24);
+    expect(Math.min(distance(stick, a), distance(stick, x), distance(a, b))).toBeGreaterThanOrEqual(8);
+    expect(Math.min(stick.left, width - b.right)).toBeGreaterThanOrEqual(16);
   });
 }
 

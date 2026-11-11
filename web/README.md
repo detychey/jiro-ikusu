@@ -311,25 +311,18 @@ once: `session.ts` and `run/play.ts` take one source.
 ## Touch controls
 
 On touchscreens, `(pointer: coarse)`, Training shows the touch controls of `docs/PHONE.md` §3 in
-a bar after the field, until M3.14's play view; Challenge keeps the keys until M3.18 (OD7).
-`src/touch.ts` is `TouchControls`, the touch input source: the floating stick, its origin where
-the thumb lands, with the dead zone, the conditional diagonal band and the follow radius; A and
-B, held while a pointer is on them, a pointer sliding between them; and X, which enters the mask
-only once a pointer has been down on it through `xHold` earlier samples. A tap shorter than a
-tick counts once, as for keys, but X needs its full hold. pointerup, pointercancel and
-lostpointercapture release a pointer; blur, pagehide and a hidden page release every control.
-Its geometry is pure, angle and distance in and bits out, and `TOUCH_DEFAULTS` holds §3.4's
-defaults, `xHold` 4 until M3.14's playtest. The layer is `aria-hidden` and out of the tab order,
-with `touch-action: none`. The Controls panel turns it on, off or mirrored, stored per browser
-like the bindings, and on coarse pointers explains it in place of the keys; the bindings table
-stays, for a keyboard.
-
-`test/touch.test.ts` covers the stick's angles, dead zone, band and follow, the releases, X's
-hold, taps and multi-touch, on synthetic pointer events (`test/fingers.ts`).
-`test/touch-journal.test.ts` plays `open-field-capture`'s controls by touch, its finger on X
-down `xHold` ticks early, at each `xHold` M3.14 chooses from, and gets the vector's journal and
-final hash (A2). `e2e/touch.spec.ts` runs in the phone projects only: a tap on Play, the stick
-steering, X's hold, the sizes of §3.4 and the mirrored setting.
+a bar after the field until M3.14's play view; Challenge gets them in M3.18 (OD7). `src/touch.ts`
+holds `TouchControls`, the touch input source: the floating stick, with the dead zone, the
+conditional diagonal band and the follow radius; A and B, held under a pointer, which may slide
+between them; and X, which enters the mask once a pointer has been down on it through `xHold`
+earlier samples (`TOUCH_DEFAULTS`: 4, until M3.14's playtest). A tap shorter than a tick counts
+once, as for keys, but X needs its full hold. A pointer is released on pointerup, pointercancel
+and lostpointercapture, every control on blur, pagehide and a hidden page. The layer is
+`aria-hidden`, out of the tab order, with `touch-action: none`. The Controls panel turns it on,
+off or mirrored, stored per browser, and explains it on coarse pointers; the bindings table stays
+for a keyboard. Tests: `test/touch.test.ts`, on synthetic pointer events (`test/fingers.ts`);
+`test/touch-journal.test.ts`, `open-field-capture`'s journal and final hash by touch at each
+`xHold` M3.14 may choose (A2); and `e2e/touch.spec.ts`, in the phone projects only.
 
 ## Layout
 

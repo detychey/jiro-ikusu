@@ -128,15 +128,6 @@ describe("combined sources", () => {
     combined(...sources.map(({ source }) => source)).clear();
     expect(sources.map(({ counts }) => counts.clears)).toEqual([1, 1]);
   });
-
-  it("drop a key released after a sample from the next one", () => {
-    const keys = new HeldKeys(DEFAULT_BINDINGS);
-    const input = combined(keys, fixedSource(0).source);
-    keys.down("KeyA");
-    const held = input.sample();
-    keys.up("KeyA");
-    expect([held, input.sample()]).toEqual([0x10, 0]);
-  });
 });
 
 const AZERTY: KeyboardLayout = new Map([

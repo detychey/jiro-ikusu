@@ -18,21 +18,23 @@ const CENTER = centerOf("stick");
 /** A point `dx`, `dy` px from the stick pad's center. */
 const fromCenter = (dx: number, dy: number) => ({ x: CENTER.x + dx, y: CENTER.y + dy });
 
+/** [angle, directions sent from rest], 30 px from the origin, outside the diagonal bands. */
+const AXES = [
+  [0, RIGHT], [30, RIGHT], [60, UP], [90, UP], [120, UP], [150, LEFT],
+  [180, LEFT], [-150, LEFT], [-120, DOWN], [-90, DOWN], [-60, DOWN], [-30, RIGHT],
+];
+/** [angle, directions sent from rest], in the diagonal bands. */
+const BANDS_FROM_REST = [[40, RIGHT], [50, UP], [130, UP], [140, LEFT], [-140, LEFT], [-130, DOWN], [-50, DOWN], [-40, RIGHT]];
+/** [angle, previous sample's directions, directions sent], in the bands, after one adjacent direction. */
+const BANDS_HELD = [
+  [40, RIGHT, UP | RIGHT], [50, UP, UP | RIGHT], [35, RIGHT, UP | RIGHT], [55, UP | RIGHT, UP | RIGHT],
+  [140, UP, UP | LEFT], [-140, DOWN, DOWN | LEFT], [-40, RIGHT, DOWN | RIGHT],
+];
+/** The same, after a direction from the other side of the band. */
+const BANDS_FROM_OTHER_SIDE = [[40, LEFT, RIGHT], [40, DOWN, RIGHT], [50, DOWN, UP], [-130, UP, DOWN]];
+
 describe("the stick's directions", () => {
-  it.each([
-    [0, RIGHT],
-    [30, RIGHT],
-    [60, UP],
-    [90, UP],
-    [120, UP],
-    [150, LEFT],
-    [180, LEFT],
-    [-150, LEFT],
-    [-120, DOWN],
-    [-90, DOWN],
-    [-60, DOWN],
-    [-30, RIGHT],
-  ])("sends the nearest direction at %i degrees", (angle, bits) => {
+  it.each(AXES)("sends the nearest direction at %i degrees", (angle, bits) => {
     expect(stickBits(angle, 30, 0)).toBe(bits);
   });
 
@@ -44,44 +46,19 @@ describe("the stick's directions", () => {
     expect(stickBits(90, TOUCH_DEFAULTS.deadZone + 0.5, 0)).toBe(UP);
   });
 
-  it.each([
-    [40, RIGHT],
-    [50, UP],
-    [130, UP],
-    [140, LEFT],
-    [-140, LEFT],
-    [-130, DOWN],
-    [-50, DOWN],
-    [-40, RIGHT],
-  ])("in a diagonal band from rest, at %i degrees, sends the nearest direction alone", (angle, bits) => {
+  it.each(BANDS_FROM_REST)("in a diagonal band from rest, at %i degrees, sends the nearest direction alone", (angle, bits) => {
     expect(stickBits(angle, 30, 0)).toBe(bits);
   });
 
-  it.each([
-    [40, RIGHT, UP | RIGHT],
-    [50, UP, UP | RIGHT],
-    [35, RIGHT, UP | RIGHT],
-    [55, UP | RIGHT, UP | RIGHT],
-    [140, UP, UP | LEFT],
-    [-140, DOWN, DOWN | LEFT],
-    [-40, RIGHT, DOWN | RIGHT],
-  ])("in a diagonal band at %i degrees, after mask %i, sends both adjacent directions", (angle, previous, bits) => {
+  it.each(BANDS_HELD)("in a diagonal band at %i degrees, after mask %i, sends both adjacent directions", (angle, previous, bits) => {
     expect(stickBits(angle, 30, previous)).toBe(bits);
   });
 
-  it.each([
-    [40, LEFT, RIGHT],
-    [40, DOWN, RIGHT],
-    [50, DOWN, UP],
-    [-130, UP, DOWN],
-  ])("in a diagonal band at %i degrees, after mask %i on the other side, sends the nearest direction alone", (angle, previous, bits) => {
+  it.each(BANDS_FROM_OTHER_SIDE)("in a diagonal band at %i degrees, after mask %i on the other side, sends the nearest alone", (angle, previous, bits) => {
     expect(stickBits(angle, 30, previous)).toBe(bits);
   });
 
-  it.each([
-    [34, UP, RIGHT],
-    [60, RIGHT, UP],
-  ])("outside the bands, at %i degrees after mask %i, sends the nearest direction alone", (angle, previous, bits) => {
+  it.each([[34, UP, RIGHT], [60, RIGHT, UP]])("outside the bands, at %i degrees after mask %i, sends the nearest alone", (angle, previous, bits) => {
     expect(stickBits(angle, 30, previous)).toBe(bits);
   });
 
@@ -147,10 +124,7 @@ describe("the buttons", () => {
     expect(hand.controls.sample()).toBe(0);
   });
 
-  it.each([
-    ["a", A],
-    ["b", B],
-  ] as const)("a tap on %s shorter than a tick counts in the next sample only", (pad, bit) => {
+  it.each([["a", A], ["b", B]] as const)("a tap on %s shorter than a tick counts in the next sample only", (pad, bit) => {
     const hand = fingers();
     hand.down(BUTTON, centerOf(pad));
     hand.up(BUTTON);

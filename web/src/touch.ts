@@ -43,28 +43,25 @@ export function stickBits(angle: number, distance: number, previous: number, par
   return inBand && (pair & previous) !== 0 ? pair : nearest(angle);
 }
 
-export interface Point {
-  x: number;
-  y: number;
-}
+export type Point = { x: number; y: number };
 
 /** The stick's origin once the finger is at `finger`: it follows the finger at `radius`, once the
  *  finger is farther than that. */
-export function followed(origin: Point, finger: Point, radius: number): Point {
+function followed(origin: Point, finger: Point, radius: number): Point {
   const distance = Math.hypot(finger.x - origin.x, finger.y - origin.y);
   if (distance <= radius) return origin;
   const pull = 1 - radius / distance;
   return { x: origin.x + (finger.x - origin.x) * pull, y: origin.y + (finger.y - origin.y) * pull };
 }
 
-export const PADS = ["stick", "a", "b", "x"] as const;
+const PADS = ["stick", "a", "b", "x"] as const;
 export type Pad = (typeof PADS)[number];
 type Button = Exclude<Pad, "stick">;
 /** A pad's box in client coordinates, as getBoundingClientRect gives it. */
 export type Box = Pick<DOMRect, "left" | "top" | "right" | "bottom">;
 export type Boxes = Readonly<Record<Pad, Box>>;
 /** What the controls read of a PointerEvent. */
-export type TouchPointer = Pick<PointerEvent, "pointerId" | "clientX" | "clientY">;
+type TouchPointer = Pick<PointerEvent, "pointerId" | "clientX" | "clientY">;
 
 function padAt({ x, y }: Point, boxes: Boxes): Pad | undefined {
   return PADS.find((pad) => x >= boxes[pad].left && x < boxes[pad].right && y >= boxes[pad].top && y < boxes[pad].bottom);
@@ -214,12 +211,8 @@ function place(part: HTMLElement, at: Point | undefined, zone: Box): void {
 export function mountTouchControls(params: TouchParams = TOUCH_DEFAULTS): TouchControls {
   const pads: Record<Pad, HTMLElement> = { stick: element("stick"), a: element("pad-a"), b: element("pad-b"), x: element("pad-x") };
   const [ring, knob, hold] = [element("stick-ring"), element("stick-knob"), element("x-hold")];
-  const boxes = () => ({
-    stick: pads.stick.getBoundingClientRect(),
-    a: pads.a.getBoundingClientRect(),
-    b: pads.b.getBoundingClientRect(),
-    x: pads.x.getBoundingClientRect(),
-  });
+  const rect = (pad: Pad) => pads[pad].getBoundingClientRect();
+  const boxes = (): Boxes => ({ stick: rect("stick"), a: rect("a"), b: rect("b"), x: rect("x") });
   const controls: TouchControls = new TouchControls(boxes, params, () => {
     const zone = pads.stick.getBoundingClientRect();
     place(ring, controls.stickAt?.origin, zone);
