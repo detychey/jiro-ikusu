@@ -1,10 +1,10 @@
 # Jiro-ikusu: verification review and proof-bounty design
 
-As of 10 November 2026; corrected on 11 November 2026 after two independent reviews. The working notes are in [`notes/`](notes/README.md).
+As of 10 November 2026; corrected on 11 November 2026 after four rounds of independent review. The working notes are in [`notes/`](notes/README.md).
 
 ## 1. Summary
 
-Keep the validity proof, move proving from a CPU to a GPU, and pay provers through a small escrow contract. Measure the GPU before building anything else. On 11 November the owner chose GPU proving, starting on a GPU rented online; plan item M5.9 measures it.
+Keep the validity proof, move proving from a CPU to a GPU, and pay provers through a small escrow contract. Measure the GPU before building anything else. On 11 November the owner chose GPU proving, starting on a GPU rented online. Plan item M5.9 is the measurement, and pull request 91 moves it to a rented card.
 
 - **The verification model is sound.** Journals are public, one core holds the rules, a contract checks a proof, and no signer is trusted.
 - **The weight is in how proofs are made.** Only the operator proves, on a CPU. The largest run ever proven took about two hours. By the repository's own estimate, a whole bot run would take 9 to 17 hours, and none was ever proven.
@@ -32,7 +32,7 @@ The review ran on 10 November 2026 against the repository at commit `f52a60a` an
 | Measurement | Replay timing natively and in the browser build; RISC-V instruction counts with a scratch interpreter; a faster flood fill on a scratch copy of the core | Counts compared with the repository's recorded zkVM cycles: within 9% on each vector and 6% over the whole gate set, the repository's reference vectors |
 | Research | Nine topics on alternatives, plus agents and cloud hosting, from primary sources read on the day | Decisive facts re-read by the lead or by a fact-checker |
 | Design | Three independent optimistic designs, then the escrow specification | Red-team reviews, prototypes compiled and tested against copies of the real contracts |
-| This report | Written on 10 November and reviewed on 11 November | Six reviewers checked it against the repository and the notes. A seventh re-checked their findings, and 40 corrections were applied. Three more then checked the corrected text, and two checked the copy in the repository |
+| This report | Written on 10 November and reviewed on 11 November | Six reviewers checked it against the repository and the notes. A seventh re-checked their findings, and 40 corrections were applied. Three more then checked the corrected text, and two checked the copy in the repository. Five more then re-checked that copy, and a further reviewer tried to refute each of their findings |
 
 Each figure in this report carries one of four labels.
 
@@ -101,7 +101,7 @@ The proof-to-run binding is complete and should be kept; the problems are in who
 | F9 | The documents understate the burden. The README's only proving time is about an hour, for six near-empty levels. The season page tells players to send the operator a run file, with no channel. | `README.md:590`, `web/src/pages/settle.ts:177` | Low |
 | F10 | The contract accepts the referee's scores without bounds. The maxima in the README are properties of an honest core, not checks. | `contracts/src/Challenge.sol:262-266` | Low |
 
-**Since the review.** Plan item M5.5 merged on 11 November and fixed two half-findings. The operator's settle tool now exists (F2), and the season page no longer asks players to send anything (F9). The tool also compares the image id with the referee before it proves. CI still never compares it with the source, so F5 stands. testnet-1 has 48 h of grace, in which a CPU settles two to five whole bot runs (repo). The owner chose GPU proving, and plan item M5.9 measures it, which will answer F1 and size F3. Pull request 91, still open, moves M5.9 to a rented card and records the owner's choice to rent. Until it merges, the plan names the RTX 3060. The other findings stand.
+**Since the review.** Plan item M5.5 merged on 11 November and fixed two half-findings. The operator's settle tool now exists (F2), and the season page no longer asks players to send anything (F9). The tool also compares the image id with the referee before it proves. CI still never compares it with the source, so F5 stands. testnet-1 has 48 h of grace, in which a CPU settles two to five whole bot runs (repo). The runbook also has the operator settle the best runs so far on every day of the season, so that the grace only has to cover the last day's best runs. The owner chose GPU proving, and plan item M5.9 measures it, which will answer F1 and size F3. Pull request 91, still open, moves M5.9 to a rented card and records the owner's choice to rent. Until it merges, the plan names the RTX 3060. The other findings stand.
 
 One finding is an opportunity. About 71% of the zkVM cycles are a single flood-fill loop. A 15-line rewrite of the same procedure cut the cycles by 54% on a scratch copy, with every vector trace unchanged (measured).
 
@@ -281,7 +281,7 @@ Per proof, a home card and a consumer card rented on a marketplace cost about th
 
 No instance was started for this benchmark. Prices were read from each provider's own page or API on 10 November 2026 (third-party). Every proving time is an estimate, scaled from third-party measurements of other programs.
 
-**Owner's decision of 11 November.** The project starts on a GPU rented online, by the hour. The owner's RTX 3060 machine runs x86-64 Linux and can take over later, with a bigger card if needed. The ranking below is the benchmark's own; the decision is marked where it applies.
+**Owner's decision of 11 November.** The project starts on a GPU rented online. This report recommends renting it by the hour. The owner's RTX 3060 machine runs x86-64 Linux and can take over later, with a bigger card if needed. The ranking below is the benchmark's own; the decision is marked where it applies.
 
 **How the figures were built**
 
@@ -361,7 +361,7 @@ Three cautions apply to the prices. Marketplace medians moved by up to a quarter
 - **AWS and Google Compute Engine are the slowest to start.** A new AWS account has a quota of zero GPU instances. Beyond the T4, A10G and L4, their single-GPU machines cost 1.9 to 6.9 USD per hour.
 - **Google Cloud Run suits single requests.** It scales to zero, bills per second and grants GPU quota at the first deployment, once zonal redundancy is turned off. For a batch it costs more than a spot L4 machine.
 - **Serverless timeouts must be raised.** By default RunPod stops a job after five or ten minutes and Cloud Run after five. Cloud Run allows one hour at most. On an L4 that is too short for the cost-maximising run, which needs 1.1 to 1.3 hours (estimate).
-- **An always-on rented GPU does not pay.** The cheapest, a marketplace RTX 5060 Ti, costs about 100 USD per month, and a RunPod RTX 4090 costs 245 USD. At the bounty cap of 0.41 USD, that takes 250 to 600 bounties a month.
+- **An always-on rented GPU does not pay.** A marketplace RTX 5060 Ti costs about 100 USD per month, and a RunPod RTX 4090 costs 245 USD. At the bounty cap of 0.41 USD, that takes 250 to 600 bounties a month.
 - **No card meets a ten-minute response time on the cost-maximising run.** It needs about 41 minutes on an RTX 5090. Any promised response time must scale with the run's cycles.
 - **Against the fee.** A human-style run proven cold on serverless costs 0.03 to 0.07 USD of GPU time plus about 0.027 USD of gas. That is 50 to 100% of the fee. In a marketplace batch the total is about 0.03 USD. At home it is gas plus a fraction of a cent.
 
@@ -379,7 +379,7 @@ Three cautions apply to the prices. Marketplace medians moved by up to a quarter
 
 Electricity is counted at 0.25 EUR per kWh, for the whole PC at 1.5 to 1.8 times the card's rated power (estimate). An earlier, rougher estimate put the previous card of this class at 8 to 15 minutes per bot-style run.
 
-Against renting, the RTX 5060 Ti saves at most about one cent of power per run. It pays for itself after about 50,000 runs at best, and never against the cheapest marketplace cards (estimate). Its case is latency and independence, not cost. Renting one on Vast.ai at 0.14 USD per hour measures it before buying.
+Against renting, the RTX 5060 Ti saves at most about one cent of power per run. It pays for itself after about 50,000 runs at best, and perhaps never against the cheapest marketplace cards (estimate). Its case is latency and independence, not cost. Renting one on Vast.ai at 0.14 USD per hour measures it before buying.
 
 ### Ranking by scenario
 
@@ -401,11 +401,11 @@ For the two other scenarios the rented start changes the order, not the costs. A
 
 ### Measuring before choosing
 
-About 3 USD of rental measures this guest on the cards that bracket the decision. This extends plan item M5.9, which measures one rented card and builds the prover on that machine. A prebuilt image is a later saving.
+About 3 USD of rental measures this guest on the cards that bracket the decision. This extends plan item M5.9 as pull request 91 writes it: one rented card, with the prover built on that machine. A prebuilt image is a later saving.
 
 1. Build the image once, off the rented machines, and check its image id against the deployed contract.
 2. Rent an RTX 5090 on RunPod, an L4 on Google Cloud, and an RTX 5060 Ti and an RTX 3060 on Vast.ai, for one to three hours each.
-3. On each, record the machine and time the cold start. Prove the two committed runs that M5.9 uses, three times each. On the RTX 5090, add one run of about a billion cycles.
+3. On each, record the machine and time the cold start. Prove the two committed runs that pull request 91 gives M5.9, three times each. On the RTX 5090, add one run of about a billion cycles.
 4. Record seconds per stage, peak GPU memory, host memory and power. Try the smaller segment size on the 12 and 16 GB cards.
 5. Verify one seal per card on Arbitrum Sepolia.
 6. Write the table into the verification notes and recompute this section.
@@ -431,7 +431,7 @@ Once proving moves to a GPU, the cost of a settled run is almost all gas. On Arb
 | Same, in ETH on Arbitrum One on 10 November | 0.000012 to 0.000014, 25 to 27% of the fee | 45 to 51% of the fee | estimate |
 | Proving on a rented RTX 5090 at 0.83 USD per hour, in a batch | about 0.004 USD | about 0.02 USD | estimate from third-party speeds |
 | Proving on a home card | under 0.01 EUR of electricity | 0.007 to 0.03 EUR | estimate, whole PC |
-| Proving on 4 CPU cores | 1.4 to 2.4 hours | 9 to 12.5 hours | estimate from the repo's rates |
+| Proving on 4 CPU cores | 1.5 to 2.1 hours | 9 to 12.5 hours | estimate from the repo's rates |
 
 On Arbitrum Sepolia the L1 data component is priced at zero, so testnet costs are near nothing. Section 10 compares where the proving itself can run.
 
@@ -486,7 +486,7 @@ Four decisions can be taken now, six wait for the GPU measurement, and five must
 | # | Decision | Recommendation | Why |
 | --- | --- | --- | --- |
 | 1 | Direction: keep the validity proof and move proving to a GPU | Yes. Taken on 11 November: GPU proving | Optimistic settlement failed its red team, another zkVM costs the zk milestone again, and Stylus is closed (section 6) |
-| 2 | Measure before building: work item 1, on a GPU rented online as the owner decided. It needs an account at a GPU marketplace. The owner's RTX 3060 can be measured later | Yes, first. Taken: plan item M5.9 | Every price and grace period depends on a time nobody has measured (sections 10 and 12) |
+| 2 | Measure before building: work item 1, on a GPU rented online as the owner decided. It needs an account at a GPU marketplace. The owner's RTX 3060 can be measured later | Yes, first. Taken: plan item M5.9, which pull request 91 moves to a rented card | Every price and grace period depends on a time nobody has measured (sections 10 and 12) |
 | 3 | Keep the promise that the operator settles every qualified best run, with bounties as a second, open path | Keep. In force: the settle tool of plan item M5.5 settles every best run | If settlement is only something players buy, low scorers stop settling and their fees go to others (section 11) |
 | 4 | Correct the documents and write the operator's settle tool (work items 2 and 3) | Yes. The settle tool is done (plan item M5.5). Still to do: remove Boundless and fix the rollover claim, then add the measured times | Both are needed whatever happens to the escrow |
 
@@ -494,11 +494,11 @@ Four decisions can be taken now, six wait for the GPU measurement, and five must
 
 | # | Decision | Recommendation | Why |
 | --- | --- | --- | --- |
-| 5 | Build ProofBounty for testnet (work items 5 to 10) | Go if the small run that pull request 91 adds to M5.9, which has 13 segments and the size of a human-style run, proves in minutes on the rented card | It is the only open, proof-paid path found. With one prover it mostly pays the owner; it adds value once other provers compete. Going ahead also approves its parameters: a cap of four run fees, and refunds on a stopped verifier and seven days after settlement closes |
+| 5 | Build ProofBounty for testnet (work items 5 to 10) | Go if the small run that pull request 91 adds to M5.9, which has 13 segments, a little smaller than a human-style run of 16, proves in minutes on the rented card | It is the only open, proof-paid path found. With one prover it mostly pays the owner; it adds value once other provers compete. Going ahead also approves its parameters: a cap of four run fees, and refunds on a stopped verifier and seven days after settlement closes |
 | 6 | Merge the faster flood fill before the payee revision (work item 4) | Yes, if the vector and version checks pass | It halves proving time and moves no vector, so the rules version stays. The deployed image id then changes only once. Until work item 10 deploys, the operator proves with a prover built at the deployed commit |
 | 7 | Grace period for seasons with bounties | At least seven days, set in each season file from the measured route | It leaves room for the prover's queue and for a sequencer delay of about a day. testnet-1 keeps its 48 h: it has no bounties |
 | 8 | Buy the RTX 5060 Ti | Rent one for an hour first | Buy it if the RTX 3060 cannot hold the proof in 12 GB, or if bot-style runs must be served within ten minutes. It does not pay for itself on cost (section 10). The owner will add a bigger card to the same machine if needed |
-| 9 | Where to host | Decided on 11 November: start on a GPU rented online, by the hour. Bring in the home card when it is worth setting up. Add a serverless endpoint only if the owner promises a response time | Rented and home cards cost about the same per proof. The escrow has no deadline per bounty. If a large vendor's invoice is required, use Cloud Run for single requests and spot L4 machines for a batch (section 10) |
+| 9 | Where to host | Decided on 11 November: start on a GPU rented online. Rent it by the hour. Bring in the home card when it is worth setting up. Add a serverless endpoint only if the owner promises a response time | Rented and home cards cost about the same per proof. The escrow has no deadline per bounty. If a large vendor's invoice is required, use Cloud Run for single requests and spot L4 machines for a batch (section 10) |
 | 10 | Agents | Build the local MCP wrapper with the prover loop (work item 8), then publish it | x402 is a checkout, not a bounty; the agent registries add nothing here (section 9) |
 
 **Before any mainnet season**
@@ -549,7 +549,7 @@ All were made on 10 November 2026 in a container with 4 virtual CPUs, 15.7 GiB o
 | Cost-maximising legal journals | About 2.9 billion cycles for six levels, 22 times the heaviest documented run | A scripted policy of one-cell captures, accepted by the repository's own replay tool |
 | Browser circuit prover | 1 million gates in 43 s with 1.6 GiB; 2 million gates in 82 s with 3.4 GiB | bb.js 5.3.0, WebAssembly, four threads, under Node |
 | Circuit size of the game | 3,000 to 7,800 gates per tick and 292,000 per capture; 109 to 187 million per run | A throwaway Noir model; the run size is a sizing model |
-| Escrow prototype | 152 lines; 84 tests and five invariants pass | Foundry, against copies of the real contracts |
+| Escrow prototype | 152 lines; 84 tests and five invariants pass. With the changed referee, eleven of the repository's own referee tests fail until the proof fixtures are proven again | Foundry, against copies of the real contracts |
 | Escrow gas with a mock verifier | Post 97,436; claim 364,880 for a human-style run; refund 67,481; withdraw 37,949 | The same tests. The real verifier adds about 224,000 to a claim (estimate) |
 | Re-randomized seal | A seal changed into other bytes still verifies for the same statement | A real Groth16 seal from the repository's fixtures |
 

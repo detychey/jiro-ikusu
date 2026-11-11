@@ -15,8 +15,9 @@ Written 2026-11-11 to record where the figures of row K come from. The facts wer
 ## Arithmetic (estimate)
 
 - One `standard-4` container hour, beyond the included allowance: 4 x 0.000020 x 3,600 = 0.288 USD of vCPU, plus 12 x 0.0000025 x 3,600 = 0.108 USD of memory. Disk is left out. Total: about 0.40 USD per hour.
-- CPU proving time on 4 cores, from the repository's rates (report section 11): 1.4 to 2.4 hours for a human-style run, 9 to 17 hours for a whole bot run.
-- Cost per run: 1.4 x 0.40 = 0.56 USD at the low end, 17 x 0.40 = 6.8 USD at the high end. The report rounds this to "about 0.6 to 7 USD per run on CPU".
+- CPU proving time on 4 cores, from the repository's rates: 1.5 to 2.1 hours for a human-style run of 16 segments (report section 11), 9 to 17 hours for a whole bot run (report section 3).
+- Cost per run: 1.5 x 0.40 = 0.60 USD at the low end, 17 x 0.40 = 6.8 USD at the high end. The report rounds this to "about 0.6 to 7 USD per run on CPU".
+- Corrected on 2026-11-11, after the fourth check of the report: the human-style time read 1.4 to 2.4 hours, which is the range for 15 to 18 segments. The rounded figure does not move.
 
 ## Not checked
 
