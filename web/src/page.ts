@@ -13,10 +13,15 @@ export function element<T extends HTMLElement>(id: string): T {
   return found as T;
 }
 
-export async function loadCore(): Promise<Core> {
+/** The game engine's wasm module. */
+export async function engineBytes(): Promise<ArrayBuffer> {
   const response = await fetch(WASM_URL);
   if (!response.ok) throw new Error(`could not load the game engine (${response.status})`);
-  return Core.load(await response.arrayBuffer());
+  return response.arrayBuffer();
+}
+
+export async function loadCore(): Promise<Core> {
+  return Core.load(await engineBytes());
 }
 
 /** Sizes the field to the largest integer scale that fits the window, less the page's padding

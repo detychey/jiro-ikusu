@@ -1,7 +1,11 @@
 # Cloudflare Pages (plan M2.2, P9): every pull request that touches the game gets its own
 # preview, and every push to main deploys production, served at https://jiro-ikusu.win.
-# - build: no secrets. It builds the wasm and the site and runs the Playwright smoke test on it,
-#   so a broken build is never deployed, then uploads web/dist.
+# - build: no secrets. It builds the wasm and the site and runs the Playwright tests on it, so a
+#   broken build is never deployed, then uploads web/dist. A pull request's preview is built in
+#   vite.config.ts's preview-pages mode, which adds the vectors and probe pages and the vectors
+#   they replay (plan M3.12); main and workflow_dispatch build the production site, without them.
+#   The tests run in desktop Chromium and in the phone projects, Chromium as a Pixel 7 and WebKit
+#   as an iPhone 15, where the vectors page must replay every vector with no mismatch.
 # - deploy: the only job with the Cloudflare secrets. It checks out the deploy scripts alone,
 #   installs wrangler from their lockfile without install scripts, and deploys the artifact.
 name: pages
@@ -57,13 +61,15 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Build the site
+        env:
+          BUILD_MODE: ${{ github.event_name == 'pull_request' && 'preview-pages' || 'production' }}
         run: |
           npm --prefix web ci
-          npm --prefix web run build
+          npm --prefix web run build -- --mode "$BUILD_MODE"
 
-      - name: Smoke test
+      - name: End-to-end tests
         run: |
-          npx --prefix web playwright install --with-deps chromium
+          npx --prefix web playwright install --with-deps chromium webkit
           npm --prefix web run e2e
 
       - uses: actions/upload-artifact@v7.0.2

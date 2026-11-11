@@ -56,6 +56,7 @@ jobs:
               - 'reports/playtest-*.json'
               - 'web/wasm/**'
               - 'web/test/vectors.mjs'
+              - 'web/src/vectors.mjs'
               - 'web/test/difffuzz.mjs'
               - 'web/test/wasm.mjs'
               - 'web/package-lock.json'
@@ -205,9 +206,11 @@ jobs:
   # The web row of plan §3.4: the browser shell, on the wasm build of the core, and the chain
   # bindings that web/scripts/bindings.mjs generates from contracts/abi/, which must not drift
   # (plan M5.1). The brand assets in web/public/ must match their sources in brand/src/
-  # (brand/README.md). Then the Challenge run flow runs end to end on a local chain left up by
-  # `localnet.mjs --up`, which needs Foundry and the contracts' submodules, with the playtest bots
-  # of jiro-tools choosing the inputs: a run, a reload in the third level, reloads right after a
+  # (brand/README.md). The production build must carry neither of the pages built only for
+  # pull-request previews, vectors and probe, nor any file of vectors/ (plan M3.12). Then the
+  # Challenge run flow runs end to end on a local chain left up by `localnet.mjs --up`, which
+  # needs Foundry and the contracts' submodules, with the playtest bots of jiro-tools choosing
+  # the inputs: a run, a reload in the third level, reloads right after a
   # level ends by lives out and by a clear, a reload while startRun confirms, and a stale season,
   # last as it opens a new one (plan M5.2). Its steps skip when no path of the `web` filter changed, except on workflow_dispatch.
   web:
@@ -283,6 +286,21 @@ jobs:
           npm --prefix web run lint
           npm --prefix web test
           npm --prefix web run build
+
+      - name: The production build has no preview page and no vector file (web)
+        if: ${{ steps.toolchain.outcome == 'success' }}
+        run: |
+          named="$(find web/dist \( -name 'vectors*' -o -name 'probe*' \) -print)"
+          # A file of the build with the content of a vector file, whatever its name.
+          copied="$(find web/dist -type f -size +0 -exec sha256sum {} + |
+            awk 'NR == FNR { vector[$1] = 1; next } $1 in vector { print $2 }' \
+              <(sha256sum vectors/format/* vectors/game/* vectors/levels/*) -)"
+          if [ -n "$named$copied" ]; then
+            echo "::error::the production build carries preview files:"
+            echo "$named"
+            echo "$copied"
+            exit 1
+          fi
 
       - name: Native replay of the browser's scripted journal gives its end-screen hash (web)
         if: ${{ steps.toolchain.outcome == 'success' }}

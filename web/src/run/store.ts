@@ -75,7 +75,8 @@ export function withRunLock(locks: LockManager, key: string, play: () => Promise
   });
 }
 
-function done<T>(request: IDBRequest<T>, what: string): Promise<T> {
+/** The result of an IndexedDB request, or its error, as a promise. */
+export function done<T>(request: IDBRequest<T>, what: string): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(new Error(`IndexedDB: ${what} failed`, { cause: request.error }));
