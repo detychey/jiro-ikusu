@@ -5,8 +5,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { TOUCH_DEFAULTS } from "../src/touch";
 
-test.skip(({ hasTouch }) => !hasTouch, "the touch controls show on touchscreens only");
-
 /** A finger, in the page: it goes down on element `id` at `from`, an offset from the element's
  *  top-left corner, moves to `to`, and moves there in place on every frame until `ticks` ticks have
  *  run or the level has ended, then lifts. Returns the ticks used at its down and at its lift. */

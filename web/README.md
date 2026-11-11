@@ -319,7 +319,7 @@ earlier samples, all set by `docs/PHONE.md` §3.4. Taps shorter than a tick coun
 but X needs its full hold and a cancelled pointer counts nothing. A press drops a pad's face, never
 the pad, whose box takes the pointers. The layer is `aria-hidden`, out of the tab order, with
 `touch-action: none`. The Controls panel turns it on, off or mirrored, stored per browser, and on
-coarse pointers explains it in place of the keys and their bindings. Tests: `test/touch.test.ts`, on
+coarse pointers explains it in place of the keys, keeping the bindings table for a keyboard. Tests: `test/touch.test.ts`, on
 synthetic pointer events (`test/fingers.ts`); `test/touch-journal.test.ts`, `open-field-capture`'s
 journal and final hash by touch at each `xHold` M3.14 may choose (A2); and `e2e/touch.spec.ts`, in
 the phone projects only.

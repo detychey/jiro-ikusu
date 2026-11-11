@@ -251,7 +251,7 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
    scrolls or selects. */
 .touch, .touch-help { display: none; }
 @media (pointer: coarse) {
-  .keys-help, #bindings, #bindings-message { display: none; }
+  .keys-help { display: none; }
   .touch-help { display: block; }
   .touch {
     display: flex;

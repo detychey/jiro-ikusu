@@ -126,7 +126,7 @@ The README states only that X may need a short hold, set in this file (M3.13); t
 - **Taps shorter than a tick** count once, by the rule `HeldKeys` already applies to keys (`web/src/input.ts`: "a tap shorter than a tick still counts once"). That covers A, B and a stick flick. X needs its full hold.
 - **Releases.** Every touch control is released on `pointerup`, `pointercancel` and `lostpointercapture`, and on `visibilitychange` to hidden, `blur` and `pagehide`. A released control is out of the next sample.
 - **Multi-touch.** One finger steers while another holds A or B. A pointer holds the button under it and can slide between A and B.
-- **Where they show.** On `(pointer: coarse)`: on Training from M3.13, and on Challenge only from M3.18, which waits for testnet-1's report or puts them behind a flag that stays off during testnet-1 (OD7), so that no testnet-1 run is played by touch. The Controls panel turns them on, off or mirrored for left-handed play, stored per browser like the key bindings, and on coarse pointers it explains them instead of key rebinding.
+- **Where they show.** On `(pointer: coarse)`: on Training from M3.13, and on Challenge only from M3.18, which waits for testnet-1's report or puts them behind a flag that stays off during testnet-1 (OD7), so that no testnet-1 run is played by touch. The Controls panel turns them on, off or mirrored for left-handed play, stored per browser like the key bindings, and on coarse pointers it explains them in place of the keys, keeping the bindings table for a keyboard.
 
 | Parameter | Default |
 |---|---|
