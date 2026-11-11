@@ -96,9 +96,11 @@ The segment proofs and their recursion into one succinct receipt run in the proc
 
 The `cuda` feature (plan M5.9) builds `zk-host` with RISC Zero's GPU prover: the segment proofs, their recursion and the Groth16 step run on an NVIDIA card, without Docker. The guest does not change, so neither does the image id. The operator proves testnet-1's runs this way, on a GPU rented by the hour (owner, 2026-11-11), and settles them from its own machine ([`docs/SEASON_RUNBOOK.md`](../../docs/SEASON_RUNBOOK.md)).
 
-**The machine.** x86-64 Linux, an NVIDIA card with at least 16 GB, which fits RISC Zero's default segments (third-party), its driver, and the CUDA toolkit with `nvcc`, plus `git`, `curl` and `g++`. On RunPod, a community RTX 4090 pod with a CUDA "devel" image fits; keep its disk between sessions, so that the build is done once. It holds no key: a proof is public data, and settlement is sent from the operator's machine.
+**The machine.** x86-64 Linux, an NVIDIA card with at least 16 GB, which fits RISC Zero's default segments (third-party), its driver, and the CUDA toolkit with `nvcc`, plus `git`, `curl`, `g++` and Python 3.11 or newer, with which `scripts/bootstrap.sh` reads `rust-toolchain.toml`. It holds no key: a proof is public data, and settlement is sent from the operator's machine.
 
-**Set up.** Clone at the fixed path, which needs no bind mount on a fresh machine, then build and measure with one script. It installs rustup when it is missing and the zk tier of `scripts/bootstrap.sh`, builds with `--features cuda`, prints the card and the image id, and proves M5.9's two runs under `peak-memory.sh`:
+On RunPod, a community RTX 4090 pod started from RunPod's PyTorch image for CUDA 12.8.1 on Ubuntu 24.04, such as `runpod/pytorch:2.1.0-cu1281-torch280-ubuntu2404`, has all of them. Its image configuration shows NVIDIA's CUDA 12.8.1 devel image, `build-essential`, `git`, `curl` and Python 3.12 (2026-11-11). Pick a host whose driver supports CUDA 12.8.
+
+**Set up.** Clone at the fixed path, which needs no bind mount on a fresh machine, then build and measure with one script. It installs rustup when it is missing and the zk tier of `scripts/bootstrap.sh`, builds with `--features cuda`, and proves M5.9's two runs under `peak-memory.sh`. Each session clones and builds again: the build gives the deployed image id only at the fixed path itself, and a symbolic link to a disk kept between sessions builds from another path.
 
 ```bash
 git clone https://github.com/detychey/jiro-ikusu /home/runner/work/jiro-ikusu/jiro-ikusu
@@ -108,7 +110,8 @@ bash referee/zk/gpu-measure.sh            # or: bash referee/zk/gpu-measure.sh -
 
 - **The image id** it prints must be the deployed `ZkReferee`'s, which `scripts/contracts/verify-proof.mjs` prints first.
 - **The two runs:** testnet-0's settled run 1, 13 segments, which took 75 min on 4 CPUs ([`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md)), and the heaviest six-level run of the gate set, 131 segments ([`docs/VERIFICATION.md`](../../docs/VERIFICATION.md#proving)).
-- **Their logs** go to `gpu-run-1.log` and `gpu-heaviest.log`. Each holds the `zk-prove` block (cycles, segments and each step's time), the proof between the `zk-fixture` markers, and the `peak-memory` block, the card's memory included.
+- **Their logs** go to `gpu-run-1.log` and `gpu-heaviest.log`. Each starts with the `gpu-measure` block: the commit, the card, the CUDA toolkit, the CPUs, the set-up and build time, and the image id. Then come the `zk-prove` block (cycles, segments and each step's time), the proof between the `zk-fixture` markers, and the `peak-memory` block, the card's memory included.
+- **The card it builds for:** RISC Zero compiles its CUDA kernels for the card of the machine that builds them (`nvcc -arch=native`), so build again on another card model. Setting `NVCC_APPEND_FLAGS` to a card's architecture, such as `-arch=sm_89` for an RTX 4090, builds for that card instead, even on a machine without one.
 - **Out of memory:** run it again with `--segment-po2 19`, then 18, and keep the size that fits. `web/scripts/settle.mjs` and `prove-runs.sh` take the same option.
 
 **Check** each proof through the deployed `ZkReferee`, from any machine with Node 22 and `npm --prefix scripts/contracts ci`, with an `eth_call` of `verifyRun`, which reverts on a proof that does not verify:

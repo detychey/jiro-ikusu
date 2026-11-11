@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # M5.9's measurement on a GPU machine, rented or owned (plan M5.9). It builds zk-host with the
-# cuda feature, prints the card and the image id, then proves testnet-0's settled run 1 and the
-# gate set's heaviest run under peak-memory.sh, into gpu-run-1.log and gpu-heaviest.log at the
-# repository's root. It holds no key and sends nothing: verify the proofs from any machine with
+# cuda feature, then proves testnet-0's settled run 1 and the gate set's heaviest run under
+# peak-memory.sh, into gpu-run-1.log and gpu-heaviest.log at the repository's root. Each log starts
+# with the machine: the commit, the card, the CUDA toolkit, the CPUs, the set-up and build time and
+# the image id. It holds no key and sends nothing: verify the proofs from any machine with
 # scripts/contracts/verify-proof.mjs (README.md, Proving on a GPU).
-# It runs from a checkout at /home/runner/work/jiro-ikusu/jiro-ikusu, since the image id depends on
-# the path (README.md, Reproducible image ids), on x86-64 Linux with an NVIDIA card, its driver and
-# the CUDA toolkit. It installs rustup when it is missing, then the zk tier of scripts/bootstrap.sh.
+# It runs from a checkout at /home/runner/work/jiro-ikusu/jiro-ikusu, not reached through a
+# symbolic link, since the image id depends on the path (README.md, Reproducible image ids), on
+# x86-64 Linux with an NVIDIA card, its driver, the CUDA toolkit, g++, curl and Python 3.11 or
+# newer. It installs rustup when it is missing, then the zk tier of scripts/bootstrap.sh.
 # Usage: bash referee/zk/gpu-measure.sh [--segment-po2 <n>]
 set -euo pipefail
 
@@ -29,12 +31,16 @@ case "$#" in
 esac
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
-[ "$PWD" = "$FIXED_PATH" ] || fail "run it from a checkout at $FIXED_PATH, not $PWD: another path gives another image id"
+# Cargo builds from the physical path, so a symbolic link on the way gives another image id.
+[ "$(pwd -P)" = "$FIXED_PATH" ] || fail "run it from a checkout at $FIXED_PATH, not $(pwd -P): another path gives another image id"
 [ "$(uname -m)" = x86_64 ] || fail "x86-64 only, not $(uname -m)"
 command -v nvidia-smi >/dev/null || fail "nvidia-smi is missing: no NVIDIA driver"
 command -v nvcc >/dev/null || fail "nvcc is missing: install the CUDA toolkit"
 command -v g++ >/dev/null || command -v c++ >/dev/null || fail "a C++ compiler (g++) is missing"
+command -v curl >/dev/null || fail "curl is missing"
+python3 -c 'import tomllib' 2>/dev/null || fail "Python 3.11 or newer is missing: scripts/bootstrap.sh reads rust-toolchain.toml with it"
 
+build_start=$SECONDS
 if ! command -v rustup >/dev/null; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
   # shellcheck source=/dev/null
@@ -43,16 +49,21 @@ fi
 bash scripts/bootstrap.sh zk
 cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --features cuda
 readonly host=referee/zk/target/release/zk-host
+readonly build_seconds=$((SECONDS - build_start))
 
-echo "=== BEGIN gpu-measure ==="
-echo "commit: $(git rev-parse HEAD)"
-nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
-nvcc --version | tail -n 1
-echo "image id: $("$host" image-id)"
-echo "=== END gpu-measure ==="
+{
+  echo "=== BEGIN gpu-measure ==="
+  echo "commit: $(git rev-parse HEAD)"
+  nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
+  nvcc --version | grep release
+  echo "cpus: $(nproc)"
+  echo "set-up and build: $build_seconds s"
+  echo "image id: $("$host" image-id)"
+  echo "=== END gpu-measure ==="
+} | tee gpu-run-1.log gpu-heaviest.log
 
-bash referee/zk/peak-memory.sh "$host" prove --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json "${segment[@]}" > gpu-run-1.log
-bash referee/zk/peak-memory.sh "$host" prove --run "${HEAVIEST[@]}" "${segment[@]}" > gpu-heaviest.log
+bash referee/zk/peak-memory.sh "$host" prove --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json "${segment[@]}" >> gpu-run-1.log
+bash referee/zk/peak-memory.sh "$host" prove --run "${HEAVIEST[@]}" "${segment[@]}" >> gpu-heaviest.log
 for log in gpu-run-1.log gpu-heaviest.log; do
   echo "--- $log"
   sed -n '/^=== BEGIN zk-prove ===$/,/^=== END zk-prove ===$/p; /^=== BEGIN peak-memory ===$/,/^=== END peak-memory ===$/p' "$log"
