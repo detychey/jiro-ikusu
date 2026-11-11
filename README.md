@@ -4,7 +4,7 @@ A deterministic, onchain-verifiable area-capture game in the spirit of *Qix* and
 
 Play the browser build of `main` at [jiro-ikusu.win](https://jiro-ikusu.win). Every pull request that touches the game gets its own preview, linked in a comment on the pull request. The site wears the visual identity of the style guide, [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md).
 
-> **Status: rules frozen (milestone M0, 2026-10-28); the browser game is done (milestone M2, 2026-10-31): all 16 levels, calibrated with bots, play in Training with local scores. The core is done (milestone M1, 2026-11-02): golden vectors, property tests, RISC Zero chosen as the zkVM with its cycle counts recorded, and the native build, wasm and RISC Zero's executor agreeing on random games. The referees and the contracts are done (milestone M4, 2026-11-09): the zk referee over RISC Zero's Groth16 verifier, and the contracts deployed on Arbitrum Sepolia, where a bot run was proven and settled end to end ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). A phone version comes later (M3, not scheduled; [§13](#13-open-decisions) D1).** This README is the project specification. It grew out of an original draft, and it fixes the parts of that draft that would break determinism or the economics, and records the decisions, taken and still open, in [§13](#13-open-decisions). A rule tied to a decision is tagged with its ID, e.g. *(D3)*.
+> **Status: rules frozen (milestone M0, 2026-10-28); the browser game is done (milestone M2, 2026-10-31): all 16 levels, calibrated with bots, play in Training with local scores. The core is done (milestone M1, 2026-11-02): golden vectors, property tests, RISC Zero chosen as the zkVM with its cycle counts recorded, and the native build, wasm and RISC Zero's executor agreeing on random games. The referees and the contracts are done (milestone M4, 2026-11-09): the zk referee over RISC Zero's Groth16 verifier, and the contracts deployed on Arbitrum Sepolia, where a bot run was proven and settled end to end ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). The phone version, milestone M3, was scheduled on 2026-11-11: the same web client, touch-first, installable for Training, with Challenge in wallet browsers ([§13](#13-open-decisions) D16, [`docs/PHONE.md`](docs/PHONE.md)).** This README is the project specification. It grew out of an original draft, and it fixes the parts of that draft that would break determinism or the economics, and records the decisions, taken and still open, in [§13](#13-open-decisions). A rule tied to a decision is tagged with its ID, e.g. *(D3)*.
 
 ## Contents
 
@@ -40,7 +40,7 @@ There are three modes ([§8](#8-game-modes-and-economy)):
 
 ## 2. Platform
 
-The game plays in the browser *(D1)*: [jiro-ikusu.win](https://jiro-ikusu.win) serves the build of `main`. A phone version comes later ([§9](#9-roadmap)).
+The game plays in the browser *(D1)*: [jiro-ikusu.win](https://jiro-ikusu.win) serves the build of `main`. On phones it is the same web client, made touch-first *(D16)* in milestone M3 ([§9](#9-roadmap), [`docs/PHONE.md`](docs/PHONE.md)).
 
 The draft names the controls a joystick and Key0–Key3. The keys map to A, B, X, Y in that order *(D8)*:
 
@@ -500,7 +500,7 @@ run nonce (runId 1): 0xde7b230b4cdb45439578e3b94628bb69f470fd84bf8424e123e8db198
 
 ### 6.5 Clients
 
-A client samples the controls once per tick and records the journal ([§6.2](#62-events)); it never computes game state or a score. In v1 the browser is the only client, and it also holds the wallet. A phone version comes later ([§9](#9-roadmap)).
+A client samples the controls once per tick and records the journal ([§6.2](#62-events)); it never computes game state or a score. In v1 the browser is the only client, and it also holds the wallet. On phones it is the same client *(D16)*.
 
 ### 6.6 Vector files
 
@@ -767,7 +767,7 @@ This roadmap puts the core and its test vectors first: they are the contract eve
 | **M0** Rules freeze | Close the open decisions. Freeze the tick order, journal v1, level format and validity thresholds, seed and draw procedures, state hash and commit slack. | none | No open decision blocks M1 |
 | **M1** Core | Rust core: grid, player, boss, minions, capture, scoring, codec, seeds; golden vectors; property tests; a hands-on tooling trial of two or three zkVMs, and cycle counts per level in the one chosen | 3, 4, 5, and the codec half of 6 | Tests pass; vectors committed; zkVM chosen; cycle counts recorded |
 | **M2** Browser | wasm build, canvas renderer, keyboard controls, replay viewer, level editor; the 16 levels, calibrated with bots; served at [jiro-ikusu.win](https://jiro-ikusu.win) | browser version, 16 levels | All 16 levels playable; bot clear rates on target |
-| **M3** Phone version | The game on phones *(D1)*, drafted in [`docs/PHONE.md`](docs/PHONE.md) | none | Not scheduled |
+| **M3** Phone version | The game on phones *(D16)*: touch controls, a phone layout and an installable app; Challenge runs in wallet browsers ([`docs/PHONE.md`](docs/PHONE.md)) | none | Training plays by touch and installs on iOS and Android; Challenge runs played by touch on phones commit on time on testnet |
 | **M4** Referee and contracts | Stylus gas per level on a local node, then backend choice *(D2)*; the verifier interface; pay, reveal, commit and settle; Challenge contracts on Arbitrum Sepolia | the ABI half of 6, and 7 | A run settled end to end on testnet. A level verifies within 1M gas on Stylus, or the zk fallback's costs are measured. |
 | **M5** dApp and season 1 | Wallet, Challenge UX in the browser, a testnet season | none | A full season closes and pays out on testnet |
 | **M6** Superchallenge | Deferred, see [`TODO.md`](TODO.md) | none | Not scheduled |
@@ -850,7 +850,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 
 | ID | Decision | Recommendation |
 |---|---|---|
-| D1 | Language of the core, and the platform | **Decided:** one Rust core for every target. **Platform: the browser** (owner, 2026-11-10); a phone version comes later ([§9](#9-roadmap), M3). |
+| D1 | Language of the core, and the platform | **Decided:** one Rust core for every target. **Platform: the browser** (owner, 2026-11-10); on phones, the same web client *(D16)*, scheduled as M3 on 2026-11-11 ([§9](#9-roadmap)). |
 | D2 | Verification backend | **Agreed on 2026-10-28:** Stylus referee first and zkVM proofs as the fallback, verifying a run only when money depends on it ([§7.3](#73-verification-cost)). The zkVM framework is chosen for its tooling first, then for cost. **Part 1, the zkVM framework: Decided:** RISC Zero (owner, 2026-11-02; [plan](IMPLEMENTATION_PLAN.md) M1.12), version 3.0.6, guests built for RV32IM. RISC Zero and SP1 both pass the four tooling checks, so cycles and price decided ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#m112-the-choice)). Cycles are within 5% of each other: the heaviest level, `10-worst`, takes 29.6 million user cycles (30.9 million proving cycles) on RISC Zero and 31.2 million on SP1; a six-level run, 130.7 million (136.6 million proving) against 136.9 million. M1.17 priced a proof of that run at about 0.000011 ETH ($0.024) at the averages of RISC Zero's Boundless market, taking them for aggregated proofs; M4.8 found them to be raw Groth16 seals (1,370 of 1,376 fulfilled requests in a week), at a median of 0.0000184 ETH ($0.042) per run proof, 37% of the run fee ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#prover-network-price)). SP1's network asks 0.433 PROVE ($0.090) for a Groth16 proof. RISC Zero also wrapped a proof for onchain verification in the agents' container and on a 2-vCPU runner, where SP1 ran out of memory. **Part 2, the backend: Decided:** zk for testnet (owner, 2026-11-02, "Approve D2 = zk (Recommended)"; [plan](IMPLEMENTATION_PLAN.md) M4.9). Stylus activations stay paused on Arbitrum Sepolia and Arbitrum One (`activationGas` 2^64 − 1 at blocks 325,258,195 and 520,513,231 on 2026-11-02), and the Stylus gas gate failed: 11.6 million gas on `10-worst`, against 1 million. So testnet seasons settle through `ZkReferee`, with one Groth16 proof per verified run and no aggregation (owner, 2026-11-02, "No aggregation (Recommended)"): 227,591 gas to verify and 0.0000184 ETH to prove, or with settlement about 0.0000345 ETH per verified run at Arbitrum One's fees of 2026-11-02, 69% of its fee ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#d2-the-backend)). The Stylus gas optimization waits for activations to reopen. Switching backends later means opening a new season with the other referee ([§8.4](#84-season-scoring)). |
 | D3 | Player movement on claimed cells | **Decided:** rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. |
 | D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
@@ -865,6 +865,7 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
 | D14 | Seed space | **Decided** (owner, 2026-10-29): the level seed keeps driving the boss through the level, so that no two runs share a game and inputs can be neither copied from another run nor precomputed ([§7.4](#74-bots)). [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 wrote the rule, seeded deflections ([§4.6](#46-boss), R4.6-6 to R4.6-12; [§6.4](#64-seeds-and-commitments)): a stateless draw from level seed bytes 5 to 8 and the tick turns the boss a quarter turn on 1 move in 32. |
 | D15 | Device scope | **Withdrawn** (owner, 2026-11-10): the game plays in the browser, and a phone version comes later *(D1)*. |
+| D16 | Phone version: platform, order and scope | **Decided** (owner, 2026-11-11, when scheduling M3): on phones, the game is the same web client on the same wasm core, touch-first and installable for Training. Challenge is played in a wallet app's own browser; a connector for other browsers comes only if Challenge outside wallet browsers is wanted later. The service worker, for offline Training, comes last and is optional. No store build exists while paid runs exist, and there is no native client. [`docs/PHONE.md`](docs/PHONE.md) specifies it, and records the owner's answers to its decisions. |
 
 M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §11):
 
@@ -882,7 +883,7 @@ M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`]
 - [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md): the style guide, with the name in three scripts, colors, type, logo, banner and icons, and the rules for using them.
 - [`brand/`](brand/): the identity's text sources and `build.mjs`, which builds the logo, banner and icons into `web/public/`.
 - [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md): the work breakdown of milestones M0 to M5.
-- [`docs/PHONE.md`](docs/PHONE.md): the phone version's draft specification (M3, not scheduled), whose proposed work items are in the plan's §8.
+- [`docs/PHONE.md`](docs/PHONE.md): the phone version's specification (M3, D16), whose work items are in the plan's §8.
 - [`CLAUDE.md`](CLAUDE.md): the project instructions every agent session loads.
 - [`.claude/AGENTS_COMETH.md`](.claude/AGENTS_COMETH.md): Cometh's code philosophy, imported by `CLAUDE.md`.
 - [`LICENSE`](LICENSE): MIT.

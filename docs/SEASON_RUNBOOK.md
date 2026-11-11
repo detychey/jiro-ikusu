@@ -20,6 +20,8 @@ T0 is the block timestamp of the season's `open`. `node scripts/contracts/season
 
 From a season's open until its close, no PR that changes `core/` or `levels/` merges. The season's runs settle through the referee it opened with, whose program pins the core, and the operator replays the runs with the core of its checkout. A change that moves no vector could otherwise slip a rule change into an open season, or make the operator's replay disagree with the referee. A change that cannot wait opens a new season after the close: a new rules version or backend is a new season (README §8.4).
 
+Client policies freeze too. While a season accepts runs (README §8.4), no PR merges that changes the hidden-page policy, its threshold H, the 1,000-ms bound above which a frame gap counts as a hide, or, once Challenge can be played by touch (M3.18), X's touch hold `xHold` ([`PHONE.md` §6.3](PHONE.md#63-the-hidden-page-policy-od2)). None of them moves a vector, but each sets what a hidden page or a touch commit costs a player, and a season never mixes two honest-client policies. M3.16, which sets the first policy, merges under the same rule.
+
 ## 3. Settlement
 
 On zk, the operator settles each player's best run from chain data, and players do nothing after committing (README §7.5). A player may still prove and settle their own run from the season page's run file, until end + grace.
