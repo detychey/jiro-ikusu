@@ -29,6 +29,11 @@ export function encodeProof({ seal, publicValues }) {
   return AbiCoder.defaultAbiCoder().encode(["bytes", "bytes"], [seal, publicValues]);
 }
 
+/** Where realProof keeps the proof of `runFile`: <run file>.proof.json, beside it. */
+export function proofFileOf(runFile) {
+  return runFile.replace(/\.json$/, ".proof.json");
+}
+
 /** zk-host's arguments to prove a run file with the weights of `seasonFile`, in segments of 2^`segmentPo2` cycles when given. */
 export function proveRunArgs(runFile, seasonFile, segmentPo2) {
   return ["prove", "--run", runFile, "--season", seasonFile, ...(segmentPo2 === undefined ? [] : ["--segment-po2", String(segmentPo2)])];
@@ -41,7 +46,7 @@ export function proveRunArgs(runFile, seasonFile, segmentPo2) {
  * smaller than the default (plan M5.9).
  */
 export function realProof(runFile, seasonFile, segmentPo2) {
-  const proofFile = runFile.replace(/\.json$/, ".proof.json");
+  const proofFile = proofFileOf(runFile);
   if (!existsSync(proofFile)) {
     if (process.env.RISC0_DEV_MODE) throw new Error("RISC0_DEV_MODE is set: a dev-mode seal never verifies through RISC Zero's Groth16 verifier");
     console.log(`proving ${runFile} with zk-host, which takes hours on 4 CPUs (docs/DEPLOYMENT.md)`);
