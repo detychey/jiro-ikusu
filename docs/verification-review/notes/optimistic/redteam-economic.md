@@ -285,7 +285,7 @@ W=$D/redteam-economic-work
 cd $W/minimal-poc && HOME=$W/home $D/tools/forge test --match-contract RedTeamTest -vv
 
 # browser: 4 tests in browser-poc/contracts/test/RedTeam.t.sol
-cd $W/browser-poc/contracts && HOME=$W/home FOUNDRY_SOLC=/root/.local/share/svm/0.8.28/solc-0.8.28 \
+cd $W/browser-poc/contracts && HOME=$W/home FOUNDRY_SOLC=<svm>/0.8.28/solc-0.8.28 \
   $D/tools/forge test --offline --match-contract RedTeamTest -vv
 
 # the arithmetic of sections 3 and 4

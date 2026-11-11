@@ -123,7 +123,7 @@ It works, it is cheap per run, and it violates the constraint on three counts: a
   - **Access and price:** "Deploying workflows to a Chainlink DON requires approval" through an access request that asks for the purpose. Usage is billed in "CRE credits"; "For pricing details, reach out via the in-app support". No public price per execution. [P] (L8, L7)
   - **Trust:** "true multi-node Byzantine Fault Tolerant (BFT) consensus" across node operators. [P] (L9, 2025-11-04, *old*) Forged by a colluding quorum of the DON or by whoever configures the forwarder's signer set. Blocked by Chainlink: access, quotas, price, or another sunset.
 
-### 5.2 Gelato Web3 Functions: shut down
+### 5.2 Gelato Web3 Functions: reported shut down
 
 A competitor's migration guide says "Gelato Web3 Functions shuts down on March 31, 2026", covering TypeScript functions, Solidity functions and automated transactions. [S] (G1) Chainlink's "Migrate from Gelato Web3 Functions to Chainlink CRE" is dated 2026-02-16 and describes Gelato as "a single-executor model". [P] (L7) I could not open Gelato's own documentation: it returned an expired certificate to `curl` and HTTP 503 to the fetch tool. Even when live it was one executor, a trusted signer.
 
@@ -224,7 +224,7 @@ So within this family the answer to "can the player generate the proof himself i
 | AVS committee (WAVS, Othentic) | violated | a quorum of operators | the same quorum | operator fees | an operator set to recruit or run | frameworks exist; no operators come with them |
 | UMA OOv3 | violated | UMA voters, or a wrong assertion nobody disputes in 2 h | anyone with 500 USDC, for 48 h or more | a 500 USDC bond locked per assertion | UMA contracts, an L2 to L1 dispute relay | deployed; unmonitored on Arbitrum |
 | Operator signature or root, no challenge | violated | the operator's key | the operator | none | none | trivial |
-| Chainlink Functions, Gelato Web3 Functions | not applicable | | | | | sunset in 2026 |
+| Chainlink Functions, Gelato Web3 Functions | not applicable | | | | | sunset in 2026; for Gelato, reported and not confirmed by Gelato |
 
 ## 10. Ranked view
 

@@ -880,8 +880,8 @@ M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`]
 - [`TODO.md`](TODO.md): deferred work, starting with Superchallenge mode.
 - [`name.md`](name.md): the name in Japanese and Chinese.
 - [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md): the style guide, with the name in three scripts, colors, type, logo, banner and icons, and the rules for using them.
-- [`docs/verification-review/`](docs/verification-review/README.md): the review of 2026-11-10 of how level completion is verified, with the proof-bounty design it proposes and its working notes. It records proposals and the owner's decisions; it sets no rule.
 - [`brand/`](brand/): the identity's text sources and `build.mjs`, which builds the logo, banner and icons into `web/public/`.
+- [`docs/verification-review/`](docs/verification-review/README.md): the review of 2026-11-10 of how level completion is verified, with the proof-bounty design it proposes and its working notes. It records proposals and the owner's decisions; it sets no rule.
 - [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md): the work breakdown of milestones M0 to M5.
 - [`CLAUDE.md`](CLAUDE.md): the project instructions every agent session loads.
 - [`.claude/AGENTS_COMETH.md`](.claude/AGENTS_COMETH.md): Cometh's code philosophy, imported by `CLAUDE.md`.

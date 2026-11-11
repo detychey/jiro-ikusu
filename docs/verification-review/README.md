@@ -32,7 +32,7 @@ The review ran on 10 November 2026 against the repository at commit `f52a60a` an
 | Measurement | Replay timing natively and in the browser build; RISC-V instruction counts with a scratch interpreter; a faster flood fill on a scratch copy of the core | Counts compared with the repository's recorded zkVM cycles: within 9% on each vector and 6% over the whole gate set, the repository's reference vectors |
 | Research | Nine topics on alternatives, plus agents and cloud hosting, from primary sources read on the day | Decisive facts re-read by the lead or by a fact-checker |
 | Design | Three independent optimistic designs, then the escrow specification | Red-team reviews, prototypes compiled and tested against copies of the real contracts |
-| This report | Written on 10 November and reviewed on 11 November | Six reviewers checked it against the repository and the notes. A seventh re-checked their findings, and 40 corrections were applied. Three more then checked the corrected text |
+| This report | Written on 10 November and reviewed on 11 November | Six reviewers checked it against the repository and the notes. A seventh re-checked their findings, and 40 corrections were applied. Three more then checked the corrected text, and two checked the copy in the repository |
 
 Each figure in this report carries one of four labels.
 
@@ -101,7 +101,7 @@ The proof-to-run binding is complete and should be kept; the problems are in who
 | F9 | The documents understate the burden. The README's only proving time is about an hour, for six near-empty levels. The season page tells players to send the operator a run file, with no channel. | `README.md:590`, `web/src/pages/settle.ts:177` | Low |
 | F10 | The contract accepts the referee's scores without bounds. The maxima in the README are properties of an honest core, not checks. | `contracts/src/Challenge.sol:262-266` | Low |
 
-**Since the review.** Plan item M5.5 merged on 11 November and fixed two half-findings. The operator's settle tool now exists (F2), and the season page no longer asks players to send anything (F9). The owner chose GPU proving, and plan item M5.9 measures it on a rented card, which will answer F1 and size F3. The other findings stand.
+**Since the review.** Plan item M5.5 merged on 11 November and fixed two half-findings. The operator's settle tool now exists (F2), and the season page no longer asks players to send anything (F9). The tool also compares the image id with the referee before it proves. CI still never compares it with the source, so F5 stands. testnet-1 has 48 h of grace, in which a CPU settles two to five whole bot runs (repo). The owner chose GPU proving, and plan item M5.9 measures it, which will answer F1 and size F3. Pull request 91, still open, moves M5.9 to a rented card and records the owner's choice to rent. Until it merges, the plan names the RTX 3060. The other findings stand.
 
 One finding is an opportunity. About 71% of the zkVM cycles are a single flood-fill loop. A 15-line rewrite of the same procedure cut the cycles by 54% on a scratch copy, with every vector trace unchanged (measured).
 
@@ -160,7 +160,7 @@ The design was reached in eleven steps over two days, each triggered by a questi
 | 8 | Red team on optimistic settlement | One unwatched window pays a forger; honest bonds can be lost on a timeout. | Optimistic settlement dropped. |
 | 9 | Escrow specified, prototyped and attacked from three sides | No theft path. A poster who can prove their own run can cancel a bounty and waste the prover's time. | Operator keeps settling best runs; refund on a stopped verifier; a cap per run; a lock with a stake required before mainnet. |
 | 10 | Owner asks for this report, with agents and cloud hosting | MCP is only an interface. x402 is a checkout, not a bounty. Home and marketplace GPUs cost less than the large clouds. | The escrow stays the bounty and hosting starts at home. Decisions are listed in section 13. |
-| 11 | Owner: the home machine runs x86-64 Linux, but the project starts on a GPU rented online | Rented and home cards cost about the same per proof. A rented card needs no set-up at home and takes the 12 GB question out of the first measurement. | Work item 1, now plan item M5.9, runs on a rented card. The home card can follow, with a bigger card if needed. |
+| 11 | Owner: the home machine runs x86-64 Linux, but the project starts on a GPU rented online | Rented and home cards cost about the same per proof. A rented card needs no set-up at home and takes the 12 GB question out of the first measurement. | Work item 1, now plan item M5.9, runs on a rented card once pull request 91 merges. The home card can follow, with a bigger card if needed. |
 
 Two things changed direction more than any analysis did. The Ethproofs pointer showed that the cost was a property of the hardware, not of the problem. The closure of Boundless removed the fallback every earlier plan assumed.
 
@@ -401,7 +401,7 @@ For the two other scenarios the rented start changes the order, not the costs. A
 
 ### Measuring before choosing
 
-About 3 USD of rental measures this guest on the cards that bracket the decision. This extends plan item M5.9, which measures one rented card.
+About 3 USD of rental measures this guest on the cards that bracket the decision. This extends plan item M5.9, which measures one rented card and builds the prover on that machine. A prebuilt image is a later saving.
 
 1. Build the image once, off the rented machines, and check its image id against the deployed contract.
 2. Rent an RTX 5090 on RunPod, an L4 on Google Cloud, and an RTX 5060 Ti and an RTX 3060 on Vast.ai, for one to three hours each.
@@ -458,7 +458,7 @@ The largest unknown is the GPU proving time on this guest: every price, deadline
 
 | Not verified | Why it matters | How to close it |
 | --- | --- | --- |
-| GPU proving time and memory on this guest | Sets prices, the grace period and whether a 12 GB or 16 GB card is enough | Plan item M5.9 proves two committed runs on a rented card |
+| GPU proving time and memory on this guest | Sets prices, the grace period and whether a 12 GB or 16 GB card is enough | Plan item M5.9, as pull request 91 writes it, proves two committed runs on a rented card |
 | The prover machine's operating system | The CUDA prover needs x86-64 Linux; Windows is not supported | Closed: the owner confirmed x86-64 Linux on 11 November |
 | The payee change in the guest and host | It was not compiled; the new layout was tested only against RISC Zero's mock verifier | Build it and prove two fixtures again |
 | Who maintains RISC Zero and holds its emergency-stop key | A stop is permanent and halts settlement. The last stable release is from July 2026; Boundless has left proving | Ask the vendor, watch releases, keep the SP1 branch as a fallback, decide whether to pin an own verifier |
@@ -494,7 +494,7 @@ Four decisions can be taken now, six wait for the GPU measurement, and five must
 
 | # | Decision | Recommendation | Why |
 | --- | --- | --- | --- |
-| 5 | Build ProofBounty for testnet (work items 5 to 10) | Go if the small run of M5.9, which has 13 segments and the size of a human-style run, proves in minutes on the rented card | It is the only open, proof-paid path found. With one prover it mostly pays the owner; it adds value once other provers compete. Going ahead also approves its parameters: a cap of four run fees, and refunds on a stopped verifier and seven days after settlement closes |
+| 5 | Build ProofBounty for testnet (work items 5 to 10) | Go if the small run that pull request 91 adds to M5.9, which has 13 segments and the size of a human-style run, proves in minutes on the rented card | It is the only open, proof-paid path found. With one prover it mostly pays the owner; it adds value once other provers compete. Going ahead also approves its parameters: a cap of four run fees, and refunds on a stopped verifier and seven days after settlement closes |
 | 6 | Merge the faster flood fill before the payee revision (work item 4) | Yes, if the vector and version checks pass | It halves proving time and moves no vector, so the rules version stays. The deployed image id then changes only once. Until work item 10 deploys, the operator proves with a prover built at the deployed commit |
 | 7 | Grace period for seasons with bounties | At least seven days, set in each season file from the measured route | It leaves room for the prover's queue and for a sequencer delay of about a day. testnet-1 keeps its 48 h: it has no bounties |
 | 8 | Buy the RTX 5060 Ti | Rent one for an hour first | Buy it if the RTX 3060 cannot hold the proof in 12 GB, or if bot-style runs must be served within ten minutes. It does not pay for itself on cost (section 10). The owner will add a bigger card to the same machine if needed |
@@ -515,8 +515,8 @@ Four decisions can be taken now, six wait for the GPU measurement, and five must
 
 Ten work items, one pull request each, with the GPU measurement as the gate for everything that follows it. Items 1 and 3 are already in the plan; the others are proposals.
 
-1. **Measure the GPU.** This is plan item M5.9, open as [pull request 91](https://github.com/detychey/jiro-ikusu/pull/91). It adds the `cuda` build feature and proves two committed runs on a card rented by the hour: testnet-0's settled run of 13 segments and the gate set's heaviest run of 131 segments. No signing key goes on the rented machine. Done when the verification notes hold the measured table and the runbook's grace check uses it.
-2. **Correct the documents.** Remove Boundless and its price from the README and the verification and deployment notes. Replace "about an hour" with measured times. Fix the claim that a stopped season's pot rolls over. The season page was fixed in plan item M5.5.
+1. **Measure the GPU.** This is plan item M5.9. [Pull request 91](https://github.com/detychey/jiro-ikusu/pull/91), still open, implements it and moves it to a card rented by the hour. It adds the `cuda` build feature and proves two committed runs: testnet-0's settled run of 13 segments and the gate set's heaviest run of 131 segments. No signing key goes on the rented machine. Done when the verification notes hold the measured table and the runbook's grace check uses it.
+2. **Correct the documents.** Remove Boundless and its price from the README, the economy notes and the verification and deployment notes. Replace "about an hour" with measured times. Fix the claim that a stopped season's pot rolls over. The season page was fixed in plan item M5.5.
 3. **Season operations.** Done on 10 and 11 November as plan items M5.8 and M5.5. The operator's settle tool rebuilds runs from chain data and settles each player's best run.
 4. **Faster flood fill.** A change to `core/src` that moves no vector, so `RULES_VERSION` stays. Done when `check-rules-version.sh --reverse` and the parity jobs pass. It does not merge while a season is open.
 5. **Payee word in the proof.** The guest, `ZkReferee` with a `payeeOf` view, and a checksummed `--payee` in the host. Prove two fixtures again. Update README section 7.3 and regenerate `contracts/abi/`. Keep the score-tamper tests and add payee-tamper tests. Publish the guest program and make CI compare the image id with the source.
@@ -570,7 +570,7 @@ All were made on 10 November 2026 in a container with 4 virtual CPUs, 15.7 GiB o
 
 ### C. Working notes
 
-The notes behind this report are in the repository, in `docs/verification-review/notes/`, beside the export of this report. A pull request added them on 11 November. It changes no code, rule or contract.
+The notes behind this report are in the repository, in `docs/verification-review/notes/`, beside the report itself. A pull request added them on 11 November. It changes no code, rule or contract.
 
 | Folder | Contents |
 | --- | --- |

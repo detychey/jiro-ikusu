@@ -266,7 +266,7 @@ What none of this delivers is the literal request: the player's own machine prod
 - **Why Boundless's requests stopped two days before the announced date.** The contract's last fulfilment is 2026-11-03 11:00 UTC; the announcement says 2026-11-05. I did not find a statement about the gap.
 - **Whether the market on Taiko also stopped.** The announcement covers "Boundless ZK proving operations" as a whole; I scanned only the Base contract.
 - **Whether the `BoundlessMarket` contracts now reject requests**, or only lack provers. The order stream still answers its health check.
-- **Any statement on the future maintenance of the RISC Zero zkVM**, of its verifier contracts on Arbitrum, or of who holds the emergency-stop key after the pivot.
+- **Any statement on the future maintenance of the RISC Zero zkVM**, of its verifier contracts on Arbitrum, or of who holds the emergency-stop key since the Boundless market paused.
 - **Sindri's status and current framework list** (HTTP 503 and a TLS failure), **Fermah's supported proof systems and prices** (its API reference is "Soon"; `docs-61j.pages.dev` did not resolve), **ZkCloud's docs** (`docs.zkcloud.com` did not resolve), **Lagrange's docs** (HTTP 403), **Marlin Kalypso's status**.
 - **zkVerify's fee per proof**, and whether its RISC Zero verifier accepts 3.0 receipts on mainnet: its summary page says v2.1 to v2.3, its verifier page defines `V3_0`.
 - **Aligned's fee per proof.**

@@ -51,7 +51,7 @@ The twelve issues, most severe first (details in section 4):
 | Timestamp of a force-included transaction | the larger of the L1 time at which it entered the delayed inbox and the previous L2 block's timestamp | X |
 | `block.timestamp` in the contracts | the L2 timestamp: every window, `settlementEndOf` and the commit deadline are measured in it | R (`Challenge.sol`, `Season.sol`) |
 | RISC Zero's emergency stop | `estop()` by its owner, or by anyone with a proof of the all-zero claim; "Once stopped, this contract can never be restarted" | R (`docs/ECONOMY.md` §3); the quoted sentence is from the wrapper's source, read in the copy of `risc0-ethereum` under the lead's `escrow/proto` |
-| Who controls the stop's owner key since the vendor's pivot | not found | L (addendum 2) |
+| Who controls the stop's owner key since the Boundless market paused | not found | L (addendum 2) |
 | Proof market | closed since 2026-11-05; no other seller of a RISC Zero 3.0 Groth16 proof found | L (addendum 2) |
 | CPU proving, 4 CPUs | 338 to 467 s per 2^20-cycle segment with recursion, then 150 to 172 s of Groth16 in Docker, 9.2 GiB | R, L |
 | GPU proving | about 0.9 s per segment and 2 s of Groth16 on an RTX 5090; needs x86-64 Linux, an NVIDIA card of 16 GB or more at default settings; nothing measured on this guest | L (addendum 1) |
@@ -347,7 +347,7 @@ Copies of the prototypes and my test files are under `design/redteam-liveness-wo
 
 ```bash
 cd design/redteam-liveness-work/browser/contracts
-HOME=$PWD/../../home FOUNDRY_SOLC=/root/.local/share/svm/0.8.28/solc-0.8.28 FOUNDRY_OFFLINE=true \
+HOME=$PWD/../../home FOUNDRY_SOLC=<svm>/0.8.28/solc-0.8.28 FOUNDRY_OFFLINE=true \
   PATH=$PWD/../../../tools:$PATH forge test --match-contract RedTeamLivenessTest
 ```
 
