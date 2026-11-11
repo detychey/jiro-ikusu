@@ -1,12 +1,13 @@
 // The vectors page (plan M3.12, docs/PHONE.md §9.3), in every project: it replays every vector the
 // build shipped at dist/vectors/ through the wasm engine, with no mismatch, and fetches no trace,
 // which it reads only on a mismatch. Only a pull request's preview build (vite.config.ts's
-// preview-pages mode) has the page; on any other build the tests skip.
+// preview-pages mode) has the page; on any other build the tests skip, and pages.yml fails a pull
+// request's build that lacks it (web/scripts/preview-files.mjs).
 
 import { existsSync, readdirSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { KINDS } from "../src/vectors.mjs";
 
-const KINDS = ["format", "game", "levels"];
 const dist = new URL("../dist/", import.meta.url);
 const repoVectors = new URL("../../vectors/", import.meta.url);
 

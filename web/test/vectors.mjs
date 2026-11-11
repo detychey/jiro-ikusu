@@ -4,7 +4,7 @@
 // Usage: node web/test/vectors.mjs <vectors dir> [jiro_wasm.wasm]
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { checkFormats, checkGame } from "../src/vectors.mjs";
+import { KINDS, checkFormats, checkGame } from "../src/vectors.mjs";
 import { WASM_DEFAULT, loadWasm } from "./wasm.mjs";
 
 const [vectorsDir, wasmPath = WASM_DEFAULT] = process.argv.slice(2);
@@ -27,7 +27,7 @@ function readVectors(kind) {
 const formats = readVectors("format");
 const failures = checkFormats(engine, formats);
 
-const games = [...readVectors("game"), ...readVectors("levels")];
+const games = KINDS.filter((kind) => kind !== "format").flatMap((kind) => readVectors(kind));
 for (const named of games) {
   const recorded = Uint8Array.from(readFileSync(join(vectorsDir, dirname(named.file), named.vector.trace)));
   failures.push(...(await checkGame(engine, named, () => recorded)));

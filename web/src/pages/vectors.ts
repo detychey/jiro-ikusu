@@ -6,10 +6,9 @@
 
 import { keccak256 } from "ethers";
 import { element, engineBytes, messageOf } from "../page";
-import { bindWasm, checkFormats, checkGame, type Engine, type Failure, type NamedVector, type WasmExports } from "../vectors.mjs";
+import { bindWasm, checkFormats, checkGame, type Engine, type Failure, KINDS, type NamedVector, type WasmExports } from "../vectors.mjs";
 
-/** The kinds of vectors/ the build ships, each listed in /vectors/index.json (vite.config.ts). */
-export const KINDS = ["format", "game", "levels"] as const;
+/** A kind of vectors/ the build ships, each listed in /vectors/index.json (vite.config.ts). */
 export type Kind = (typeof KINDS)[number];
 
 export interface Tally {
@@ -26,9 +25,14 @@ async function read(fetchVector: Fetch, path: string): Promise<Response> {
   return response;
 }
 
-/** The shipped files of each kind, as /vectors/index.json lists them. */
+/** The shipped files of each kind, as /vectors/index.json lists them: a kind it lists that the
+ *  page does not replay would be skipped, so it is an error. */
 async function listed(fetchVector: Fetch): Promise<Record<Kind, string[]>> {
   const index: unknown = await (await read(fetchVector, "index.json")).json();
+  const listedKinds = typeof index === "object" && index !== null ? Object.keys(index).sort() : [];
+  if (listedKinds.join() !== [...KINDS].sort().join()) {
+    throw new Error(`index.json lists the kinds ${listedKinds.join(", ") || "(none)"}, the page replays ${KINDS.join(", ")}`);
+  }
   const lists = KINDS.map((kind) => (index as Record<string, unknown>)[kind]);
   if (!lists.every((names) => Array.isArray(names) && names.every((name) => typeof name === "string"))) {
     throw new Error(`index.json must list the files of ${KINDS.join(", ")}`);

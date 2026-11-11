@@ -5,7 +5,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { keccak256 } from "ethers";
 import { describe, expect, it } from "vitest";
-import { type Fetch, KINDS, type Kind, replayAll, type Tally } from "../src/pages/vectors";
+import { type Fetch, type Kind, replayAll, type Tally } from "../src/pages/vectors";
+import { KINDS } from "../src/vectors.mjs";
 import { loadWasm, WASM_DEFAULT } from "./wasm.mjs";
 
 const engine = await loadWasm(WASM_DEFAULT);
@@ -13,13 +14,13 @@ const vectors = new URL("../../vectors/", import.meta.url);
 const jsonFiles = (kind: Kind) => readdirSync(new URL(`${kind}/`, vectors)).filter((name) => name.endsWith(".json"));
 const INDEX = JSON.stringify(Object.fromEntries(KINDS.map((kind) => [kind, jsonFiles(kind)])));
 
-/** Serves vectors/ as the build ships it, with `changed` files in place of the repository's
- *  (null for a missing file), and records the paths it was asked for. */
+/** Serves vectors/ as the build ships it, with `changed` files, index.json among them, in place of
+ *  the repository's (null for a missing file), and records the paths it was asked for. */
 function served(changed: Record<string, Uint8Array<ArrayBuffer> | null> = {}): { fetchVector: Fetch; asked: string[] } {
   const asked: string[] = [];
   const fetchVector: Fetch = async (path) => {
     asked.push(path);
-    if (path === "index.json") return new Response(INDEX);
+    if (!(path in changed) && path === "index.json") return new Response(INDEX);
     const body = path in changed ? changed[path] : readFileSync(new URL(path, vectors));
     return body === null || body === undefined ? new Response(null, { status: 404 }) : new Response(body);
   };
@@ -61,6 +62,13 @@ describe("the vectors page", () => {
       replayed: jsonFiles("game").length - 1,
       failures: [{ file: "game/clear-the-level.json", message: "could not read game/clear-the-level.json (404)" }],
     });
+  });
+
+  it("refuses an index.json that lists a kind the page does not replay", async () => {
+    const index = new TextEncoder().encode(JSON.stringify({ ...JSON.parse(INDEX), fuzz: ["case-1.json"] }));
+    await expect(replay(served({ "index.json": index }).fetchVector)).rejects.toThrow(
+      "index.json lists the kinds format, fuzz, game, levels, the page replays format, game, levels",
+    );
   });
 
   it("fails a vector whose .trace does not have its traceKeccak", async () => {

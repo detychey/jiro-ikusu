@@ -59,7 +59,7 @@ Each route lists the commands the bootstrap runs, the URLs they fetch, and what 
 - **Playwright:**
   - In the container, pin `@playwright/test@1.63.0` in `web/`, the version of the preinstalled Playwright, with `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` and `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`. Never run `playwright install` there.
   - A headless test on a `data:` URL passed this way, on `chromium_headless_shell-1243`.
-  - On GitHub runners, CI runs `npx playwright install --with-deps chromium`. That download (`https://cdn.playwright.dev/builds/cft/153.0.8010.12/linux64/chrome-linux64.zip` and `chrome-headless-shell-linux64.zip`) was only dry-run here, not fetched.
+  - On GitHub runners, CI runs `npx playwright install --with-deps chromium`. That download (`https://cdn.playwright.dev/builds/cft/153.0.8010.12/linux64/chrome-linux64.zip` and `chrome-headless-shell-linux64.zip`) was only dry-run here, not fetched. On a pull request, `pages.yml` installs `chromium webkit`, WebKit for the `webkit-iphone` project (M3.12). The container has no WebKit (`/opt/pw-browsers` holds Chromium alone), so that project runs only in CI.
 - **wrangler:** an exact devDependency of `web/` (M2.2), `wrangler@4.154.0`. It pulls `workerd` from npm. No login or deploy was probed.
 - **solc:** `solc@0.8.28` installs, but nothing needs it. npm audit flags its `tmp` dependency (GHSA-52f5-9888-hmc6, GHSA-ph9p-34f9-6g65).
 

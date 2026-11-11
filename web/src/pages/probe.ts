@@ -1,8 +1,9 @@
 // The probe page (plan M3.12; docs/PHONE.md §9.3, Appendix A), built only for pull-request
-// previews: the page's lifecycle events, and frame gaps above 1 s, logged with both clocks in
-// IndexedDB, so that a kill or an app update shows in the next load; the clock probe, which plays
-// the open field's 2,700 ticks through createLoop with no control held and measures A3
-// (docs/PHONE.md §10) at every frame; the features a phone needs; and the results as JSON to copy.
+// previews: the page's lifecycle events, frame gaps above 1 s on either clock, and touches that
+// start near a side edge, logged with both clocks in IndexedDB, so that a kill or an app update
+// shows in the next load; the clock probe, which plays the open field's 2,700 ticks through
+// createLoop with no control held and measures A3 (docs/PHONE.md §10) at every frame; the
+// features a phone needs; and the results as JSON to copy.
 
 import openFieldVector from "../../../vectors/format/level-open-field.json";
 import { type Core, type EndReason, fromHex } from "../core";
@@ -12,13 +13,22 @@ import { element, fitField, loadCore, messageOf } from "../page";
 import { Renderer } from "../render";
 import { done } from "../run/store";
 import { startSession } from "../session";
+import { browserStorage, load as loadStored, save } from "../storage";
 
-/** A frame later than this after the one before is logged, as the page did not run meanwhile. */
+/** A frame later than this after the one before, on either clock, is logged, as the page did not
+ *  run meanwhile. */
 const FRAME_GAP_MS = 1_000;
+/** A touch that starts this close to a side edge is logged, for the width of Android's
+ *  back-gesture zone (docs/PHONE.md §14, fact 17). */
+const EDGE_PX = 64;
 /** A3: before a frame's pump, at most this many ticks due and not yet run. */
 const A3_MAX_BEHIND = 2;
 const LOG_DATABASE = "jiro-ikusu-probe";
 const LOG = "log";
+/** localStorage's copy of the entries not known to be in IndexedDB, written at once on each event:
+ *  IndexedDB writes asynchronously, so the last events of a page that goes away, such as pagehide,
+ *  visibilitychange "hidden" or freeze, may never reach it. The next load adds what it lacks. */
+const UNSAVED = "jiro-ikusu-probe-unsaved";
 const DISPLAY_MODES = ["fullscreen", "standalone", "minimal-ui", "browser"];
 /** How long the probe waits for an API to answer: one that never does, as with a prompt left open
  *  or a stuck IndexedDB, is reported as such. */
@@ -88,12 +98,20 @@ export async function clockProbe(core: Core, env: ClockEnv): Promise<ClockResult
 export interface LogEntry {
   /** The load the event fired in, by its performance.timeOrigin. */
   load: number;
+  /** The entry's place among its load's, from 0. */
+  seq: number;
   event: string;
   /** performance.now() and Date.now() when it fired. */
   perfMs: number;
   dateMs: number;
   detail?: Record<string, unknown>;
 }
+
+const isLogEntries = (value: unknown): value is LogEntry[] =>
+  Array.isArray(value) && value.every((entry) => typeof entry?.load === "number" && typeof entry?.seq === "number" && typeof entry?.event === "string");
+
+/** The order the entries were recorded in. */
+const recordOrder = (a: LogEntry, b: LogEntry) => a.load - b.load || a.seq - b.seq;
 
 interface Log {
   add(entry: LogEntry): Promise<unknown>;
@@ -189,8 +207,30 @@ function context(): Record<string, unknown> {
   };
 }
 
-/** Records each lifecycle event, and each frame that comes more than FRAME_GAP_MS after the one
- *  before, with both clocks' spans. */
+export interface Clocks {
+  perfMs: number;
+  dateMs: number;
+}
+
+const clocks = (): Clocks => ({ perfMs: performance.now(), dateMs: Date.now() });
+
+/** The span between two frames on both clocks, when either is above FRAME_GAP_MS: Date.now() runs
+ *  on while a device sleeps, and performance.now() may not (docs/PHONE.md §6.5). */
+export function frameGap(last: Clocks, now: Clocks): Clocks | undefined {
+  const perfMs = now.perfMs - last.perfMs;
+  const dateMs = now.dateMs - last.dateMs;
+  return Math.max(perfMs, dateMs) > FRAME_GAP_MS ? { perfMs: Math.round(perfMs), dateMs } : undefined;
+}
+
+/** The side edge nearer a touch at `clientX`, on a viewport `width` wide, and the touch's distance
+ *  from it in CSS pixels. */
+export function edgeDistance(clientX: number, width: number): { edge: "left" | "right"; px: number } {
+  return clientX <= width - clientX ? { edge: "left", px: Math.round(clientX) } : { edge: "right", px: Math.round(width - clientX) };
+}
+
+/** Records each lifecycle event; each frame that comes more than FRAME_GAP_MS after the one
+ *  before, with both clocks' spans; each touch that starts within EDGE_PX of a side edge; and
+ *  each touchcancel, as when the system takes a touch for its back gesture. */
 function watchLifecycle(record: (event: string, detail?: Record<string, unknown>) => void): void {
   document.addEventListener("visibilitychange", () => record("visibilitychange", { state: document.visibilityState }));
   window.addEventListener("pagehide", (event) => record("pagehide", { persisted: event.persisted }));
@@ -199,12 +239,25 @@ function watchLifecycle(record: (event: string, detail?: Record<string, unknown>
   document.addEventListener("resume", () => record("resume"));
   window.addEventListener("blur", () => record("blur"));
   window.addEventListener("focus", () => record("focus"));
-  let last = { perfMs: performance.now(), dateMs: Date.now() };
+  const touchAt = (event: TouchEvent) => {
+    const touch = event.changedTouches[0];
+    return touch === undefined ? undefined : edgeDistance(touch.clientX, innerWidth);
+  };
+  const touchOptions = { passive: true };
+  document.addEventListener(
+    "touchstart",
+    (event) => {
+      const at = touchAt(event);
+      if (at !== undefined && at.px <= EDGE_PX) record("touchstart", at);
+    },
+    touchOptions,
+  );
+  document.addEventListener("touchcancel", (event) => record("touchcancel", touchAt(event)), touchOptions);
+  let last = clocks();
   const frame = () => {
-    const now = { perfMs: performance.now(), dateMs: Date.now() };
-    if (now.perfMs - last.perfMs > FRAME_GAP_MS) {
-      record("frame gap", { perfMs: Math.round(now.perfMs - last.perfMs), dateMs: now.dateMs - last.dateMs });
-    }
+    const now = clocks();
+    const gap = frameGap(last, now);
+    if (gap !== undefined) record("frame gap", { ...gap });
     last = now;
     requestAnimationFrame(frame);
   };
@@ -249,6 +302,9 @@ export async function mount(): Promise<void> {
   const clockProbes: Record<string, unknown>[] = [];
   const current: LogEntry[] = [];
   let earlier: LogEntry[] = [];
+  const storage = browserStorage();
+  // Read before this load's first entry replaces the copy.
+  let unsaved = loadStored(storage, UNSAVED, isLogEntries, () => []);
   let featureReport: Record<string, unknown> = {};
   let hides = 0;
   const showError = (error: unknown) => (element("probe-error").textContent = messageOf(error));
@@ -260,16 +316,27 @@ export async function mount(): Promise<void> {
     element("log").replaceChildren(...logTable(log));
   }
 
+  function keepUnsaved(): void {
+    if (!save(storage, UNSAVED, [...unsaved, ...current])) {
+      showError("localStorage refused the log's copy: the last events before the page went away may be missing from the next load");
+    }
+  }
+
   // Events that fire while the log opens are written once it has opened.
   const opening = (async () => openLog(indexedDB))();
   function record(event: string, detail?: Record<string, unknown>): void {
-    const entry: LogEntry = { load, event, perfMs: Math.round(performance.now() * 10) / 10, dateMs: Date.now(), ...(detail && { detail }) };
+    const { perfMs, dateMs } = clocks();
+    const entry: LogEntry = { load, seq: current.length, event, perfMs: Math.round(perfMs * 10) / 10, dateMs, ...(detail && { detail }) };
     current.push(entry);
+    keepUnsaved();
     opening.then((log) => log.add(entry)).catch(showError);
     update();
   }
   const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-  record("load", { navigation: navigation?.type ?? "unknown" });
+  record("load", {
+    navigation: navigation?.type ?? "unknown",
+    wasDiscarded: (document as { wasDiscarded?: boolean }).wasDiscarded ?? "missing",
+  });
   watchLifecycle(record);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") hides += 1;
@@ -280,7 +347,13 @@ export async function mount(): Promise<void> {
   });
 
   const indexedDb = await attempt(async () => {
-    earlier = (await (await opening).all()).filter((entry) => entry.load !== load);
+    const log = await opening;
+    const stored = await log.all();
+    const missing = unsaved.filter((entry) => !stored.some((kept) => kept.load === entry.load && kept.seq === entry.seq));
+    for (const entry of missing) await log.add(entry);
+    unsaved = [];
+    keepUnsaved();
+    earlier = [...stored, ...missing].filter((entry) => entry.load !== load).sort(recordOrder);
     return "ok";
   });
   const core = await attempt(loadCore);
@@ -290,7 +363,11 @@ export async function mount(): Promise<void> {
   element("copy").addEventListener("click", () => {
     const results = element<HTMLTextAreaElement>("results");
     results.select();
-    navigator.clipboard.writeText(results.value).catch((error: unknown) => showError(`could not copy, so the results are selected: ${messageOf(error)}`));
+    results.setSelectionRange(0, results.value.length);
+    // Where navigator.clipboard is missing, its call throws, which the promise catches too.
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(results.value))
+      .catch((error: unknown) => showError(`could not copy, so the results are selected: ${messageOf(error)}`));
   });
   const clearLog = element<HTMLButtonElement>("clear-log");
   clearLog.disabled = indexedDb !== "ok";
@@ -300,6 +377,8 @@ export async function mount(): Promise<void> {
       .then(() => {
         earlier = [];
         current.length = 0;
+        unsaved = [];
+        keepUnsaved();
         update();
       })
       .catch(showError);

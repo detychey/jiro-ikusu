@@ -16,6 +16,11 @@
 export const HASH_LEN = 32;
 const LEVEL_ID_AT = 36;
 
+/** The kinds of vectors, each a directory of vectors/: the format vectors, then the game vectors
+ *  and the gate set's, which are game vectors too. The Node runner, the build, its check
+ *  (web/scripts/preview-files.mjs) and the page all read this list. */
+export const KINDS = /** @type {const} */ (["format", "game", "levels"]);
+
 /** @typedef {{ memory: WebAssembly.Memory, [name: string]: any }} WasmExports */
 /** @typedef {ReturnType<typeof bindWasm>} Engine */
 /** A vector, with its path under vectors/, such as `game/fast-cut.json`.

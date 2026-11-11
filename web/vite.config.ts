@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
+import { KINDS } from "./src/vectors.mjs";
 
 // The footer of the Challenge page shows the commit the site was built from.
 const GIT_SHA = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
@@ -10,11 +11,11 @@ const PAGES = ["index.html", "replay.html", "editor.html", "challenge.html", "se
 
 /** `vite build --mode preview-pages`, which pages.yml runs for a pull request's preview (plan
  *  M3.12), adds the vectors and probe pages, and the vectors they replay at dist/vectors/.
- *  Every other build, production's included, carries neither. */
-export const PREVIEW_MODE = "preview-pages";
+ *  Every other build, production's included, carries neither: Vite takes any mode, so pages.yml
+ *  checks each build for the files with web/scripts/preview-files.mjs. */
+const PREVIEW_MODE = "preview-pages";
 const PREVIEW_PAGES = ["vectors.html", "probe.html"];
 const VECTORS = new URL("../vectors/", import.meta.url);
-const VECTOR_KINDS = ["format", "game", "levels"];
 
 /** Emits the files of vectors/'s kinds at vectors/<kind>/, and vectors/index.json, which lists
  *  each kind's .json files for the vectors page. */
@@ -24,7 +25,7 @@ function previewVectors(): Plugin {
     apply: "build",
     generateBundle() {
       const index: Record<string, string[]> = {};
-      for (const kind of VECTOR_KINDS) {
+      for (const kind of KINDS) {
         const names = readdirSync(new URL(`${kind}/`, VECTORS)).sort();
         index[kind] = names.filter((name) => name.endsWith(".json"));
         for (const name of names) {
