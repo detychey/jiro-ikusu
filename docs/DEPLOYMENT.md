@@ -252,3 +252,24 @@ Executed (not proven) with `zk-host execute-run` on 2026-11-03, verify image id 
 - **The estimate** is segments × 467 s + 170 s. M4.10's run of 16 segments took 7,638.5 s, 2 h 7 min, which the formula gives within 1.5 %.
 - **`--short` is the runbook's choice:** it settles a run that clears a level, which the done-when asks for, in about 2 to 3 hours. The whole bot run, the plan's command, takes 9 to 11 hours in the container: possible in one session, but long.
 - **Alternatives:** a 4-vCPU GitHub runner proves at about the container's rate, but private-repository runners have 2 vCPUs, about 2.2 times slower, and a 6-hour job limit, and this month's Actions minutes are nearly used up, so no workflow proves here. Boundless, RISC Zero's proof market, sells raw Groth16 proofs at about 0.000018 ETH on Base (`docs/VERIFICATION.md`, Prover network price), in minutes, but needs round F0's prover credential, which was never set. The settlement grace (24 h after the 1-day season) bounds how late the proof may come.
+
+## 7. testnet-0's close, claim and rake withdrawal
+
+testnet-0's settlement ended on 2026-11-11 at 12:14:45 UTC. Ten minutes later, plan M5.8's rehearsal sent its three permissionless calls with `season.mjs`, from the tester key. That key is also the bot player that settled run 1.
+
+| Step | Command | Transaction | Block | Gas | Fee |
+|---|---|---|---:|---:|---:|
+| Close | `season.mjs close --network arbitrum-sepolia` | [0x4ac67ae7…f5b2](https://sepolia.arbiscan.io/tx/0x4ac67ae7b5401bf07dfe91f8749ffe8c97e9333c4bea03edfca9e8e5307df5b2) | 328,186,309 | 126,080 | 0.0000025 ETH |
+| Claim | `season.mjs claim --network arbitrum-sepolia --season testnet-0` | [0x685cee15…eacf](https://sepolia.arbiscan.io/tx/0x685cee15fc3e0055f0c5246d8fba2d3e8732d8317e6b99e22f76a98bc315eacf) | 328,186,316 | 84,198 | 0.0000017 ETH |
+| Rake | `season.mjs withdraw --network arbitrum-sepolia` | [0x813aff8f…fcd6](https://sepolia.arbiscan.io/tx/0x813aff8f13bf7777ff3b474e8d0cf24481c22ffc46da446aff0a6f53e876fcd6) | 328,186,323 | 32,109 | 0.0000006 ETH |
+
+- **The close** took the season's two run fees, 0.0001 ETH. It credited 0.00001 ETH of rake, at 1,000 bp, and left a players' pot of 0.00009 ETH. One player qualified, the bot, with run 1 and a score of 20,310.
+- **The claim** paid the bot the whole pot, 20,310 × 0.00009 ETH / 20,310 = 0.00009 ETH, with 0 wei of rounding dust.
+- **The rake** went to the treasury, the deployer's address `0xEfEA68dbE0740982789735D007B14D0D8358d1B3`.
+- **After,** at block 328,186,365, `season.mjs status` shows:
+  - testnet-0 closed and claimed;
+  - the `Season`'s balance at 0 wei;
+  - no rollover and no rake owed;
+  - `isSolvent()` true.
+- **Gas** was priced at about 0.020 gwei, with no L1 gas (`gasUsedForL1` 0).
+- **`season-ops.yml`'s daily schedule** had not run by then. Its first scheduled run was due at 07:17 UTC that day, and none appeared. It could not have closed anything before 12:14:45 anyway.
