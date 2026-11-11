@@ -10,9 +10,9 @@ The zk path of `IReferee` (README §7.3): the core replays journals as the guest
   - `execute-run <six files>` executes one run-mode input;
   - `difffuzz <directory>` runs the random cases that `jiro-tools difffuzz` wrote there through both programs, as `execute` runs a game vector, and copies each case that disagrees with the native core to `<directory>/mismatch/` (plan M1.13);
   - `image-id` prints the verify program's image id, which `ZkReferee` pins;
-  - `prove --level <file>`, `prove --run <six files>` and `prove --run <run file> --season <season file>`, each with an optional `--segment-po2 <n>`, prove the verify program on the CPU and wrap the proof into a Groth16 seal (Docker), or a dev-mode seal with `RISC0_DEV_MODE=1`;
+  - `prove --level <file>`, `prove --run <six files>` and `prove --run <run file> --season <season file>`, each with an optional `--segment-po2 <n>`, prove the verify program on the CPU and wrap the proof into a Groth16 seal (Docker), or a dev-mode seal with `RISC0_DEV_MODE=1`. Built with the `cuda` feature, they prove on an NVIDIA card instead ([Proving on a GPU](#proving-on-a-gpu));
   - `tests/mock_round_trip.rs`, a dev-mode receipt round trip.
-- `peak-memory.sh <command>` prints a command's wall time and peak memory, its process tree's and Docker's.
+- `peak-memory.sh <command>` prints a command's wall time and peak memory, its process tree's and Docker's, and the NVIDIA cards' where `nvidia-smi` answers.
 
 ## Inputs and modes
 
@@ -90,3 +90,39 @@ bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove --run <si
 ```
 
 The segment proofs and their recursion into one succinct receipt run in the process, on the CPU. The Groth16 step runs `risczero/risc0-groth16-prover:v2025-04-03.1` through `docker run`, on x86 only; the image is on Docker Hub only. Memory follows the segment size: about 9.2 GiB with RISC Zero's default 2^20 cycles, 4.6 GiB with 2^19, so a 7.9 GB runner proves with `--segment-po2 19`. The output, between `=== BEGIN zk-prove ===` and `=== END zk-prove ===`, gives the image id, the cycles, each step's time, the peak memory and the seal's size, and between `=== BEGIN zk-fixture ===` and `=== END zk-fixture ===` the proof as JSON: `mode`, `vectors` (or `runFile` and `season`), `imageId`, `seal` (the router's encoding: the verifier selector, then the 256-byte Groth16 seal) and `publicValues`. `.github/workflows/zk-prove.yml` runs it; `contracts/test/fixtures/zk-proofs.json` holds a level proof and a run proof from its log, the container's proof of `worst-case`, and the container's proof of the run file `contracts/test/fixtures/zk-run.json` (`challengeRun`, plan M4.10).
+
+## Proving on a GPU
+
+The `cuda` feature (plan M5.9) builds `zk-host` with RISC Zero's GPU prover: the segment proofs, their recursion and the Groth16 step run on an NVIDIA card, without Docker. The guest does not change, so neither does the image id. The operator settles testnet-1's runs this way, on the owner's RTX 3060 ([`docs/SEASON_RUNBOOK.md`](../../docs/SEASON_RUNBOOK.md)).
+
+1. **Needs** x86-64 Linux, an NVIDIA card with its driver, and the CUDA toolkit, with `nvcc` on the `PATH`, beside `bash scripts/bootstrap.sh zk`.
+2. **Build** at the fixed path, as in [Reproducible image ids](#reproducible-image-ids), with the feature:
+
+   ```bash
+   cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --features cuda
+   referee/zk/target/release/zk-host image-id
+   ```
+
+   The image id must be the deployed `ZkReferee`'s, which `scripts/contracts/verify-proof.mjs` prints first.
+3. **Measure** M5.9's two runs: testnet-0's settled run 1, 13 segments, which took 75 min on 4 CPUs ([`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md)), and the heaviest six-level run of the gate set, 131 segments ([`docs/VERIFICATION.md`](../../docs/VERIFICATION.md#proving)):
+
+   ```bash
+   bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove \
+     --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json > gpu-run-1.log
+   bash referee/zk/peak-memory.sh referee/zk/target/release/zk-host prove --run \
+     vectors/levels/10-worst.json vectors/levels/16-worst.json vectors/levels/04-worst.json \
+     vectors/levels/08-worst.json vectors/levels/03-worst.json vectors/levels/14-synthetic.json > gpu-heaviest.log
+   ```
+
+   Each log holds the `zk-prove` block (cycles, segments and each step's time), the proof between the `zk-fixture` markers, and the `peak-memory` block, the card's memory included. If the card runs out of memory, prove again with `--segment-po2 19`, then 18, and keep the size that fits: `web/scripts/settle.mjs` takes the same `--segment-po2`.
+4. **Check** each proof through the deployed `ZkReferee`, with an `eth_call` of `verifyRun`, which reverts on a proof that does not verify:
+
+   ```bash
+   node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof gpu-run-1.log \
+     --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json
+   node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof gpu-heaviest.log --vectors \
+     vectors/levels/10-worst.json vectors/levels/16-worst.json vectors/levels/04-worst.json \
+     vectors/levels/08-worst.json vectors/levels/03-worst.json vectors/levels/14-synthetic.json
+   ```
+
+   Run 1's proof must give the run score it settled with, 20310.

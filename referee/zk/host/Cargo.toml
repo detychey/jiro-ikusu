@@ -7,6 +7,11 @@ publish = false
 [package.metadata.risc0]
 methods = ["../guest"]
 
+[features]
+# RISC Zero's GPU prover (plan M5.9), segment proofs and Groth16 alike: x86-64 Linux with an
+# NVIDIA card and the CUDA toolkit. The guest, and so the image id, does not change.
+cuda = ["risc0-zkvm/cuda"]
+
 [dependencies]
 hex = "0.4"
 risc0-zkvm = { version = "=3.0.6", features = ["prove"] }

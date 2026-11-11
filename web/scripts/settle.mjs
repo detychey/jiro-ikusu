@@ -9,6 +9,7 @@
 // reason. A run it cannot read or settle is reported, the others still settle, and the script
 // exits 1. --dry-run lists the runs and sends nothing.
 // Usage: [DEPLOYER_KEY=…] node web/scripts/settle.mjs --network <network> --season <label> [--rpc <url>] [--dry-run]
+//          [--segment-po2 <n>], for a GPU whose memory needs segments of 2^n cycles (plan M5.9)
 // Anyone may settle a run (README §7.2); the operator does, with DEPLOYER_KEY (docs/DEPLOYMENT.md),
 // so that it never shares a signer with season-ops.yml's TESTER_KEY. On the local chain the
 // settler is anvil's account 0.
@@ -26,7 +27,7 @@ const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const WASM = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "wasm32-unknown-unknown", "release", "jiro_wasm.wasm");
 const LEVELS_DIR = join(REPO_ROOT, "levels");
-const USAGE = "usage: [DEPLOYER_KEY=…] node web/scripts/settle.mjs --network <network> --season <label> [--rpc <url>] [--dry-run]";
+const USAGE = "usage: [DEPLOYER_KEY=…] node web/scripts/settle.mjs --network <network> --season <label> [--rpc <url>] [--dry-run] [--segment-po2 <n>]";
 
 const messageOf = (error) => (error instanceof Error ? error.message : String(error));
 
@@ -48,9 +49,10 @@ export async function checkProverImage(referee, provider) {
 /**
  * Settles season `season`, a label of the newest generation of deployments/<network>.json, with
  * the web modules that `load` loads. `signer` sends the settlements; it is needed unless `dryRun`.
+ * zk-host proves in segments of 2^`segmentPo2` cycles when it is given.
  * Returns the runs it settled, or would settle, and those it could not.
  */
-export async function settleBestRuns(load, { network: name, season: label, rpc, dryRun, signer, log = console.log }) {
+export async function settleBestRuns(load, { network: name, season: label, rpc, dryRun, signer, segmentPo2, log = console.log }) {
   const { networkNamed } = await load("/src/chain/networks.ts");
   const { bundledDeployment } = await load("/src/chain/deployments.ts");
   const { confirmed, connectContracts } = await load("/src/chain/contracts.ts");
@@ -104,7 +106,7 @@ export async function settleBestRuns(load, { network: name, season: label, rpc, 
         mkdirSync(runsDir, { recursive: true });
         const runFile = join(runsDir, `run-${run.runId}.json`);
         writeFileSync(runFile, `${JSON.stringify(run.file, null, 2)}\n`);
-        const proof = realProof(runFile, join(REPO_ROOT, "seasons", `${label}.json`));
+        const proof = realProof(runFile, join(REPO_ROOT, "seasons", `${label}.json`), segmentPo2);
         const { challenge, season } = contracts;
         await confirmed(`settleRun(${run.runId})`, challenge.settleRun(run.runId, run.file.levels, run.file.journals, proof), [challenge, season]);
         log(`  run ${run.runId} settled`);
@@ -120,9 +122,16 @@ export async function settleBestRuns(load, { network: name, season: label, rpc, 
 
 async function main() {
   const { values } = parseArgs({
-    options: { network: { type: "string" }, season: { type: "string" }, rpc: { type: "string" }, "dry-run": { type: "boolean", default: false } },
+    options: {
+      network: { type: "string" },
+      season: { type: "string" },
+      rpc: { type: "string" },
+      "dry-run": { type: "boolean", default: false },
+      "segment-po2": { type: "string" },
+    },
   });
-  if (values.network === undefined || values.season === undefined) throw new Error(USAGE);
+  const segmentPo2 = values["segment-po2"];
+  if (values.network === undefined || values.season === undefined || (segmentPo2 !== undefined && !/^[0-9]+$/.test(segmentPo2))) throw new Error(USAGE);
   const dryRun = values["dry-run"];
   const key = dryRun || values.network === "local" ? undefined : privateKeyOf("DEPLOYER_KEY", process.env.DEPLOYER_KEY, values.network);
   // No child needs them: zk-host runs from here.
@@ -139,7 +148,14 @@ async function main() {
       signerProvider = new JsonRpcProvider(values.rpc ?? network.rpcUrls[0], network.chainId, { staticNetwork: true, cacheTimeout: -1 });
       signer = key === undefined ? await signerProvider.getSigner(0) : new Wallet(key, signerProvider);
     }
-    const { failed } = await settleBestRuns(load, { network: values.network, season: values.season, rpc: values.rpc, dryRun, signer });
+    const { failed } = await settleBestRuns(load, {
+      network: values.network,
+      season: values.season,
+      rpc: values.rpc,
+      dryRun,
+      signer,
+      segmentPo2: segmentPo2 === undefined ? undefined : Number(segmentPo2),
+    });
     for (const { runId, error } of failed) console.error(`run ${runId}: ${messageOf(error)}`);
     if (failed.length > 0) throw new Error(`${failed.length} run(s) not settled`);
   } finally {

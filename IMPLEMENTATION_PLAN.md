@@ -2109,16 +2109,17 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Why:** split out of M5.5 on 2026-11-11. In round G2 the owner chose GPU proving with a 48 h grace ("GPU first, 48 h grace"), after Boundless stopped taking proof requests on 2026-11-05. The verification review of 2026-11-10 proposed this measurement as its first work item.
 - **Deliverables:**
   - `zk-host` gains RISC Zero's `cuda` build feature (`risc0-zkvm/cuda`), off by default. The guest, the image id, the seal and the contracts do not change: `zk-host image-id` still equals the deployed `ZkReferee`'s.
-  - `web/scripts/settle.mjs` passes `--segment-po2` to `zk-host prove` when the card needs segments smaller than the default to fit its 12 GB.
-  - One whole bot run, and the gate set's heaviest run (131 segments, `docs/VERIFICATION.md`), proven on the owner's RTX 3060, on x86-64 Linux with the CUDA toolkit.
+  - `web/scripts/settle.mjs` takes `--segment-po2 <n>` and passes it to `zk-host prove`, for a card that needs segments smaller than the default to fit its 12 GB. `referee/zk/peak-memory.sh` also samples the cards' memory.
+  - `scripts/contracts/verify-proof.mjs`: an `eth_call` of `verifyRun` on the deployed `ZkReferee`, for the proof of a run file or of six game vectors.
+  - Two runs proven on the owner's RTX 3060, on x86-64 Linux with the CUDA toolkit, by the steps of `referee/zk/README.md` (Proving on a GPU): testnet-0's settled run 1, 13 segments, which took 75 min on 4 CPUs, and the gate set's heaviest run, 131 segments (`docs/VERIFICATION.md`). Both inputs are committed, and the first compares directly with the CPU.
   - A table in `docs/VERIFICATION.md`: the segment size, seconds per segment, the recursion and Groth16 times, and peak GPU and host memory.
   - `docs/SEASON_RUNBOOK.md` §5 checks the 48 h grace against the measured time. If 48 h does not cover twice the time to prove one run per expected player, the grace in `testnet-1.json` changes before the open.
 - **Done when:**
-  - each GPU proof verifies through the deployed `ZkReferee`: an `eth_call` of `verifyRun` on Arbitrum Sepolia returns the six Outcomes of the native replay;
+  - each GPU proof verifies through the deployed `ZkReferee`: `verify-proof.mjs`'s `eth_call` of `verifyRun` on Arbitrum Sepolia accepts it, and run 1's run score is 20310, the score it settled with;
   - the measured table is in `docs/VERIFICATION.md`, and the runbook's grace check uses it.
 - **Verify with:**
-  - on the card's machine: `cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --features cuda`, then `zk-host image-id`, and `zk-host prove --run <run file> --season seasons/testnet-1.json`
-  - the CPU build without the feature still proves as before (`zk-exec` job).
+  - on the card's machine, the four steps of `referee/zk/README.md`, Proving on a GPU: the build at the fixed path with `--features cuda`, `zk-host image-id`, the two proofs under `peak-memory.sh`, and `verify-proof.mjs` on each
+  - the CPU build without the feature still builds and executes as before (`zk-exec` job), and `node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof seasons/testnet-0/runs/run-1.proof.json --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json` accepts the CPU proof of record.
 - **Skills:** `onchain-referee`; tier `zk`. **README:** §7.3, §7.5. **Needs user:** run the build and the two proofs on the RTX 3060's machine, x86-64 Linux with the CUDA toolkit, or share that machine's repository folder through Remote Control so that an agent session runs them.
 
 ## 11. Decision schedule
