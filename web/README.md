@@ -191,7 +191,9 @@ network if needed.
   replayed with the season's weights, and each player's best on-time run in D10's order that
   `Season` does not already hold or beat, among the runs whose Outcomes `Challenge` accepts. `scripts/settle.mjs` settles each with one `settleRun`, signed by the operator's key, after checking it again;
   on zk, outside the local chain, it first proves the run with `zk-host`, keeping the run file and
-  its proof under `seasons/<label>/runs/`. `docs/SEASON_RUNBOOK.md` says when it runs.
+  its proof under `seasons/<label>/runs/`. `--export` writes the run files for a GPU machine that
+  holds no key, and a run whose proof is there settles with no `zk-host`. `docs/SEASON_RUNBOOK.md`
+  says when it runs.
 
 ## Preview pages
 
@@ -381,5 +383,5 @@ the phone projects only.
 | `scripts/bindings.mjs` | Generates `src/chain/bindings/` from `contracts/abi/` |
 | `scripts/preview-files.mjs` | Checks that `dist/` has the preview pages (`present`), or none of them and no vector file (`absent`) |
 | `scripts/chain-smoke.mjs` | `startRun` through `src/chain/` on a local chain |
-| `scripts/settle.mjs` | The operator's settlement of a season's best runs, proven with `zk-host` on zk (`--dry-run` lists them) |
+| `scripts/settle.mjs` | The operator's settlement of a season's best runs, proven with `zk-host` on zk (`--dry-run` lists them, `--export` writes their run files) |
 | `scripts/challenge-e2e.mjs` | Challenge runs from purchase to commit through `src/run/` on a local chain, with reloads, and with `--settle` their settlement, replay from calldata, leaderboard, close and claims |

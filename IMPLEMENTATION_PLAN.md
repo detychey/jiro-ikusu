@@ -2133,7 +2133,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | M5.6 | Testnet season 1 | M5.3, M5.5, M5.9 | M | Testers, play, approvals |
 | M5.7 | Challenge page wiring | M5.2 | M | none |
 | M5.8 | Season operations: status, close, withdraw and claim; testnet-0 close | M4.14 | M | none |
-| M5.9 | GPU proving on the owner's card | M5.5 | M | Run the proofs on the card's machine |
+| M5.9 | GPU proving on a rented card | M5.5 | M | Rent the GPU and run the measurement on it |
 
 Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4.11) with MockReferee, `e2e.yml` on nitro-devnode with the real referee, or Arbitrum Sepolia.
 
@@ -2226,7 +2226,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - `season.mjs`, beside M4.14's `open` and M5.8's `status`, `close`, `withdraw` and `claim`, gets `bots`: the tester's bot runs in a season, paid, revealed, played by the playtest bots and committed, for the operator to settle.
   - **The proving route** for players' runs on zk (owner, 2026-11-08, "Decide at M5.5"). The PR presents it with measured numbers: the proving time of M4.14's bot run, and a prover network's price, about 0.0000184 ETH per Groth16 proof on Boundless (M4.8). The owner chooses in round G2 between a prover network on a capped account, with round F0's credential, and the owner's own machine. The settlement grace derives from the route.
     - Boundless stopped taking proof requests on 2026-11-05 (its foundation's announcement, read on 2026-11-10), and Bonsai closed in December 2025 (M4.8), so no prover network proves RISC Zero runs: the route is the owner's machine, on a CPU, measured, or a GPU, not yet measured on this guest.
-    - **Chosen** (owner, 2026-11-11, round G2, "GPU first, 48 h grace"): the owner's RTX 3060, with a CPU as the fallback, and README §8.4's 48 h of grace. M5.9 builds the GPU prover and measures it before testnet-1 opens.
+    - **Chosen** (owner, 2026-11-11, round G2, "GPU first, 48 h grace"): GPU proving, with a CPU as the fallback, and README §8.4's 48 h of grace. The owner then chose to start on a GPU rented by the hour rather than its RTX 3060 ("we will rent GPU online a priori as a starter"). M5.9 builds the GPU prover and measures it before testnet-1 opens.
   - `seasons/testnet-1.json` (P13), which references `calibration-1.json` for the ids and weights:
     - the referee from `deployments/arbitrum-sepolia.json`;
     - the fee (0.00005 ETH, in wei), the rake, `minClears`, and a length of 14 days (D12);
@@ -2262,7 +2262,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Deliverables:**
   - testnet season 1, opened on Arbitrum Sepolia with `seasons/testnet-1.json`;
   - testers playing in the browser, and bots playing from the tester key;
-  - best runs settled: by players with Stylus; with zk, by the operator's `web/scripts/settle.mjs` from chain data, every day of the season, on the owner's GPU that M5.9 measured (round G2, M5.5), or by players who prove their own;
+  - best runs settled: by players with Stylus; with zk, by the operator's `web/scripts/settle.mjs` from chain data, at mid-season and after the end, proven on a rented GPU that M5.9 measured (round G2, M5.5), or by players who prove their own;
   - after the end plus the grace period, any address closes the season, qualified players claim, and `season.mjs withdraw` sends the rake to the treasury;
   - `docs/TESTNET-1-REPORT.md`:
     - runs, settled runs, and gas and verification cost per settled run;
@@ -2283,7 +2283,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Verify with:**
   - `node scripts/contracts/season.mjs status --network arbitrum-sepolia --season seasons/testnet-1.json`
   - Arbiscan links for the close and claim transactions, in the report.
-- **Skills:** `onchain-referee`, `qa`. **README:** §8.2, §9 M5. **Needs user:** recruit testers, approve opening the season, fund your browser wallet and play (at least one browser run), keep the tester key funded, run `web/scripts/settle.mjs` on your GPU machine every day of the season and after the end, and check the report after the close (round G3).
+- **Skills:** `onchain-referee`, `qa`. **README:** §8.2, §9 M5. **Needs user:** recruit testers, approve opening the season, fund your browser wallet and play (at least one browser run), keep the tester key funded, rent a GPU for the settlement sessions at mid-season and after the end, as the runbook says, and check the report after the close (round G3).
 
 #### M5.7 Challenge page wiring
 
@@ -2333,23 +2333,26 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - `node scripts/contracts/season.mjs status --network arbitrum-sepolia --season testnet-0` shows the season closed and claimed.
 - **Skills:** `onchain-referee`; tier `contracts`. **README:** §8.4. **Needs user:** none. The owner kept `TESTER_KEY` as an Actions secret in round F2; a `workflow_dispatch` run after the merge checks it.
 
-#### M5.9 GPU proving on the owner's card
+#### M5.9 GPU proving on a rented card
 
-- **Goal:** the operator proves a whole run on the owner's NVIDIA card, with its time measured before testnet-1 opens, so that the 48 h grace of `seasons/testnet-1.json` rests on a measured number.
-- **Why:** split out of M5.5 on 2026-11-11. In round G2 the owner chose GPU proving with a 48 h grace ("GPU first, 48 h grace"), after Boundless stopped taking proof requests on 2026-11-05. The verification review of 2026-11-10 proposed this measurement as its first work item.
+- **Goal:** the operator proves a whole run on an NVIDIA card rented by the hour, with its time measured before testnet-1 opens, so that the 48 h grace of `seasons/testnet-1.json` rests on a measured number, and settles a season's runs without any key on the rented machine.
+- **Why:** split out of M5.5 on 2026-11-11. In round G2 the owner chose GPU proving with a 48 h grace ("GPU first, 48 h grace"), after Boundless stopped taking proof requests on 2026-11-05, then chose to start on a GPU rented by the hour rather than the owner's RTX 3060 ("we will rent GPU online a priori as a starter"). The verification review of 2026-11-10 proposed the measurement as its first work item, and no secret on the GPU machine.
 - **Deliverables:**
   - `zk-host` gains RISC Zero's `cuda` build feature (`risc0-zkvm/cuda`), off by default. The guest, the image id, the seal and the contracts do not change: `zk-host image-id` still equals the deployed `ZkReferee`'s.
-  - `web/scripts/settle.mjs` passes `--segment-po2` to `zk-host prove` when the card needs segments smaller than the default to fit its 12 GB.
-  - One whole bot run, and the gate set's heaviest run (131 segments, `docs/VERIFICATION.md`), proven on the owner's RTX 3060, on x86-64 Linux with the CUDA toolkit.
-  - A table in `docs/VERIFICATION.md`: the segment size, seconds per segment, the recursion and Groth16 times, and peak GPU and host memory.
+  - `web/scripts/settle.mjs` takes `--segment-po2 <n>` and passes it to `zk-host prove`, for a card that needs segments smaller than the default. `referee/zk/peak-memory.sh` also samples the cards' memory.
+  - No key on the rented machine: `settle.mjs --export` writes the run files to prove, `referee/zk/prove-runs.sh` proves them on the GPU, and `settle.mjs` settles with the proofs, needing no `zk-host` for a run whose proof is there.
+  - `referee/zk/gpu-measure.sh`: on a fresh x86-64 Linux machine with an NVIDIA card and the CUDA toolkit, cloned at the fixed path, it installs the zk toolchain, builds with `--features cuda`, and proves the two runs below under `peak-memory.sh`. Each of its two logs starts with the machine: the card, the CUDA toolkit, the set-up and build time, and the image id.
+  - `scripts/contracts/verify-proof.mjs`: an `eth_call` of `verifyRun` on the deployed `ZkReferee`, for the proof of a run file or of six game vectors.
+  - Two runs proven on a rented card, a RunPod community RTX 4090 suggested, by `gpu-measure.sh`: testnet-0's settled run 1, 13 segments, which took 75 min on 4 CPUs, and the gate set's heaviest run, 131 segments (`docs/VERIFICATION.md`). Both inputs are committed, and the first compares directly with the CPU.
+  - A table in `docs/VERIFICATION.md`: the segment size, seconds per segment, the recursion and Groth16 times, peak GPU and host memory, and a session's set-up and build time.
   - `docs/SEASON_RUNBOOK.md` §5 checks the 48 h grace against the measured time. If 48 h does not cover twice the time to prove one run per expected player, the grace in `testnet-1.json` changes before the open.
 - **Done when:**
-  - each GPU proof verifies through the deployed `ZkReferee`: an `eth_call` of `verifyRun` on Arbitrum Sepolia returns the six Outcomes of the native replay;
+  - each GPU proof verifies through the deployed `ZkReferee`: `verify-proof.mjs`'s `eth_call` of `verifyRun` on Arbitrum Sepolia accepts it, and run 1's run score is 20310, the score it settled with;
   - the measured table is in `docs/VERIFICATION.md`, and the runbook's grace check uses it.
 - **Verify with:**
-  - on the card's machine: `cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --features cuda`, then `zk-host image-id`, and `zk-host prove --run <run file> --season seasons/testnet-1.json`
-  - the CPU build without the feature still proves as before (`zk-exec` job).
-- **Skills:** `onchain-referee`; tier `zk`. **README:** §7.3, §7.5. **Needs user:** run the build and the two proofs on the RTX 3060's machine, x86-64 Linux with the CUDA toolkit, or share that machine's repository folder through Remote Control so that an agent session runs them.
+  - on the rented machine, `bash referee/zk/gpu-measure.sh` from a clone at `/home/runner/work/jiro-ikusu/jiro-ikusu`; then `verify-proof.mjs` on its two logs, from any machine
+  - the CPU build without the feature still builds and executes as before (`zk-exec` job), and `node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof seasons/testnet-0/runs/run-1.proof.json --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json` accepts the CPU proof of record.
+- **Skills:** `onchain-referee`; tier `zk`. **README:** §7.3, §7.5. **Needs user:** rent the GPU, x86-64 Linux with an NVIDIA card of at least 16 GB and the CUDA toolkit, clone the repository at the fixed path there, run `bash referee/zk/gpu-measure.sh`, and attach its two logs to the PR (round G2b).
 
 ## 11. Decision schedule
 
@@ -2550,11 +2553,11 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Add the prover credential as an Actions secret, if a prover network proves. `TESTER_KEY` already is one (round F2). Not needed: no prover network proves.
   - Approve the season-ops schedule. Answered: approved, with the daily bot run.
   - Testers report through GitHub issues. Only if the repository is still private (F3), name a form or a mailbox instead.
-- [ ] **G2b, critical** (M5.9 ready): run zk-host's `cuda` build and the two proofs of M5.9 on your RTX 3060's machine, x86-64 Linux with the CUDA toolkit, or share its repository folder through Remote Control so that an agent session runs them.
+- [ ] **G2b, critical** (M5.9 ready): rent a GPU machine, x86-64 Linux with an NVIDIA card of at least 16 GB and the CUDA toolkit (a RunPod community RTX 4090 pod, about 0.34 USD an hour, is suggested), clone the repository at `/home/runner/work/jiro-ikusu/jiro-ikusu`, run `bash referee/zk/gpu-measure.sh`, and attach its two logs to M5.9's PR.
 - [ ] **G3, critical** (M5.6 open):
   - Recruit testers once the repository is public (F3), and approve opening the season.
   - Fund your browser wallet from an Arbitrum Sepolia faucet, play at least one run in the browser, keep the tester key funded, and name your run's id.
-  - On your GPU machine (G2), run `web/scripts/settle.mjs` every day of the season and after its end, as the runbook says, until nothing is left to settle, before end plus grace.
+  - At mid-season and after the end, settle on a rented GPU as the runbook says: `settle.mjs --export`, `prove-runs.sh` on the GPU, then `settle.mjs` with the proofs, until nothing is left to settle, before end plus grace.
   - After the close, check the report.
 
 ### Round H: phone version
@@ -2603,7 +2606,7 @@ Device steps run on the PR's HTTPS preview, on your own phones: rows 1 and 3 of 
 | The commit slack is too tight for real players | Level transitions measured in a headless run of the Challenge page (M5.5) and the full commit's inclusion latency on Sepolia (M4.14); the slack set before the season opens (M5.5); deadline margins and misses in the season report (M5.6) | M5.5 |
 | Season deadlines pass while no agent session is running | `season-ops.yml` on a daily schedule, never cancelled mid-run, failing on insolvency; `send_later` reminders for the season checkpoints (M5.8, M5.6) | M5.6 |
 | Actions cannot prove players' whole runs: a whole six-level run takes about 9 to 11 h to prove on 4 CPUs (M4.14's prep, PR #67), up to 16 to 17 h for the gate set's heaviest (`docs/ECONOMY.md`); GitHub-hosted jobs stop at 6 h (`docs/VERIFICATION.md`), on a public repository's 4-vCPU runners too, and private-repository runners have 2 vCPUs and about 7 GB (§2) | `season-ops.yml` never proves on its runner (M5.5). M5.5 presents the proving route with measured numbers, and the owner chooses in round G2 between a prover network on a capped account (round F0's credential) and the owner's own machine | M5.5 |
-| The settlement grace is too short for zk proving | Grace derived from the proving route the owner chose in round G2, the owner's GPU, and checked against its measured time per run before the open (M5.5, M5.9); the operator settles every day of the season, so the queue at the end stays short | M5.5, M5.9 |
+| The settlement grace is too short for zk proving | Grace derived from the proving route the owner chose in round G2, a GPU rented by the hour, and checked against its measured time per run before the open (M5.5, M5.9); the operator also settles at mid-season, so the queue at the end stays short | M5.5, M5.9 |
 | Close and claim fail on Sepolia when they first matter | `testnet-0` closed and claimed in a rehearsal before `testnet-1` opens (M5.8) | M5.8 |
 | The run commitment computed in Solidity diverges from the core's, or the Solidity run nonce from its fixtures | The ethers fixtures of `vectors/derivations.json`, read by both (M1.2, M4.4); the run nonce in Solidity only, and the draw in the core only (P17) | M4.4 |
 | Inputs copied from public journals or precomputed for every boss start (README §7.4) | D14: seeded boss randomness, so no two runs share a game (M1.18, M1.5) | M1.5 |
