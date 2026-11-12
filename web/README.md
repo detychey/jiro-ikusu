@@ -230,8 +230,8 @@ so that both can be opened from the Home Screen or as a WebAPK, the installed co
 Playwright runs in three projects: `chromium`, desktop, the only one the smoke test runs in;
 `chromium-phone`, a Pixel 7 with touch; and `webkit-iphone`, an iPhone 15 in WebKit, which only CI
 installs. The vectors and probe specs run in all three, and skip on a build without the preview
-pages; `pages.yml` installs WebKit for pull requests only, whose builds have them. The touch spec
-runs in the two phone projects only.
+pages. The touch spec runs in the two phone projects only, on every build, so `pages.yml` installs
+WebKit on every run.
 
 ## Chain
 
