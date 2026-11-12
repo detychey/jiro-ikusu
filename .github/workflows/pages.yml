@@ -7,8 +7,8 @@
 #   web/scripts/preview-files.mjs checks the build: a pull request's must carry the preview pages,
 #   or their tests would skip, and any other must carry none. The tests run in desktop Chromium and
 #   in the phone projects, Chromium as a Pixel 7 and WebKit as an iPhone 15, where the vectors page
-#   must replay every vector with no mismatch. WebKit is installed for pull requests only: on
-#   another build every test of its project skips.
+#   must replay every vector with no mismatch. WebKit is installed on every run: the touch spec
+#   runs in the phone projects on every build, production's included (plan M3.13).
 # - deploy: the only job with the Cloudflare secrets. It checks out the deploy scripts alone,
 #   installs wrangler from their lockfile without install scripts, and deploys the artifact.
 name: pages
@@ -75,7 +75,7 @@ jobs:
 
       - name: End-to-end tests
         run: |
-          npx --prefix web playwright install --with-deps chromium ${{ github.event_name == 'pull_request' && 'webkit' || '' }}
+          npx --prefix web playwright install --with-deps chromium webkit
           npm --prefix web run e2e
 
       - uses: actions/upload-artifact@v7.0.2
