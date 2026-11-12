@@ -423,7 +423,7 @@ Phone
 
 M3.13 follows M3.12, which adds the `chromium-phone` and `webkit-iphone` projects that M3.13's tests run in. M3.19 follows M3.15, because README §9's M3 row, which M3.19 closes, includes installing. M3.20 follows M3.19: the service worker comes last (OD1).
 
-- **Critical path** (S = 1, M = 2): M3.11 1 > M3.12 3 > M3.13 5 > M3.14 7 > M3.18 9 > M3.19 10. Slack: M3.15 1, M3.16 2, M3.17 4. M3 stays off M5's critical path; its outside gates are OD7 and a season accepting runs.
+- **Critical path** (S = 1, M = 2, L = 3): M3.11 1 > M3.12 4 > M3.13 6 > M3.14 8 > M3.18 10 > M3.19 11. Slack: M3.15 1, M3.16 2, M3.17 5. M3 stays off M5's critical path; its outside gates are OD7 and a season accepting runs.
 - **Owner rounds** ([plan §13](../IMPLEMENTATION_PLAN.md#round-h-phone-version), round H): H1, critical, the open decisions (M3.11), answered on 2026-11-11; H2, critical, the device checklist (M3.12); H3, critical, the touch controls' README and guide text (M3.13) and the touch playtest (M3.14); H4 installing on two phones (M3.15); H5 the hidden-page policy and its README text (M3.16), and the 60-s idle check on two phones (M3.17); H6, critical, a wallet-browser check (M3.18); H7, critical, phone runs on testnet and the season they need (M3.19); H8, conditional, a connector (M3.21) and two runs through it (M3.22); H9, optional, Training in airplane mode on two phones (M3.20).
 
 Changes outside this file, by item:

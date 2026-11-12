@@ -112,7 +112,7 @@ button:disabled {
 
 /* Secondary actions, every button but the one primary action of its view: a claim ring with no
    shelf to drop onto, the same on hover and press. */
-button:is(#download, #bindings button, #resume, #stop, #run-file, #settle-file, #step, #go-to-mismatch, #new, #import-hex):enabled,
+button:is(#download, #bindings button, #resume, #stop, #run-file, #settle-file, #step, #go-to-mismatch, #new, #import-hex, #clear-log):enabled,
 ::file-selector-button {
   background: transparent;
   box-shadow: inset 0 0 0 2px var(--claim);

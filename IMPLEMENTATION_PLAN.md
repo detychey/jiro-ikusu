@@ -1456,7 +1456,7 @@ The items below are part of this plan: they are in the item count, §4, §11-§1
 | ID | Title | Depends on | Size | Needs user |
 |---|---|---|---|---|
 | M3.11 | Phone version: decisions and plan amendment | The owner schedules M3 (round H1) | S | Answer the open decisions; approve D16 (merge) |
-| M3.12 | Phone baseline: WebKit parity, probe page, device measurements | M3.11 | M | Run the device checklist on your phones |
+| M3.12 | Phone baseline: WebKit parity, probe page, device measurements | M3.11 | L | Run the device checklist on your phones |
 | M3.13 | Touch controls | M3.12 | M | Approve the README §2 sentence and the guide amendments |
 | M3.14 | Phone play view and field scale | M3.13 | M | The touch playtest, with two other players; approve the parameters and the guide amendments |
 | M3.15 | Installable app; Training on phones | M3.14 | S | Install on two phones |
@@ -2474,13 +2474,13 @@ Several chains tie with it, so each of these is also critical (slack 0):
 - **Owner latency.** The 39 units count agent work only. The main chain alone holds 19 sequential merges. These owner rounds (§13) sit on critical chains: A1, A2, A3 (M0.1, M0.2 and M0.5, M0.4 and M0.6), B1 (M1.7), D3, D3b, D4, D5 (the target curve, the bold bot and mix, and the layouts of M2.6, M2.11, M2.7 and M2.8), F0 when it occurs (before M4.10), F1 and F2 (M4.9 and M4.12, M4.14), and G2 and G3 (M5.5, M5.6). Stacking (§1.2) lets agents work ahead of merges, but each review and each play turnaround on this list delays the end by its own length. The season then runs for its configured length plus the settlement grace.
 - **Owner steps with little slack:** A4 and B0, the M0.7 review and the D14 rule (1); B3, the zk framework and any prover route (1); B2, the D7 replacement (2); and the reviews of M2.3 and M2.5 (1).
 
-**The phone version (M3)** has its own chain, from [`docs/PHONE.md` §11](docs/PHONE.md#11-work-breakdown), with the same weights. It ends at 10:
+**The phone version (M3)** has its own chain, from [`docs/PHONE.md` §11](docs/PHONE.md#11-work-breakdown), with the same weights. It ends at 11:
 
 ```text
-M3.11 1 > M3.12 3 > M3.13 5 > M3.14 7 > M3.18 9 > M3.19 10
+M3.11 1 > M3.12 4 > M3.13 6 > M3.14 8 > M3.18 10 > M3.19 11
 ```
 
-- **Slack:** M3.15 1, M3.16 2, M3.17 4. M3.20, M3.21, M3.22 and M3.23 feed no closing item.
+- **Slack:** M3.15 1, M3.16 2, M3.17 5. M3.12 was sized M and grew to L when built (1,627 changed lines, about 350 of them code moved into a shared replay module). M3.20, M3.21, M3.22 and M3.23 feed no closing item.
 - **Outside gates.** M3 stays off M5's critical path, but two of its edges wait on M5: M3.18 on M5.6's report, unless it ships behind a flag that stays off during testnet-1 (P23), and M3.19 on a season accepting runs after testnet-1.
 - **M3.16 merges between seasons:** while no run can be bought or committed on time ([`docs/SEASON_RUNBOOK.md` §2](docs/SEASON_RUNBOOK.md#2-freeze-rule)).
 - **Owner latency.** Rounds H1, H2, H3, H6 and H7 (§13) sit on this chain.
