@@ -87,7 +87,7 @@ main { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
 .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 
 /* Cabinet buttons: claim blue on a claim-deep shelf drawn below the 40-px target. */
-button, a.button, ::file-selector-button {
+button, a.button, ::file-selector-button, .pad > div {
   min-height: 40px;
   margin: 0 0 var(--cell);
   padding: 12px 16px;
@@ -101,7 +101,7 @@ button, a.button, ::file-selector-button {
 }
 a.button { display: inline-block; box-sizing: border-box; text-decoration: none; }
 button:hover, a.button:hover { background: var(--accent-hover); }
-button:active, a.button:active { transform: translateY(var(--cell)); box-shadow: none; }
+button:active, a.button:active, .pad.pressed > div { transform: translateY(var(--cell)); box-shadow: none; }
 button:disabled {
   background: var(--line);
   box-shadow: none;
@@ -246,6 +246,61 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 }
 #field[data-end-reason="Out of lives"] ~ .end #end-title { text-shadow: 0 calc(1em / 12) 0 var(--danger); }
 
+/* The touch controls (docs/PHONE.md §3.4), on coarse pointers only, after the field until M3.14's
+   play view: the stick's pad, then X over A and B, mirrored for the left hand. A drag on them never
+   scrolls or selects. */
+.touch, .touch-help { display: none; }
+@media (pointer: coarse) {
+  .keys-help { display: none; }
+  .touch-help { display: block; }
+  .touch {
+    display: flex;
+    flex: 1 1 288px;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 8px 0 16px;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+.touch.mirrored { flex-direction: row-reverse; }
+.stick { position: relative; width: 144px; height: 144px; overflow: hidden; background: var(--panel); }
+.stick > div { position: absolute; top: 50%; left: 50%; box-sizing: border-box; transform: translate(-50%, -50%); }
+#stick-ring { border: 2px solid var(--claim); }
+#stick-knob { background: var(--player); }
+.pads { display: grid; grid: ". x" 56px "a b" 64px / 64px 64px; gap: 24px 8px; }
+.touch.mirrored .pads { grid-template-areas: "x ." "b a"; }
+/* A pad takes the pointers and stays in place; its face, a cabinet button, drops on a press. */
+.pad { display: grid; }
+.pad > div {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font: 12px/12px var(--font-pixel);
+  font-synthesis: none;
+  letter-spacing: 0;
+}
+/* Centered labels start on a whole pixel: COMMIT (47 px) and B (7 px) take even widths. */
+#pad-x span:first-child { width: 48px; }
+#pad-b span:last-child { width: 8px; }
+#pad-a { grid-area: a; }
+#pad-b { grid-area: b; }
+#pad-x { grid-area: x; justify-self: center; width: 56px; }
+/* X's hold, filled one tick at a time. */
+#x-hold { position: absolute; bottom: 0; left: 0; width: 0; height: var(--cell); background: var(--player); }
+/* A and B are 72 px once the button zone, the bar less the stick's 144 px and a gap, is 152 px wide. */
+@media (width >= 336px) {
+  .pads { grid-template-rows: 56px 72px; grid-template-columns: 72px 72px; }
+}
+
 /* page.ts's fitField shows the field at scale 1 below these sizes, too small to hold the end of a
    level, which then follows the field as a panel, aligned left as panels are. */
 @media (width < 512px), (height < 640px) {
@@ -274,8 +329,11 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 @media (forced-colors: active) {
   .bar nav a[aria-current="page"] { padding-bottom: 0; border-bottom: var(--cell) solid; }
   button, a.button, ::file-selector-button { padding: 10px 14px; border: 2px solid; }
+  .pad > div { border: 2px solid; }
+  .stick { outline: 2px solid; outline-offset: -2px; }
+  #stick-knob, #x-hold { forced-color-adjust: none; background: CanvasText; }
 }
 @media (prefers-reduced-motion: reduce) {
   .end { animation: none; }
-  button:active, a.button:active { transform: none; }
+  button:active, a.button:active, .pad.pressed > div { transform: none; }
 }

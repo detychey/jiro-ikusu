@@ -2,33 +2,15 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { fromHex, hex } from "../src/core";
 import { type Bindings, type Control, CONTROLS, DEFAULT_BINDINGS, rebind } from "../src/input";
-import { loadEngine, play, repo, schedule } from "./drive";
+import { finalHash, loadEngine, play, repo, schedule, vector } from "./drive";
 
 const openField = fromHex(JSON.parse(readFileSync(new URL("vectors/format/level-open-field.json", repo), "utf8")).input);
-
-interface GameVector {
-  level: string;
-  runNonce: string;
-  levelIndex: number;
-  mode: number;
-  journal: string;
-  trace: string;
-}
-
-function vector(name: string): GameVector {
-  return JSON.parse(readFileSync(new URL(`vectors/game/${name}.json`, repo), "utf8"));
-}
 
 async function playVector(name: string) {
   const recorded = vector(name);
   expect([recorded.mode, recorded.levelIndex]).toEqual([0, 0]);
   const events = schedule(fromHex(recorded.journal));
   return play(await loadEngine(), fromHex(recorded.level), fromHex(recorded.runNonce), DEFAULT_BINDINGS, (tick) => events.get(tick));
-}
-
-function finalHash(name: string): string {
-  const trace = readFileSync(new URL(`vectors/game/${vector(name).trace}`, repo));
-  return hex(trace.subarray(trace.length - 32));
 }
 
 /** A scripted Training run on the open-field level: a cut up, left and down that captures, then

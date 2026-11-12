@@ -83,7 +83,7 @@ export function playEnv(core: Core, store: RunStore, levels: Uint8Array[], scrip
   return {
     core,
     store,
-    keys,
+    input: keys,
     levels,
     now: () => time,
     sleep: async (ms) => {

@@ -56,6 +56,8 @@ The draft's Key2 is "Commit/Forfeit (ends game immediately)". Here it ends the c
 
 **The keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome. By default, A, B and X are the keys that print those letters, where the browser reports the keyboard layout; elsewhere they are the keys at those letters' places on a QWERTY keyboard, which the controls panel says.
 
+**On a touchscreen,** on-screen controls produce the same controls, and X may need a short hold, whose length [`docs/PHONE.md`](docs/PHONE.md#34-sampling-releases-and-parameters) sets.
+
 The core allocates nothing: its buffers have fixed sizes.
 
 | Buffer | Bytes |

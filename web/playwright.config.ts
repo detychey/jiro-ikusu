@@ -8,7 +8,7 @@ export default defineConfig({
   timeout: 120_000,
   use: { baseURL: "http://localhost:4173" },
   projects: [
-    { name: "chromium", use: { browserName: "chromium" } },
+    { name: "chromium", use: { browserName: "chromium" }, testIgnore: "touch.spec.ts" },
     { name: "chromium-phone", use: devices["Pixel 7"], testIgnore: "smoke.spec.ts" },
     { name: "webkit-iphone", use: devices["iPhone 15"], testIgnore: "smoke.spec.ts" },
   ],

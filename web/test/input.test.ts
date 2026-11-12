@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   type Bindings,
   type Control,
+  combined,
   CONTROLS,
   DEFAULT_BINDINGS,
   defaultBindings,
@@ -88,6 +89,31 @@ describe("input", () => {
     keys.down("ArrowUp");
     keys.up("ArrowUp");
     expect([held, keys.sample()]).toEqual([0x01, 0]);
+  });
+});
+
+/** A source that holds `mask`, its calls recorded. */
+const fixedSource = (mask: number) => ({ sample: vi.fn(() => mask), clear: vi.fn() });
+
+describe("combined sources", () => {
+  it("sample the OR of the keys and another source", () => {
+    const keys = new HeldKeys(DEFAULT_BINDINGS);
+    keys.down("ArrowUp");
+    expect(combined(keys, fixedSource(0x30)).sample()).toBe(0x31);
+  });
+
+  it("sample each source exactly once per tick", () => {
+    const sources = [fixedSource(0x01), fixedSource(0x01), fixedSource(0x40)];
+    const input = combined(...sources);
+    input.sample();
+    input.sample();
+    expect(sources.map(({ sample }) => sample.mock.calls.length)).toEqual([2, 2, 2]);
+  });
+
+  it("clear every source", () => {
+    const sources = [fixedSource(0), fixedSource(0)];
+    combined(...sources).clear();
+    expect(sources.map(({ clear }) => clear.mock.calls.length)).toEqual([1, 1]);
   });
 });
 

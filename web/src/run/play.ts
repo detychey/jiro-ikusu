@@ -5,7 +5,7 @@
 // which gets an X at tick 0.
 
 import { type Core, CoreError, type EndReason, fromHex, hex, RUN_LEVELS } from "../core";
-import { CONTROL_BITS, type HeldKeys } from "../input";
+import { CONTROL_BITS, type InputSource } from "../input";
 import { journalEvents } from "../journal";
 import { CHALLENGE, startSession } from "../session";
 import { deadlineOf, latestCommitOf } from "./deadline";
@@ -39,7 +39,7 @@ export interface PlayView {
 export interface PlayEnv {
   core: Core;
   store: RunStore;
-  keys: HeldKeys;
+  input: InputSource;
   /** The season's 16 levels, in draw-slot order. */
   levels: readonly Uint8Array[];
   /** The page's clock, in milliseconds. */
@@ -148,8 +148,8 @@ export async function playLevels(env: PlayEnv, record: RunRecord): Promise<RunRe
       continue;
     }
     const level = levels[levelIndex] as Uint8Array;
-    env.keys.clear();
-    const loop = startSession(core, level, runNonce, env.keys, env.now, CHALLENGE, levelIndex);
+    env.input.clear();
+    const loop = startSession(core, level, runNonce, env.input, env.now, CHALLENGE, levelIndex);
     const live = (): LiveLevel => ({ levelIndex, events: journalEvents(core.journal()), ticks: loop.ticksRun });
     record.live = live();
     await store.put(record);
