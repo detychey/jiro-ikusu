@@ -1,0 +1,35 @@
+--- a/core/src/grid.rs
++++ b/core/src/grid.rs
+@@ -78,16 +78,24 @@
+             *stack.get_mut(len)? = seed.raw();
+             len = len.checked_add(1)?;
+         }
++        // SCRATCH EXPERIMENT (audit): the same stack fill, with index arithmetic. A popped cell was
++        // EMPTY when pushed, so it is an interior cell and its four neighbors are in the grid:
++        // up, right, down, left are index - 60, + 1, + 60, - 1, in NEIGHBORS_4's order.
++        const ROW: usize = 60;
+         while let Some(top) = len.checked_sub(1) {
+-            let cell = CellIndex::from_raw(*stack.get(top)?)?;
++            let cell = usize::from(*stack.get(top)?);
+             len = top;
+-            for (dx, dy) in NEIGHBORS_4 {
+-                let Some(next) = cell.pos().offset(dx, dy).and_then(CellIndex::new) else {
+-                    continue;
+-                };
+-                if self.get(next) == Cell::Empty {
+-                    self.set(next, Cell::BossZone);
+-                    *stack.get_mut(len)? = next.raw();
++            let neighbors = [
++                cell.checked_sub(ROW)?,
++                cell.checked_add(1)?,
++                cell.checked_add(ROW)?,
++                cell.checked_sub(1)?,
++            ];
++            for next in neighbors {
++                let slot = self.cells.get_mut(next)?;
++                if *slot == Cell::Empty {
++                    *slot = Cell::BossZone;
++                    *stack.get_mut(len)? = next as u16;
+                     len = len.checked_add(1)?;
+                 }
+             }
