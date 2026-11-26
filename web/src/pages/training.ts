@@ -9,6 +9,7 @@
 
 import calibration from "../../../seasons/calibration-1.json";
 import { type Core, CoreError, type EndReason, fromHex, hex } from "../core";
+import { CaptureEffects } from "../effects";
 import {
   type Bindings,
   combined,
@@ -138,6 +139,7 @@ export function mount(): void {
   let layout: KeyboardLayout | undefined;
   const printedHere = new Map<string, string>();
   const renderer = new Renderer(canvas);
+  const effects = new CaptureEffects(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   /** The picker's levels, by name. */
   const levels = new Map<string, () => Uint8Array>();
   let training: TrainingLevel[] = [];
@@ -231,6 +233,7 @@ export function mount(): void {
       return;
     }
     endScreen.hidden = true;
+    effects.reset();
     controls.clear();
     canvas.dataset.ticksUsed = "0";
     delete canvas.dataset.endReason;
@@ -246,9 +249,11 @@ export function mount(): void {
     const ranBefore = loop.ticksRun;
     const end = loop.pump();
     if (loop.ticksRun !== ranBefore) {
-      renderer.drawCells(core.grid(), core.dirtyCells());
+      const changed = core.dirtyCells();
+      renderer.drawCells(core.grid(), changed);
       const snapshot = core.snapshot();
-      renderer.frame(snapshot);
+      effects.observe(snapshot, changed);
+      renderer.frame(snapshot, effects);
       showHud(snapshot);
       canvas.dataset.stateHash = hex(core.stateHash());
       canvas.dataset.ticksUsed = String(snapshot.ticksUsed);

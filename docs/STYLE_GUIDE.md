@@ -243,9 +243,10 @@ One tick is 1000/15 ms, about 66.667 ms: the game's 15 Hz (README §1). Duration
 
 - Hover is instant; press is the shelf drop, instant on `:active`. The end overlay takes 3 ticks, its opacity in 3 steps.
 - Capture highlight, optional, in the renderer: draw the captured cells claim at once, then overlay white at 50 % on the next tick and 25 % on the one after; skip it if the previous highlight began less than 5 ticks earlier.
+- Capture sparks and gain, in the renderer (`web/src/effects.ts`), on Training and Challenge: when a cut adds claim, up to 24 one-cell sparks, white at 50 % for 3 ticks and at 25 % for 3 more, leave the changed cells one cell a tick in one of 8 directions, and the gain, in the HUD's format ("+16.38 %"), rises over the capture, opaque white in the pixel face at 12 px, one cell every 2 ticks for 12 ticks. Every position depends only on the capture, so a replay looks the same. An effect that would begin less than 5 ticks after the previous one began is skipped, and the player never sees both effects flash more than 3 times a second.
 - The touch controls' X fills its hold in whole ticks, one step per sample, and nothing vibrates: no haptics ([`docs/PHONE.md` §8](PHONE.md#8-accessibility-haptics-sound-and-battery)).
 - Nothing blinks or shakes, and nothing flashes more than 3 times a second. The banner, card and lockups are static.
-- `prefers-reduced-motion: reduce` removes every transition and animation, the press translate, the overlay fade and the capture highlight.
+- `prefers-reduced-motion: reduce` removes every transition and animation, the press translate, the overlay fade, the capture highlight, and the capture sparks and gain.
 
 **Sound,** optional and later: WebAudio square waves, locked to ticks, muted until the player turns sound on. A five-note motif, one note per syllable of ジロイクス: C5 D5 E5 G5 A5 (523, 587, 659, 784, 880 Hz), a tick each. A capture plays the first n notes, n = 1 + min(4, floor(gain_bp / 500)), gain_bp being the claim it added; a clear plays all five, a commit A5 alone, a hit a 2-tick noise burst.
 
@@ -345,7 +346,7 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 - **In play:** claim 3.68:1, trail 5.62:1 and boss 7.16:1 on field; minion 4.28:1 and player 5.70:1 on claim. The invulnerable gray is only 2.03:1 on claim, and the planned checker stamp keeps that state white ([§9](#9-game-canvas-presentation-planned)).
 - **Color vision** (Machado 2009 at severity 1; CIEDE2000): trail against claim stays at 57.5 or more in every simulation, boss against minion at 51.7 or more, trail against field at 36.8 and 3.70:1 under protanopia. Shape fixes the two weak pairs (§9), and brand art never shows a minion.
 - **Never color alone:** the current page carries a bar; errors carry "Error:", run squares "Level n of 6" and the HUD the claim meter's numbers *(planned, [§8](#8-interface))*. Forced colors drop box shadows, so there the current page's bar and every button's edge are borders, each button keeping its 40-px box.
-- **Motion** follows [§10](#10-motion-and-sound): whole ticks, nothing blinking or shaking, and `prefers-reduced-motion` removing every transition, animation and capture highlight.
+- **Motion** follows [§10](#10-motion-and-sound): whole ticks, nothing blinking or shaking, and `prefers-reduced-motion` removing every transition, animation, capture highlight and capture spark.
 - **Structure:** `<html lang="en">` as today, kana in `<span lang="ja">`, hanzi in `<span lang="zh-Hans">`. The Training banner is the `h1`, with `alt=""` and visually hidden text, Jiro-ikusu ジロイクス 极络益克司, carrying those `lang` attributes; the header wordmark has `alt="Jiro-ikusu"`; every SVG has `role="img"` and a `<title>`. Live regions announce events, never per-tick values, so the HUD and the claim meter are not live regions: errors keep `role="alert"`, status lines such as the run, settlement and season status keep `role="status"`, and the end-of-level result joins them *(planned, [§8](#8-interface))*.
 - **Interaction** ([§8](#8-interface)): focus is visible everywhere, the canvas included: 2 px of white at a 2-px offset. Buttons and inputs are 40-px targets, above WCAG 2.5.8's 24 px, and Training's Controls `summary` is 24 px, that minimum; a button's shelf lies outside its target. Pages reflow at 320 CSS px, pixel art switching to its next whole size. Body text is 16 px, and nothing is under 12 px.
 
@@ -368,7 +369,7 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 - Write a never-write form ([§1](#1-name)), put Volfied, Qix or Taito in an asset or its metadata, or call the minions Sparx.
 - Recreate Volfied: chrome beyond the flat bands, bevels, dark outlines, italics, teal or steel, flares or streaks through letters, red katakana, painted backdrops, TM marks.
 - Draw the cut as a symmetric Π, through a letter, or twice.
-- Use gradients, blur, rounded corners, rotation, skew or stretching, glow beyond the hero halo, or shadows beyond the wordmark's shelf, the button shelf and the pixel-voice drop. Use translucent color anywhere but the end overlay, its fade, the capture highlight ([§10](#10-motion-and-sound)) and the level editor's spawn area (the boss at 33 %, `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts`).
+- Use gradients, blur, rounded corners, rotation, skew or stretching, glow beyond the hero halo, or shadows beyond the wordmark's shelf, the button shelf and the pixel-voice drop. Use translucent color anywhere but the end overlay, its fade, the capture highlight and the capture sparks ([§10](#10-motion-and-sound)) and the level editor's spawn area (the boss at 33 %, `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts`).
 - Put the full-color logo on claim blue or a photo.
 - Draw ghosts, halos, sparks or textures in the canvas, or minions in brand art.
 - Use magenta, green, the trail's red or an art tone other than claim-deep in the UI, or red for navigation or selection.
