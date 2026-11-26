@@ -416,7 +416,9 @@ jobs:
   # recorded codes, Outcomes and trace digests, and a dev-mode receipt of the verify guest must
   # round-trip to its vector's Outcome, and the first 20 of M1.10's 200 fixed difffuzz cases must
   # give native's Outcomes and trace digests (plan M1.13); a debug build of jiro-tools writes them,
-  # in seconds. nightly.yml runs every vector. It is its own job, not a
+  # in seconds. The unit tests of the GPU benchmark's summary, referee/zk/gpu_bench.py (plan M5.9),
+  # need no toolchain and run even when the toolchain fails; -B keeps the tree clean.
+  # nightly.yml runs every vector. It is its own job, not a
   # step group of `rust`, so that its build cache and its time limit are its own: a cold build of
   # the host takes about 63 minutes on this runner, almost all of it g++ on RISC Zero's circuit
   # kernels, and a warm one minutes (docs/TOOLING.md, Actions minutes). On an exact cache hit the
@@ -507,6 +509,10 @@ jobs:
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}
         timeout-minutes: 20
         run: cargo test --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --test mock_round_trip
+
+      - name: The GPU benchmark's summary passes its tests (zk-exec)
+        if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || steps.changes.outputs.zk == 'true') }}
+        run: python3 -B -m unittest discover -s referee/zk -p 'test_*.py'
 
       - name: The checks left the tree clean
         if: ${{ !cancelled() && steps.toolchain.outcome == 'success' }}

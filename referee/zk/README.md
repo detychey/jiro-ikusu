@@ -100,31 +100,86 @@ The `cuda` feature (plan M5.9) builds `zk-host` with RISC Zero's GPU prover: the
 
 On RunPod, a community RTX 4090 pod started from RunPod's PyTorch image for CUDA 12.8.1 on Ubuntu 24.04, such as `runpod/pytorch:2.1.0-cu1281-torch280-ubuntu2404`, has all of them. Its image configuration shows NVIDIA's CUDA 12.8.1 devel image, `build-essential`, `git`, `curl` and Python 3.12 (2026-11-11). Pick a host whose driver supports CUDA 12.8.
 
-**Set up.** Clone at the fixed path, which needs no bind mount on a fresh machine, then build and measure with one script. It installs rustup when it is missing and the zk tier of `scripts/bootstrap.sh`, builds with `--features cuda`, and proves M5.9's two runs under `peak-memory.sh`. Each session clones and builds again: the build gives the deployed image id only at the fixed path itself, and a symbolic link to a disk kept between sessions builds from another path. The build is long, mostly RISC Zero's CUDA kernels: 42 min on 4 CPUs without the guest (2026-11-11), less on a machine with more CPUs.
+**The Groth16 setup files.** With the `cuda` feature, `risc0-groth16` 3.0.5 wraps the proof on the card, without Docker, and reads four setup files from rzup's component `risc0-groth16` 0.1.0, in `~/.risc0/extensions/v0.1.0-risc0-groth16/`: `stark_verify_final.zkey`, `stark_verify_graph.bin`, `preprocessed_coeffs.bin` and `fuzzed_msm_results.bin`. Neither `scripts/bootstrap.sh` nor the build installs them, and without them every proof fails at its last step with "Missing required `risc0-groth16` rzup component". Install that component alone, before the benchmark: a bare `rzup install` also installs a newer guest toolchain. RISC Zero's installer only puts `rzup` in `~/.risc0/bin`, and the component comes from RISC Zero's download bucket, which the agents' container cannot reach, so its size is not known here.
+
+**Set up and measure.** Clone at the fixed path, which needs no bind mount on a fresh machine, then build and measure with one script. It installs rustup when it is missing and the zk tier of `scripts/bootstrap.sh`, builds with `--features cuda`, and runs the benchmark below. Each session clones and builds again: the build gives the deployed image id only at the fixed path itself, and a symbolic link to a disk kept between sessions builds from another path. The build is long, mostly RISC Zero's CUDA kernels: 42 min on 4 CPUs without the guest (2026-11-11), less on a machine with more CPUs. Run again after `git pull`, the script reuses the build.
 
 ```bash
+curl -L https://risczero.com/install | bash      # rzup, into ~/.risc0/bin
+~/.risc0/bin/rzup install risc0-groth16 0.1.0    # the four setup files, nothing else
 git clone https://github.com/detychey/jiro-ikusu /home/runner/work/jiro-ikusu/jiro-ikusu
 cd /home/runner/work/jiro-ikusu/jiro-ikusu
-bash referee/zk/gpu-measure.sh            # or: bash referee/zk/gpu-measure.sh --segment-po2 19
+bash referee/zk/gpu-measure.sh --out /workspace/gpu-bench --price-usd-per-hour 0.34
 ```
 
-- **The image id** it prints must be the deployed `ZkReferee`'s, which `scripts/contracts/verify-proof.mjs` prints first.
-- **The two runs:** testnet-0's settled run 1, 13 segments, which took 75 min on 4 CPUs ([`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md)), and the heaviest six-level run of the gate set, 131 segments ([`docs/VERIFICATION.md`](../../docs/VERIFICATION.md#proving)).
-- **Their logs** go to `gpu-run-1.log` and `gpu-heaviest.log`. Each starts with the `gpu-measure` block: the commit, the card, the CUDA toolkit, the CPUs, the set-up and build time, and the image id. Then come the `zk-prove` block (cycles, segments and each step's time), the proof between the `zk-fixture` markers, and the `peak-memory` block, the card's memory included.
-- **The card it builds for:** RISC Zero compiles its CUDA kernels for the card of the machine that builds them (`nvcc -arch=native`), so build again on another card model. Setting `NVCC_APPEND_FLAGS` to a card's architecture, such as `-arch=sm_89` for an RTX 4090, builds for that card instead, even on a machine without one.
-- **Out of memory:** run it again with `--segment-po2 19`, then 18, and keep the size that fits. `web/scripts/settle.mjs` and `prove-runs.sh` take the same option.
+`--out` keeps the benchmark where a RunPod pod keeps files across a restart, `/workspace`; it defaults to `gpu-bench/` in the checkout. `--price-usd-per-hour` is the pod's price, 0.34 by default. Before the build the script checks the machine, the setup files, the options and that the card is idle; before any proof it checks that `zk-host image-id` is `imageId` of `seasons/testnet-0/runs/run-1.proof.json`, the deployed `ZkReferee`'s, and stops otherwise.
 
-**Check** each proof through the deployed `ZkReferee`, from any machine with Node 22 and `npm --prefix scripts/contracts ci`, with an `eth_call` of `verifyRun`, which reverts on a proof that does not verify:
+**The benchmark** proves six committed inputs in run mode, a ladder of sizes, each through `peak-memory.sh` with the card's telemetry sampled every second (`nvidia-smi -lms 1000`: SM clock, temperature, power, utilization, memory and clock event reasons). Its model, wall time = a + b × segments, prices any run from its proving cycles: the time to prove a segment depends on the segment size, not on what the guest computed. Segment counts are at 2^20 cycles; those marked ~ are estimates, and each proof records the exact ones.
+
+| Input | Files | Segments |
+|---|---|---:|
+| `small` | the six smallest game vectors, M4.8's run-mode proof | 7 |
+| `run1` | testnet-0's settled run 1, with its season: compares with the CPU and with its proof of record | 13 |
+| `mid` | `vectors/levels/{05,06,09,11,12,13}-worst.json` | ~45 |
+| `high` | `vectors/levels/{01,02,07,09,12,15}-synthetic.json` | ~96 |
+| `heaviest` | the heaviest six-level run of the gate set ([`docs/VERIFICATION.md`](../../docs/VERIFICATION.md#proving)) | 131 |
+| `overcap` | `vectors/levels/10-worst.json` six times, above the proposed cap of 150 million proving cycles, so that the cap lies inside the measured range | ~177 |
+
+1. **A cold proof** of `small`, first in every session, apart from the statistics: it shows the start-up cost.
+2. **Three rounds of the six**, ascending, descending, then mixed, so that a drift of the card is not tied to the size (`--rounds` sets their number).
+3. **The segment-size sweep:** `run1` and `heaviest` at 2^19, then at 2^21, the largest size RISC Zero's 97-bit security target allows. An out-of-memory error there is a result, not a failure.
+4. **A sentinel** proof of `small`, last, against the first ones.
+
+That is 24 proofs. At wall ≈ 15 s + 2 s per segment, an estimate from third-party logs, they take about 67 min on an RTX 4090 after the build, about 0.38 USD at 0.34 USD an hour; about 96 min at 3 s per segment. After each proof the script prints the time left, estimated from the proofs made.
+
+**A proof that fails** is recorded with its status and the other proofs go on: `oom-gpu` (out of the card's memory), `oom-host` (killed, exit status 137), `verify-fail` or `error`. A `verify-fail`, a proof whose image id, seal or selector differs from the proof of record's, or whose receipt or public values do not check, fails criterion A2, loudly, and the script exits 1 at the end. So does any other failed criterion.
+
+**Its files**, in `--out`:
+
+- `proofs/<id>.log`: `zk-host`'s output, one proof that `verify-proof.mjs` reads, then the `peak-memory` block; `proofs/<id>.err`, its standard error; `proofs/<id>.gpu.csv`, its telemetry. A proof's id is `<input>-p<segment po2>-<tag>`, the tag being `r1` to `r3`, `sweep`, `cold<session>` or `sentinel<session>`.
+- `results.jsonl`: one line per proof, written by `gpu_bench.py record`: its status, cycles, segments, each phase's time, wall time, peak host and card memory, and the telemetry's summary. The newest line of an id counts.
+- `machine-s<session>.txt`: the machine of each session: the commit, the image ids, `zk-host`'s sha256, the toolchains, the card (model, memory, driver, power limits, clocks, PCIe link), the CPUs, the memory and its cgroup limit, the set-up and build time. `previous/` keeps a copy of the `gpu-run-1.log` and `gpu-heaviest.log` found at the start, whose build time counts when a later build has nothing to do.
+- `summary.md` and `onchain.txt`, below.
+- `gpu-run-1.log` and `gpu-heaviest.log`, at the repository's root, as before: the machine, then the first proof of `run1` and of `heaviest`.
+
+**Download** the archive the script names at the end, `gpu-bench-<UTC time>-<commit>.tar.gz`, beside `--out`, with SSH or JupyterLab, and attach it to the M5.9 pull request: it holds all of `--out`, about 1 to 2 MB (estimate).
+
+**Resume** by running the same command again, after a stop, a pod restart (which rebuilds) or `git pull`: it skips each proof recorded in `results.jsonl`, failed ones included, and makes a cold proof and a sentinel only when proofs are left. `--redo <input>` proves an input again, such as one whose spread failed A4. It refuses an `--out` that holds another card's proofs. After Ctrl-C, check with `nvidia-smi` that no `zk-host` is left on the card; the next run refuses a busy card.
+
+**The summary,** `python3 referee/zk/gpu_bench.py summary <out> [--price-usd-per-hour <p>] [--eth-usd 1700] [--gas-gwei 0.02]`, ends the script and runs again anywhere on the downloaded directory. It prints, and writes to `summary.md`:
+
+- the warm proofs per input and segment size: median, minimum and maximum wall time, each phase's median, seconds per segment, peak card memory, `VmHWM`, clock and temperature; this table goes into [`docs/VERIFICATION.md`](../../docs/VERIFICATION.md), with each failed proof below it;
+- the model at the ladder's size, fitted on each input's median: a, b, R², each input's fit, then the same fit per phase;
+- the segment size to use: 2^21 only if `heaviest` there was ok, used at most 90% of the card's memory and 70% of the host's, and was at least 10% faster than at 2^20; once `gpu-onchain.sh` accepts it, a ladder at 2^21 (`--segment-po2 21 --rounds 1`) gives its model. `web/scripts/settle.mjs` and `prove-runs.sh` take the same `--segment-po2`;
+- the cost of a run, for each input measured and for the scripted players' runs, from 16 to 102 million proving cycles, the proposed cap of 150 million and a cost-maximising legal run of about 2.9 billion (an estimate, about 16 times beyond the ladder, priced only if A6 passes): wall time, runs per hour, the pod's USD, proving plus settling in ETH (`settleRun`'s 530,256 gas at 0.02 gwei, without an L1 data fee), how many runs' testnet-1 rake at 80% pays for it, and how many such runs the grace proves with a margin of 2, after the session's set-up, build and cold start;
+- `small` and `run1` against 4 CPUs, phase by phase;
+- the acceptance criteria, PASS, FAIL or PENDING, with their numbers.
+
+| # | Criterion | When it fails |
+|---|---|---|
+| A1 | every proof has the deployed image id | stops before proving; no number counts |
+| A2 | every proof verified locally with a 260-byte seal and the proof of record's selector (C2); the same public values for every proof of an input (C3); `run1`'s equal to its CPU proof of record (C4) | loud: the GPU route settles nothing until it is explained |
+| A3 | every ok proof accepted onchain, `run1` with run score 20310 (C5) | PENDING on the pod, then `gpu-onchain.sh`: not settlement-grade, M5.9 is not done |
+| A4 | each input's wall times within 5% of their median, or 3 s | `--redo` it while the pod is up; else price at its maximum |
+| A5 | no sample slowed by hardware, heat or power brake, each proof's clock within 5% of the others', under 1 GiB in use on the card before each proof | redo; if it persists, measure on another pod; a power limit below default is reported |
+| A6 | R² ≥ 0.99, every input within 5% or 3 s of the fit, and the fit without `overcap` predicts it within 5% | the cost holds only within the measured range |
+| A7 | 3 warm proofs of each input, and `heaviest` tried at the next size | resume; if 2^20 runs out of the card's memory, `--segment-po2 19` |
+| A8 | the sentinel within 5% or 3 s of `small`'s median, each round's times within 5% of the medians | flag it; redo round 1 if it is the outlier |
+
+**Check onchain** from any machine with Node 22 and `npm --prefix scripts/contracts ci`, on the unpacked archive:
+
+```bash
+bash referee/zk/gpu-onchain.sh gpu-bench
+```
+
+It runs `scripts/contracts/verify-proof.mjs` on each proof in `onchain.txt`, an `eth_call` of `verifyRun` on the deployed `ZkReferee` that costs nothing and reverts on a proof that does not verify, and checks the run score: `run1`'s must be 20310, the score it settled with. It first checks run 1's CPU proof of record, as a control: a `ZkReferee` that refuses it refuses every proof, and the script stops there. Then it checks `run1` first, then each input's first round and the sweep, so that a rate-limited RPC still checks those. **On 2026-11-26 the control failed:** RISC Zero's emergency stop under the deployed `ZkReferee`, `0x724d…7797`, was paused (`paused()` true), and `verifyRun` reverted on the CPU proof of record with `EnforcedPause()` (`0xd93c0665`). No proof passes A3 until a new generation pins a verifier that is not stopped ([`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md), What forces a new generation). `verify-proof.mjs` also reads `gpu-run-1.log` and `gpu-heaviest.log` alone:
 
 ```bash
 node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof gpu-run-1.log \
   --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json
-node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof gpu-heaviest.log --vectors \
-  vectors/levels/10-worst.json vectors/levels/16-worst.json vectors/levels/04-worst.json \
-  vectors/levels/08-worst.json vectors/levels/03-worst.json vectors/levels/14-synthetic.json
 ```
 
-Run 1's proof must give the run score it settled with, 20310.
+**What it does not measure:** another host or card model (run `--rounds 1` there, about 30 min plus the build, and give it its own `--out`), the noise of a shared community host over many proofs (keep the settlement sessions' `prove-runs.sh` logs), a run of billions of cycles (its time and memory are extrapolated), sessions of hours, and two proofs at once on one card. On a pod, `peak-memory.sh`'s Docker lines may count every process of the pod's own container: read `VmHWM` and the command tree. **The card it builds for:** RISC Zero compiles its CUDA kernels for the card of the machine that builds them (`nvcc -arch=native`), so build again on another card model. Setting `NVCC_APPEND_FLAGS` to a card's architecture, such as `-arch=sm_89` for an RTX 4090, builds for that card instead, even on a machine without one.
 
 **Settle a season's runs** in three steps, so that no key reaches the rented machine:
 
