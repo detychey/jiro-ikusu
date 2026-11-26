@@ -3,9 +3,10 @@
 # checks the machine, builds zk-host with the cuda feature, then proves a ladder of six committed
 # run-mode inputs, of 7 to about 177 segments, three times each in another order per round; then
 # run 1 and the heaviest at the segment sizes on either side of the ladder's; first and last, the
-# smallest input again, cold and as a sentinel. Each proof runs under peak-memory.sh, with the
-# card's telemetry sampled every second, into <out>/proofs/<id>.log (stdout, one proof that
-# scripts/contracts/verify-proof.mjs reads), .err (stderr) and .gpu.csv. gpu_bench.py records each
+# smallest input again, cold and as a sentinel. Each proof runs under peak-memory.sh and a one-hour
+# limit, with the card's telemetry sampled every second, into <out>/proofs/<id>.log (stdout, one
+# proof that scripts/contracts/verify-proof.mjs reads), .err (stderr), .gpu.csv and .cpu (the
+# container's CPU counters before and after). gpu_bench.py records each
 # proof as a line of <out>/results.jsonl, and its summary fits the time against the segments,
 # prices a run and checks the acceptance criteria into <out>/summary.md. A failed proof is recorded
 # and the others go on; a wrong image id stops it before any proof; a proof that fails a check, or
@@ -29,10 +30,23 @@ readonly GROTH16_DIR="${RISC0_HOME:-$HOME/.risc0}/extensions/v0.1.0-risc0-groth1
 readonly GROTH16_FILES=(stark_verify_final.zkey stark_verify_graph.bin preprocessed_coeffs.bin fuzzed_msm_results.bin)
 readonly GPU_FIELDS=name,uuid,memory.total,driver_version,vbios_version,compute_cap,power.limit,power.default_limit,power.max_limit,clocks.max.sm,clocks.max.mem,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current,pcie.link.width.max,persistence_mode
 readonly IDLE_GPU_MIB=1024
+readonly PROOF_LIMIT_S=3600
 
 fail() {
   echo "gpu-measure: $*" >&2
   exit 1
+}
+
+# A zk-host left by Ctrl-C proves on: peak-memory.sh starts it in the background, where SIGINT is ignored.
+provers_running() {
+  local cmdline
+  for cmdline in /proc/[0-9]*/cmdline; do
+    [[ "$(tr '\0' ' ' 2>/dev/null <"$cmdline")" != *"zk-host prove "* ]] || basename "$(dirname "$cmdline")"
+  done
+}
+
+cpu_counters() {
+  cat /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/cpu.pressure 2>/dev/null || true
 }
 
 po2=20 rounds=3 out=gpu-bench
@@ -66,6 +80,8 @@ python3 -c 'import tomllib' 2>/dev/null || fail "Python 3.11 or newer is missing
 # Before the build, so that a wrong option fails in seconds.
 python3 referee/zk/gpu_bench.py plan "$out" --segment-po2 "$po2" --rounds "$rounds" "${redo[@]}" >/dev/null
 # With the cuda feature, the Groth16 step reads these files instead of running Docker.
+# rzup skips a version directory that is a symbolic link.
+[ ! -L "$GROTH16_DIR" ] || fail "$GROTH16_DIR is a symbolic link, which rzup skips: install the component with rzup"
 for file in "${GROTH16_FILES[@]}"; do
   [ -s "$GROTH16_DIR/$file" ] || fail "$GROTH16_DIR/$file is missing: install rzup's risc0-groth16 0.1.0 component (referee/zk/README.md, Proving on a GPU)"
 done
@@ -73,6 +89,9 @@ reasons=clocks_event_reasons.active
 nvidia-smi --query-gpu="$reasons" --format=csv,noheader >/dev/null 2>&1 || reasons=clocks_throttle_reasons.active
 readonly TELEMETRY="timestamp,clocks.sm,temperature.gpu,power.draw,utilization.gpu,memory.used,$reasons"
 nvidia-smi --query-gpu="$TELEMETRY" --format=csv,noheader,nounits -i 0 >/dev/null || fail "nvidia-smi does not report $TELEMETRY"
+nvidia-smi --query-gpu="$GPU_FIELDS" --format=csv,noheader,nounits -i 0 >/dev/null || fail "nvidia-smi does not report $GPU_FIELDS"
+running="$(provers_running)"
+[ -z "$running" ] || fail "zk-host prove still runs, pid ${running//$'\n'/ }: kill it first"
 in_use_mib="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits -i 0)"
 [ "${in_use_mib// /}" -lt "$IDLE_GPU_MIB" ] || fail "the card has $in_use_mib MiB in use: stop what runs on it, such as a zk-host left by Ctrl-C"
 gpu_uuid="$(nvidia-smi --query-gpu=uuid --format=csv,noheader -i 0)"
@@ -122,8 +141,9 @@ image_id="$("$host" image-id)"
   echo "cpus: $(nproc)"
   echo "cgroup cpu.max: $(cat /sys/fs/cgroup/cpu.max 2>/dev/null || echo none)"
   echo "memory: $(awk '/^MemTotal:/ { print $2 }' /proc/meminfo) kB"
-  echo "cgroup memory.max: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo none)"
+  echo "cgroup memory.max: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo none)"
   echo "free disk for $out: $(df -h --output=avail "$out" | tail -n 1)"
+  echo "free disk for the segment files, ${TMPDIR:-/tmp}: $(df -h --output=avail "${TMPDIR:-/tmp}" | tail -n 1)"
   echo "kernel: $(uname -r)"
   echo "os: $(sed -n 's/^PRETTY_NAME=//p' /etc/os-release | tr -d '"')"
   # Never the whole environment: RunPod may keep an API key there.
@@ -131,7 +151,8 @@ image_id="$("$host" image-id)"
   echo "set-up and build: $build_seconds s"
   echo "ladder: 2^$po2, $rounds rounds"
   echo "=== END gpu-measure ==="
-} | tee "$machine"
+} | tee "$machine.tmp"
+mv "$machine.tmp" "$machine"
 [ "$image_id" = "$expected_image_id" ] ||
   fail "image id $image_id, not the deployed ZkReferee's $expected_image_id: no proof made. Check pwd -P, rustc +risc0 --version and the commit"
 
@@ -145,10 +166,12 @@ for i in "${!proofs[@]}"; do
   read -r id prove_line <<<"${proofs[i]}"
   read -ra prove_args <<<"$prove_line"
   echo "gpu-measure: proof $((i + 1)) of ${#proofs[@]}, $id"
-  nvidia-smi --query-gpu="$TELEMETRY" --format=csv,noheader,nounits -i 0 -lms 1000 >"$out/proofs/$id.gpu.csv" &
+  stdbuf -oL nvidia-smi --query-gpu="$TELEMETRY" --format=csv,noheader,nounits -i 0 -lms 1000 >"$out/proofs/$id.gpu.csv" &
   sampler=$!
+  cpu_counters >"$out/proofs/$id.cpu"
   status=0
-  bash referee/zk/peak-memory.sh "$host" prove "${prove_args[@]}" >"$out/proofs/$id.log" 2>"$out/proofs/$id.err" || status=$?
+  bash referee/zk/peak-memory.sh timeout "$PROOF_LIMIT_S" "$host" prove "${prove_args[@]}" >"$out/proofs/$id.log" 2>"$out/proofs/$id.err" || status=$?
+  cpu_counters >>"$out/proofs/$id.cpu"
   # The sampler runs until this kill; one that stopped early leaves too few samples, which A5 reports.
   kill "$sampler" 2>/dev/null || true
   wait "$sampler" || true

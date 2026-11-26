@@ -4,12 +4,13 @@
 #   plan <out> [--segment-po2 <n>] [--rounds <n>] [--redo <input>]...
 #     prints the proofs left to make, one per line: the proof's id, then zk-host prove's arguments;
 #   record <out> <id> <exit status> [--left <id>...]
-#     reads <out>/proofs/<id>.log, .err and .gpu.csv into one JSON line of <out>/results.jsonl;
-#   summary <out> [--segment-po2 <n>] [--price-usd-per-hour <p>] [--eth-usd <p>] [--gas-gwei <p>]
+#     reads <out>/proofs/<id>.log, .err, .gpu.csv and .cpu into one JSON line of <out>/results.jsonl;
+#   summary <out> [--segment-po2 <n>] [--price-usd-per-hour <p>] [--eth-usd <p>] [--gas-gwei <p>] [--l1-gas-gwei <p>]
 #     prints the summary into <out>/summary.md, lists the proofs for gpu-onchain.sh in
 #     <out>/onchain.txt, and exits 1 when an acceptance criterion fails.
 # A proof's id is <input>-p<segment po2>-<tag>, its tag r<round> on the ladder, sweep, or
-# cold<session> and sentinel<session>. The newest record of an id is the one that counts.
+# cold<session> and sentinel<session>. The newest record of an id is the one that counts, but A1
+# and A2 read every record, so that a redone proof does not hide a failed one.
 import argparse
 import hashlib
 import json
@@ -68,8 +69,13 @@ PLAYER_RUNS = (
     ("proposed cap", 150e6),
     ("cost-maximising legal run (estimate)", 2.9e9),
 )
-SETTLE_GAS = 530_256  # settleRun of testnet-0's run 1 through ZkReferee (docs/DEPLOYMENT.md)
+# settleRun through ZkReferee (docs/DEPLOYMENT.md): testnet-0's run 1, with 7,300 bytes of calldata,
+# measured; and about 1,000,000 for a whole bot run's longer journals, estimated in its Funding.
+SETTLE_GAS, SETTLE_GAS_LONG, SETTLE_CALLDATA_BYTES = 530_256, 1_000_000, 7_300
+L1_GAS_PER_CALLDATA_BYTE = 16
 HOUSE_SHARE_OF_RAKE = 0.8
+# One session after the end proves 30 runs (docs/SEASON_RUNBOOK.md, section 5).
+RUNS_PER_SESSION = 30
 
 TOLERANCE = 0.05
 FLOOR_S = 3.0
@@ -103,6 +109,9 @@ LOG_FIELDS = {
 VERIFY_FAILURE = re.compile(r"does not verify|outcome\.\w+ .*, expected|weightBp \d+, expected|verify guest committed \d+ bytes")
 GPU_OUT_OF_MEMORY = re.compile(r"out of memory|OUT_OF_MEMORY|MemoryAllocation", re.IGNORECASE)
 KILLED = 137
+TIMED_OUT = 124
+# cgroup v2 counters in microseconds: CPU used, held back by the quota, and waited for (pressure).
+CPU_COUNTERS = {"cpu_s": r"^usage_usec (\d+)$", "cpu_throttled_s": r"^throttled_usec (\d+)$", "cpu_wait_s": r"^some .*total=(\d+)$"}
 
 
 def parse_id(proof_id):
@@ -157,7 +166,18 @@ def parse_log(log):
         if match:
             fields[name] = kind(match[1])
     fields["verified"] = re.search(r"^verified: yes$", log, re.MULTILINE) is not None
+    fields["fixture"] = "=== END zk-fixture ===" in log
     return fields
+
+
+def cpu_use(counters):
+    """The container's CPU seconds between the two snapshots of the counters; none without both."""
+    use = {}
+    for name, pattern in CPU_COUNTERS.items():
+        values = [int(value) for value in re.findall(pattern, counters, re.MULTILINE)]
+        if len(values) == 2:
+            use[name] = (values[1] - values[0]) / 1e6
+    return use
 
 
 def telemetry(csv_text):
@@ -194,6 +214,7 @@ def classify(exit_status, fields, err, expected):
             problem
             for failed, problem in (
                 (not fields["verified"], "no 'verified: yes'"),
+                (not fields["fixture"], "no zk-fixture block"),
                 (fields.get("image_id") != expected["imageId"], f"image id {fields.get('image_id')}, expected {expected['imageId']}"),
                 (fields.get("seal_bytes") != SEAL_BYTES, f"seal of {fields.get('seal_bytes')} bytes, expected {SEAL_BYTES}"),
                 (fields.get("selector") != selector, f"selector {fields.get('selector')}, expected {selector}"),
@@ -207,6 +228,8 @@ def classify(exit_status, fields, err, expected):
         return "verify-fail", message
     if exit_status == KILLED:
         return "oom-host", f"{message} (exit status {KILLED}: killed, as by the out-of-memory killer)"
+    if exit_status == TIMED_OUT:
+        return "timeout", f"stopped at gpu-measure.sh's time limit (exit status {TIMED_OUT})"
     if GPU_OUT_OF_MEMORY.search(err) and "Guest panicked" not in err:
         return "oom-gpu", message
     return "error", message
@@ -230,6 +253,7 @@ def record(out, proof_id, exit_status, left):
         "error": error,
         **fields,
         **telemetry((proofs / f"{proof_id}.gpu.csv").read_text()),
+        **cpu_use((proofs / f"{proof_id}.cpu").read_text()),
     }
     with (Path(out) / "results.jsonl").open("a") as results:
         results.write(json.dumps(entry) + "\n")
@@ -331,13 +355,20 @@ def check_throttling(included, machine):
             problems.append(f"{entry['id']}: {entry['slowdown_samples']} samples slowed down ({entry['clock_event_reasons']})")
         if entry.get("gpu_before_mib") is None or entry["gpu_before_mib"] >= IDLE_GPU_MIB:
             problems.append(f"{entry['id']}: {entry.get('gpu_before_mib')} MiB in use before")
-    clocks = {entry["id"]: entry["sm_clock_busy_median_mhz"] for entry in included if entry.get("sm_clock_busy_median_mhz")}
-    if clocks:
-        middle = statistics.median(clocks.values())
-        problems += [f"{proof_id}: SM clock {clock:.0f} MHz against {middle:.0f}" for proof_id, clock in clocks.items() if not within(clock, middle)]
+    # Against the same input's proofs: under a power limit, other inputs' kernels may run at other clocks.
+    clocks = {}
+    for entry in included:
+        if entry.get("sm_clock_busy_median_mhz"):
+            clocks.setdefault(entry["input"], {})[entry["id"]] = entry["sm_clock_busy_median_mhz"]
+    medians = []
+    for by_id in clocks.values():
+        middle = statistics.median(by_id.values())
+        medians.append(middle)
+        problems += [f"{proof_id}: SM clock {clock:.0f} MHz against {middle:.0f}" for proof_id, clock in by_id.items() if not within(clock, middle)]
+    spread = f"; inputs' median clocks {min(medians):.0f} to {max(medians):.0f} MHz" if medians else ""
     limit, default = machine.get("gpu power.limit"), machine.get("gpu power.default_limit")
     power = f"; power limit {limit} W, default {default} W" if limit else ""
-    return verdict(bool(included) and not problems, ("; ".join(problems) or f"{len(included)} proofs, no slowdown") + power)
+    return verdict(bool(included) and not problems, ("; ".join(problems) or f"{len(included)} proofs, no slowdown") + spread + power)
 
 
 def check_model(points):
@@ -394,7 +425,9 @@ def segment_size_rule(records, warm, machine, po2):
     if entry["status"] != "ok":
         return f"stay at 2^{po2}: heaviest at 2^{upper} ended {entry['status']}"
     vram_mib = float(machine["gpu memory.total"])
-    limit = machine.get("cgroup memory.max", "max")
+    limit = machine.get("cgroup memory.max", "none")
+    if limit != "max" and not limit.isdigit():
+        return f"undecided: the container's memory limit is unknown (cgroup memory.max: {limit})"
     host_kib = min(int(machine["memory"].split()[0]), int(limit) // 1024 if limit.isdigit() else math.inf)
     conditions = [
         (entry["gpu_peak_mib"] <= NEXT_SIZE_GPU_SHARE * vram_mib, f"GPU peak {entry['gpu_peak_mib']} of {vram_mib:.0f} MiB"),
@@ -421,19 +454,21 @@ def proofs_table(records):
         if entry["status"] == "ok" and entry["role"] in WARM_ROLES:
             groups.setdefault((entry["po2"], list(INPUTS).index(entry["input"])), []).append(entry)
     rows = [[
-        "Input", "Segment limit", "Segments", "Proving cycles", "Proofs", "Wall s, median (min–max)", "Segment proofs s",
-        "Recursion s", "Groth16 s", "Wall s per segment", "Peak GPU MiB", "VmHWM GiB", "SM clock MHz", "Max °C",
+        "Input", "Segment limit", "Segments", "Proving cycles", "Proofs", "Sessions", "Wall s, median (min–max)", "Segment proofs s",
+        "Recursion s", "Groth16 s", "Wall s per segment", "Peak GPU MiB", "VmHWM GiB", "SM clock MHz", "GPU busy %", "Max °C",
+        "CPU s", "CPU wait s",
     ]]
     for (po2, _), entries in sorted(groups.items()):
         walls = [entry["wall_s"] for entry in entries]
         first = entries[0]
         rows.append([
             first["input"], f"2^{po2}", str(first["segments"]), f"{first['total_cycles']:,}", str(len(entries)),
-            f"{statistics.median(walls):,.1f} ({min(walls):,.1f}–{max(walls):,.1f})",
+            ", ".join(sorted({str(entry["session"]) for entry in entries})), f"{statistics.median(walls):,.1f} ({min(walls):,.1f}–{max(walls):,.1f})",
             number(median_of(entries, "segment_proofs_s")), number(median_of(entries, "recursion_s")), number(median_of(entries, "groth16_s")),
             number(statistics.median(walls) / first["segments"], 2), number(max(entry.get("gpu_peak_mib", 0) for entry in entries), 0),
             number(max(entry.get("vmhwm_kib", 0) for entry in entries) / 2**20), number(median_of(entries, "sm_clock_busy_median_mhz"), 0),
-            number(max(entry.get("temperature_max_c", 0) for entry in entries), 0),
+            number(median_of(entries, "utilization_median_pct"), 0), number(max(entry.get("temperature_max_c", 0) for entry in entries), 0),
+            number(median_of(entries, "cpu_s")), number(median_of(entries, "cpu_wait_s")),
         ])
     return table(rows)
 
@@ -447,6 +482,7 @@ def build_seconds(out):
 def cost_rows(warm, po2, model, model_passed, prices):
     """The measured inputs at their median wall time, then the players' runs at the model's."""
     price, eth_usd, settle_eth, rake_eth, grace_s, overhead_s = prices
+    house_eth = HOUSE_SHARE_OF_RAKE * rake_eth
     largest = max(entries[0]["segments"] for entries in warm.values())
     sizes = [(name, entries[0]["total_cycles"], entries[0]["segments"], median_of(entries, "wall_s")) for name, entries in warm.items()]
     for name, cycles in PLAYER_RUNS:
@@ -454,27 +490,29 @@ def cost_rows(warm, po2, model, model_passed, prices):
         inside = segments <= largest
         # A model that failed A6 prices nothing beyond the measured range.
         wall = model[0] + model[1] * segments if inside or model_passed else None
-        sizes.append((name if inside else f"{name}, extrapolated {segments / largest:.0f}x", int(cycles), segments, wall))
+        sizes.append((name if inside else f"{name}, not measured: {segments / largest:.0f}x the largest input", int(cycles), segments, wall))
     rows = [[
-        "Run", "Proving cycles", "Segments", "Wall s", "Runs per hour", "Proving USD", "Proving + settling ETH",
-        "Runs' rake at 80% to pay it", "Runs in the grace, margin 2",
+        "Run", "Proving cycles", "Segments", "Wall s", "Runs per hour", "Proving USD", f"Proving USD, set-up shared by {RUNS_PER_SESSION}",
+        "Proving + settling: runs' rake at 80%", "Runs in the grace, margin 2",
     ]]
     for label, cycles, segments, wall in sizes:
         if wall is None:
             rows.append([label, f"{cycles:,}", str(segments), "—", "—", "—", "—", "—", "—"])
             continue
         prove_usd = price * wall / 3600
-        total_eth = prove_usd / eth_usd + settle_eth
+        shared_usd = price * (wall + overhead_s / RUNS_PER_SESSION) / 3600
+        low, high = ((shared_usd / eth_usd + settle) / house_eth for settle in settle_eth)
         rows.append([
-            label, f"{cycles:,}", str(segments), number(wall), number(3600 / wall), f"{prove_usd:.4f}", f"{total_eth:.7f}",
-            number(total_eth / (HOUSE_SHARE_OF_RAKE * rake_eth)), f"{math.floor((grace_s - overhead_s) / (2 * wall)):,}",
+            label, f"{cycles:,}", str(segments), number(wall), number(3600 / wall), f"{prove_usd:.4f}", f"{shared_usd:.4f}",
+            f"{low:.1f}–{high:.1f}", f"{math.floor((grace_s - overhead_s) / (2 * wall)):,}",
         ])
     return table(rows)
 
 
-def summary(out, po2, price, eth_usd, gas_gwei):
+def summary(out, po2, price, eth_usd, gas_gwei, l1_gas_gwei):
     out = Path(out)
-    records, expected, season = latest_records(out), read_json(PROOF_OF_RECORD), read_json(SEASON)
+    every_record, records = read_records(out), latest_records(out)
+    expected, season = read_json(PROOF_OF_RECORD), read_json(SEASON)
     machines = machine_files(out)
     machine = read_machine(machines[-1]) if machines else {}
     warm = warm_by_input(records, po2)
@@ -484,8 +522,8 @@ def summary(out, po2, price, eth_usd, gas_gwei):
         entry for entry in records if entry["role"] == "sentinel" and entry["po2"] == po2 and entry["status"] == "ok"
     ]
     criteria = [
-        ("A1", "image id", check_image_id(records, expected), True),
-        ("A2", "local proofs (C2, C3, C4)", check_local_proofs(records, expected), True),
+        ("A1", "image id", check_image_id(every_record, expected), True),
+        ("A2", "local proofs (C2, C3, C4)", check_local_proofs(every_record, expected), True),
         ("A3", "onchain (C5)", ("PENDING", f"off the pod: bash referee/zk/gpu-onchain.sh {out.name}, run 1 at {RUN_1_SCORE}"), False),
         ("A4", "repeat spread within 5% or 3 s", check_spread(warm), False),
         ("A5", "no slowdown, steady clock, idle card before each proof", check_throttling(included, machine), False),
@@ -495,11 +533,13 @@ def summary(out, po2, price, eth_usd, gas_gwei):
     ]
     loud = [key for key, _, (result, _), is_loud in criteria if is_loud and result == "FAIL"]
     colds = [entry["wall_s"] for entry in records if entry["role"] == "cold" and entry["po2"] == po2 and entry["status"] == "ok"]
-    cold_extra = statistics.median(colds) - median_of(warm["small"], "wall_s") if colds and "small" in warm else None
+    cold_extra = max(0.0, statistics.median(colds) - median_of(warm["small"], "wall_s")) if colds and "small" in warm else None
     build = build_seconds(out)
     overhead_s = (build or 0) + (cold_extra or 0)
-    settle_eth = SETTLE_GAS * gas_gwei * 1e-9
+    settle_eth = (SETTLE_GAS * gas_gwei * 1e-9, SETTLE_GAS_LONG * gas_gwei * 1e-9)
+    l1_eth = SETTLE_CALLDATA_BYTES * L1_GAS_PER_CALLDATA_BYTE * l1_gas_gwei * 1e-9
     rake_eth = int(season["runFee"]) * season["rakeBp"] / 10_000 / 1e18
+    house_eth = HOUSE_SHARE_OF_RAKE * rake_eth
     prices = (price, eth_usd, settle_eth, rake_eth, season["grace"], overhead_s)
 
     lines = ["# GPU benchmark summary", ""]
@@ -532,10 +572,15 @@ def summary(out, po2, price, eth_usd, gas_gwei):
     lines += [
         f"## Cost per run at {price} USD an hour, ETH at {eth_usd:,.0f} USD (estimates)",
         "",
-        f"Settling one run: {SETTLE_GAS:,} gas × {gas_gwei} gwei = {settle_eth:.7f} ETH ({settle_eth * eth_usd:.4f} USD), without an L1 data fee. "
-        f"Rake of one run on testnet-1: {rake_eth:.7f} ETH ({rake_eth * eth_usd:.4f} USD), 80% of it {HOUSE_SHARE_OF_RAKE * rake_eth:.7f} ETH.",
+        f"Settling one run, the same whatever its proving cycles: {SETTLE_GAS:,} gas for run 1 ({SETTLE_CALLDATA_BYTES:,} bytes of calldata, measured)"
+        f" to about {SETTLE_GAS_LONG:,} for a whole bot run's longer journals (docs/DEPLOYMENT.md, Funding; an estimate), × {gas_gwei} gwei:"
+        f" {settle_eth[0]:.7f} to {settle_eth[1]:.7f} ETH, {settle_eth[0] / house_eth:.1f} to {settle_eth[1] / house_eth:.1f} runs' rake at 80%."
+        f" Arbitrum's L1 data fee comes on top: 0 on Arbitrum Sepolia today; on Arbitrum One at most {L1_GAS_PER_CALLDATA_BYTE} gas × {l1_gas_gwei} gwei"
+        f" per calldata byte before compression, {l1_eth:.7f} ETH for run 1's bytes, {l1_eth / house_eth:.1f} runs' rake at 80%.",
+        f"Rake of one run on testnet-1: {rake_eth:.7f} ETH ({rake_eth * eth_usd:.4f} USD), 80% of it {house_eth:.7f} ETH.",
         f"Session overhead: set-up and build {number(build, 0)} s, cold start {number(cold_extra)} s more than a warm proof:"
-        f" {overhead_s:,.0f} s, {price * overhead_s / 3600:.3f} USD. Grace of {season['grace']:,} s.",
+        f" {overhead_s:,.0f} s, {price * overhead_s / 3600:.3f} USD, {price * overhead_s / 3600 / RUNS_PER_SESSION:.4f} USD a run"
+        f" when a session proves {RUNS_PER_SESSION} runs. Grace of {season['grace']:,} s.",
         "",
         *(cost_rows(warm, po2, model, model_verdict[0] == "PASS", prices) if model else ["No model, so no cost per run."]),
         "",
@@ -599,6 +644,7 @@ def main(argv):
     summary_parser.add_argument("--price-usd-per-hour", type=float, default=0.34)
     summary_parser.add_argument("--eth-usd", type=float, default=1700.0)
     summary_parser.add_argument("--gas-gwei", type=float, default=0.02)
+    summary_parser.add_argument("--l1-gas-gwei", type=float, default=0.05)
     args = parser.parse_args(argv)
     if args.command == "plan":
         for proof_id in plan(args.out, args.segment_po2, args.rounds, args.redo):
@@ -607,7 +653,7 @@ def main(argv):
     if args.command == "record":
         record(args.out, args.id, args.exit_status, args.left)
         return 0
-    return summary(args.out, args.segment_po2, args.price_usd_per_hour, args.eth_usd, args.gas_gwei)
+    return summary(args.out, args.segment_po2, args.price_usd_per_hour, args.eth_usd, args.gas_gwei, args.l1_gas_gwei)
 
 
 if __name__ == "__main__":

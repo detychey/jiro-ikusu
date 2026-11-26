@@ -53,7 +53,8 @@ def complete_benchmark():
         return [entry(proof_id) for proof_id in gpu_bench.plan(out, 20, 3, [])]
 
 
-def prove_log(segments=13, image_id=EXPECTED["imageId"], seal_bytes=260, sha256=RUN_1_SHA256, verified=True):
+def prove_log(segments=13, image_id=EXPECTED["imageId"], seal_bytes=260, sha256=RUN_1_SHA256, verified=True, fixture=True):
+    fixture_block = '=== BEGIN zk-fixture ===\n{"mode":"run"}\n=== END zk-fixture ===\n' if fixture else ""
     return f"""=== BEGIN zk-prove ===
 mode: run
 image id: {image_id}
@@ -68,10 +69,7 @@ seal: {seal_bytes} bytes, selector {EXPECTED["seal"][:10]}
 public values: 2304 bytes, sha256 {sha256}
 {"verified: yes" if verified else ""}
 === END zk-prove ===
-=== BEGIN zk-fixture ===
-{{"mode":"run"}}
-=== END zk-fixture ===
-=== BEGIN peak-memory ===
+{fixture_block}=== BEGIN peak-memory ===
 exit status: 0
 wall time: 41.3 s
 peak RSS, command tree: 9400 MiB
@@ -93,12 +91,12 @@ class BenchDirectory(unittest.TestCase):
 
     def summarize(self, po2=20):
         with contextlib.redirect_stdout(io.StringIO()):
-            status = gpu_bench.summary(self.out, po2, 0.34, 1700.0, 0.02)
+            status = gpu_bench.summary(self.out, po2, 0.34, 1700.0, 0.02, 0.05)
         rows = [line.split(" | ") for line in (self.out / "summary.md").read_text().splitlines() if line.startswith("| A")]
         return status, {row[0][2:]: row[2] for row in rows}
 
-    def record(self, proof_id, exit_status, log="", err="", csv=""):
-        for suffix, text in ((".log", log), (".err", err), (".gpu.csv", csv)):
+    def record(self, proof_id, exit_status, log="", err="", csv="", cpu=""):
+        for suffix, text in ((".log", log), (".err", err), (".gpu.csv", csv), (".cpu", cpu)):
             (self.out / "proofs" / f"{proof_id}{suffix}").write_text(text)
         with contextlib.redirect_stdout(io.StringIO()):
             return gpu_bench.record(self.out, proof_id, exit_status, [])
@@ -189,6 +187,12 @@ class RecordTest(BenchDirectory):
         record = self.record("run1-p20-r1", 0, log=prove_log(image_id="0x" + "11" * 32))
         self.assertEqual(record["status"], "verify-fail")
 
+    def test_a_proof_without_its_fixture_block_is_a_verify_failure(self):
+        self.assertEqual(self.record("run1-p20-r1", 0, log=prove_log(fixture=False))["status"], "verify-fail")
+
+    def test_a_proof_stopped_at_the_time_limit_is_a_timeout(self):
+        self.assertEqual(self.record("overcap-p20-r1", 124)["status"], "timeout")
+
     def test_a_seal_of_another_length_is_a_verify_failure(self):
         self.assertEqual(self.record("run1-p20-r1", 0, log=prove_log(seal_bytes=36))["status"], "verify-fail")
 
@@ -206,6 +210,14 @@ class RecordTest(BenchDirectory):
     def test_telemetry_skips_and_counts_a_cut_line(self):
         csv = "t, 2700, 60, 400.1, 99, 15000, 0x0000000000000000\nt, 2700, 6\n"
         self.assertEqual([gpu_bench.telemetry(csv)[field] for field in ("samples", "malformed_samples")], [1, 1])
+
+    def test_cpu_use_is_the_difference_of_the_two_snapshots(self):
+        snapshot = "usage_usec {}\nthrottled_usec {}\nsome avg10=0.00 avg60=0.00 avg300=0.00 total={}\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=9\n"
+        counters = snapshot.format(1_000_000, 0, 500_000) + snapshot.format(41_000_000, 2_000_000, 3_500_000)
+        self.assertEqual(gpu_bench.cpu_use(counters), {"cpu_s": 40.0, "cpu_throttled_s": 2.0, "cpu_wait_s": 3.0})
+
+    def test_cpu_use_is_unknown_without_two_snapshots(self):
+        self.assertEqual(gpu_bench.cpu_use("usage_usec 1000000\n"), {})
 
     def test_the_clock_is_the_median_while_the_card_is_busy(self):
         csv = "t, 210, 40, 30, 0, 500, 0x1\nt, 2700, 60, 400, 99, 15000, 0x0\nt, 2690, 61, 400, 98, 15000, 0x0\n"
@@ -238,6 +250,10 @@ class SummaryTest(BenchDirectory):
         self.write_records(complete_benchmark() + [entry("small-p20-sentinel2", status="verify-fail", error="zk-host: does not verify")])
         self.assertEqual(self.summarize(), (1, {**{f"A{n}": "PASS" for n in range(1, 9)}, "A2": "FAIL", "A3": "PENDING"}))
 
+    def test_a_redone_proof_does_not_hide_a_verify_failure(self):
+        self.write_records(complete_benchmark() + [entry("mid-p20-r1", status="verify-fail", error="zk-host: does not verify"), entry("mid-p20-r1")])
+        self.assertEqual(self.summarize()[1]["A2"], "FAIL")
+
     def test_another_image_id_fails_a1(self):
         self.write_records(complete_benchmark() + [entry("small-p20-r1", image_id="0x" + "11" * 32)])
         self.assertEqual(self.summarize()[1]["A1"], "FAIL")
@@ -257,6 +273,14 @@ class SummaryTest(BenchDirectory):
     def test_a_slowed_down_proof_fails_a5(self):
         self.write_records(complete_benchmark() + [entry("high-p20-r3", slowdown_samples=4, clock_event_reasons="0x40")])
         self.assertEqual(self.summarize()[1]["A5"], "FAIL")
+
+    def test_a_proof_slower_than_its_input_s_clock_fails_a5(self):
+        self.write_records(complete_benchmark() + [entry("high-p20-r3", sm_clock_busy_median_mhz=2400)])
+        self.assertEqual(self.summarize()[1]["A5"], "FAIL")
+
+    def test_inputs_at_different_steady_clocks_pass_a5(self):
+        self.write_records([entry(record["id"], sm_clock_busy_median_mhz=2400) if record["input"] == "small" else record for record in complete_benchmark()])
+        self.assertEqual(self.summarize()[1]["A5"], "PASS")
 
     def test_a_card_in_use_before_a_proof_fails_a5(self):
         self.write_records(complete_benchmark() + [entry("high-p20-r3", gpu_before_mib=3000)])
@@ -308,6 +332,23 @@ class SummaryTest(BenchDirectory):
         self.write_records(complete_benchmark())
         self.summarize()
         self.assertIn("Segment size: stay at 2^20", (self.out / "summary.md").read_text())
+
+    def test_the_next_segment_size_is_undecided_without_the_container_s_memory_limit(self):
+        (self.out / "machine-s1.txt").write_text(MACHINE.replace("cgroup memory.max: max", "cgroup memory.max: none"))
+        self.write_records(complete_benchmark()[:-1] + [entry("heaviest-p21-sweep", wall_s=0.8 * wall_of("heaviest")), complete_benchmark()[-1]])
+        self.summarize()
+        self.assertIn("Segment size: undecided", (self.out / "summary.md").read_text())
+
+    def test_a_run_s_cost_shares_the_session_s_set_up_among_its_runs(self):
+        self.write_records(complete_benchmark())
+        self.summarize()
+        cost_row = [line for line in (self.out / "summary.md").read_text().splitlines() if line.startswith("| small | ")][-1]
+        self.assertEqual(cost_row.split(" | ")[6], f"{0.34 * (wall_of('small') + 2400 / gpu_bench.RUNS_PER_SESSION) / 3600:.4f}")
+
+    def test_a_cold_proof_faster_than_the_warm_ones_adds_no_overhead(self):
+        self.write_records(complete_benchmark() + [entry("small-p20-cold1", wall_s=wall_of("small") - 2)])
+        self.summarize()
+        self.assertIn("cold start 0.0 s more", (self.out / "summary.md").read_text())
 
     def test_the_build_time_of_an_earlier_log_counts(self):
         (self.out / "previous").mkdir()
