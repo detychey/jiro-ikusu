@@ -6,8 +6,12 @@ import { afterEach, beforeEach, test } from "node:test";
 import { REPO_ROOT } from "./deploy.mjs";
 import { encodeProof, realProof } from "./zk-host.mjs";
 
-const RUN_PROOF = JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "test", "fixtures", "zk-proofs.json"), "utf8")).challengeRun;
+const FIXTURES = JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "test", "fixtures", "zk-proofs.json"), "utf8"));
+const RUN_PROOF = FIXTURES.challengeRun;
 const SEASON_FILE = join(REPO_ROOT, "seasons", "testnet-0.json");
+const RUNS_DIR = join(REPO_ROOT, "seasons", "testnet-0", "runs");
+const RUN_1_PROOF_OF_RECORD = JSON.parse(readFileSync(join(RUNS_DIR, "run-1.proof.json"), "utf8"));
+const RUN_1_RISC0_31_PROOF = JSON.parse(readFileSync(join(RUNS_DIR, "run-1.risc0-3.1.proof.json"), "utf8"));
 
 let dir;
 beforeEach(() => (dir = mkdtempSync(join(tmpdir(), "zk-host-test-"))));
@@ -25,4 +29,14 @@ test("a proof made earlier is reused from <run file>.proof.json", () => {
 test("a real proof is refused under RISC0_DEV_MODE, whose seals never verify on Arbitrum Sepolia", () => {
   process.env.RISC0_DEV_MODE = "1";
   assert.throws(() => realProof(join(dir, "run-1.json"), SEASON_FILE), /RISC0_DEV_MODE is set/);
+});
+
+test("every committed real proof is a 3.1.0 Groth16 proof of one image id", () => {
+  const proofs = [...Object.values(FIXTURES), RUN_1_RISC0_31_PROOF];
+  for (const { seal } of proofs) assert.match(seal, /^0xe71e6620[0-9a-f]{512}$/);
+  assert.equal(new Set(proofs.map(({ imageId }) => imageId)).size, 1);
+});
+
+test("run 1's 3.1.0 proof commits the public values of its 3.0 proof of record", () => {
+  assert.equal(RUN_1_RISC0_31_PROOF.publicValues, RUN_1_PROOF_OF_RECORD.publicValues);
 });
