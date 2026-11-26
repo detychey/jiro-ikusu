@@ -22,7 +22,7 @@
 //   - anvil charges no L1 data gas; Arbitrum Sepolia's ArbGasInfo prices L1 calldata at 0 wei today.
 // The records go to a temporary directory: deployments/ and seasons/ stay as they are.
 // Usage: node fork-rehearsal.mjs [--port <anvil port>] [--fork-url <Arbitrum Sepolia RPC>]
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -104,7 +104,9 @@ async function rehearse(rpc, workDir) {
   assertEqual("the rehearsal's Challenge", generation.Challenge, FIXTURE_CHALLENGE);
   prependGeneration(recordFile, NETWORK, NETWORKS[NETWORK].chainId, generation);
   const seasonFile = join(workDir, "testnet-0.json");
-  copyFileSync(join(REPO_ROOT, "seasons", "testnet-0.json"), seasonFile);
+  const testnet0 = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "testnet-0.json"), "utf8"));
+  // testnet-0 records generation 1's referee since it opened; the rehearsal opens it afresh.
+  writeFileSync(seasonFile, `${JSON.stringify({ ...testnet0, referee: null }, null, 2)}\n`);
   await openSeason({ provider, operator: deployer, seasonFile, recordFile });
   assertEqual("the season file's referee after open", JSON.parse(readFileSync(seasonFile, "utf8")).referee, generation.Referee);
   for (const { label, receipt } of SENT_TRANSACTIONS) transactions.push(await rowOf("deploy", label, receipt));

@@ -15,7 +15,7 @@ import {stateOf} from "./Season.t.sol";
 import {SettlementFixture, settlementOf} from "./Settlement.t.sol";
 import {ZkFixtures} from "./ZkVerify.t.sol";
 
-/// ZkReferee (plan M4.10) over RISC Zero's 3.0 Groth16 verifier, with the real proofs of
+/// ZkReferee (plan M4.10) over RISC Zero's 3.1 Groth16 verifier, with the real proofs of
 /// test/fixtures/zk-proofs.json. `.challengeRun` proves the run file test/fixtures/zk-run.json: run 1
 /// of this fixture's deployment, whose run nonce follows from MockArbSys's block hashes, played by
 /// the bold bot and committed as it is. `.level` and `.run` prove game vectors (M4.8).
