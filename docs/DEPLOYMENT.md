@@ -1,6 +1,6 @@
 # Deployment
 
-The Arbitrum Sepolia deployment of plan M4.14 and its first settled run: the runbook of the round F2 session, what it records, how a redeploy works, and the fork rehearsal that tested the runbook first. The backend is zk (D2). Generation 1, the subject of §3 to §7, runs `ZkReferee` over RISC Zero's emergency stop for its 3.0 Groth16 verifier, `0x724d375B5b622e15f0E64e9Deb76a4cB17877797`, which RISC Zero paused on 2026-11-19 (§4). Since plan M5.10, `scripts/contracts/deploy.mjs` pins, by chain id, the stop for its 3.1 Groth16 verifier, `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29` on Arbitrum Sepolia, which generation 2 will use (`docs/ECONOMY.md`, zk prover trust). Pending: generation 2 is not deployed yet; it waits for round F4 (plan §13).
+The Arbitrum Sepolia deployment of plan M4.14 and its first settled run: the runbook of the round F2 session, what it records, how a redeploy works, and the fork rehearsal that tested the runbook first. The backend is zk (D2). Generation 1, the subject of §3 to §7, runs `ZkReferee` over RISC Zero's emergency stop for its 3.0 Groth16 verifier, `0x724d375B5b622e15f0E64e9Deb76a4cB17877797`, which RISC Zero paused on 2026-11-19 (§4). Since plan M5.10, `scripts/contracts/deploy.mjs` pins, by chain id, the stop for its 3.1 Groth16 verifier, `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29` on Arbitrum Sepolia (`docs/ECONOMY.md`, zk prover trust). Generation 2, deployed on 2026-11-26 after round F4, uses it ([§8](#8-generation-2-risc-zero-31)).
 
 **Status: deployed on 2026-11-09; a run settled.** Round F2 ran §2 end to end on Arbitrum Sepolia. It deployed generation 1 from `ca76f8f` and opened `testnet-0` as season 1. All four sources verified on Sourcify. Run 1, a bot run proven with a real Groth16 proof, settled with 1 clear; run 2 committed six full journals; `isSolvent()` is true ([§3](#3-results)). The whole flow first passed on a fork of Arbitrum Sepolia ([§5](#5-fork-rehearsal)).
 
@@ -274,3 +274,29 @@ testnet-0's settlement ended on 2026-11-11 at 12:14:45 UTC. Ten minutes later, p
   - `isSolvent()` true.
 - **Gas** was priced at about 0.020 gwei, with no L1 gas (`gasUsedForL1` 0).
 - **`season-ops.yml`'s daily schedule** had not run by then. Its first scheduled run was due at 07:17 UTC that day, and none appeared. It could not have closed anything before 12:14:45 anyway.
+
+## 8. Generation 2: RISC Zero 3.1
+
+Plan M5.10 deployed generation 2 on 2026-11-26, after round F4, from `ba5d63b` at the fixed path. It ran §2's steps 1, 2, 4 and 7; it opens no season, since M5.6 opens testnet-1 on it. Generation 1 stays in the record as it was.
+
+| Contract | Address |
+|---|---|
+| `ArbBlockhashEntropy` | [`0x235683d9fcD79d1C0e8A8779cA844d21316A7B40`](https://repo.sourcify.dev/421614/0x235683d9fcD79d1C0e8A8779cA844d21316A7B40) |
+| `ZkReferee` | [`0xb97125b14E8E704Fb433cca4aa6b04eF5fe5C9FA`](https://repo.sourcify.dev/421614/0xb97125b14E8E704Fb433cca4aa6b04eF5fe5C9FA) |
+| `Season` | [`0x8E9a993c9fb052dCEe447b2e8952319b000Ef446`](https://repo.sourcify.dev/421614/0x8E9a993c9fb052dCEe447b2e8952319b000Ef446) |
+| `Challenge` | [`0xe0E17cEc55451783826d91FC34b214Ca8542204f`](https://repo.sourcify.dev/421614/0xe0E17cEc55451783826d91FC34b214Ca8542204f) |
+
+| Step | Transaction | Block | Gas | Fee |
+|---|---|---:|---:|---:|
+| deploy ArbBlockhashEntropy | [0x4dbc6295…a822](https://sepolia.arbiscan.io/tx/0x4dbc6295e92ccd8e73c42832ef253bbf17d5f4a49c9f76bfc655b4457ab4a822) | 332,955,753 | 496,001 | 0.0000099 ETH |
+| deploy ZkReferee | [0xbd98f50d…37c8](https://sepolia.arbiscan.io/tx/0xbd98f50d9490a2ce79fb53b45209b22beb2d7d7118e08ab4d124b70eb5f337c8) | 332,955,758 | 762,710 | 0.0000153 ETH |
+| deploy Season | [0xaefb8122…fddd](https://sepolia.arbiscan.io/tx/0xaefb8122764640ff971c19071661c8183cdcd24c17444a663bcd35ee687afddd) | 332,955,762 | 1,736,804 | 0.0000348 ETH |
+| deploy Challenge | [0xca2e966a…df0b](https://sepolia.arbiscan.io/tx/0xca2e966a3613e5f7da4f3c80dc160c143f2561edc76e69b427e40e474ba0df0b) | 332,955,766 | 1,971,245 | 0.0000394 ETH |
+| Season.bindChallenge | [0xf180f014…a914](https://sepolia.arbiscan.io/tx/0xf180f014153b02262efd7bce3da2faaff27bb12085b7f4b3c6fa4a8ebfbca914) | 332,955,771 | 45,310 | 0.0000009 ETH |
+
+The five transactions cost 0.0001003 ETH at about 0.020 gwei, with no L1 gas (`gasUsedForL1` 0).
+
+- **Before:** each new seal verified through the stop with `eth_call`, the fork rehearsal passed at block 332,947,252, and the preflight read `ready: yes` ([`VERIFICATION.md`](VERIFICATION.md#risc-zero-310)).
+- **The generation:** `ZkReferee` reads `verifier()` `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29`, `imageId()` `0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8`, which is the build's, and `rulesVersion()` 2. The stop reads `paused()` false and `verifier()` `0x8c915b5071206C6E328BC18529586c513408aB3b`, whose `SELECTOR()` is `0xe71e6620`. All four sources are an `exact_match` on Sourcify. `isSolvent()` is true, and `preflight.mjs --check-solvent` reads `ready: yes`.
+- **Run 1 on generation 2:** `verify-proof.mjs` with `run-1.risc0-3.1.proof.json` reads `verifyRun accepts the proof: run score 20310`, 344,156 gas estimated. Run 1's 3.0 proof of record reverts there with `SelectorMismatch(0x73c457ba, 0xe71e6620)` (`0xb8b38d4c…`).
+- **`season.mjs status`** passes at block 332,955,917. It reads generation 2's stop as `PASS`. It reads generation 1's as `FAIL`, since that referee calls the paused 3.0 stop, which is allowed because testnet-0, its only season, is closed.
