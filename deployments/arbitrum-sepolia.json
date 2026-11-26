@@ -3,6 +3,19 @@
   "chainId": 421614,
   "generations": [
     {
+      "deployedAt": "2026-11-26T19:24:59.774Z",
+      "sourceCommit": "ba5d63bf2c5881cd718f8f4570d0499ac6fdfc4e",
+      "backend": "zk",
+      "operator": "0xEfEA68dbE0740982789735D007B14D0D8358d1B3",
+      "treasury": "0xEfEA68dbE0740982789735D007B14D0D8358d1B3",
+      "ArbSys": "0x0000000000000000000000000000000000000064",
+      "ArbBlockhashEntropy": "0x235683d9fcD79d1C0e8A8779cA844d21316A7B40",
+      "Referee": "0xb97125b14E8E704Fb433cca4aa6b04eF5fe5C9FA",
+      "Season": "0x8E9a993c9fb052dCEe447b2e8952319b000Ef446",
+      "Challenge": "0xe0E17cEc55451783826d91FC34b214Ca8542204f",
+      "seasons": {}
+    },
+    {
       "deployedAt": "2026-11-09T12:14:37.563Z",
       "sourceCommit": "ca76f8f58c3b0bbecf82ac5a13b93726f341d6d4",
       "backend": "zk",

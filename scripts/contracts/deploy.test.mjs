@@ -49,6 +49,10 @@ test("the mock backend is refused on arbitrum-sepolia", async () => {
   await assert.rejects(deployContracts({ network: "arbitrum-sepolia", backend: "mock", rulesVersion: 2 }), /arbitrum-sepolia refuses the mock backend/);
 });
 
-test("ZkReferee on arbitrum-sepolia calls RISC Zero's emergency stop over its 3.0 Groth16 verifier", () => {
-  assert.equal(riscZeroVerifierOf(NETWORKS["arbitrum-sepolia"].chainId), "0x724d375B5b622e15f0E64e9Deb76a4cB17877797");
+test("ZkReferee on arbitrum-sepolia calls RISC Zero's emergency stop over its 3.1 Groth16 verifier", () => {
+  assert.equal(riscZeroVerifierOf(NETWORKS["arbitrum-sepolia"].chainId), "0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29");
+});
+
+test("ZkReferee on Arbitrum One would call RISC Zero's emergency stop over its 3.1 Groth16 verifier", () => {
+  assert.equal(riscZeroVerifierOf(42161), "0x5144A37e65fd032F628663Cb21E16490378a8630");
 });

@@ -2,12 +2,13 @@
 // forking Arbitrum Sepolia, chain 421614, through the same functions as the real steps, with no
 // key and no testnet transaction. Its numbers are rehearsal numbers, not testnet results.
 //   1. the preflight, zk backend, with the RISC Zero verifier row read from the fork;
-//   2-5. deployContracts: ArbBlockhashEntropy, ZkReferee wired to the forked emergency stop
-//      0x724d…7797 (the real verifier contracts, not a mock), Season, Challenge; then season.mjs's
-//      openSeason with seasons/testnet-0.json, level tool check included;
+//   2-5. deployContracts: ArbBlockhashEntropy, ZkReferee wired to the forked 3.1 emergency stop
+//      0xA1DC…bA29 (the real verifier contracts, not a mock), Season, Challenge; then season.mjs's
+//      openSeason with seasons/testnet-0.json, level tool and stop checks included;
 //   7. the happy path, settled with M4.10's real Groth16 run proof (contracts/test/fixtures);
 //   8. the full six-journal commit;
-//   then isSolvent and the preflight's solvency row, the gas table and the measurements.
+//   then isSolvent and the preflight's solvency row, its RISC Zero verifier row read through the
+//   new ZkReferee, the gas table and the measurements.
 // What differs from the real deployment:
 //   - anvil's ArbSys at 0x64 on an Arbitrum chain answers arbBlockNumber but reverts on
 //     arbBlockHash (PrecompileError), and shadows code etched there. So ArbBlockhashEntropy reads a
@@ -21,12 +22,12 @@
 //   - anvil charges no L1 data gas; Arbitrum Sepolia's ArbGasInfo prices L1 calldata at 0 wei today.
 // The records go to a temporary directory: deployments/ and seasons/ stay as they are.
 // Usage: node fork-rehearsal.mjs [--port <anvil port>] [--fork-url <Arbitrum Sepolia RPC>]
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { Contract, ContractFactory, getAddress, sha256, toBeHex } from "ethers";
-import { NETWORKS, REPO_ROOT, SENT_TRANSACTIONS, buildContracts, connect, deployContracts } from "./deploy.mjs";
+import { NETWORKS, REPO_ROOT, RISC_ZERO_GROTH16_VERIFIER, SENT_TRANSACTIONS, buildContracts, connect, deployContracts } from "./deploy.mjs";
 import { isEntryPoint, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 import {
   chainClockOf,
@@ -40,7 +41,7 @@ import {
   transactions,
 } from "./e2e.mjs";
 import { CALIBRATION, assertEqual, startAnvil } from "./localnet.mjs";
-import { RISC_ZERO_GROTH16_VERIFIER, isReady, preflight, renderRows } from "./preflight.mjs";
+import { isReady, preflight, renderRows } from "./preflight.mjs";
 import { openSeason } from "./season.mjs";
 import { encodeProof } from "./zk-host.mjs";
 
@@ -103,7 +104,9 @@ async function rehearse(rpc, workDir) {
   assertEqual("the rehearsal's Challenge", generation.Challenge, FIXTURE_CHALLENGE);
   prependGeneration(recordFile, NETWORK, NETWORKS[NETWORK].chainId, generation);
   const seasonFile = join(workDir, "testnet-0.json");
-  copyFileSync(join(REPO_ROOT, "seasons", "testnet-0.json"), seasonFile);
+  const testnet0 = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "testnet-0.json"), "utf8"));
+  // testnet-0 records generation 1's referee since it opened; the rehearsal opens it afresh.
+  writeFileSync(seasonFile, `${JSON.stringify({ ...testnet0, referee: null }, null, 2)}\n`);
   await openSeason({ provider, operator: deployer, seasonFile, recordFile });
   assertEqual("the season file's referee after open", JSON.parse(readFileSync(seasonFile, "utf8")).referee, generation.Referee);
   for (const { label, receipt } of SENT_TRANSACTIONS) transactions.push(await rowOf("deploy", label, receipt));
@@ -131,7 +134,14 @@ async function rehearse(rpc, workDir) {
     assertEqual("the written run file, but its chain id, as the fixture's", JSON.stringify({ ...written, chainId: fixtureRun.chainId }), JSON.stringify(fixtureRun));
     await measureEmergencyStop(provider, await context.referee.verifier(), proofs.challengeRun.imageId, proofs.challengeRun);
     await liveFullCommit(context);
-    const finalRows = await preflight({ provider, deployer: FIXTURE_DEPLOYER, tester: await tester.getAddress(), backend: "zk", seasonAddress: generation.Season });
+    const finalRows = await preflight({
+      provider,
+      deployer: FIXTURE_DEPLOYER,
+      tester: await tester.getAddress(),
+      backend: "zk",
+      seasonAddress: generation.Season,
+      referee: generation.Referee,
+    });
     console.log(renderRows(finalRows));
     if (!isReady(finalRows)) throw new Error("the preflight fails after the rehearsal");
     const record = readDeploymentRecord(recordFile);

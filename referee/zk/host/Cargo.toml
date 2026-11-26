@@ -9,8 +9,8 @@ methods = ["../guest"]
 
 [dependencies]
 hex = "0.4"
-risc0-zkvm = { version = "=3.0.6", features = ["prove"] }
+risc0-zkvm = { version = "=3.1.0", features = ["prove"] }
 serde_json = "1"
 
 [build-dependencies]
-risc0-build = "=3.0.6"
+risc0-build = "=3.0.7"

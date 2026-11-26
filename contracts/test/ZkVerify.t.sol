@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {ControlID} from "risc0/groth16/ControlID.sol";
-import {RiscZeroGroth16Verifier} from "risc0/groth16/RiscZeroGroth16Verifier.sol";
+import {RiscZeroGroth16Verifier, SelectorMismatch} from "risc0/groth16/RiscZeroGroth16Verifier.sol";
 import {VerificationFailed} from "risc0/IRiscZeroVerifier.sol";
 import {Outcome} from "../src/interfaces/IReferee.sol";
 
@@ -40,9 +40,9 @@ abstract contract ZkFixtures is Test {
     }
 }
 
-/// The zk proofs of `zk-host prove` (plan M4.8), from the logs of a zk-prove.yml run and of the
-/// container's proof of `worst-case` (test/fixtures/zk-proofs.json names each source), verified by
-/// RISC Zero's 3.0 Groth16 verifier, called directly as a zk referee calls it, never through the
+/// The zk proofs of `zk-host prove` (plan M4.8), from the logs of zk-prove.yml runs and of the
+/// container's proof of `challengeRun` (test/fixtures/zk-proofs.json names each source), verified by
+/// RISC Zero's 3.1 Groth16 verifier, called directly as a zk referee calls it, never through the
 /// upgradeable router (docs/ECONOMY.md, zk prover trust). The public values are rebuilt here from
 /// the proven game vectors, in the encoding of referee/zk/README.md, which ZkReferee decodes.
 contract ZkVerifyTest is ZkFixtures {
@@ -86,6 +86,19 @@ contract ZkVerifyTest is ZkFixtures {
         bytes memory publicValues = publicValuesOf(".run");
         vm.expectRevert(VerificationFailed.selector);
         this.verifyFixture(".level", publicValues);
+    }
+
+    function test_VerifierSelectorIsTheOneThePreflightPins() public view {
+        assertEq(verifier.SELECTOR(), bytes4(0xe71e6620));
+    }
+
+    function test_aSealOfThe30SelectorReverts() public {
+        bytes memory seal = vm.parseJsonBytes(fixtures, ".run.seal");
+        (seal[0], seal[1], seal[2], seal[3]) = (0x73, 0xc4, 0x57, 0xba);
+        bytes32 imageId = vm.parseJsonBytes32(fixtures, ".run.imageId");
+        bytes32 journalDigest = sha256(publicValuesOf(".run"));
+        vm.expectRevert(abi.encodeWithSelector(SelectorMismatch.selector, bytes4(0x73c457ba), bytes4(0xe71e6620)));
+        verifier.verify(seal, imageId, journalDigest);
     }
 
     function verifyFixture(string memory mode, bytes memory publicValues) public view {

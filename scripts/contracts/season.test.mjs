@@ -9,6 +9,7 @@ import { prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 import { checkHappyPath, deployLocalnet, startAnvil } from "./localnet.mjs";
 import {
   checkLevels,
+  checkStatus,
   claimShare,
   closeSeasons,
   countRuns,
@@ -34,9 +35,10 @@ function seasonFileWith(changes) {
   return file;
 }
 
-test("seasons/testnet-0.json holds plan M4.14's provisional season, its referee the deployed ZkReferee", () => {
+test("seasons/testnet-0.json holds plan M4.14's provisional season, its referee the ZkReferee of the generation that opened it", () => {
   const { network, referee, runFee, length, grace, commitSlack, minClears } = readSeasonFile(TESTNET_0);
-  const deployedReferee = JSON.parse(readFileSync(join(REPO_ROOT, "deployments", "arbitrum-sepolia.json"), "utf8")).generations[0].Referee;
+  const { generations } = JSON.parse(readFileSync(join(REPO_ROOT, "deployments", "arbitrum-sepolia.json"), "utf8"));
+  const deployedReferee = generations.find((generation) => "testnet-0" in generation.seasons).Referee;
   assert.deepEqual(
     { network, referee, runFee, length, grace, commitSlack, minClears },
     { network: "arbitrum-sepolia", referee: deployedReferee, runFee: "50000000000000", length: 86_400, grace: 86_400, commitSlack: 120, minClears: 1 },
@@ -85,6 +87,17 @@ test("countRuns counts each run at every stage it reached", () => {
     { revealed: true, committed: true, status: 2 },
   ];
   assert.deepEqual(countRuns(runs), { bought: 5, revealed: 4, committed: 3, settled: 1, late: 1 });
+});
+
+const STOPPED = { ok: false, detail: "the emergency stop 0x724d375B5b622e15f0E64e9Deb76a4cB17877797 is paused" };
+const generationOnStop = (closed) => ({ Season: "0x0e9BcC5A9DBD9CAD05C531fC12E925164cfaDf6d", solvent: true, riscZero: STOPPED, seasons: [{ closed }] });
+
+test("status fails when a season that is not closed sits on a RISC Zero stop that fails its check", () => {
+  assert.throws(() => checkStatus([generationOnStop(false)]), /a season that is not closed sits on a RISC Zero stop that fails its check: Season 0x0e9B.* is paused/);
+});
+
+test("status passes when only closed seasons sit on a RISC Zero stop that fails its check", () => {
+  assert.doesNotThrow(() => checkStatus([generationOnStop(true)]));
 });
 
 // The local season of localnet.mjs, with the run its happy path settles for anvil's account 2 and

@@ -1,6 +1,6 @@
 # Deployment
 
-The Arbitrum Sepolia deployment of plan M4.14 and its first settled run: the runbook of the round F2 session, what it records, how a redeploy works, and the fork rehearsal that tested the runbook first. The backend is zk (D2): `ZkReferee` over RISC Zero's emergency stop for its 3.0 Groth16 verifier, `0x724d375B5b622e15f0E64e9Deb76a4cB17877797`, pinned in `scripts/contracts/deploy.mjs` by chain id (`docs/ECONOMY.md`, zk prover trust).
+The Arbitrum Sepolia deployment of plan M4.14 and its first settled run: the runbook of the round F2 session, what it records, how a redeploy works, and the fork rehearsal that tested the runbook first. The backend is zk (D2). Generation 1, the subject of §3 to §7, runs `ZkReferee` over RISC Zero's emergency stop for its 3.0 Groth16 verifier, `0x724d375B5b622e15f0E64e9Deb76a4cB17877797`, which RISC Zero paused on 2026-11-19 (§4). Since plan M5.10, `scripts/contracts/deploy.mjs` pins, by chain id, the stop for its 3.1 Groth16 verifier, `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29` on Arbitrum Sepolia (`docs/ECONOMY.md`, zk prover trust). Generation 2, deployed on 2026-11-26 after round F4, uses it ([§8](#8-generation-2-risc-zero-31)).
 
 **Status: deployed on 2026-11-09; a run settled.** Round F2 ran §2 end to end on Arbitrum Sepolia. It deployed generation 1 from `ca76f8f` and opened `testnet-0` as season 1. All four sources verified on Sourcify. Run 1, a bot run proven with a real Groth16 proof, settled with 1 clear; run 2 committed six full journals; `isSolvent()` is true ([§3](#3-results)). The whole flow first passed on a fork of Arbitrum Sepolia ([§5](#5-fork-rehearsal)).
 
@@ -46,8 +46,8 @@ cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host
 referee/zk/target/release/zk-host image-id
 ```
 
-- `zk-host image-id` printed `0xa3013dc48ccd9e8e28c6625a8362a1fde513e1c51ae1e50286445c0eae3702b1` for M4.8's and M4.10's guests. Another value means the verify program changed since; that is fine, since the deployment pins whatever the build prints, but the fixture proofs then no longer verify under the deployed `ZkReferee`.
-- Proving wraps the proof into Groth16 in Docker: start `dockerd` as [`docs/TOOLING.md`](TOOLING.md#docker-started-by-hand) shows. The image `risczero/risc0-groth16-prover:v2025-04-03.1` (5.2 GB) comes through the registry mirror.
+- `zk-host image-id` printed `0xa3013dc48ccd9e8e28c6625a8362a1fde513e1c51ae1e50286445c0eae3702b1` for M4.8's and M4.10's guests on RISC Zero 3.0.6, the image id of generation 1, and prints `0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8` on 3.1.0 (plan M5.10), at this fixed path. Another value means the verify program changed since; that is fine, since the deployment pins whatever the build prints, but the fixture proofs then no longer verify under the deployed `ZkReferee`.
+- Proving wraps the proof into Groth16 in Docker: start `dockerd` as [`docs/TOOLING.md`](TOOLING.md#docker-started-by-hand) shows. The image `risczero/risc0-groth16-prover:v2026-10-20.1`, the tag `risc0-groth16` 3.0.6 runs (2,465,553,712 bytes of linux/amd64 layers, 5.4 GB once loaded), comes through the registry mirror; generation 1's proofs used `v2025-04-03.1` (5.2 GB) on 3.0.6.
 - Optional, one minute, no key: `node scripts/contracts/fork-rehearsal.mjs` repeats §5 on a fresh fork.
 
 ## 2. Steps
@@ -60,7 +60,7 @@ The plan's nine steps, as seven, each one or two commands, run in order in one s
    node scripts/contracts/preflight.mjs --network arbitrum-sepolia --backend zk
    ```
 
-   It must end with `ready: yes`: chain 421614; the zk backend (the mock backend fails here); both accounts funded and different; the Stylus rows skipped; and the `RISC Zero verifier` row, which reads the pinned emergency stop: code present, not paused, over the 3.0 Groth16 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D` with selector `0x73c457ba`. Copy the deployer's address from the `accounts` row: it is the treasury of step 2.
+   It must end with `ready: yes`: chain 421614; the zk backend (the mock backend fails here); both accounts funded and different; the Stylus rows skipped; and the `RISC Zero verifier` row, which reads the pinned emergency stop: code present, not paused, over the 3.1 Groth16 verifier `0x8c915b5071206C6E328BC18529586c513408aB3b` with selector `0xe71e6620` (generation 1 read the 3.0 verifier `0x2a098988600d87650Fb061FfAff08B97149Fa84D`, selector `0x73c457ba`). With `--check-solvent`, the row reads the stop that the newest generation's `ZkReferee` calls. `deploy.mjs` makes the same check itself before it deploys a `ZkReferee` (plan M5.10). Copy the deployer's address from the `accounts` row: it is the treasury of step 2.
 
 2. **Deploy** (plan steps 2, 3 and 5) `ArbBlockhashEntropy` over ArbSys `0x64`, `ZkReferee` over the emergency stop, `Season` with the deployer as operator and treasury, then `Challenge`, bound to `Season` (`Challenge` comes before the season opens, which changes nothing, since `open` does not read it):
 
@@ -193,6 +193,7 @@ Modeled on ethblockdigger's [`DEPLOYMENT.md`](https://github.com/detychey/ethblo
 - **A new generation** is step 2 again: `deploy.mjs` writes it at the front of `deployments/arbitrum-sepolia.json`'s `generations`, newest first, and keeps every earlier generation as it was, so an earlier address is never overwritten and tester reports can be matched to the generation they ran on (`deployments/README.md`). Then steps 3 to 7 with the new season file. The web app reads `generations[0]`.
 - **A new season on the same generation** needs no redeploy: `season.mjs open` with the next season file once the current season has ended (README §8.4). Its referee is still the generation's `ZkReferee`.
 - **What forces a new generation:** a change to `contracts/src/` (a new ABI or behavior); a new verify program, whose image id `ZkReferee` pins, which follows any behavior change of the core (`RULES_VERSION`); a stopped emergency stop (RISC Zero's owner paused the 3.0 verifier: the preflight's `RISC Zero verifier` row fails, and the next generation pins the stop of the next verifier version, after the same checks); a lost or leaked deployer key, since it is `Season`'s operator.
+  - This happened on 2026-11-19: RISC Zero paused the 3.0 stop `0x724d…7797` that generation 1 pins, at block 330,861,170 (tx [`0xdbc68760…6122`](https://sepolia.arbiscan.io/tx/0xdbc687608ac45cc5965ba92319e0dd84e813187b2cbbcda17d50475907406122)), after its Groth16 advisory of 2026-11-11; it was noticed on 2026-11-26. Generation 2 (plan M5.10) pins the 3.1 stop. Since M5.10, `season.mjs status` checks each zk generation's stop every day (`season-ops.yml`), and `season.mjs open` checks it before opening a season.
 - **The old generation keeps working** for its open seasons: runs settle through their own season's referee until its end plus grace, and close, claims and `withdrawRake` stay permissionless. A stopped emergency stop halts settlement and forges nothing: the season's pot rolls over.
 - **Testnet only:** the deployer is the treasury. A mainnet generation needs a separate treasury, a separate operator policy and an audit (`docs/ECONOMY.md` §4).
 
@@ -273,3 +274,29 @@ testnet-0's settlement ended on 2026-11-11 at 12:14:45 UTC. Ten minutes later, p
   - `isSolvent()` true.
 - **Gas** was priced at about 0.020 gwei, with no L1 gas (`gasUsedForL1` 0).
 - **`season-ops.yml`'s daily schedule** had not run by then. Its first scheduled run was due at 07:17 UTC that day, and none appeared. It could not have closed anything before 12:14:45 anyway.
+
+## 8. Generation 2: RISC Zero 3.1
+
+Plan M5.10 deployed generation 2 on 2026-11-26, after round F4, from `ba5d63b` at the fixed path. It ran §2's steps 1, 2, 4 and 7; it opens no season, since M5.6 opens testnet-1 on it. Generation 1 stays in the record as it was.
+
+| Contract | Address |
+|---|---|
+| `ArbBlockhashEntropy` | [`0x235683d9fcD79d1C0e8A8779cA844d21316A7B40`](https://repo.sourcify.dev/421614/0x235683d9fcD79d1C0e8A8779cA844d21316A7B40) |
+| `ZkReferee` | [`0xb97125b14E8E704Fb433cca4aa6b04eF5fe5C9FA`](https://repo.sourcify.dev/421614/0xb97125b14E8E704Fb433cca4aa6b04eF5fe5C9FA) |
+| `Season` | [`0x8E9a993c9fb052dCEe447b2e8952319b000Ef446`](https://repo.sourcify.dev/421614/0x8E9a993c9fb052dCEe447b2e8952319b000Ef446) |
+| `Challenge` | [`0xe0E17cEc55451783826d91FC34b214Ca8542204f`](https://repo.sourcify.dev/421614/0xe0E17cEc55451783826d91FC34b214Ca8542204f) |
+
+| Step | Transaction | Block | Gas | Fee |
+|---|---|---:|---:|---:|
+| deploy ArbBlockhashEntropy | [0x4dbc6295…a822](https://sepolia.arbiscan.io/tx/0x4dbc6295e92ccd8e73c42832ef253bbf17d5f4a49c9f76bfc655b4457ab4a822) | 332,955,753 | 496,001 | 0.0000099 ETH |
+| deploy ZkReferee | [0xbd98f50d…37c8](https://sepolia.arbiscan.io/tx/0xbd98f50d9490a2ce79fb53b45209b22beb2d7d7118e08ab4d124b70eb5f337c8) | 332,955,758 | 762,710 | 0.0000153 ETH |
+| deploy Season | [0xaefb8122…fddd](https://sepolia.arbiscan.io/tx/0xaefb8122764640ff971c19071661c8183cdcd24c17444a663bcd35ee687afddd) | 332,955,762 | 1,736,804 | 0.0000348 ETH |
+| deploy Challenge | [0xca2e966a…df0b](https://sepolia.arbiscan.io/tx/0xca2e966a3613e5f7da4f3c80dc160c143f2561edc76e69b427e40e474ba0df0b) | 332,955,766 | 1,971,245 | 0.0000394 ETH |
+| Season.bindChallenge | [0xf180f014…a914](https://sepolia.arbiscan.io/tx/0xf180f014153b02262efd7bce3da2faaff27bb12085b7f4b3c6fa4a8ebfbca914) | 332,955,771 | 45,310 | 0.0000009 ETH |
+
+The five transactions cost 0.0001003 ETH at about 0.020 gwei, with no L1 gas (`gasUsedForL1` 0).
+
+- **Before:** each new seal verified through the stop with `eth_call`, the fork rehearsal passed at block 332,947,252, and the preflight read `ready: yes` ([`VERIFICATION.md`](VERIFICATION.md#risc-zero-310)).
+- **The generation:** `ZkReferee` reads `verifier()` `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29`, `imageId()` `0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8`, which is the build's, and `rulesVersion()` 2. The stop reads `paused()` false and `verifier()` `0x8c915b5071206C6E328BC18529586c513408aB3b`, whose `SELECTOR()` is `0xe71e6620`. All four sources are an `exact_match` on Sourcify. `isSolvent()` is true, and `preflight.mjs --check-solvent` reads `ready: yes`.
+- **Run 1 on generation 2:** `verify-proof.mjs` with `run-1.risc0-3.1.proof.json` reads `verifyRun accepts the proof: run score 20310`, 344,156 gas estimated. Run 1's 3.0 proof of record reverts there with `SelectorMismatch(0x73c457ba, 0xe71e6620)` (`0xb8b38d4c…`).
+- **`season.mjs status`** passes at block 332,955,917. It reads generation 2's stop as `PASS`. It reads generation 1's as `FAIL`, since that referee calls the paused 3.0 stop, which is allowed because testnet-0, its only season, is closed.

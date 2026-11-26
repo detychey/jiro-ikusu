@@ -37,14 +37,22 @@ const ARB_SYS_PRECOMPILE = "0x0000000000000000000000000000000000000064";
 const STYLUS_WASM = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "jiro_referee_stylus.opt.wasm");
 // `cargo build --release --locked -p jiro-tools` writes it.
 export const JIRO_TOOLS = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "release", "jiro-tools");
-// RISC Zero's emergency stop over its 3.0 Groth16 verifier, by chain id, from
-// contracts/lib/risc0-ethereum/contracts/deployment.toml. ZkReferee holds it and calls it directly,
-// never RISC Zero's upgradeable router: the stop's owner can only pause it for good, never add a
-// route (README §7.3, docs/ECONOMY.md).
+// RISC Zero's emergency stop over its 3.1.0 Groth16 verifier of selector 0xe71e6620, the one
+// GHSA-mm6c-35cm-g4x2 names as patched, by chain id. risc0-ethereum's deployment.toml lists two
+// 3.1.0 verifiers per chain; its main marks the 0x8b38038c one and the 3.0 ones stopped (commits
+// bf9e331, #748, and 13754b0, #751). ZkReferee holds it and calls it directly, never RISC Zero's
+// upgradeable router: the stop's owner can only pause it for good, never add a route (README §7.3,
+// docs/ECONOMY.md).
 const RISC_ZERO_VERIFIER_ESTOPS = {
-  42161: "0x9F9994Eb4Cb5200198FEfb470f8b50301662e696",
-  421614: "0x724d375B5b622e15f0E64e9Deb76a4cB17877797",
+  42161: "0x5144A37e65fd032F628663Cb21E16490378a8630",
+  421614: "0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29",
 };
+// The 3.1.0 Groth16 verifier that both pinned stops hold, and its selector (plan M5.10).
+export const RISC_ZERO_GROTH16_VERIFIER = "0x8c915b5071206C6E328BC18529586c513408aB3b";
+export const RISC_ZERO_GROTH16_SELECTOR = "0xe71e6620";
+const ESTOP_ABI = ["function paused() view returns (bool)", "function verifier() view returns (address)"];
+const GROTH16_ABI = ["function SELECTOR() view returns (bytes4)"];
+const ZK_REFEREE_ABI = ["function verifier() view returns (address)"];
 // The selector of the dev-mode seals of `RISC0_DEV_MODE=1 zk-host prove`, followed by the claim's
 // digest, which RISC Zero's mock verifier accepts when deployed with it.
 const MOCK_VERIFIER_SELECTOR = "0xffffffff";
@@ -170,14 +178,40 @@ export function riscZeroVerifierOf(chainId) {
 }
 
 /**
+ * The pinned emergency stop of `chainId`: deployed, not paused, and over RISC Zero's 3.1 Groth16
+ * verifier of the pinned selector. With `referee`, that ZkReferee must call that stop.
+ */
+export async function checkRiscZeroVerifier(provider, chainId, referee) {
+  const estop = riscZeroVerifierOf(chainId);
+  if (referee !== undefined) {
+    const called = getAddress(await new Contract(referee, ZK_REFEREE_ABI, provider).verifier());
+    if (called !== estop) throw new Error(`the ZkReferee ${referee} calls ${called}, not the pinned emergency stop ${estop}`);
+  }
+  if ((await provider.getCode(estop)) === "0x") throw new Error(`the emergency stop ${estop} has no code`);
+  const stop = new Contract(estop, ESTOP_ABI, provider);
+  if (await stop.paused()) throw new Error(`the emergency stop ${estop} is paused: no proof verifies through it, for good`);
+  const verifier = getAddress(await stop.verifier());
+  if (verifier !== RISC_ZERO_GROTH16_VERIFIER) throw new Error(`the emergency stop ${estop} holds ${verifier}, not RISC Zero's 3.1 Groth16 verifier`);
+  const selector = await new Contract(verifier, GROTH16_ABI, provider).SELECTOR();
+  if (selector !== RISC_ZERO_GROTH16_SELECTOR) throw new Error(`the verifier ${verifier} has selector ${selector}, not ${RISC_ZERO_GROTH16_SELECTOR}`);
+  const stopChecked = `emergency stop ${estop}, not paused, over ${verifier} (selector ${selector})`;
+  return referee === undefined ? stopChecked : `ZkReferee ${getAddress(referee)} calls the ${stopChecked}`;
+}
+
+/**
  * ZkReferee for the verify program `imageId`. The local chains have no RISC Zero verifier: there it
  * calls RISC Zero's mock verifier, which accepts the dev-mode seals of `RISC0_DEV_MODE=1 zk-host prove`.
+ * Elsewhere it calls the pinned emergency stop, which must pass checkRiscZeroVerifier.
  */
 async function deployZkReferee({ artifacts, provider, network, deployer, imageId, rulesVersion }) {
-  const verifier = LOCAL_NETWORKS.includes(network)
-    ? await (await deployContract(artifacts.RiscZeroMockVerifier, "RiscZeroMockVerifier", deployer, [MOCK_VERIFIER_SELECTOR])).getAddress()
-    : riscZeroVerifierOf(NETWORKS[network].chainId);
-  if ((await provider.getCode(verifier)) === "0x") throw new Error(`the RISC Zero verifier at ${verifier} has no code on ${network}`);
+  let verifier;
+  if (LOCAL_NETWORKS.includes(network)) {
+    verifier = await (await deployContract(artifacts.RiscZeroMockVerifier, "RiscZeroMockVerifier", deployer, [MOCK_VERIFIER_SELECTOR])).getAddress();
+    if ((await provider.getCode(verifier)) === "0x") throw new Error(`the RISC Zero verifier at ${verifier} has no code on ${network}`);
+  } else {
+    verifier = riscZeroVerifierOf(NETWORKS[network].chainId);
+    await checkRiscZeroVerifier(provider, NETWORKS[network].chainId);
+  }
   return (await deployContract(artifacts.ZkReferee, "ZkReferee", deployer, [verifier, imageId, rulesVersion])).getAddress();
 }
 
