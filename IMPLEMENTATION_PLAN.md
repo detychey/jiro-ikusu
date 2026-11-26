@@ -2,7 +2,7 @@
 
 **Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. M4, the referees and the contracts, closed with M4.14 on 2026-11-09: a run settled end to end on Arbitrum Sepolia. On 2026-11-10 the owner made the browser the game's platform, with a phone version later (README §13 D1). On 2026-11-11 the owner scheduled M3, that phone version, as the same web client made touch-first (README §13 D16); its first item is M3.11.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
-[`README.md`](README.md) is the normative specification, and this plan turns it into 73 work items. Six are conditional (M1.14, M1.15, M3.21, M3.22, M4.10, M4.15) and three are optional (M3.20, M3.23, M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
+[`README.md`](README.md) is the normative specification, and this plan turns it into 74 work items. Six are conditional (M1.14, M1.15, M3.21, M3.22, M4.10, M4.15) and three are optional (M3.20, M3.23, M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
 The order:
 
@@ -13,7 +13,7 @@ The order:
 5. **dApp and a testnet season** (M5).
 6. **Phone version** (M3), from M3.11: the same web client made touch-first, on its own chain off M5's critical path (§12); phone Challenge after testnet-1 (P23).
 
-Item count: M0 7, M1 18, M2 11, M3 13, M4 16, M5 8. Review findings split out of M4.12 add items from M4.17 on.
+Item count: M0 7, M1 18, M2 11, M3 13, M4 16, M5 9. Review findings split out of M4.12 add items from M4.17 on.
 
 ## Contents
 
@@ -233,7 +233,7 @@ deployments/         one record per network, with a list of contract generations
 | Playwright, wrangler | versions recorded by M0.2 | `scripts/bootstrap.sh`, lockfiles |
 | nitro-devnode | `run-dev-node.sh` vendored from OffchainLabs/nitro-devnode at a fixed commit sha, and `NITRO_NODE_VERSION` set explicitly (M4.2) | `scripts/contracts/nitro/`, `stylus-gas.yml`, `e2e.yml` |
 | GitHub Actions | each third-party action at an exact version | workflows |
-| zkVM toolchain | RISC Zero (M1.12): `risc0-zkvm` and `risc0-build` `=3.0.6`, Rust toolchain `r0.1.97.0` (`rustc 1.97.0-dev`) | `referee/zk/`, `scripts/bootstrap.sh` (`zk` tier) |
+| zkVM toolchain | RISC Zero (M1.12): `risc0-zkvm` `=3.1.0` and `risc0-build` `=3.0.7` (M5.10; `=3.0.6` before), Rust toolchain `r0.1.97.0` (`rustc 1.97.0-dev`) | `referee/zk/`, `scripts/bootstrap.sh` (`zk` tier) |
 
 ### 3.3 Cargo profiles and core lints
 
@@ -2130,10 +2130,11 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | M5.2 | Challenge run flow in the browser | M5.1 | L | none |
 | M5.3 | Settlement, season pages, replay of committed runs | M2.3, M4.9, M5.2 | L | none |
 | M5.5 | Season settlement, testnet-1 parameters and runbook | M5.3, M5.8 | M | Choose the proving route; approve the parameters, the schedule and the prover's secret |
-| M5.6 | Testnet season 1 | M5.3, M5.5, M5.9 | M | Testers, play, approvals |
+| M5.6 | Testnet season 1 | M5.3, M5.5, M5.9, M5.10 | M | Testers, play, approvals |
 | M5.7 | Challenge page wiring | M5.2 | M | none |
 | M5.8 | Season operations: status, close, withdraw and claim; testnet-0 close | M4.14 | M | none |
-| M5.9 | GPU proving on the owner's card | M5.5 | M | Run the proofs on the card's machine |
+| M5.9 | GPU proving on the owner's card | M5.5, M5.10 | M | Run the proofs on the card's machine |
+| M5.10 | RISC Zero 3.1.0: the patched verifier, generation 2 on Arbitrum Sepolia | M4.14, M5.8 | M | Approve deploying generation 2 (round F4) |
 
 Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4.11) with MockReferee, `e2e.yml` on nitro-devnode with the real referee, or Arbitrum Sepolia.
 
@@ -2351,6 +2352,37 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - the CPU build without the feature still proves as before (`zk-exec` job).
 - **Skills:** `onchain-referee`; tier `zk`. **README:** §7.3, §7.5. **Needs user:** run the build and the two proofs on the RTX 3060's machine, x86-64 Linux with the CUDA toolkit, or share that machine's repository folder through Remote Control so that an agent session runs them.
 
+#### M5.10 RISC Zero 3.1.0: the patched verifier, generation 2 on Arbitrum Sepolia
+
+- **Goal:** testnet-1 opens on a RISC Zero verifier that is not stopped, and stays watched: the zk backend on `risc0-zkvm` 3.1.0, a new generation whose `ZkReferee` pins RISC Zero's emergency stop over its 3.1 Groth16 verifier, and a check of that stop at the deployment, at the open and every day.
+- **Why:** filed on 2026-11-26. RISC Zero's advisories GHSA-g6qg-9j8p-7j87 and GHSA-mm6c-35cm-g4x2 (critical, 2026-11-11) report that a valid 3.0 Groth16 receipt could be turned into one for any claim. The fix is `risc0-zkvm` 3.1.0 with a new trusted setup (2026-11-10); 3.0.x is yanked. On 2026-11-19 RISC Zero paused the emergency stop `0x724d…7797` that generation 1's `ZkReferee` pins (block 330,861,170), so generation 1 verifies nothing, for good ([`docs/DEPLOYMENT.md` §4](docs/DEPLOYMENT.md#4-redeploy-and-generations), what forces a new generation). Only run 1 of testnet-0 ever settled through it (one `RunSettled`, no `LevelSettled`). Nothing read the stop between deployments, so the pause went unnoticed for a week. Cold builds of 3.0.6 also fail since RISC Zero closed the S3 bucket that `risc0-circuit-recursion` 4.0.5's build script reads.
+- **Session.** The deployment runs in a session that holds `DEPLOYER_KEY`, after round F4, from this PR's head at the fixed path, as M4.14's did after F2.
+- **Deliverables:**
+  - `risc0-zkvm` `=3.1.0` in `referee/zk/host/Cargo.toml` and `referee/zk/guest/Cargo.toml`, `risc0-build` `=3.0.7` (no 3.1.0 exists), and both lockfiles; no source change. Built at the fixed path, the verify image id is `0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8`.
+  - `zk-prove.yml`'s `GROTH16_PROVER_IMAGE`: `risczero/risc0-groth16-prover:v2026-10-20.1`, the image `risc0-groth16` 3.0.6 runs.
+  - `contracts/lib/risc0-ethereum` at commit `ff30da77ba4afdd496290ebebedb205348b15d83` (tag `v3.1.0`), with `contracts/foundry.lock`; `ZkVerify.t.sol` asserts the verifier's `SELECTOR` is `0xe71e6620` and that a seal of selector `0x73c457ba` reverts with `SelectorMismatch`. The four proofs of `contracts/test/fixtures/zk-proofs.json` made again on 3.1.0: `level` and `run` from this PR's `zk-prove.yml` run, `worstCase` from a dispatch of it, `challengeRun` in the container. Only their image ids, seals and sources change.
+  - testnet-0's run 1 proven again on 3.1.0 in the container, as `seasons/testnet-0/runs/run-1.risc0-3.1.proof.json`, beside its proof of record, which stays as it settled. A node test checks that the five real proofs share one image id, carry 260-byte seals of selector `0xe71e6620`, and that run 1's has the public values of `run-1.proof.json`.
+  - `scripts/contracts/deploy.mjs` pins RISC Zero's 3.1 emergency stops, `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29` on Arbitrum Sepolia and `0x5144A37e65fd032F628663Cb21E16490378a8630` on Arbitrum One, and holds the one check of a stop: the stop a `ZkReferee` calls (or the pinned one) is the pinned one, has code, is not paused, and is over the verifier `0x8c915b5071206C6E328BC18529586c513408aB3b` of selector `0xe71e6620`. `deploy.mjs` runs it before deploying a `ZkReferee`, `preflight.mjs` in its `RISC Zero verifier` row (with `--check-solvent`, on the newest generation's `ZkReferee`), `season.mjs open` before opening a season, and `season.mjs status` for each zk generation, failing when a season that is not closed sits on a stop that fails it. The superseded 3.1 verifier, selector `0x8b38038c`, whose stops RISC Zero paused and for which no published crate proves, is never pinned.
+  - `scripts/contracts/verify-proof.mjs` and its test, moved from M5.9's PR: an `eth_call` of `verifyRun` on the newest generation's `ZkReferee`.
+  - `scripts/contracts/season.test.mjs` asserts testnet-0's referee against the generation that holds testnet-0, not the newest one.
+  - Generation 2 on Arbitrum Sepolia: `docs/DEPLOYMENT.md` §2's preflight, deployment, Sourcify verification and solvency check, after the fork rehearsal. It opens no season: M5.6 opens testnet-1 on it.
+  - Docs: a "RISC Zero 3.1.0" section in `docs/VERIFICATION.md`; `docs/DEPLOYMENT.md` (the current backend, §1, §2 step 1, §4, and a §8 for generation 2); `docs/ECONOMY.md`'s verification-gas and zk-prover-trust rows; `referee/zk/README.md`; `deployments/README.md`'s backend row; `docs/SEASON_RUNBOOK.md` §1; README §13 D2; this plan (§3.2, §10, §12, §13 round F4, §14).
+- **Done when:**
+  - a cold `--locked` build at the fixed path prints the image id that every new fixture and run 1's 3.1.0 proof carry;
+  - `ci.yml` is green on the PR's final head (`zk-exec` included), and `zk-prove.yml`'s pull-request run is green on the head that commits the fixtures, each job's log showing `verified: yes`, the image id, a 260-byte seal and selector `0xe71e6620`;
+  - `forge test` verifies the four new fixtures against `v3.1.0`'s verifier, and each fixture's public values equal the 3.0 fixture's;
+  - `node --test scripts/contracts/` passes, with run 1's 3.1.0 proof having the public values of `run-1.proof.json`;
+  - before the deployment, each new seal verifies through the live stop `0xA1DC…bA29` (`eth_call`), the fork rehearsal settles `challengeRun` through the forked stop, and the preflight on Arbitrum Sepolia reads `ready: yes`;
+  - generation 2 is the newest generation of `deployments/arbitrum-sepolia.json`, and generation 1 is unchanged. Its `ZkReferee` reads `verifier()` `0xA1DC…bA29`, `imageId()` the build's, `rulesVersion()` 2; that stop reads `paused()` false and `verifier()` `0x8c91…aB3b`, whose `SELECTOR()` is `0xe71e6620`. Its four sources are verified on Sourcify, and `preflight.mjs --check-solvent` reads `ready: yes`;
+  - `verify-proof.mjs` accepts run 1's 3.1.0 proof through generation 2 with run score 20310, and the 3.0 proof of record reverts there with `SelectorMismatch(0x73c457ba, 0xe71e6620)`;
+  - `season.mjs status --network arbitrum-sepolia` prints each zk generation's stop and passes.
+- **Verify with:**
+  - at `/home/runner/work/jiro-ikusu/jiro-ikusu`, with `RISC0_DEV_MODE` unset: `RISC0_BUILD_LOCKED=1 cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host`, `zk-host image-id`, `zk-host execute vectors/`
+  - `forge test --match-contract 'ZkVerify|ZkReferee' --gas-report`, then `forge test`; `node --test scripts/contracts/`
+  - `node scripts/contracts/fork-rehearsal.mjs`; `node scripts/contracts/preflight.mjs --network arbitrum-sepolia --backend zk`
+  - Arbitrum Sepolia: `node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof seasons/testnet-0/runs/run-1.risc0-3.1.proof.json --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json`, `node scripts/contracts/preflight.mjs --network arbitrum-sepolia --check-solvent` and `node scripts/contracts/season.mjs status --network arbitrum-sepolia`
+- **Skills:** `onchain-referee`, `security`, `addresses`, `ship`; tiers `zk`, `contracts`. **README:** §7.3, §13 D2. **Needs user:** approve deploying generation 2 (round F4).
+
 ## 11. Decision schedule
 
 Each decision, or each part of one, is closed by the owner or by exactly one item, before its first use. Where the owner answered on 2026-10-28, the items named pin the details and propose what the answer left open. A decision item is approved by merging it.
@@ -2439,7 +2471,7 @@ Contracts (start after M0)
 
 dApp and season
   M2.10 + M4.11 -> M5.1 -> M5.2 -> M5.7 ; M5.2 + M2.3 + M4.9 -> M5.3
-  M4.14 -> M5.8 ; M5.3 + M5.8 -> M5.5 -> M5.9 ; M5.3 + M5.5 + M5.9 -> M5.6 ; M5.4 deferred (§16)
+  M4.14 -> M5.8 -> M5.10 ; M5.3 + M5.8 -> M5.5 ; M5.5 + M5.10 -> M5.9 ; M5.3 + M5.5 + M5.9 + M5.10 -> M5.6 ; M5.4 deferred (§16)
 
 Phone version
   M3.11 -> M3.12, M3.17 ; M3.12 -> M3.13, M3.16
@@ -2449,7 +2481,7 @@ Phone version
   M3.18 -> M3.21 (if Challenge outside wallet browsers is wanted: P20) -> M3.22 (if M3.21 chooses one)
 ```
 
-**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40. M2.11, a follow-up of M2.6 on the levels chain, adds one more and breaks the ties below: M2.6 > M2.11 > M2.7 > M2.8 > M4.11 becomes the only longest chain, ending at 41, and M1.9 > M4.7 and the browser chain move to slack 1. M5.2 came out L, and split its page wiring out into M5.7 (M). The browser chain then becomes the only longest chain, through M5.3, and ends at 42: M1.8 19 > M1.9 22 > M1.11 24 > M2.1 26 > M2.2 27 > M2.9 29 > M2.10 30 > M5.1 32 > M5.2 35 > M5.3 38 > M5.5 40 > M5.6 42. M5.7 feeds no later item, and M4.11 > M4.16 > M4.10 > M4.12 > M4.14 moves to slack 3. M5.8 (M), split out of M5.5 on 2026-11-10, runs from M4.14 to M5.5: the M4 chain's slack falls to 1, and the end stays at 42. M5.9 (M), split out of M5.5 on 2026-11-11 for the GPU route, runs from M5.5 to M5.6 and moves the end to 44: … M5.3 38 > M5.5 40 > M5.9 42 > M5.6 44.
+**Critical path.** This is the longest chain to M5.6, derived from the "Depends on" columns with S = 1, M = 2 and L = 3. The planning baseline is the likely case: activations stay paused, so D2 = zk, and M1.7 finds traps that M1.14 replaces, as it did: about 1.2 % of boards (README §4.7). The number after each item is its earliest finish. The end is at 39. As built, M1.15 came before M1.8 (M1.14 > M1.15 16 > M1.8 19 > M1.9 22), which lengthens this chain by one unit, to 40. M2.11, a follow-up of M2.6 on the levels chain, adds one more and breaks the ties below: M2.6 > M2.11 > M2.7 > M2.8 > M4.11 becomes the only longest chain, ending at 41, and M1.9 > M4.7 and the browser chain move to slack 1. M5.2 came out L, and split its page wiring out into M5.7 (M). The browser chain then becomes the only longest chain, through M5.3, and ends at 42: M1.8 19 > M1.9 22 > M1.11 24 > M2.1 26 > M2.2 27 > M2.9 29 > M2.10 30 > M5.1 32 > M5.2 35 > M5.3 38 > M5.5 40 > M5.6 42. M5.7 feeds no later item, and M4.11 > M4.16 > M4.10 > M4.12 > M4.14 moves to slack 3. M5.8 (M), split out of M5.5 on 2026-11-10, runs from M4.14 to M5.5: the M4 chain's slack falls to 1, and the end stays at 42. M5.9 (M), split out of M5.5 on 2026-11-11 for the GPU route, runs from M5.5 to M5.6 and moves the end to 44: … M5.3 38 > M5.5 40 > M5.9 42 > M5.6 44. M5.10 (M), filed on 2026-11-26 after RISC Zero stopped its 3.0 verifier, runs from M5.8 to M5.9 and M5.6. It finishes at 39 (M5.8 37), with slack 1 against M5.9's start at 40, so the end stays at 44. On the calendar, though, it gates M5.9's onchain criterion and the open, and round F4 sits on it.
 
 ```text
 M0.1 1 > M0.5 3 > M0.6 5 > M1.1 7 > M1.3 9 > M1.5 11 > M1.7 13 > M1.8 16 > M1.15 18
@@ -2471,7 +2503,7 @@ Several chains tie with it, so each of these is also critical (slack 0):
   - 1: M1.2; M0.7 > M1.18; the zk trials M1.16, M1.17 > M1.12; M4.8; the Stylus measurement M4.1 > M4.2; M4.9; the viewer and editor M2.3, M2.5.
   - 2: M1.4; M1.10; M1.14.
   - 5 or more: M2.4 (5); the contracts chain M4.3 > M4.4 > M4.5 > M4.6 (7); M4.13 (9); M0.3 (12); M1.13 (13).
-- **Owner latency.** The 39 units count agent work only. The main chain alone holds 19 sequential merges. These owner rounds (§13) sit on critical chains: A1, A2, A3 (M0.1, M0.2 and M0.5, M0.4 and M0.6), B1 (M1.7), D3, D3b, D4, D5 (the target curve, the bold bot and mix, and the layouts of M2.6, M2.11, M2.7 and M2.8), F0 when it occurs (before M4.10), F1 and F2 (M4.9 and M4.12, M4.14), and G2 and G3 (M5.5, M5.6). Stacking (§1.2) lets agents work ahead of merges, but each review and each play turnaround on this list delays the end by its own length. The season then runs for its configured length plus the settlement grace.
+- **Owner latency.** The 39 units count agent work only. The main chain alone holds 19 sequential merges. These owner rounds (§13) sit on critical chains: A1, A2, A3 (M0.1, M0.2 and M0.5, M0.4 and M0.6), B1 (M1.7), D3, D3b, D4, D5 (the target curve, the bold bot and mix, and the layouts of M2.6, M2.11, M2.7 and M2.8), F0 when it occurs (before M4.10), F1 and F2 (M4.9 and M4.12, M4.14), F4 (M5.10), and G2 and G3 (M5.5, M5.6). Stacking (§1.2) lets agents work ahead of merges, but each review and each play turnaround on this list delays the end by its own length. The season then runs for its configured length plus the settlement grace.
 - **Owner steps with little slack:** A4 and B0, the M0.7 review and the D14 rule (1); B3, the zk framework and any prover route (1); B2, the D7 replacement (2); and the reviews of M2.3 and M2.5 (1).
 
 **The phone version (M3)** has its own chain, from [`docs/PHONE.md` §11](docs/PHONE.md#11-work-breakdown), with the same weights. It ends at 11:
@@ -2541,6 +2573,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 - [x] **F3** (M4.14 merged; before G3 recruits testers): done on 2026-11-10.
   - Make the repository public in GitHub's settings, which only you can do (§15, question 15).
   - Then switch CI to the public profile (§1.3, P14): an agent's follow-up PR changes the workflows' triggers (`docs/TOOLING.md`), and you merge it.
+- [ ] **F4, critical** (M5.10 ready: its fixtures, fork rehearsal and preflight done): approve deploying generation 2 on Arbitrum Sepolia from M5.10's PR head: `ZkReferee` over RISC Zero's 3.1 emergency stop `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29`, image id `0xc9634ada…15a8`, rules version 2, the deployer as operator and treasury as in generation 1. An agent session with `DEPLOYER_KEY` deploys it and records it in the PR; then merge M5.10. Once M5.10's done-when lines are ticked, M5.9's 3.1.0 GPU session can start (G2b).
 
 ### Round G: testnet season
 
@@ -2604,6 +2637,7 @@ Device steps run on the PR's HTTPS preview, on your own phones: rows 1 and 3 of 
 | Season deadlines pass while no agent session is running | `season-ops.yml` on a daily schedule, never cancelled mid-run, failing on insolvency; `send_later` reminders for the season checkpoints (M5.8, M5.6) | M5.6 |
 | Actions cannot prove players' whole runs: a whole six-level run takes about 9 to 11 h to prove on 4 CPUs (M4.14's prep, PR #67), up to 16 to 17 h for the gate set's heaviest (`docs/ECONOMY.md`); GitHub-hosted jobs stop at 6 h (`docs/VERIFICATION.md`), on a public repository's 4-vCPU runners too, and private-repository runners have 2 vCPUs and about 7 GB (§2) | `season-ops.yml` never proves on its runner (M5.5). M5.5 presents the proving route with measured numbers, and the owner chooses in round G2 between a prover network on a capped account (round F0's credential) and the owner's own machine | M5.5 |
 | The settlement grace is too short for zk proving | Grace derived from the proving route the owner chose in round G2, the owner's GPU, and checked against its measured time per run before the open (M5.5, M5.9); the operator settles every day of the season, so the queue at the end stays short | M5.5, M5.9 |
+| RISC Zero stops the verifier a generation pins, or a published crate proves for another verifier than the one pinned | One check in deploy.mjs reads the stop a ZkReferee calls: the pinned one, not paused, over the verifier of the pinned selector. It runs before a deployment, in the preflight, before `season.mjs open`, and daily in `season-ops.yml`'s status, which fails when a season that is not closed sits on a stop that fails it. `forge test` verifies the crates' proofs against the submodule's `ControlID` and asserts its selector; the fork rehearsal verifies through the forked stop. A stopped verifier forces a new generation (`docs/DEPLOYMENT.md` §4). RISC Zero stopped its 3.0 verifier on 2026-11-19, noticed on 2026-11-26: M5.10 moves to 3.1.0, deploys generation 2 and adds the daily check | M5.10, for the 3.0 stop; not retired for later stops |
 | Close and claim fail on Sepolia when they first matter | `testnet-0` closed and claimed in a rehearsal before `testnet-1` opens (M5.8) | M5.8 |
 | The run commitment computed in Solidity diverges from the core's, or the Solidity run nonce from its fixtures | The ethers fixtures of `vectors/derivations.json`, read by both (M1.2, M4.4); the run nonce in Solidity only, and the draw in the core only (P17) | M4.4 |
 | Inputs copied from public journals or precomputed for every boss start (README §7.4) | D14: seeded boss randomness, so no two runs share a game (M1.18, M1.5) | M1.5 |
