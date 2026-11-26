@@ -22,6 +22,7 @@ import {
   WALLET_EVENTS,
 } from "../chain/wallet";
 import { type Core, hex } from "../core";
+import { CaptureEffects } from "../effects";
 import { CONTROLS, defaultBindings, HeldKeys, keyboardLayout, loadBindings } from "../input";
 import { downloadJson, element, exclusive, fitField, loadCore, messageOf, pending, percent, showHud } from "../page";
 import { Renderer } from "../render";
@@ -118,6 +119,7 @@ export function mount(): void {
   const stopButton = element<HTMLButtonElement>("stop");
   const canvas = element<HTMLCanvasElement>("field");
   const renderer = new Renderer(canvas);
+  const effects = new CaptureEffects(!window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const storage = browserStorage();
   let bindings = loadBindings(storage);
   const keys = new HeldKeys(bindings);
@@ -165,15 +167,18 @@ export function mount(): void {
         levelStarted: (levelIndex, slot) => {
           show("run-status", `Run ${active?.runId ?? ""}: playing. It commits by itself after the sixth level.`);
           show("run-level", `Level ${levelIndex + 1} of 6: ${loaded.names[slot] ?? `slot ${slot}`}`);
+          effects.reset();
           element("field-section").hidden = false;
           stopButton.hidden = false;
           fitField(renderer);
           canvas.focus();
         },
         ticked: (core) => {
-          renderer.drawCells(core.grid(), core.dirtyCells());
+          const changed = core.dirtyCells();
+          renderer.drawCells(core.grid(), changed);
           const snapshot = core.snapshot();
-          renderer.frame(snapshot);
+          effects.observe(snapshot, changed);
+          renderer.frame(snapshot, effects);
           showHud(snapshot);
         },
         levelEnded: (levelIndex, end) => show("run-level", `Level ${levelIndex + 1} of 6: ${end}.${levelIndex < 5 ? " The next level starts in 3 s." : ""}`),

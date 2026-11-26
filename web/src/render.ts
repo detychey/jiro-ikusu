@@ -3,6 +3,7 @@
 // grid layer; the entities are drawn on top of a copy of it every frame.
 
 import type { Snapshot } from "./core";
+import type { CaptureEffects } from "./effects";
 import { FIELD_CELLS } from "./level";
 
 export const CELL_PX = 4;
@@ -90,9 +91,10 @@ export class Renderer {
     }
   }
 
-  /** Shows the grid layer with the entities of `snapshot` on top. */
-  frame(snapshot: Snapshot): void {
+  /** Shows the grid layer with the entities of `snapshot` on top, then the capture effect. */
+  frame(snapshot: Snapshot, effects?: CaptureEffects): void {
     this.show(entityRects(snapshot));
+    effects?.draw(this.context);
   }
 
   /** Shows the grid layer with `rects` on top, back to front. */
