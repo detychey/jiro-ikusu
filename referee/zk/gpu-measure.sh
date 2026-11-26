@@ -31,6 +31,7 @@ readonly GROTH16_FILES=(stark_verify_final.zkey stark_verify_graph.bin preproces
 readonly GPU_FIELDS=name,uuid,memory.total,driver_version,vbios_version,compute_cap,power.limit,power.default_limit,power.max_limit,clocks.max.sm,clocks.max.mem,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current,pcie.link.width.max,persistence_mode
 readonly IDLE_GPU_MIB=1024
 readonly PROOF_LIMIT_S=3600
+readonly RECURSION_ZKR_SHA256=744b999f0a35b3c86753311c7efb2a0054be21727095cf105af6ee7d3f4d8849
 
 fail() {
   echo "gpu-measure: $*" >&2
@@ -47,6 +48,21 @@ provers_running() {
 
 cpu_counters() {
   cat /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/cpu.pressure 2>/dev/null || true
+}
+
+# risc0-circuit-recursion 4.0.5's build script downloads its recursion programs from an S3 bucket
+# that RISC Zero closed (403 since November 2026), unless RECURSION_SRC_PATH names a copy whose
+# sha256 it accepts. The same file is on RISC Zero's new artifacts host.
+fetch_recursion_programs() {
+  local zip="$HOME/.cache/jiro-ikusu/recursion_zkr-$RECURSION_ZKR_SHA256.zip"
+  if ! sha256sum --check --status <<<"$RECURSION_ZKR_SHA256  $zip" 2>/dev/null; then
+    mkdir -p "$(dirname "$zip")"
+    curl --proto '=https' --tlsv1.2 -fsSL -o "$zip.tmp" "https://artifacts.risczero.net/zkr/$RECURSION_ZKR_SHA256.zip"
+    sha256sum --check --status <<<"$RECURSION_ZKR_SHA256  $zip.tmp" ||
+      fail "the recursion programs from artifacts.risczero.net do not have sha256 $RECURSION_ZKR_SHA256"
+    mv "$zip.tmp" "$zip"
+  fi
+  export RECURSION_SRC_PATH="$zip"
 }
 
 po2=20 rounds=3 out=gpu-bench
@@ -112,6 +128,7 @@ if ! command -v rustup >/dev/null; then
   source "$HOME/.cargo/env"
 fi
 bash scripts/bootstrap.sh zk
+fetch_recursion_programs
 cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --features cuda
 readonly host="${CARGO_TARGET_DIR:-referee/zk/target}/release/zk-host"
 readonly build_seconds=$((SECONDS - build_start))
