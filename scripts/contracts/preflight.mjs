@@ -9,7 +9,8 @@
 //     (activation.mjs) and a clean referee/ tree, which deploy.mjs's stylus backend needs. Anvil
 //     runs no Stylus program, so these rows are skipped there;
 //   - for the zk backend on Arbitrum Sepolia, RISC Zero's pinned emergency stop: its code, not
-//     paused, over the 3.0 Groth16 verifier;
+//     paused, over the 3.1 Groth16 verifier (deploy.mjs's checkRiscZeroVerifier); with
+//     --check-solvent, the stop that the newest generation's ZkReferee calls;
 //   - with --check-solvent, Season.isSolvent() on the newest generation of deployments/<network>.json.
 // Usage: DEPLOYER_KEY=0x… TESTER_KEY=0x… node preflight.mjs --network <network> [--rpc <url>]
 //          [--backend <mock|stylus|zk>] [--check-solvent]
@@ -20,7 +21,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { Contract, JsonRpcProvider, Wallet, formatEther, getAddress } from "ethers";
 import { activationsOpen, readActivationGas } from "./activation.mjs";
-import { NETWORKS, REPO_ROOT, deploymentFileOf, privateKeyOf, riscZeroVerifierOf } from "./deploy.mjs";
+import { NETWORKS, REPO_ROOT, checkRiscZeroVerifier, deploymentFileOf, privateKeyOf } from "./deploy.mjs";
 import { BACKENDS, isEntryPoint, readDeploymentRecord } from "./deployments.mjs";
 
 export const NETWORK_OF_CHAIN = { 421614: "arbitrum-sepolia", 412346: "nitro-devnode", 31337: "local" };
@@ -28,12 +29,6 @@ export const NETWORK_OF_CHAIN = { 421614: "arbitrum-sepolia", 412346: "nitro-dev
 export const CARGO_STYLUS_VERSION = "0.10.10";
 const ANVIL_CHAIN_ID = 31337;
 const ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
-// RISC Zero's 3.0 Groth16 verifier, which its emergency stops on Arbitrum One and Sepolia hold,
-// from contracts/lib/risc0-ethereum/contracts/deployment.toml.
-export const RISC_ZERO_GROTH16_VERIFIER = "0x2a098988600d87650Fb061FfAff08B97149Fa84D";
-const RISC_ZERO_GROTH16_SELECTOR = "0x73c457ba";
-const ESTOP_ABI = ["function paused() view returns (bool)", "function verifier() view returns (address)"];
-const GROTH16_ABI = ["function SELECTOR() view returns (bytes4)"];
 const SEASON_ABI = JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "abi", "Season.json"), "utf8"));
 
 /** The network name of the provider's chain; throws on any chain but Arbitrum Sepolia and the local nodes. */
@@ -90,19 +85,6 @@ export function checkRefereeClean(porcelainStatus) {
   return "no uncommitted changes";
 }
 
-/** The pinned emergency stop of `chainId`: deployed, not paused, and over RISC Zero's 3.0 Groth16 verifier. */
-export async function checkRiscZeroVerifier(provider, chainId) {
-  const estop = riscZeroVerifierOf(chainId);
-  if ((await provider.getCode(estop)) === "0x") throw new Error(`the emergency stop ${estop} has no code`);
-  const stop = new Contract(estop, ESTOP_ABI, provider);
-  if (await stop.paused()) throw new Error(`the emergency stop ${estop} is paused: no proof verifies through it, for good`);
-  const verifier = getAddress(await stop.verifier());
-  if (verifier !== RISC_ZERO_GROTH16_VERIFIER) throw new Error(`the emergency stop ${estop} holds ${verifier}, not RISC Zero's 3.0 Groth16 verifier`);
-  const selector = await new Contract(verifier, GROTH16_ABI, provider).SELECTOR();
-  if (selector !== RISC_ZERO_GROTH16_SELECTOR) throw new Error(`the verifier ${verifier} has selector ${selector}, not ${RISC_ZERO_GROTH16_SELECTOR}`);
-  return `emergency stop ${estop}, not paused, over ${verifier} (selector ${selector})`;
-}
-
 export async function checkSolvent(provider, seasonAddress) {
   const season = new Contract(seasonAddress, SEASON_ABI, provider);
   if (!(await season.isSolvent())) throw new Error(`Season ${seasonAddress} is not solvent`);
@@ -115,9 +97,10 @@ function command(file, args) {
 
 /**
  * The preflight rows for deploying or running `backend`. `seasonAddress`, when given, adds the
- * solvency row. The chain row comes first: every other chain-bound row fails unrun on a refused chain.
+ * solvency row; `referee`, a ZkReferee, has the RISC Zero verifier row check the stop it calls. The
+ * chain row comes first: every other chain-bound row fails unrun on a refused chain.
  */
-export async function preflight({ provider, deployer, tester, backend, seasonAddress, run = command }) {
+export async function preflight({ provider, deployer, tester, backend, seasonAddress, referee, run = command }) {
   const rows = [];
   async function check(name, evaluate) {
     try {
@@ -151,7 +134,7 @@ export async function preflight({ provider, deployer, tester, backend, seasonAdd
       "RISC Zero verifier",
       onAllowedChain(() =>
         chain.chainId === ARBITRUM_SEPOLIA_CHAIN_ID
-          ? checkRiscZeroVerifier(provider, chain.chainId)
+          ? checkRiscZeroVerifier(provider, chain.chainId, referee)
           : { status: "SKIP", detail: "the local chains use RISC Zero's mock verifier" },
       ),
     );
@@ -188,10 +171,12 @@ async function main() {
   if (network !== values.network) throw new Error(`${rpc} serves ${network}, not ${values.network}`);
   let backend = values.backend;
   let seasonAddress;
+  let referee;
   if (values["check-solvent"]) {
     const [newest] = readDeploymentRecord(deploymentFileOf(network)).generations;
     seasonAddress = newest.Season;
     backend ??= newest.backend;
+    if (newest.backend === "zk") referee = newest.Referee;
   }
   if (!backend) throw new Error(`${usage}\n--backend is needed without --check-solvent`);
   const rows = await preflight({
@@ -200,6 +185,7 @@ async function main() {
     tester: new Wallet(keys.TESTER_KEY).address,
     backend,
     seasonAddress,
+    referee,
   });
   console.log(renderRows(rows));
   provider.destroy();
