@@ -41,7 +41,7 @@ permissions:
   contents: read
 
 env:
-  GROTH16_PROVER_IMAGE: risczero/risc0-groth16-prover:v2025-04-03.1
+  GROTH16_PROVER_IMAGE: risczero/risc0-groth16-prover:v2026-10-20.1
   # A pull_request run proves a reduced level. worst-case, the dispatch default, took 3.7 hours on
   # 4 CPUs, as on the public profile's runners, and would take about 10 on this repository's
   # 2-vCPU runners, beyond the job's 6 hours (docs/VERIFICATION.md, zk costs).
