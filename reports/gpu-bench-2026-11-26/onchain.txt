@@ -1,0 +1,24 @@
+run1-p20-r1 20310 --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json
+small-p20-r1 0 --vectors vectors/game/commit-at-tick-0.json vectors/game/commit-during-cut.json vectors/game/fast-cut.json vectors/game/event-at-last-tick.json vectors/game/slow-shield.json vectors/game/last-life-on-last-tick.json
+mid-p20-r1 17992 --vectors vectors/levels/05-worst.json vectors/levels/06-worst.json vectors/levels/09-worst.json vectors/levels/11-worst.json vectors/levels/12-worst.json vectors/levels/13-worst.json
+high-p20-r1 23425 --vectors vectors/levels/01-synthetic.json vectors/levels/02-synthetic.json vectors/levels/07-synthetic.json vectors/levels/09-synthetic.json vectors/levels/12-synthetic.json vectors/levels/15-synthetic.json
+heaviest-p20-r1 93108 --vectors vectors/levels/10-worst.json vectors/levels/16-worst.json vectors/levels/04-worst.json vectors/levels/08-worst.json vectors/levels/03-worst.json vectors/levels/14-synthetic.json
+overcap-p20-r1 72438 --vectors vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json
+run1-p19-sweep 20310 --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json
+heaviest-p19-sweep 93108 --vectors vectors/levels/10-worst.json vectors/levels/16-worst.json vectors/levels/04-worst.json vectors/levels/08-worst.json vectors/levels/03-worst.json vectors/levels/14-synthetic.json
+run1-p21-sweep 20310 --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json
+heaviest-p21-sweep 93108 --vectors vectors/levels/10-worst.json vectors/levels/16-worst.json vectors/levels/04-worst.json vectors/levels/08-worst.json vectors/levels/03-worst.json vectors/levels/14-synthetic.json
+overcap-p20-r2 72438 --vectors vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json
+heaviest-p20-r2 93108 --vectors vectors/levels/10-worst.json vectors/levels/16-worst.json vectors/levels/04-worst.json vectors/levels/08-worst.json vectors/levels/03-worst.json vectors/levels/14-synthetic.json
+high-p20-r2 23425 --vectors vectors/levels/01-synthetic.json vectors/levels/02-synthetic.json vectors/levels/07-synthetic.json vectors/levels/09-synthetic.json vectors/levels/12-synthetic.json vectors/levels/15-synthetic.json
+mid-p20-r2 17992 --vectors vectors/levels/05-worst.json vectors/levels/06-worst.json vectors/levels/09-worst.json vectors/levels/11-worst.json vectors/levels/12-worst.json vectors/levels/13-worst.json
+run1-p20-r2 20310 --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json
+small-p20-r2 0 --vectors vectors/game/commit-at-tick-0.json vectors/game/commit-during-cut.json vectors/game/fast-cut.json vectors/game/event-at-last-tick.json vectors/game/slow-shield.json vectors/game/last-life-on-last-tick.json
+mid-p20-r3 17992 --vectors vectors/levels/05-worst.json vectors/levels/06-worst.json vectors/levels/09-worst.json vectors/levels/11-worst.json vectors/levels/12-worst.json vectors/levels/13-worst.json
+overcap-p20-r3 72438 --vectors vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json vectors/levels/10-worst.json
+small-p20-r3 0 --vectors vectors/game/commit-at-tick-0.json vectors/game/commit-during-cut.json vectors/game/fast-cut.json vectors/game/event-at-last-tick.json vectors/game/slow-shield.json vectors/game/last-life-on-last-tick.json
+heaviest-p20-r3 93108 --vectors vectors/levels/10-worst.json vectors/levels/16-worst.json vectors/levels/04-worst.json vectors/levels/08-worst.json vectors/levels/03-worst.json vectors/levels/14-synthetic.json
+run1-p20-r3 20310 --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json
+high-p20-r3 23425 --vectors vectors/levels/01-synthetic.json vectors/levels/02-synthetic.json vectors/levels/07-synthetic.json vectors/levels/09-synthetic.json vectors/levels/12-synthetic.json vectors/levels/15-synthetic.json
+small-p20-cold1 0 --vectors vectors/game/commit-at-tick-0.json vectors/game/commit-during-cut.json vectors/game/fast-cut.json vectors/game/event-at-last-tick.json vectors/game/slow-shield.json vectors/game/last-life-on-last-tick.json
+small-p20-sentinel1 0 --vectors vectors/game/commit-at-tick-0.json vectors/game/commit-during-cut.json vectors/game/fast-cut.json vectors/game/event-at-last-tick.json vectors/game/slow-shield.json vectors/game/last-life-on-last-tick.json

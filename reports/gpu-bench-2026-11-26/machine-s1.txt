@@ -1,0 +1,43 @@
+=== BEGIN gpu-measure ===
+session: 1
+utc: 2026-11-26T17:32:31Z
+commit: 0d5f7c67de7ab23c4491e5ba559458317360932c
+tracked files changed: 0
+image id: 0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8
+expected image id: 0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8
+zk-host sha256: d12e7856e43bc46c717e7af4bd9b272f1ff824c3c1bf75e3c7858c3a59be53f8
+risc0-zkvm: 3.1.0
+rustc: rustc 1.98.0 (88d9e12ae 2026-08-18)
+rustc +risc0: rustc 1.97.0-dev (e638c6cfe 2026-07-15)
+nvcc: Cuda compilation tools, release 12.8, V12.8.93
+driver's CUDA: 13.2
+cards: 1, the first measured
+gpu name: NVIDIA GeForce RTX 4090
+gpu uuid: GPU-f433bd8a-1ab2-bfb4-7d69-d65da5726404
+gpu memory.total: 24564
+gpu driver_version: 595.112.07
+gpu vbios_version: 95.02.3C.C0.5F
+gpu compute_cap: 8.9
+gpu power.limit: 450.00
+gpu power.default_limit: 450.00
+gpu power.max_limit: 480.00
+gpu clocks.max.sm: 3135
+gpu clocks.max.mem: 10501
+gpu pcie.link.gen.current: 1
+gpu pcie.link.gen.max: 3
+gpu pcie.link.width.current: 16
+gpu pcie.link.width.max: 16
+gpu persistence_mode: Enabled
+cpu: Intel(R) Xeon(R) Gold 6133 CPU @ 2.50GHz
+cpus: 80
+cgroup cpu.max: 1360000 100000
+memory: 263737440 kB
+cgroup memory.max: 49999998976
+free disk for /workspace/gpu-bench:   39G
+free disk for the segment files, /tmp:   39G
+kernel: 6.8.0-149-generic
+os: Ubuntu 24.04.5 LTS
+runpod pod: gmozyd0pvbhvi6
+set-up and build: 2099 s
+ladder: 2^20, 3 rounds
+=== END gpu-measure ===

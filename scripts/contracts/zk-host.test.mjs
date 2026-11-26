@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 import { REPO_ROOT } from "./deploy.mjs";
-import { encodeProof, realProof } from "./zk-host.mjs";
+import { encodeProof, proveRunArgs, realProof } from "./zk-host.mjs";
 
 const FIXTURES = JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "test", "fixtures", "zk-proofs.json"), "utf8"));
 const RUN_PROOF = FIXTURES.challengeRun;
@@ -29,6 +29,14 @@ test("a proof made earlier is reused from <run file>.proof.json", () => {
 test("a real proof is refused under RISC0_DEV_MODE, whose seals never verify on Arbitrum Sepolia", () => {
   process.env.RISC0_DEV_MODE = "1";
   assert.throws(() => realProof(join(dir, "run-1.json"), SEASON_FILE), /RISC0_DEV_MODE is set/);
+});
+
+test("a run is proven in zk-host's default segments unless a size is given", () => {
+  assert.deepEqual(proveRunArgs("run-1.json", "testnet-1.json"), ["prove", "--run", "run-1.json", "--season", "testnet-1.json"]);
+});
+
+test("a run is proven in segments of 2^n cycles with --segment-po2 n", () => {
+  assert.deepEqual(proveRunArgs("run-1.json", "testnet-1.json", 19).slice(-2), ["--segment-po2", "19"]);
 });
 
 test("every committed real proof is a 3.1.0 Groth16 proof of one image id", () => {
