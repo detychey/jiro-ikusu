@@ -1,0 +1,25 @@
+run1-p20-r1: accepted, run score 20310
+small-p20-r1: accepted, run score 0
+mid-p20-r1: accepted, run score 17992
+high-p20-r1: accepted, run score 23425
+heaviest-p20-r1: accepted, run score 93108
+overcap-p20-r1: accepted, run score 72438
+run1-p19-sweep: accepted, run score 20310
+heaviest-p19-sweep: accepted, run score 93108
+run1-p21-sweep: accepted, run score 20310
+heaviest-p21-sweep: accepted, run score 93108
+overcap-p20-r2: accepted, run score 72438
+heaviest-p20-r2: accepted, run score 93108
+high-p20-r2: accepted, run score 23425
+mid-p20-r2: accepted, run score 17992
+run1-p20-r2: accepted, run score 20310
+small-p20-r2: accepted, run score 0
+mid-p20-r3: accepted, run score 17992
+overcap-p20-r3: accepted, run score 72438
+small-p20-r3: accepted, run score 0
+heaviest-p20-r3: accepted, run score 93108
+run1-p20-r3: accepted, run score 20310
+high-p20-r3: accepted, run score 23425
+small-p20-cold1: accepted, run score 0
+small-p20-sentinel1: accepted, run score 0
+gpu-onchain: 24 of 24 proofs accepted
