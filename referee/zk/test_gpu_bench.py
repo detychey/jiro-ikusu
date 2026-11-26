@@ -11,7 +11,7 @@ from pathlib import Path
 import gpu_bench
 
 SEGMENTS = {"small": 7, "run1": 13, "mid": 45, "high": 96, "heaviest": 131, "overcap": 177}
-EXPECTED = gpu_bench.read_json(gpu_bench.PROOF_OF_RECORD)
+EXPECTED = gpu_bench.expected_proof()
 RUN_1_SHA256 = "0x" + hashlib.sha256(bytes.fromhex(EXPECTED["publicValues"][2:])).hexdigest()
 MACHINE = """=== BEGIN gpu-measure ===
 session: 1

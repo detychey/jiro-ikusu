@@ -56,6 +56,14 @@
           </div>
         </div>
       </section>
+      <div id="touch" class="touch" aria-hidden="true">
+        <div id="stick" class="stick"><div id="stick-ring"></div><div id="stick-knob"></div></div>
+        <div class="pads">
+          <div id="pad-x" class="pad"><div><span>COMMIT</span><span>X</span><span id="x-hold"></span></div></div>
+          <div id="pad-a" class="pad"><div><span>CUT</span><span>A</span></div></div>
+          <div id="pad-b" class="pad"><div><span>SHIELD</span><span>B</span></div></div>
+        </div>
+      </div>
       <aside class="side">
         <dl id="hud" class="hud">
           <dt>Claim</dt><dd id="hud-claim">–</dd>
@@ -71,8 +79,18 @@
         </form>
         <details class="controls">
           <summary>Controls</summary>
-          <p>Move with the arrow keys. Hold A to cut fast, B to slow down behind the shield, X to bank the level.</p>
-          <p id="layout-note"></p>
+          <p class="keys-help">Move with the arrow keys. Hold A to cut fast, B to slow down behind the shield, X to bank the level.</p>
+          <p id="layout-note" class="keys-help"></p>
+          <div class="touch-help">
+            <p>Steer with the stick: put your thumb down anywhere in its square and drag. Hold CUT (A) to cut fast and SHIELD (B) to slow down behind the shield. Hold COMMIT (X) until its bar fills to bank the level. A keyboard still plays.</p>
+            <fieldset>
+              <legend>Touch controls</legend>
+              <label><input id="touch-on" type="radio" name="touch" value="on" /> On</label>
+              <label><input id="touch-off" type="radio" name="touch" value="off" /> Off</label>
+              <label><input id="touch-mirrored" type="radio" name="touch" value="mirrored" /> Mirrored, for the left hand</label>
+            </fieldset>
+            <p id="touch-message" role="status"></p>
+          </div>
           <table id="bindings"></table>
           <p id="bindings-message" role="status"></p>
         </details>

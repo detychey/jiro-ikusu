@@ -1,25 +1,31 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AbiCoder, Interface } from "ethers";
-import { RISC_ZERO_GROTH16_VERIFIER, checkAccounts, checkBackend, checkChain, checkRiscZeroVerifier, isReady, preflight } from "./preflight.mjs";
+import { AbiCoder, Interface, getAddress } from "ethers";
+import { RISC_ZERO_GROTH16_VERIFIER, checkRiscZeroVerifier } from "./deploy.mjs";
+import { checkAccounts, checkBackend, checkChain, isReady, preflight } from "./preflight.mjs";
 
 const DEPLOYER = "0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E";
 const TESTER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 const OTHER_CHAINS = [1n, 42161n, 42170n, 11155111n, 31338n, 412345n];
 
-const ESTOP = "0x724d375B5b622e15f0E64e9Deb76a4cB17877797";
+const ESTOP = "0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29";
+const REFEREE = "0x1097BDED737146D4A83Cf969a357e504FA028c5a";
 const VIEWS = new Interface(["function paused() view returns (bool)", "function verifier() view returns (address)", "function SELECTOR() view returns (bytes4)"]);
 
-/** A provider whose eth_calls answer the emergency stop's and the Groth16 verifier's views from `views`. */
+/**
+ * A provider whose eth_calls answer the ZkReferee's, the emergency stop's and the Groth16 verifier's
+ * views from `views`: `verifier()` is `refereeVerifier` at REFEREE, `verifier` elsewhere.
+ */
 function stubProvider(chainId, balances = {}, views = {}) {
-  const answers = { paused: false, verifier: RISC_ZERO_GROTH16_VERIFIER, SELECTOR: "0x73c457ba", code: "0x6080", ...views };
+  const answers = { paused: false, verifier: RISC_ZERO_GROTH16_VERIFIER, refereeVerifier: ESTOP, SELECTOR: "0xe71e6620", code: "0x6080", ...views };
   return {
     getNetwork: async () => ({ chainId }),
     getBalance: async (address) => balances[address] ?? 1n,
     getCode: async () => answers.code,
-    call: async ({ data }) => {
+    call: async ({ to, data }) => {
       const { name, outputs } = VIEWS.getFunction(data.slice(0, 10));
-      return AbiCoder.defaultAbiCoder().encode(outputs, [answers[name]]);
+      const answer = name === "verifier" && getAddress(to) === REFEREE ? answers.refereeVerifier : answers[name];
+      return AbiCoder.defaultAbiCoder().encode(outputs, [answer]);
     },
   };
 }
@@ -88,7 +94,7 @@ test("the zk preflight on Arbitrum Sepolia skips the Stylus rows and checks the 
   );
 });
 
-test("checkRiscZeroVerifier names the pinned emergency stop over the 3.0 Groth16 verifier", async () => {
+test("checkRiscZeroVerifier names the pinned emergency stop over the 3.1 Groth16 verifier", async () => {
   assert.match(await checkRiscZeroVerifier(stubProvider(421614n), 421614), new RegExp(`emergency stop ${ESTOP}, not paused, over ${RISC_ZERO_GROTH16_VERIFIER}`));
 });
 
@@ -97,9 +103,22 @@ test("checkRiscZeroVerifier refuses a paused emergency stop", async () => {
 });
 
 test("checkRiscZeroVerifier refuses an emergency stop over another verifier", async () => {
-  await assert.rejects(checkRiscZeroVerifier(stubProvider(421614n, {}, { verifier: TESTER }), 421614), /not RISC Zero's 3.0 Groth16 verifier/);
+  await assert.rejects(checkRiscZeroVerifier(stubProvider(421614n, {}, { verifier: TESTER }), 421614), /not RISC Zero's 3.1 Groth16 verifier/);
 });
 
 test("checkRiscZeroVerifier refuses an emergency stop with no code", async () => {
   await assert.rejects(checkRiscZeroVerifier(stubProvider(421614n, {}, { code: "0x" }), 421614), /has no code/);
+});
+
+test("checkRiscZeroVerifier refuses a Groth16 verifier of another selector", async () => {
+  await assert.rejects(checkRiscZeroVerifier(stubProvider(421614n, {}, { SELECTOR: "0x73c457ba" }), 421614), /has selector 0x73c457ba, not 0xe71e6620/);
+});
+
+test("checkRiscZeroVerifier names a ZkReferee that calls the pinned emergency stop", async () => {
+  assert.match(await checkRiscZeroVerifier(stubProvider(421614n), 421614, REFEREE), new RegExp(`ZkReferee ${REFEREE} calls the emergency stop ${ESTOP}, not paused`));
+});
+
+test("checkRiscZeroVerifier refuses a ZkReferee that calls another emergency stop", async () => {
+  const views = { refereeVerifier: "0x724d375B5b622e15f0E64e9Deb76a4cB17877797" };
+  await assert.rejects(checkRiscZeroVerifier(stubProvider(421614n, {}, views), 421614, REFEREE), /calls 0x724d.*, not the pinned emergency stop/);
 });

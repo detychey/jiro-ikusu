@@ -1,6 +1,7 @@
 # Season operations on Arbitrum Sepolia (plan M5.8, M5.5), public CI profile (plan §1.3, P14).
 # Daily and on workflow_dispatch: season.mjs status of every season of
-# deployments/arbitrum-sepolia.json, failing when a Season is not solvent, then close and withdraw,
+# deployments/arbitrum-sepolia.json, failing when a Season is not solvent or when a season that is
+# not closed sits on a RISC Zero stop that fails its check (plan M5.10), then close and withdraw,
 # which send nothing until a season's end plus grace has passed (README §8.4), then one bot run of
 # the tester in BOT_SEASON, from the day its open is recorded in deployments/ to its end
 # (docs/SEASON_RUNBOOK.md). They sign with TESTER_KEY: anyone may close, withdraw and play, so the

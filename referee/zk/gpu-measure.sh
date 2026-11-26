@@ -18,7 +18,7 @@
 # It runs from a checkout at /home/runner/work/jiro-ikusu/jiro-ikusu, not reached through a
 # symbolic link, since the image id depends on the path (README.md, Reproducible image ids), on
 # x86-64 Linux with an NVIDIA card, its driver, the CUDA toolkit, g++, curl, Python 3.11 or newer
-# and RISC Zero's Groth16 setup files, rzup's component risc0-groth16 0.1.0. It installs rustup
+# and RISC Zero's Groth16 setup files, rzup's component risc0-groth16 0.2.0. It installs rustup
 # when it is missing, then the zk tier of scripts/bootstrap.sh.
 # Usage: bash referee/zk/gpu-measure.sh [--segment-po2 <n>] [--rounds <n>] [--out <dir>]
 #                                       [--redo <input>]... [--price-usd-per-hour <p>]
@@ -26,12 +26,11 @@ set -euo pipefail
 
 readonly FIXED_PATH=/home/runner/work/jiro-ikusu/jiro-ikusu
 readonly USAGE="usage: gpu-measure.sh [--segment-po2 <n>] [--rounds <n>] [--out <dir>] [--redo <input>]... [--price-usd-per-hour <p>]"
-readonly GROTH16_DIR="${RISC0_HOME:-$HOME/.risc0}/extensions/v0.1.0-risc0-groth16"
+readonly GROTH16_DIR="${RISC0_HOME:-$HOME/.risc0}/extensions/v0.2.0-risc0-groth16"
 readonly GROTH16_FILES=(stark_verify_final.zkey stark_verify_graph.bin preprocessed_coeffs.bin fuzzed_msm_results.bin)
 readonly GPU_FIELDS=name,uuid,memory.total,driver_version,vbios_version,compute_cap,power.limit,power.default_limit,power.max_limit,clocks.max.sm,clocks.max.mem,pcie.link.gen.current,pcie.link.gen.max,pcie.link.width.current,pcie.link.width.max,persistence_mode
 readonly IDLE_GPU_MIB=1024
 readonly PROOF_LIMIT_S=3600
-readonly RECURSION_ZKR_SHA256=744b999f0a35b3c86753311c7efb2a0054be21727095cf105af6ee7d3f4d8849
 
 fail() {
   echo "gpu-measure: $*" >&2
@@ -48,21 +47,6 @@ provers_running() {
 
 cpu_counters() {
   cat /sys/fs/cgroup/cpu.stat /sys/fs/cgroup/cpu.pressure 2>/dev/null || true
-}
-
-# risc0-circuit-recursion 4.0.5's build script downloads its recursion programs from an S3 bucket
-# that RISC Zero closed (403 since November 2026), unless RECURSION_SRC_PATH names a copy whose
-# sha256 it accepts. The same file is on RISC Zero's new artifacts host.
-fetch_recursion_programs() {
-  local zip="$HOME/.cache/jiro-ikusu/recursion_zkr-$RECURSION_ZKR_SHA256.zip"
-  if ! sha256sum --check --status <<<"$RECURSION_ZKR_SHA256  $zip" 2>/dev/null; then
-    mkdir -p "$(dirname "$zip")"
-    curl --proto '=https' --tlsv1.2 -fsSL -o "$zip.tmp" "https://artifacts.risczero.net/zkr/$RECURSION_ZKR_SHA256.zip"
-    sha256sum --check --status <<<"$RECURSION_ZKR_SHA256  $zip.tmp" ||
-      fail "the recursion programs from artifacts.risczero.net do not have sha256 $RECURSION_ZKR_SHA256"
-    mv "$zip.tmp" "$zip"
-  fi
-  export RECURSION_SRC_PATH="$zip"
 }
 
 po2=20 rounds=3 out=gpu-bench
@@ -99,7 +83,7 @@ python3 referee/zk/gpu_bench.py plan "$out" --segment-po2 "$po2" --rounds "$roun
 # rzup skips a version directory that is a symbolic link.
 [ ! -L "$GROTH16_DIR" ] || fail "$GROTH16_DIR is a symbolic link, which rzup skips: install the component with rzup"
 for file in "${GROTH16_FILES[@]}"; do
-  [ -s "$GROTH16_DIR/$file" ] || fail "$GROTH16_DIR/$file is missing: install rzup's risc0-groth16 0.1.0 component (referee/zk/README.md, Proving on a GPU)"
+  [ -s "$GROTH16_DIR/$file" ] || fail "$GROTH16_DIR/$file is missing: install rzup's risc0-groth16 0.2.0 component (referee/zk/README.md, Proving on a GPU)"
 done
 reasons=clocks_event_reasons.active
 nvidia-smi --query-gpu="$reasons" --format=csv,noheader >/dev/null 2>&1 || reasons=clocks_throttle_reasons.active
@@ -128,14 +112,13 @@ if ! command -v rustup >/dev/null; then
   source "$HOME/.cargo/env"
 fi
 bash scripts/bootstrap.sh zk
-fetch_recursion_programs
 cargo build --release --locked --manifest-path referee/zk/Cargo.toml -p zk-host --features cuda
 readonly host="${CARGO_TARGET_DIR:-referee/zk/target}/release/zk-host"
 readonly build_seconds=$((SECONDS - build_start))
 
 session=$(($(find "$out" -maxdepth 1 -name 'machine-s*.txt' | wc -l) + 1))
 readonly machine="$out/machine-s$session.txt"
-expected_image_id="$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["imageId"])' seasons/testnet-0/runs/run-1.proof.json)"
+expected_image_id="$(python3 -B -c 'import sys; sys.path.insert(0, "referee/zk"); import gpu_bench; print(gpu_bench.IMAGE_ID)')"
 image_id="$("$host" image-id)"
 {
   echo "=== BEGIN gpu-measure ==="
@@ -171,7 +154,7 @@ image_id="$("$host" image-id)"
 } | tee "$machine.tmp"
 mv "$machine.tmp" "$machine"
 [ "$image_id" = "$expected_image_id" ] ||
-  fail "image id $image_id, not the deployed ZkReferee's $expected_image_id: no proof made. Check pwd -P, rustc +risc0 --version and the commit"
+  fail "image id $image_id, not risc0-zkvm 3.1.0's $expected_image_id (plan M5.10): no proof made. Check pwd -P, rustc +risc0 --version and the commit"
 
 plan="$(python3 referee/zk/gpu_bench.py plan "$out" --segment-po2 "$po2" --rounds "$rounds" "${redo[@]}")"
 proofs=()

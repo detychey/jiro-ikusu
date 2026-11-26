@@ -8,13 +8,18 @@
 //       - the 16 levels with the level tool: each level id is a level of levels/ that
 //         `jiro-tools level validate` passes (README §8.4, `levelIds`);
 //       - for a Stylus referee, that its remaining activation time covers the season's length
-//         plus grace.
+//         plus grace;
+//       - for a ZkReferee outside the local chains, that it calls RISC Zero's pinned emergency
+//         stop, not paused, over the pinned 3.1 Groth16 verifier (deploy.mjs's
+//         checkRiscZeroVerifier, plan M5.10).
 //     It writes the season number `open` assigned into the record, under the season file's name,
 //     and the referee it opened with into the season file, whose `referee` is null until then.
 //   - status: every season of every generation, read at one block: its dates, its runs (bought,
 //     revealed, committed, settled, late), fees, pot and claims, and each player's best run; and
-//     each Season's balance, rollover, rake owed and isSolvent(). It exits 1 if a Season is not
-//     solvent. --season keeps one season.
+//     each Season's balance, rollover, rake owed and isSolvent(); and, for each zk generation
+//     outside the local chains, the check of the RISC Zero emergency stop its ZkReferee calls. It
+//     exits 1 if a Season is not solvent, or if a season that is not closed sits on a stop that
+//     fails its check (plan M5.10). --season keeps one season.
 //   - close: closeSeason on each Season whose next season to close has passed its end plus grace.
 //   - withdraw: withdrawRake on each Season that owes rake, which goes to its treasury.
 //   - claim: the signer's claim in a closed season.
@@ -36,7 +41,7 @@ import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { Contract, Wallet, formatEther, getAddress } from "ethers";
 import { readProgramTimeLeft } from "./activation.mjs";
-import { JIRO_TOOLS, NETWORKS, REPO_ROOT, connect, deploymentFileOf, privateKeyOf, sendTransaction } from "./deploy.mjs";
+import { JIRO_TOOLS, LOCAL_NETWORKS, NETWORKS, REPO_ROOT, checkRiscZeroVerifier, connect, deploymentFileOf, privateKeyOf, sendTransaction } from "./deploy.mjs";
 import { isEntryPoint, readDeploymentRecord, recordSeason } from "./deployments.mjs";
 import { botRun, liveCommittedRun, liveContext, measurements, totals } from "./e2e.mjs";
 import { eventOf } from "./localnet.mjs";
@@ -159,6 +164,9 @@ export async function openSeason({ provider, operator, seasonFile, recordFile, r
     const needed = BigInt(season.length + season.grace);
     if (timeLeft < needed) throw new Error(`the Stylus referee's activation expires in ${timeLeft} s, before the season's length plus grace, ${needed} s`);
   }
+  if (generation.backend === "zk" && !LOCAL_NETWORKS.includes(record.network)) {
+    await checkRiscZeroVerifier(provider, NETWORKS[record.network].chainId, generation.Referee);
+  }
   const contract = new Contract(generation.Season, SEASON_ABI, operator);
   const receipt = await sendTransaction("Season.open", contract.open(seasonParamsOf(season, generation.Referee)), contract);
   const number = Number(eventOf(contract, receipt, "SeasonOpened").season);
@@ -243,7 +251,19 @@ async function readSeasonStatus(season, number, runs, blockTag) {
   };
 }
 
-/** Each Season of `record` and its seasons, or only the season labeled `label`, at the latest block. */
+/** The check of the RISC Zero emergency stop that a ZkReferee calls, its failure recorded, not thrown. */
+async function readRiscZeroStop(provider, chainId, referee) {
+  try {
+    return { ok: true, detail: await checkRiscZeroVerifier(provider, chainId, referee) };
+  } catch (error) {
+    return { ok: false, detail: error.shortMessage ?? error.message };
+  }
+}
+
+/**
+ * Each Season of `record` and its seasons, or only the season labeled `label`, at the latest block;
+ * for a zk generation outside the local chains, also the check of its RISC Zero stop.
+ */
 export async function readStatus({ provider, record, label }) {
   const block = await provider.getBlock("latest");
   const blockTag = block.number;
@@ -268,7 +288,11 @@ export async function readStatus({ provider, record, label }) {
     const seasons = await Promise.all(
       numbers.map(async (number) => ({ label: labelOf.get(number) ?? null, ...(await readSeasonStatus(season, number, runs, blockTag)) })),
     );
-    generations.push({ Season: generation.Season, deployedAt: generation.deployedAt, balance, pendingRollover, rakeOwed, solvent, seasons });
+    const riscZero =
+      generation.backend === "zk" && !LOCAL_NETWORKS.includes(record.network)
+        ? await readRiscZeroStop(provider, NETWORKS[record.network].chainId, generation.Referee)
+        : null;
+    generations.push({ Season: generation.Season, deployedAt: generation.deployedAt, balance, pendingRollover, rakeOwed, solvent, riscZero, seasons });
   }
   if (label !== undefined && generations.length === 0) throw new Error(`no generation of the ${record.network} record holds the season ${label}`);
   return { block: { number: block.number, timestamp: block.timestamp }, generations };
@@ -295,6 +319,7 @@ export function renderStatus({ block, generations }) {
       `Season ${generation.Season}, generation of ${generation.deployedAt}: balance ${formatEther(generation.balance)} ETH, ` +
         `rollover ${formatEther(generation.pendingRollover)} ETH, rake owed ${formatEther(generation.rakeOwed)} ETH, solvent: ${generation.solvent ? "yes" : "no"}`,
     );
+    if (generation.riscZero) lines.push(`  RISC Zero verifier ${generation.riscZero.ok ? "PASS" : "FAIL"}: ${generation.riscZero.detail}`);
     for (const season of generation.seasons) {
       const { bought, revealed, committed, settled, late } = season.runs;
       lines.push(
@@ -320,12 +345,26 @@ export function renderStatus({ block, generations }) {
   return lines;
 }
 
-/** Prints the status and throws if a Season is not solvent. */
+/**
+ * Throws if a Season of `readStatus`'s generations is not solvent, or holds a season that is not
+ * closed while the RISC Zero stop of its ZkReferee fails its check.
+ */
+export function checkStatus(generations) {
+  const problems = [];
+  const insolvent = generations.filter((generation) => !generation.solvent).map((generation) => generation.Season);
+  if (insolvent.length > 0) problems.push(`not solvent: Season ${insolvent.join(", ")}`);
+  const stopped = generations
+    .filter((generation) => generation.riscZero?.ok === false && generation.seasons.some((season) => !season.closed))
+    .map((generation) => `${generation.Season} (${generation.riscZero.detail})`);
+  if (stopped.length > 0) problems.push(`a season that is not closed sits on a RISC Zero stop that fails its check: Season ${stopped.join(", ")}`);
+  if (problems.length > 0) throw new Error(problems.join("; "));
+}
+
+/** Prints the status, then throws as checkStatus does. */
 export async function printStatus({ provider, record, label }) {
   const status = await readStatus({ provider, record, label });
   console.log(renderStatus(status).join("\n"));
-  const insolvent = status.generations.filter((generation) => !generation.solvent).map((generation) => generation.Season);
-  if (insolvent.length > 0) throw new Error(`not solvent: Season ${insolvent.join(", ")}`);
+  checkStatus(status.generations);
   return status;
 }
 

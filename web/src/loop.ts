@@ -4,6 +4,11 @@
 
 export const TICK_HZ = 15;
 
+/** The ticks due by time `t` on a clock that started at `t0`, tick 0 included. */
+export function ticksDue(t0: number, t: number): number {
+  return Math.floor(((t - t0) * TICK_HZ) / 1000) + 1;
+}
+
 export interface LoopHooks<End> {
   /** The current time in milliseconds, as performance.now() reports it. */
   now(): number;
@@ -17,6 +22,8 @@ export interface Loop<End> {
   /** Runs every tick that is due by now; returns the end once the level has ended. */
   pump(): End | undefined;
   readonly ticksRun: number;
+  /** The clock's reading when the loop was created, when tick 0 is due. */
+  readonly t0: number;
 }
 
 export function createLoop<End>(hooks: LoopHooks<End>): Loop<End> {
@@ -25,7 +32,7 @@ export function createLoop<End>(hooks: LoopHooks<End>): Loop<End> {
   let end: End | undefined;
   return {
     pump() {
-      const due = Math.floor(((hooks.now() - t0) * TICK_HZ) / 1000) + 1;
+      const due = ticksDue(t0, hooks.now());
       while (end === undefined && ticksRun < due) {
         end = hooks.tick(hooks.sample());
         ticksRun += 1;
@@ -35,5 +42,6 @@ export function createLoop<End>(hooks: LoopHooks<End>): Loop<End> {
     get ticksRun() {
       return ticksRun;
     },
+    t0,
   };
 }

@@ -100,8 +100,26 @@ function isBindings(value: unknown): value is Bindings {
   return codes.every((code) => typeof code === "string") && new Set(codes).size === CONTROLS.length;
 }
 
+/** A source of controls (docs/PHONE.md §3.4): the keyboard's held keys, the touch controls. */
+export interface InputSource {
+  /** The tick's input sample, taken once per tick. */
+  sample(): number;
+  /** Releases every control. */
+  clear(): void;
+}
+
+/** One source whose sample is the OR of the samples of `sources`, each sampled exactly once. */
+export function combined(...sources: InputSource[]): InputSource {
+  return {
+    sample: () => sources.reduce((mask, source) => mask | source.sample(), 0),
+    clear: () => {
+      for (const source of sources) source.clear();
+    },
+  };
+}
+
 /** The keys held now, as an input mask under `bindings`. */
-export class HeldKeys {
+export class HeldKeys implements InputSource {
   private readonly held = new Set<string>();
   /** Keys pressed since the last sample: a tap shorter than a tick still counts once. */
   private readonly tapped = new Set<string>();

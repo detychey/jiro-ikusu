@@ -13,7 +13,7 @@ rustc-flags = ["-Zlocation-detail=none"]
 
 [dependencies]
 jiro-core = { path = "../../../core" }
-risc0-zkvm = { version = "=3.0.6", default-features = false, features = ["std"] }
+risc0-zkvm = { version = "=3.1.0", default-features = false, features = ["std"] }
 
 [profile.dev]
 overflow-checks = true

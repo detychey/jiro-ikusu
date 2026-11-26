@@ -8,9 +8,9 @@ T0 is the block timestamp of the season's `open`. `node scripts/contracts/season
 
 | When | What happens | Who, and how |
 |---|---|---|
-| Before T0 | The parameters are approved (owner, 2026-11-11). M5.9 has proven a whole run on a rented GPU and checked the grace against its time (§5). The tester key holds at least 0.005 ETH (§6) | owner |
+| Before T0 | The parameters are approved (owner, 2026-11-11). M5.9 has proven a whole run on a rented GPU and checked the grace against its time (§5). The tester key holds at least 0.005 ETH (§6). Generation 2 (plan M5.10) is the newest generation of `deployments/arbitrum-sepolia.json`. On the day of the open, `node scripts/contracts/preflight.mjs --network arbitrum-sepolia --check-solvent` reads `ready: yes`: its `RISC Zero verifier` row reads the newest `ZkReferee`'s stop, the pinned `0xA1DC…bA29`, not paused, over `0x8c91…aB3b` of selector `0xe71e6620`. `season.mjs open` makes the same check and refuses otherwise | owner |
 | T0 | `season.mjs open --network arbitrum-sepolia --season seasons/testnet-1.json` checks the season file and the 16 levels, opens the season, and writes its number into `deployments/arbitrum-sepolia.json` and its referee into the season file. A PR commits both and merges the same day: from then on, `season-ops.yml` plays the bot run (§6) | operator, with `DEPLOYER_KEY` |
-| T0 to T0 + 14 days | Testers buy, play and commit runs. Every day at 07:17 UTC, `season-ops.yml` checks the status and solvency and plays one bot run from `TESTER_KEY` | testers; `season-ops.yml` |
+| T0 to T0 + 14 days | Testers buy, play and commit runs. Every day at 07:17 UTC, `season-ops.yml` checks the status, the solvency and the RISC Zero stop, and plays one bot run from `TESTER_KEY`. If the stop is paused, settlement halts for good: follow [`DEPLOYMENT.md` §4](DEPLOYMENT.md#4-redeploy-and-generations). | testers; `season-ops.yml` |
 | T0 + 7 days | Mid-season status, M5.6's checkpoint. The operator settles the best runs so far, in one session on a rented GPU (§3) | operator |
 | T0 + 14 days, the end | No run can be bought. A run bought before the end can still reveal within 296 blocks of its purchase, 40 to its entropy block then 256 to read its hash, and commit within 1,080 s + `commitSlack` of its reveal | none |
 | T0 + 14 to T0 + 16 days | The operator settles every player's best run in one session on a rented GPU, until the dry run lists none (§3). Settlement ends at end + grace, inclusive | operator |
@@ -19,6 +19,8 @@ T0 is the block timestamp of the season's `open`. `node scripts/contracts/season
 ## 2. Freeze rule
 
 From a season's open until its close, no PR that changes `core/` or `levels/` merges. The season's runs settle through the referee it opened with, whose program pins the core, and the operator replays the runs with the core of its checkout. A change that moves no vector could otherwise slip a rule change into an open season, or make the operator's replay disagree with the referee. A change that cannot wait opens a new season after the close: a new rules version or backend is a new season (README §8.4).
+
+Client policies freeze too, from a season's open until no run of it can still be committed on time: its end, plus 296 blocks to reveal and 1,080 s + `commitSlack` to commit (§1). In that span, no PR merges that changes the hidden-page policy, its threshold H, the 1,000-ms bound above which a frame gap counts as a hide, or X's touch hold `xHold` once the touch controls are live on Challenge: from M3.18, or from when its flag turns on if it ships behind one ([`PHONE.md` §6.3](PHONE.md#63-the-hidden-page-policy-od2)). None of them moves a vector, but each sets what a hidden page or a touch commit costs a player, so a season never mixes two honest-client policies. M3.16, which sets the first policy, merges under the same rule.
 
 ## 3. Settlement
 

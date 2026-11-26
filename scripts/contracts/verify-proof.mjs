@@ -1,5 +1,5 @@
 // Checks a run proof of zk-host through the deployed ZkReferee, with an eth_call of verifyRun
-// (plan M5.9): a proof made on a GPU must verify exactly as one made on a CPU does. The six
+// (plan M5.10): a proof made on a GPU must verify exactly as one made on a CPU does. The six
 // levels come from a run file, scored with its season file's weights, as settle.mjs proves it,
 // or from six game vector files, as `zk-host prove --run <six files>` proves them. The proof is
 // the JSON of a seal and its public values, as realProof keeps it next to a run file, or the

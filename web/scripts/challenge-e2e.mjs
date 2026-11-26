@@ -175,7 +175,7 @@ async function e2e(load, options) {
     const env = {
       core,
       store,
-      keys,
+      input: keys,
       levels,
       levelIds,
       contracts,

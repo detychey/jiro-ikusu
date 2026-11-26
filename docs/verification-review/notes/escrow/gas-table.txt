@@ -1,0 +1,37 @@
+  payeeOf gas: 10840
+  ProofBounty.claim, settled run, full journals gas: 1024874
+  ProofBounty.claim, settled run, full journals calldata bytes: 55492
+  ProofBounty.claim, settled run, gate-set journals gas: 567944
+  ProofBounty.claim, settled run, gate-set journals calldata bytes: 28164
+  ProofBounty.claim, settled run, typical journals gas: 230323
+  ProofBounty.claim, settled run, typical journals calldata bytes: 7492
+  ProofBounty.claim, unsettled run, full journals gas: 1174601
+  ProofBounty.claim, unsettled run, full journals calldata bytes: 55492
+  ProofBounty.claim, unsettled run, gate-set journals gas: 707956
+  ProofBounty.claim, unsettled run, gate-set journals calldata bytes: 28164
+  ProofBounty.claim, unsettled run, typical journals, a payee already owed, a player's first settled run gas: 330692
+  ProofBounty.claim, unsettled run, typical journals, a payee already owed, a player's first settled run calldata bytes: 7492
+  ProofBounty.claim, unsettled run, typical journals gas: 364880
+  ProofBounty.claim, unsettled run, typical journals calldata bytes: 7492
+  ProofBounty runtime bytes: 5805
+  MockArbSys.setBlockNumber gas: 26506
+  ProofBounty.post, a run's first deposit gas: 97436
+  ProofBounty.post, a run's first deposit calldata bytes: 36
+  ProofBounty.post, a second depositor gas: 80336
+  ProofBounty.post, a second depositor calldata bytes: 36
+  ProofBounty.post, a top-up gas: 63236
+  ProofBounty.post, a top-up calldata bytes: 36
+  ProofBounty.refund gas: 67481
+  ProofBounty.refund calldata bytes: 68
+  Challenge.settleRun, full journals gas: 1107411
+  Challenge.settleRun, full journals calldata bytes: 55492
+  Challenge.settleRun, gate-set journals gas: 650290
+  Challenge.settleRun, gate-set journals calldata bytes: 28164
+  Challenge.settleRun, typical journals gas: 312526
+  Challenge.settleRun, typical journals calldata bytes: 7492
+  emergency stop over the Groth16 verifier, verify gas: 230876
+  emergency stop over the Groth16 verifier, verify calldata bytes: 420
+  emergency stop over the mock verifier, verify gas: 10706
+  emergency stop over the mock verifier, verify calldata bytes: 196
+  ProofBounty.withdraw, to a funded account gas: 37949
+  ProofBounty.withdraw, to a funded account calldata bytes: 36

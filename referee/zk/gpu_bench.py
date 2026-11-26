@@ -25,6 +25,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROOF_OF_RECORD = REPO_ROOT / "seasons/testnet-0/runs/run-1.proof.json"
+# zk-host built on risc0-zkvm 3.1.0 at the fixed path, and the selector of the 3.1 Groth16 verifier
+# (plan M5.10). Run 1's public values did not change: they are those of its 3.0 proof of record.
+IMAGE_ID = "0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8"
+SELECTOR = "0xe71e6620"
 SEASON = REPO_ROOT / "seasons/testnet-1.json"
 RUN_1_SCORE = 20310
 SEAL_BYTES = 260
@@ -129,6 +133,10 @@ def prove_args(proof_id):
 
 def read_json(path):
     return json.loads(Path(path).read_text())
+
+
+def expected_proof():
+    return {"imageId": IMAGE_ID, "seal": SELECTOR, "publicValues": read_json(PROOF_OF_RECORD)["publicValues"]}
 
 
 def read_records(out):
@@ -239,7 +247,7 @@ def record(out, proof_id, exit_status, left):
     name, po2, role, round_number = parse_id(proof_id)
     proofs = Path(out) / "proofs"
     fields = parse_log((proofs / f"{proof_id}.log").read_text())
-    status, error = classify(exit_status, fields, (proofs / f"{proof_id}.err").read_text(), read_json(PROOF_OF_RECORD))
+    status, error = classify(exit_status, fields, (proofs / f"{proof_id}.err").read_text(), expected_proof())
     entry = {
         "id": proof_id,
         "input": name,
@@ -512,7 +520,7 @@ def cost_rows(warm, po2, model, model_passed, prices):
 def summary(out, po2, price, eth_usd, gas_gwei, l1_gas_gwei):
     out = Path(out)
     every_record, records = read_records(out), latest_records(out)
-    expected, season = read_json(PROOF_OF_RECORD), read_json(SEASON)
+    expected, season = expected_proof(), read_json(SEASON)
     machines = machine_files(out)
     machine = read_machine(machines[-1]) if machines else {}
     warm = warm_by_input(records, po2)

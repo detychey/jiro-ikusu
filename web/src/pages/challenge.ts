@@ -152,7 +152,7 @@ export function mount(): void {
     const contracts = connectContracts(deployment, signer);
     const env: RunEnv = {
       ...loaded,
-      keys,
+      input: keys,
       contracts,
       provider: signer.provider,
       chainId: deployment.network.chainId,

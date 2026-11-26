@@ -1,0 +1,55 @@
+{
+  "build": "2f149b670b68ae11aa3295fadc9e7698c592e0d6",
+  "load": 1794396881801,
+  "features": {
+    "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Mobile Safari/537.36",
+    "secureContext": true,
+    "webAssembly": true,
+    "webLocks": "granted",
+    "wakeLock": "granted",
+    "serviceWorker": true,
+    "storage": {
+      "persistedBefore": false,
+      "persist": false,
+      "persistedAfter": false
+    },
+    "share": true,
+    "canShareFile": true,
+    "injectedEthereum": false,
+    "indexedDB": "ok",
+    "engine": "ok"
+  },
+  "context": {
+    "displayMode": "browser",
+    "navigatorStandalone": "missing",
+    "viewport": {
+      "width": 360,
+      "height": 754
+    },
+    "screen": {
+      "width": 360,
+      "height": 840
+    },
+    "devicePixelRatio": 3,
+    "coarsePointer": true,
+    "safeAreaInsets": {
+      "top": "0px",
+      "right": "0px",
+      "bottom": "0px",
+      "left": "0px"
+    },
+    "visibility": "visible"
+  },
+  "eip6963": [],
+  "clockProbes": [],
+  "log": [
+    { "load": 1794396881801, "seq": 0, "event": "load", "perfMs": 1043.4, "dateMs": 1794396882844, "detail": { "navigation": "navigate", "wasDiscarded": false } },
+    { "load": 1794396881801, "seq": 1, "event": "pageshow", "perfMs": 1058.4, "dateMs": 1794396882859, "detail": { "persisted": false } },
+    { "load": 1794396881801, "seq": 2, "event": "blur", "perfMs": 3160.4, "dateMs": 1794396884961 },
+    { "load": 1794396881801, "seq": 3, "event": "focus", "perfMs": 3203.8, "dateMs": 1794396885004 },
+    { "load": 1794396881801, "seq": 4, "event": "touchstart", "perfMs": 8713.6, "dateMs": 1794396890514, "detail": { "edge": "right", "px": 64 } },
+    { "load": 1794396881801, "seq": 5, "event": "touchstart", "perfMs": 12828, "dateMs": 1794396894629, "detail": { "edge": "left", "px": 60 } },
+    { "load": 1794396881801, "seq": 6, "event": "touchstart", "perfMs": 21529.5, "dateMs": 1794396903330, "detail": { "edge": "left", "px": 51 } },
+    { "load": 1794396881801, "seq": 7, "event": "touchcancel", "perfMs": 22881.2, "dateMs": 1794396904682, "detail": { "edge": "right", "px": 73 } }
+  ]
+}
