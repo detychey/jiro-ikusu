@@ -1063,6 +1063,61 @@ Plan M5.10, 2026-11-26: the zk backend moves from `risc0-zkvm` 3.0.6 to 3.1.0, a
 
   An `eth_call` of `verify` through the 3.1 stop `0xA1DC…bA29` on Arbitrum Sepolia returns for all five (block 332,947,169). With the digest changed, it reverts with `VerificationFailed()` (`0x439cc0cd`); run 1's 3.0 seal reverts with `SelectorMismatch(0x73c457ba, 0xe71e6620)`.
 
+## Proving on a GPU
+
+Plan M5.9, measured on 2026-11-26 with [`referee/zk/gpu-measure.sh`](../referee/zk/README.md#proving-on-a-gpu) at commit `0d5f7c6`: `zk-host` with the `cuda` feature on RISC Zero 3.1.0, on a rented card. The summary, the record of each proof, the machine and the archive are in [`reports/gpu-bench-2026-11-26/`](../reports/gpu-bench-2026-11-26/summary.md); `gpu-run-1.log` and `gpu-heaviest.log` at the repository's root hold the first proof of `run1` and of `heaviest`.
+
+- **Machine:** a RunPod pod of the secure cloud, 0.89 USD an hour: one NVIDIA GeForce RTX 4090, 24,564 MiB, driver 595.112.07, `nvcc` 12.8.93; 80 CPUs of an Intel Xeon Gold 6133 with a cgroup limit of 13.6, and a 46.6 GiB memory limit. No community RTX 4090 was usable that day: the two pods tried there failed CUDA's initialisation (`cudaGetDeviceCount`, error 804) before any build.
+- **Set-up and build:** 2,099 s on a fresh pod: the toolchains, rzup's `risc0-groth16` 0.2.0 component (2.4 GB) and the cuda build, most of it RISC Zero's kernels.
+- **Proofs:** 24, all ok, each with the image id `0xc9634ada…15a8` and a 260-byte seal of selector `0xe71e6620`. The cold proof and the sentinel of `small` both took 22.2 s.
+
+| Input | Segment limit | Segments | Proving cycles | Proofs | Wall s, median (min–max) | Segment proofs s | Recursion s | Groth16 s | Wall s per segment | Peak GPU MiB | VmHWM GiB |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| run1 | 2^19 | 27 | 14,155,776 | 1 | 48.4 (48.4–48.4) | 19.4 | 21.8 | 6.5 | 1.79 | 9,552 | 2.9 |
+| heaviest | 2^19 | 272 | 142,606,336 | 1 | 427.2 (427.2–427.2) | 190.7 | 225.3 | 6.5 | 1.57 | 9,364 | 3.0 |
+| small | 2^20 | 7 | 7,340,032 | 3 | 22.3 (22.2–22.3) | 9.5 | 5.4 | 6.5 | 3.19 | 13,258 | 3.0 |
+| run1 | 2^20 | 13 | 13,631,488 | 3 | 35.3 (35.2–36.0) | 17.3 | 10.4 | 6.6 | 2.72 | 13,356 | 3.0 |
+| mid | 2^20 | 45 | 46,661,632 | 3 | 104.2 (103.4–104.7) | 58.7 | 36.6 | 6.7 | 2.32 | 13,368 | 3.0 |
+| high | 2^20 | 96 | 100,663,296 | 3 | 214.2 (213.2–214.8) | 124.9 | 79.0 | 6.5 | 2.23 | 13,364 | 3.0 |
+| heaviest | 2^20 | 131 | 136,577,024 | 3 | 288.8 (287.5–289.3) | 169.3 | 108.2 | 6.6 | 2.20 | 13,364 | 3.0 |
+| overcap | 2^20 | 177 | 185,597,952 | 3 | 388.3 (387.4–399.2) | 230.1 | 145.6 | 6.7 | 2.19 | 13,667 | 3.0 |
+| run1 | 2^21 | 7 | 13,107,200 | 1 | 28.4 (28.4–28.4) | 15.7 | 5.4 | 6.5 | 4.06 | 22,470 | 3.0 |
+| heaviest | 2^21 | 64 | 134,217,728 | 1 | 219.5 (219.5–219.5) | 155.4 | 52.9 | 6.7 | 3.43 | 22,454 | 3.0 |
+
+**The model** at 2^20, fitted on each input's median: wall time = 7.3 s + 2.15 s × segments, R² = 1.0000. Each input is within 0.4 s of the fit, and the fit without `overcap` predicts it within 0.1%. Per segment, 1.30 s are segment proofs and 0.83 s recursion; the Groth16 step is a constant 6.6 s.
+
+**The segment size** stays at 2^20. At 2^21 `heaviest` took 219.5 s against 288.8 s, but used 22,454 of the card's 24,564 MiB, above the 90% that `gpu_bench.py` allows. At 2^19 it took 427.2 s, with 9,364 MiB.
+
+**Against 4 CPUs:** `small` took 3,297.2 s in the agents' container and 21.4 s here, 154 times less; `run1` 4,515.3 s and 34.2 s, 132 times less.
+
+**Cost per run** at 0.89 USD an hour (the model for the rows not measured; a session's 2,099 s of set-up and build cost 0.519 USD, 0.0173 USD a run when it proves 30). Settling costs the same on any prover ([Settlement gas](#settlement-gas)).
+
+| Run | Proving cycles | Segments | Wall s | Runs per hour | Proving USD | Proving USD, set-up shared by 30 | Runs in the grace, margin 2 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| small | 7,340,032 | 7 | 22.3 | 161.4 | 0.0055 | 0.0228 | 3,827 |
+| run1 | 13,631,488 | 13 | 35.3 | 102.0 | 0.0087 | 0.0260 | 2,417 |
+| mid | 46,661,632 | 45 | 104.2 | 34.5 | 0.0258 | 0.0431 | 819 |
+| high | 100,663,296 | 96 | 214.2 | 16.8 | 0.0530 | 0.0703 | 398 |
+| heaviest | 136,577,024 | 131 | 288.8 | 12.5 | 0.0714 | 0.0887 | 295 |
+| overcap | 185,597,952 | 177 | 388.3 | 9.3 | 0.0960 | 0.1133 | 219 |
+| search bot, mean | 16,000,000 | 16 | 41.7 | 86.2 | 0.0103 | 0.0276 | 2,044 |
+| random-walk, mean | 20,600,000 | 20 | 50.4 | 71.5 | 0.0124 | 0.0297 | 1,694 |
+| random-walk, max | 42,000,000 | 41 | 95.5 | 37.7 | 0.0236 | 0.0409 | 893 |
+| bold/committer, mean | 44,600,000 | 43 | 99.8 | 36.1 | 0.0247 | 0.0420 | 854 |
+| bold/committer, max | 61,000,000 | 59 | 134.3 | 26.8 | 0.0332 | 0.0505 | 635 |
+| greedy bot, mean | 54,400,000 | 52 | 119.2 | 30.2 | 0.0295 | 0.0468 | 715 |
+| greedy bot, max | 79,000,000 | 76 | 170.9 | 21.1 | 0.0422 | 0.0595 | 499 |
+| edge-nibbler, mean | 69,700,000 | 67 | 151.5 | 23.8 | 0.0375 | 0.0547 | 563 |
+| edge-nibbler, max | 102,000,000 | 98 | 218.2 | 16.5 | 0.0539 | 0.0712 | 391 |
+| proposed cap | 150,000,000 | 144 | 317.2 | 11.4 | 0.0784 | 0.0957 | 269 |
+| cost-maximising legal run (estimate), not measured: 16x the largest input | 2,900,000,000 | 2766 | 5,959.1 | 0.6 | 1.4732 | 1.4905 | 14 |
+
+**The acceptance criteria** (plan M5.9): A1, A2 and A4 to A8 pass. The repeats are within 3.0% of their median, no clock slowed, and the sentinel matches the first proofs.
+
+**A3, onchain:** pending generation 2 (plan M5.10). `gpu-onchain.sh` checks each proof through the deployed `ZkReferee`, and generation 1's verifier is stopped: it answers `EnforcedPause()` (`0xd93c0665`) to run 1's proofs, the 3.1.0 one included. In its place for now, an `eth_call` of `verify(seal, imageId, sha256(publicValues))` through RISC Zero's 3.1 stop `0xA1DC…bA29` on Arbitrum Sepolia returns for all 24 GPU proofs (block 332,953,554), and reverts with `VerificationFailed()` (`0x439cc0cd`) when the digest is changed.
+
+**Two things the first attempt taught** (2026-11-26, same card model): `referee/zk/Cargo.lock` had `sppark` 0.1.16, with which every proof aborted in the Groth16 step, and now pins RISC Zero 3.1.0's own 0.1.12 ([`referee/zk/README.md`](../referee/zk/README.md#proving-on-a-gpu)); and the cuda build needs `protoc` and `libclang`, which `gpu-measure.sh` now checks.
+
 ## Run file v1
 
 The run file carries everything needed to replay, prove and settle one committed Challenge run, without reading the commit transaction: what a prover proves (M4.10), what the dApp shows and exports (M5.2), and what the season job rebuilds from chain data and settles from (M5.5). It is a JSON object:

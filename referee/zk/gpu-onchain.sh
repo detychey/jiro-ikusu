@@ -3,7 +3,7 @@
 # gpu_bench.py's summary listed in <benchmark directory>/onchain.txt goes through the deployed
 # ZkReferee with scripts/contracts/verify-proof.mjs, an eth_call of verifyRun that costs nothing,
 # and must be accepted with the run score listed there; run 1's is 20310, the score it settled with.
-# First, as a control, the CPU proof of record of run 1 must be accepted: if it is not, the deployed
+# First, as a control, run 1's CPU proof on RISC Zero 3.1.0 (M5.10) must be accepted: if it is not, the deployed
 # verifier refuses every proof, and it stops there. Then run 1's GPU proof, each input's first round
 # and the segment-size sweep, so that a rate-limited RPC still checks those. It prints one line per
 # proof and exits 1 when any is refused.
@@ -17,10 +17,10 @@ set -euo pipefail
 bench="$(cd "$1" && pwd)"
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
-if ! control="$(node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof seasons/testnet-0/runs/run-1.proof.json \
+if ! control="$(node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof seasons/testnet-0/runs/run-1.risc0-3.1.proof.json \
   --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json 2>&1)"; then
   echo "$control"
-  echo "gpu-onchain: the deployed ZkReferee refuses run 1's CPU proof of record, which settled, so it would refuse any proof: no GPU proof checked" >&2
+  echo "gpu-onchain: the deployed ZkReferee refuses run 1's 3.1.0 CPU proof, so it would refuse any proof: no GPU proof checked" >&2
   echo "gpu-onchain: revert data 0xd93c0665 is EnforcedPause(), RISC Zero's emergency stop paused (docs/DEPLOYMENT.md, What forces a new generation)" >&2
   exit 1
 fi
