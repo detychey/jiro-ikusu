@@ -96,19 +96,25 @@ The segment proofs and their recursion into one succinct receipt run in the proc
 
 The `cuda` feature (plan M5.9) builds `zk-host` with RISC Zero's GPU prover: the segment proofs, their recursion and the Groth16 step run on an NVIDIA card, without Docker. The guest does not change, so neither does the image id: the cuda build gives the same image id as the CPU build. The operator proves testnet-1's runs this way, on a GPU rented by the hour (owner, 2026-11-11), and settles them from its own machine ([`docs/SEASON_RUNBOOK.md`](../../docs/SEASON_RUNBOOK.md)).
 
-**The machine.** x86-64 Linux, an NVIDIA card with at least 16 GB, which fits RISC Zero's default segments (third-party), its driver, and the CUDA toolkit with `nvcc`, plus `git`, `curl`, `g++` and Python 3.11 or newer, with which `scripts/bootstrap.sh` reads `rust-toolchain.toml`. It holds no key: a proof is public data, and settlement is sent from the operator's machine.
+**The machine.** x86-64 Linux, an NVIDIA card with at least 16 GB, which fits RISC Zero's default segments (third-party), its driver, and the CUDA toolkit with `nvcc`, plus `git`, `curl`, `g++`, `protoc`, `libclang` and Python 3.11 or newer, with which `scripts/bootstrap.sh` reads `rust-toolchain.toml`. It holds no key: a proof is public data, and settlement is sent from the operator's machine.
 
-On RunPod, a community RTX 4090 pod started from RunPod's PyTorch image for CUDA 12.8.1 on Ubuntu 24.04, such as `runpod/pytorch:2.1.0-cu1281-torch280-ubuntu2404`, has all of them. Its image configuration shows NVIDIA's CUDA 12.8.1 devel image, `build-essential`, `git`, `curl` and Python 3.12 (2026-11-11). Pick a host whose driver supports CUDA 12.8.
+On RunPod, a community RTX 4090 pod started from RunPod's PyTorch image for CUDA 12.8.1 on Ubuntu 24.04, such as `runpod/pytorch:2.1.0-cu1281-torch280-ubuntu2404`, has all of them but `protoc` and `libclang`, which the cuda build needs and `apt-get` installs (measured on RunPod, 2026-11-26: the build stops in `circom-witnesscalc`, then in `bindgen`, without them). Its image configuration shows NVIDIA's CUDA 12.8.1 devel image, `build-essential`, `git`, `curl` and Python 3.12 (2026-11-11). Pick a host whose driver supports CUDA 12.8.
 
 **The Groth16 setup files.** With the `cuda` feature, `risc0-groth16` 3.0.6 wraps the proof on the card, without Docker, and reads four setup files from rzup's component `risc0-groth16` 0.2.0, the 3.1.0 trusted setup (plan M5.10), in `~/.risc0/extensions/v0.2.0-risc0-groth16/`: `stark_verify_final.zkey`, `stark_verify_graph.bin`, `preprocessed_coeffs.bin` and `fuzzed_msm_results.bin`. Neither `scripts/bootstrap.sh` nor the build installs them, and without them every proof fails at its last step with "Missing required `risc0-groth16` rzup component". Install that component alone, before the benchmark: a bare `rzup install` also installs a newer guest toolchain. RISC Zero's installer only puts `rzup` 0.6.0 in `~/.risc0/bin`; the component comes from `artifacts.risczero.net` and is about 2.4 GB.
+
+**The GPU libraries' versions.** `referee/zk/Cargo.lock` pins `sppark` 0.1.12 and `blst` 0.3.15, the versions of RISC Zero 3.1.0's own lockfile. With `sppark` 0.1.16, which Cargo resolved first, every proof aborted in the Groth16 step on an RTX 4090 with `cudaStreamSynchronize ... "an illegal memory access was encountered"` (2026-11-26; RISC Zero's issue 3785 reports the same abort on 3.0.x). Neither crate is in the guest, so the image id does not change.
 
 **Set up and measure.** Clone at the fixed path, which needs no bind mount on a fresh machine, then build and measure with one script. It installs rustup when it is missing and the zk tier of `scripts/bootstrap.sh`, builds with `--features cuda`, and runs the benchmark below. Each session clones and builds again: the build gives the deployed image id only at the fixed path itself, and a symbolic link to a disk kept between sessions builds from another path. The build is long, mostly RISC Zero's CUDA kernels: 42 min on 4 CPUs without the guest (2026-11-11), less on a machine with more CPUs. Run again after `git pull`, the script reuses the build.
 
 ```bash
-curl -L https://risczero.com/install | bash      # rzup, into ~/.risc0/bin
-~/.risc0/bin/rzup install risc0-groth16 0.2.0    # the four setup files, nothing else
+apt-get update && apt-get install -y protobuf-compiler libclang-dev
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+source ~/.cargo/env
 git clone https://github.com/detychey/jiro-ikusu /home/runner/work/jiro-ikusu/jiro-ikusu
 cd /home/runner/work/jiro-ikusu/jiro-ikusu
+bash scripts/bootstrap.sh zk                     # rustc first: rzup's installer refuses to run without it
+curl -L https://risczero.com/install | bash      # rzup, into ~/.risc0/bin
+~/.risc0/bin/rzup install risc0-groth16 0.2.0    # the four setup files, nothing else
 bash referee/zk/gpu-measure.sh --out /workspace/gpu-bench --price-usd-per-hour 0.34
 ```
 

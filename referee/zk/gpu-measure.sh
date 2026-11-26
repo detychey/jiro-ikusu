@@ -17,7 +17,7 @@
 # referee/zk/gpu-onchain.sh checks onchain from any machine.
 # It runs from a checkout at /home/runner/work/jiro-ikusu/jiro-ikusu, not reached through a
 # symbolic link, since the image id depends on the path (README.md, Reproducible image ids), on
-# x86-64 Linux with an NVIDIA card, its driver, the CUDA toolkit, g++, curl, Python 3.11 or newer
+# x86-64 Linux with an NVIDIA card, its driver, the CUDA toolkit, g++, curl, protoc, libclang, Python 3.11 or newer
 # and RISC Zero's Groth16 setup files, rzup's component risc0-groth16 0.2.0. It installs rustup
 # when it is missing, then the zk tier of scripts/bootstrap.sh.
 # Usage: bash referee/zk/gpu-measure.sh [--segment-po2 <n>] [--rounds <n>] [--out <dir>]
@@ -76,6 +76,8 @@ command -v nvidia-smi >/dev/null || fail "nvidia-smi is missing: no NVIDIA drive
 command -v nvcc >/dev/null || fail "nvcc is missing: install the CUDA toolkit"
 command -v g++ >/dev/null || command -v c++ >/dev/null || fail "a C++ compiler (g++) is missing"
 command -v curl >/dev/null || fail "curl is missing"
+command -v protoc >/dev/null || fail "protoc is missing: apt-get install -y protobuf-compiler (the cuda build's circom-witnesscalc needs it)"
+ldconfig -p | grep -q 'libclang' || [ -n "${LIBCLANG_PATH:-}" ] || fail "libclang is missing: apt-get install -y libclang-dev (the cuda build's bindgen needs it)"
 python3 -c 'import tomllib' 2>/dev/null || fail "Python 3.11 or newer is missing: scripts/bootstrap.sh reads rust-toolchain.toml with it"
 # Before the build, so that a wrong option fails in seconds.
 python3 referee/zk/gpu_bench.py plan "$out" --segment-po2 "$po2" --rounds "$rounds" "${redo[@]}" >/dev/null
