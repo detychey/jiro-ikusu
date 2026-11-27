@@ -25,9 +25,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROOF_OF_RECORD = REPO_ROOT / "seasons/testnet-0/runs/run-1.proof.json"
-# zk-host built on risc0-zkvm 3.1.0 at the fixed path, and the selector of the 3.1 Groth16 verifier
-# (plan M5.10). Run 1's public values did not change: they are those of its 3.0 proof of record.
-IMAGE_ID = "0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8"
+# zk-host of rules version 3 (plan M5.12), built on risc0-zkvm 3.1.0 at the fixed path, and the
+# selector of the 3.1 Groth16 verifier (plan M5.10). Run 1's public values are those of its 3.0
+# proof of record; run 1 is a run of rules version 2, which this image no longer proves, so the
+# next benchmark replaces the run1 input (plan M5.17).
+IMAGE_ID = "0x7e1988ace7094a3f7a5b7bf04a8196bc15e4763b3122e7fd5d6a9fdad44588f0"
 SELECTOR = "0xe71e6620"
 SEASON = REPO_ROOT / "seasons/testnet-1.json"
 RUN_1_SCORE = 20310
