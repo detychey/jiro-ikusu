@@ -8,6 +8,8 @@
 # - a modified or deleted file under vectors/format requires a bump of a format version
 #   (JOURNAL_VERSION, LEVEL_VERSION, STATE_HASH_VERSION) or of RULES_VERSION;
 # - added vector files trigger neither. A renamed file counts as deleted, then added.
+# - a gate-set vector (vectors/levels) moves only when its outcome or trace changed on the same
+#   inputs. One whose inputs changed, because calibrate retuned its level or weight, is new.
 # With --reverse (M4.15), any modified or deleted vector file, or any changed version, fails.
 set -euo pipefail
 
@@ -48,6 +50,26 @@ moved() {
   git diff --no-renames --diff-filter=MD --name-only "$base" -- "$@"
 }
 
+# A gate-set vector has moved when it was deleted or its inputs, its JSON without the outcome and
+# trace it records, are the same at base. A vector that cannot be read counts as moved.
+moved_on_same_inputs() {
+  local json="${1%.*}.json" drop='del(.outcome, .trace, .traceKeccak)' before after
+  [ -f "$json" ] || return 0
+  before="$(git show "$base:$json" | jq -S "$drop")" || return 0
+  after="$(jq -S "$drop" "$json")" || return 0
+  [ "$before" = "$after" ]
+}
+
+moved_vectors() {
+  moved vectors/game
+  local file
+  for file in $(moved vectors/levels); do
+    if moved_on_same_inputs "$file"; then
+      echo "$file"
+    fi
+  done
+}
+
 rules=core/src/consts.rs
 versions=("$rules RULES_VERSION" "$rules JOURNAL_VERSION" "$rules LEVEL_VERSION" "core/src/hash.rs STATE_HASH_VERSION")
 echo "check-rules-version: base $base"
@@ -70,7 +92,7 @@ if [ "$reverse" = 1 ]; then
 fi
 
 status=0
-game="$(moved vectors/game vectors/levels)"
+game="$(moved_vectors)"
 if [ -n "$game" ]; then
   echo "$game"
   if ! changed "$rules" RULES_VERSION; then

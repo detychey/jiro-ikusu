@@ -1040,7 +1040,7 @@ Each milestone's README §9 "done when" closes when these items merge:
   - `scripts/check-rules-version.sh`, in the vectors-drift job. With `base=$(git merge-base origin/main HEAD)`:
     - if `git diff --diff-filter=MD --name-only $base -- vectors/game vectors/levels` is non-empty, `RULES_VERSION` in `core/src/consts.rs` must differ from its value at `$base`, and every game vector's `rulesVersion` must equal the new value;
     - a modified file under `vectors/format` requires a bump of a format version (journal, level, state hash) or of `RULES_VERSION`;
-    - added vector files don't trigger it;
+    - added vector files don't trigger it, and nor does a file under `vectors/levels` whose vector's inputs (its JSON without `outcome`, `trace` and `traceKeccak`) changed: a retuned level or weight makes a new vector (M5.19);
     - `--reverse` fails if any vector file is modified or any version changed (M4.15).
 
   The scenarios include:

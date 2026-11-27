@@ -436,7 +436,7 @@ u16      eventCount
 eventCount × (u16 tick, u8 mask)
 ```
 
-**Rules version.** `RULES_VERSION` starts at 1 [PIN-13]. It is bumped on every behavior change: a change that alters the outcome, error code or trace of a committed vector, or that implements an edit to §4-§6 rule text made after the rule was first implemented. Implementing a frozen rule for the first time is not a behavior change. Each season names the rules version it accepts, and the referee rejects any other, so a journal is always replayed under the rules it was played with.
+**Rules version.** `RULES_VERSION` starts at 1 [PIN-13]. It is bumped on every behavior change: a change that alters the outcome, error code or trace of a committed vector replayed on the same inputs, or that implements an edit to §4-§6 rule text made after the rule was first implemented. Implementing a frozen rule for the first time is not a behavior change, and neither is retuning a level: a gate-set vector whose level or weight changed has new inputs, so it is a new vector. Each season names the rules version it accepts, and the referee rejects any other, so a journal is always replayed under the rules it was played with.
 
 **Decoding.** The decoder rejects what the bytes alone show. It checks in this order and returns the first broken rule's code:
 
