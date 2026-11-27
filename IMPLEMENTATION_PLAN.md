@@ -2,7 +2,7 @@
 
 **Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. M4, the referees and the contracts, closed with M4.14 on 2026-11-09: a run settled end to end on Arbitrum Sepolia. On 2026-11-10 the owner made the browser the game's platform, with a phone version later (README §13 D1). On 2026-11-11 the owner scheduled M3, that phone version, as the same web client made touch-first (README §13 D16); its first item is M3.11. On 2026-11-27 the owner put the phone version's remaining items (M3.14-M3.23) aside to reach testnet-1 faster, and chose the v1 payout for it (M5.14-M5.17).** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
-[`README.md`](README.md) is the normative specification, and this plan turns it into 81 work items. Six are conditional (M1.14, M1.15, M3.21, M3.22, M4.10, M4.15) and three are optional (M3.20, M3.23, M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
+[`README.md`](README.md) is the normative specification, and this plan turns it into 83 work items. Six are conditional (M1.14, M1.15, M3.21, M3.22, M4.10, M4.15) and three are optional (M3.20, M3.23, M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
 The order:
 
@@ -2140,8 +2140,10 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | M5.13 | Settlement cost: hashes-only settlement, proof aggregation and a prover bounty; design | M5.6 | M | Approve the design by merging (round G4) |
 | M5.14 | The v1 payout: README and docs | M5.9 | M | none |
 | M5.15 | The v1 payout in the contracts: capped tickets and the bot-neutral pot | M5.14 | L | none |
-| M5.16 | Paid levels and testnet-1's v1 season file | M5.12, M5.14 | M | none |
-| M5.17 | Generation 3 on Arbitrum Sepolia | M5.12, M5.15, M5.16 | M | Approve deploying generation 3 (round F6) |
+| M5.16 | Paid levels and testnet-1's v1 season file | M5.14, M5.19 | M | none |
+| M5.17 | Generation 3 on Arbitrum Sepolia | M5.15, M5.16 | M | Approve deploying generation 3 (round F6) |
+| M5.18 | Twin bosses: rules version 4 and level format v2 | M5.12 | L | none |
+| M5.19 | Twin-boss levels 10, 13, 15 and 16 | M5.18 | M | Play the four levels on the preview and approve them (round F7) |
 
 Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4.11) with MockReferee, `e2e.yml` on nitro-devnode with the real referee, or Arbitrum Sepolia.
 
@@ -2482,7 +2484,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 #### M5.16 Paid levels and testnet-1's v1 season file
 
 - **Goal:** the paid level set and the season file testnet-1 opens with.
-- **Why:** filed on 2026-11-27, from M5.14's decisions 2 to 5, measured on rules version 3 (M5.12), since the fast cut always on changes play.
+- **Why:** filed on 2026-11-27, from M5.14's decisions 2 to 5, measured on the rules testnet-1 opens with (M5.12, then the twin bosses of M5.18 and M5.19), since they change play.
 - **Deliverables:**
   - 16 paid copies of the levels, each with 3 more lives and a target of 5,000 bp, built by the level tool, valid, with their ids, in `levels/` beside the 16 levels and in `levels/README.md`;
   - the playtest on the paid set: the bot edge ρ for the reference mix and with 20 % and 40 % novices, the clear rates, the ticks per run and the proving cycles per run, in `reports/`;
@@ -2494,12 +2496,36 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 
 #### M5.17 Generation 3 on Arbitrum Sepolia
 
-- **Goal:** generation 3 on Arbitrum Sepolia: the rules version 3 `ZkReferee` and the v1 payout's `Season` and `Challenge`, the generation testnet-1 opens on.
+- **Goal:** generation 3 on Arbitrum Sepolia: the `ZkReferee` of the rules testnet-1 opens with (rules version 4, after M5.18) and the v1 payout's `Season` and `Challenge`, the generation testnet-1 opens on.
 - **Why:** filed on 2026-11-27, split out of M5.12 when the v1 payout joined generation 3.
-- **Deliverables:** `docs/DEPLOYMENT.md` §2's preflight, fork rehearsal, deployment, Sourcify verification and solvency check, as M5.10 deployed generation 2, after round F6; the record in `deployments/arbitrum-sepolia.json` and a `docs/DEPLOYMENT.md` section; it opens no season: M5.6 opens testnet-1.
-- **Done when:** generation 3 is the newest generation of `deployments/arbitrum-sepolia.json`, earlier generations unchanged; its `ZkReferee` reads `rulesVersion()` 3, the build's image id and the 3.1 stop; its four sources are verified on Sourcify; `preflight.mjs --check-solvent` reads `ready: yes`; and `season.mjs status --network arbitrum-sepolia` passes.
+- **Deliverables:** the four proofs of `contracts/test/fixtures/zk-proofs.json` proven again on the final guest, as M5.10 did (`level` and `run` from a `zk-prove.yml` run, `worstCase` from a dispatch at `segment_po2=20`, `challengeRun` in the container), which M5.12 and M5.18 leave for this item so that they are proven once; then `docs/DEPLOYMENT.md` §2's preflight, fork rehearsal, deployment, Sourcify verification and solvency check, as M5.10 deployed generation 2, after round F6; the record in `deployments/arbitrum-sepolia.json` and a `docs/DEPLOYMENT.md` section; it opens no season: M5.6 opens testnet-1.
+- **Done when:** generation 3 is the newest generation of `deployments/arbitrum-sepolia.json`, earlier generations unchanged; its `ZkReferee` reads the final `rulesVersion()`, the build's image id and the 3.1 stop; its four sources are verified on Sourcify; `preflight.mjs --check-solvent` reads `ready: yes`; and `season.mjs status --network arbitrum-sepolia` passes.
 - **Verify with:** M5.10's commands.
 - **Skills:** `onchain-referee`, `security`, `ship`. **README:** none. **Needs user:** approve deploying generation 3 (round F6).
+
+#### M5.18 Twin bosses: rules version 4 and level format v2
+
+- **Goal:** a level can have two bosses, so that testnet-1 opens with twin-boss levels.
+- **Why:** filed on 2026-11-27. The owner chose twin bosses before testnet-1, despite the delay: the catalogue's "Twin bosses and the dividing wall" ([`docs/genre/ideas/level-structure-and-progression.md`](docs/genre/ideas/level-structure-and-progression.md#twin-bosses-and-the-dividing-wall), the best-scored idea), with the bosses bouncing off each other as off a wall (owner, 2026-11-27: "just make them rebound as if they hit a wall"), on levels 10, 13, 15 and 16 (M5.19).
+- **The rules, as decided:**
+  - **Level format v2:** a boss count (1 or 2) and, for the second boss, its size B (2 to 8), spawn rectangle and move period; v2 still decodes the 472-byte v1, so single-boss level ids survive if the PR can keep them, or the PR explains why not. A new validity rule: the two spawn rectangles' possible start bodies are always disjoint.
+  - **Seed:** the second boss's start, direction and deflection key from seed material unused today (the catalogue's sketches name byte 4 bits 2 and 3 and bytes 21 to 28, or 9 to 16; the PR allocates them in README §6.4 once, for every later proposal), so D14 holds per boss.
+  - **Movement:** at step 4, boss 0 moves, then boss 1, each by R4.6-6 and R4.6-7 with its own key. Each boss's edge test (R4.6-3) treats the other boss's body as a wall: it bounces, with no hit; boss 0 tests boss 1's body before boss 1 moves, and boss 1 tests boss 0's new body, one axis at a time, so the bodies never overlap. A boss blocked on both axes reverses both and holds still for that move. Either boss bumping the trail is a hit, and stepping onto either body is a hit.
+  - **Capture and the dividing wall:** fill from boss 0's body (R4.8-2); if boss 1's top-left cell is then not `BOSS_ZONE`, the bosses are separated: the level ends at step 3 as cleared, with `claimBp` raised to at least the target; otherwise the pass runs as today. Separation ends the level at once, so the field never stays in two regions, and D7's coverage argument (PIN-14) holds.
+  - **The work budget** (M5.11) counts both fills; M5.11's per-capture constant and bound are re-measured with two bosses, and the cap restated if it moves.
+- **Deliverables:** the core and README §4, §5, §6 (format v2, seed bytes, state hash v3 with the second boss), §13 D9 and D14's divergence argument restated for two bodies that deflect each other, with M1.5's property test extended to the pair; `RULES_VERSION` 4; `vectors/` with twin-boss vectors (a bounce, a pinned boss, a separation clear, a capture that does not separate) and regenerated `vectors/format/`; the playtest bots and their reach tests for two bosses, and a split-seeking test policy for M5.19's measurements; the web renderer and the level editor for two bosses; `zk-host execute vectors/` on the rebuilt guest, whose fixtures M5.17 proves again.
+- **Done when:** `cargo test`, the parity checks and difffuzz pass on rules version 4; `vectors/` replays on the core, the wasm build and the zk guest; every single-boss level plays as on rules version 3 (its vectors' outcomes unchanged apart from the rules version in the header); `ci.yml` is green.
+- **Verify with:** `cargo test`; `zk-host execute vectors/`; `bash scripts/check-rules-version.sh`; the web tests.
+- **Skills:** `deterministic-core`, `journal-codec`, `parity-testing`. **README:** §4, §5, §6, §13 D9 and D14. **Needs user:** none: the owner's decisions of 2026-11-27.
+
+#### M5.19 Twin-boss levels 10, 13, 15 and 16
+
+- **Goal:** levels 10, 13, 15 and 16 become twin-boss levels, gate layouts in which a central barrier with doors wider than a boss lets a player separate the bosses (owner, 2026-11-27).
+- **Why:** filed on 2026-11-27, with M5.18.
+- **Deliverables:** the four levels redesigned in `levels/src/` per [`docs/genre/level-design-guide.md`](docs/genre/level-design-guide.md) §2.4, keeping their place in the difficulty curve; `levels/*.bin`, `levels/README.md`; the playtest with the reference mix and the split-seeking policy (how often each clears by area and by separation), its report and `playtest --check`; `calibrate --check`; the worst-case proving cycles of the four levels against M5.11's cap; the bot-advantage figures for the four levels.
+- **Done when:** the level tool validates the four levels, `playtest --check levels/targets.json` passes, their worst case stays under the cap, and the owner approved them on the preview.
+- **Verify with:** `jiro-tools level validate levels/*.bin`; `jiro-tools playtest --check levels/targets.json`; `zk-host execute` on their worst-case inputs.
+- **Skills:** `deterministic-core`, `parity-testing`. **README:** §5. **Needs user:** play the four levels on the PR preview and approve them (round F7).
 
 ## 11. Decision schedule
 
@@ -2694,6 +2720,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 - [x] **F4, critical** (M5.10 ready: its fixtures, fork rehearsal and preflight done): approve deploying generation 2 on Arbitrum Sepolia from M5.10's PR head: `ZkReferee` over RISC Zero's 3.1 emergency stop `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29`, image id `0xc9634ada…15a8`, rules version 2, the deployer as operator and treasury as in generation 1. An agent session with `DEPLOYER_KEY` deploys it and records it in the PR; then merge M5.10. Once M5.10's done-when lines are ticked, M5.9's 3.1.0 GPU session can start (G2b).
 - [ ] **F5, critical** (M5.11 ready): approve the proving-cycle cap's mechanism and value, and testnet-1's grace, by merging M5.11.
 - [ ] **F6, critical** (M5.17 ready: M5.12, M5.15 and M5.16 merged, the fork rehearsal and preflight done): approve deploying generation 3 on Arbitrum Sepolia from M5.17's PR head, at rules version 3 with the v1 payout, as generation 2 was deployed.
+- [ ] **F7** (M5.19 ready): play levels 10, 13, 15 and 16 with twin bosses on the PR preview, and approve them.
 
 ### Round G: testnet season
 
