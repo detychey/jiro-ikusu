@@ -113,7 +113,7 @@ shown. The footer lists the contract addresses of the deployment, linked to the 
 the git sha the site was built from.
 
 Once the wallet is on the right network, the page shows the season accepting runs: its run fee,
-its players' pot so far (the fees less the rake, plus any rollover) and its parameters. It
+its players' pot so far (the fees less the rake), its games and average ticket, and its parameters. It
 refuses to buy a run unless the engine's rules version is the season's `rulesVersion` and the 16
 shipped levels are the season's `levelIds`, slot by slot (`src/run/season.ts`); a run bought
 anyway would never settle. Buy pays into the season shown: if another season, or another fee,
@@ -140,7 +140,7 @@ passed; a commit onchain of other journals forfeits the run in this browser. One
 time in a tab, and a Web Lock per run keeps a second tab from playing it: that tab says the run
 is open in another tab. After the commit the page shows the six Outcomes, as the core replays
 them with the season's weights, and offers the run file of `docs/VERIFICATION.md`. The season page settles
-the player's best run, below.
+the player's scoring runs, below.
 
 The page plays on Arbitrum Sepolia, or on the network `?network=<name>` names: `local` is the
 anvil chain of `scripts/contracts/localnet.mjs --up`, on port 8545, where nothing advances
@@ -155,41 +155,42 @@ viewer, which reads the chain through a public RPC, reaches the wallet.
 
 ## Season
 
-`season.html` (plan M5.3) shows a season (README §8.4), the newest by default or the one
+`season.html` (plans M5.3, M5.15) shows a season (README §8.4), the newest by default or the one
 `?season=<n>` names, on the network `?network=<name>` names: its parameters and players' pot, its
-end with a countdown, then the countdown to the end of its settlement, its leaderboard, and each
-player's claim. Reads go through the network's public RPC, so the page needs no wallet to show
+end with a countdown, then the countdown to the end of its settlement, and its players with their
+games, tickets and prizes. Reads go through the network's public RPC, so the page needs no wallet to show
 the season; closing, claiming and settling go through the player's wallet, switched to the
 network if needed.
 
-- **Leaderboard,** without an indexer (`src/chain/leaderboard.ts`): `Season`'s `BestRunRecorded`,
-  which it emits each time a player's best settled run changes, `Challenge`'s `RunStarted`, for the
-  runs each player bought, and `Season`'s `Claimed`, read with `eth_getLogs` in chunks of 10,000
-  blocks from the season's first block, found by binary search on block timestamps
-  (`src/chain/logs.ts`). Players rank in D10's order. The qualified players' scores must add up to
-  `Season`'s `totalQualifiedPoints`, or the page says the RPC left out logs. A 14-day season on
-  Arbitrum, at 0.25 s per block, is about 484 calls per event: enough for testnet seasons, read in
-  the browser; a mainnet season needs an indexer.
-- **Claims:** each qualified player's best score's share of the players' pot, rounded down, as
-  `claim` pays it: the contract's pot once the season has closed, and before that the pot closing
-  it now would give.
+- **Players,** without an indexer (`src/chain/players.ts`): `Challenge`'s `RunStarted`, for the
+  players and the runs each bought, and `Season`'s `Claimed`, read with `eth_getLogs` in chunks of
+  10,000 blocks from the season's first block, found by binary search on block timestamps
+  (`src/chain/logs.ts`), then each player's games and tickets from `Season.tallyOf`. Six games per
+  run must add up to `Season`'s games, and the players' tickets to its tickets, or the page says the
+  RPC left out logs. There is no ranking: players are listed by prize. A 14-day season on Arbitrum,
+  at 0.25 s per block, is about 484 calls per event: enough for testnet seasons, read in the
+  browser; a mainnet season needs an indexer.
+- **Prizes and claims:** each player's prize of the bot-neutral pot, `Season.prizeOf`, which is
+  what `claim` pays once the season has closed, and before that what it would pay if the season
+  closed now.
 - **Close:** once the settlement of the oldest season not yet closed has ended (end + grace), the
   page offers `closeSeason`, which anyone may call.
-- **Settlement** (`src/pages/settle.ts`): the player's best run of the season among the committed
-  runs this browser holds, replayed by the core, on time by the contract's deadline and first in
-  D10's order. The deployment's backend decides who settles it. On Stylus, and on the local
-  chain's MockReferee, the page does: one `settleRun`, or `settleLevel` for each level not yet
+- **Settlement** (`src/pages/settle.ts`): the player's scoring runs of the season among the
+  committed runs this browser holds, replayed by the core: on time by the contract's deadline,
+  with a ticket above 0 (`src/run/score.ts`), cheapest first, by ticks. The deployment's backend
+  decides who settles them. On Stylus, and on the local chain's MockReferee, the page does, each
+  run in turn: one `settleRun`, or `settleLevel` for each level not yet
   settled when `settleRun` does not fit in one transaction (its gas estimate fails without revert
   data, as it does above Arbitrum's 32M of L2 gas per transaction), with its progress, up to three tries when
-  the network fails, and reverts decoded. On zk the operator settles each player's best run from
+  the network fails, and reverts decoded. On zk the operator settles every scoring run from
   chain data (README §7.5, D2), as a proof takes hours and gigabytes that a browser does not have:
   the page says the player has nothing to send, shows the cutoff, the season's end plus grace from
-  `Season.settlementEndOf`, and offers the run file to a player who proves their own, since
+  `Season.settlementEndOf`, and offers the run files to a player who proves their own, since
   `Challenge` takes a settlement from anyone.
 - **The operator's settlement** (`src/chain/operator.ts`, `scripts/settle.mjs`, plan M5.5): every
   committed run of the season, rebuilt from its commit transaction as the replay viewer loads it,
-  replayed with the season's weights, and each player's best on-time run in D10's order that
-  `Season` does not already hold or beat, among the runs whose Outcomes `Challenge` accepts. `scripts/settle.mjs` settles each with one `settleRun`, signed by the operator's key, after checking it again;
+  replayed with the season's weights, and every on-time scoring run, cheapest first, among the
+  runs whose Outcomes `Challenge` accepts. `scripts/settle.mjs` settles each with one `settleRun`, signed by the operator's key, after checking it is still unsettled;
   on zk, outside the local chain, it first proves the run with `zk-host`, keeping the run file and
   its proof under `seasons/<label>/runs/`. `--export` writes the run files for a GPU machine that
   holds no key, and a run whose proof is there settles with no `zk-host`. `docs/SEASON_RUNBOOK.md`
@@ -264,17 +265,18 @@ hash; `--stale-season` lets the season end and the next open after the page show
 `buyRun` refuses, and a `startRun` for it sent anyway reverts. `--players <n>` plays a run from
 each of n accounts, from account 2 on.
 
-`--settle` (plan M5.3) settles each player's best run through `src/pages/settle.ts` instead, the
+`--settle` (plans M5.3, M5.15) settles each player's scoring run through `src/pages/settle.ts` instead, the
 second player's level by level, with `settleRun` held to a gas cap of 1: on the mock backend the
 player settles it, and on the zk backend (`localnet.mjs --up --backend zk`, with `--backend zk`
 here) the e2e checks the cutoff shown and that the exported run file reloads to the six Outcomes,
-then `scripts/settle.mjs` settles each player's best run as the operator, from chain data: the runs
-it settles must be the players' bests, and each run file it rebuilds the one the dApp wrote. Each settled run then replays from its commit calldata to the
+then `scripts/settle.mjs` settles every scoring run as the operator, from chain data: the runs
+it settles must be the players' scoring runs, and each run file it rebuilds the one the dApp wrote. Each settled run then replays from its commit calldata to the
 Outcomes the referee returned at its settlement's block. A run that MockForwarder, standing in for
 a smart account, buys, reveals and commits loads from the call embedded in its transaction and
-from the transaction's trace, and replays to the Outcomes of the journals it committed. The
-leaderboard must equal `Season.bestRunOf`; then the season's settlement ends, account 9 closes it,
-and each player's claim shown must equal what `claim` pays. The season is then closed, so start a
+from the transaction's trace, and replays to the Outcomes of the journals it committed. Each
+player's games, tickets and prize shown must equal `Season.tallyOf` and `Season.prizeOf`; then the
+season's settlement ends, account 9 closes it, and each player's prize shown must equal what
+`claim` pays. The season is then closed, so start a
 new chain for further runs:
 
 ```bash
@@ -344,8 +346,8 @@ the phone projects only.
 | `src/level.ts` | The editor's model of a level, its cells and fields, which the core encodes and decodes |
 | `src/page.ts` | What the pages share: elements by id, loading the engine, the field's size, the HUD, error messages, claims in percent |
 | `src/journal.ts` | The level id a journal's header names, and the events of a journal the core has accepted |
-| `src/pages/season.ts` | The season page: parameters, pot, countdown, leaderboard with claims, close, claim |
-| `src/pages/settle.ts` | The player's best run, and its settlement: in the browser, or by the operator on zk |
+| `src/pages/season.ts` | The season page: parameters, pot, countdown, players with their tickets and prizes, close, claim |
+| `src/pages/settle.ts` | The player's scoring runs, and their settlement: in the browser, or by the operator on zk |
 | `src/pages/challenge.ts` | The Challenge page: wallet, network switch, balance and faucet link, season view, the run with its field, countdown and Outcomes, run file, footer |
 | `src/run/season.ts` | The season check before `startRun`, and the season view's entries |
 | `src/run/flow.ts` | A run from `startRun` to `commitRun`, resumable from the run store |
@@ -353,13 +355,13 @@ the phone projects only.
 | `src/run/deadline.ts` | The commit deadline, with the contract's formula |
 | `src/run/store.ts` | The runs in IndexedDB |
 | `src/run/runfile.ts` | The run file v1 of `docs/VERIFICATION.md`: writing, reading and replaying it |
-| `src/run/rank.ts` | A run's score, ticks, clears and qualification, and D10's order between two runs |
+| `src/run/score.ts` | A run's score, ticks, clears and tickets, whether it scores, and the cheapest-first order of settlement |
 | `src/chain/networks.ts` | The networks the app plays on, with what a wallet needs to add them, the page's network, and a read-only provider |
 | `src/chain/deployments.ts` | The newest generation of a deployment record, and the records the site was built with |
 | `src/chain/wallet.ts` | The injected wallet: connecting, the network check and switch, the signer, ETH amounts |
 | `src/chain/contracts.ts` | The contracts through the bindings: the season accepting runs, `startRun`, the entropy block's state, `revealRun`, `commitRun`, `closeSeason`, `claim`, decoded errors |
 | `src/chain/logs.ts` | `eth_getLogs` in chunks of blocks, and the first block at a timestamp |
-| `src/chain/leaderboard.ts` | A season's leaderboard from its events, and the claims |
+| `src/chain/players.ts` | A season's players from its events, with their games, tickets, prizes and claims |
 | `src/chain/calldata.ts` | A committed run's journals from its commit transaction, and its run file |
 | `src/chain/operator.ts` | The runs the operator settles: each player's best on-time run of a season, from chain data |
 | `src/chain/footer.ts` | The footer's contract addresses and build sha |
@@ -373,7 +375,7 @@ the phone projects only.
 | `public/fonts/` | Jiro Pixel 12, the subset of Fusion Pixel that `brand/README.md` builds, with its license |
 | `public/site.webmanifest` | The web app manifest: the name, the colors and the icons |
 | `public/_redirects` | Cloudflare Pages redirects: the old `/wipui` preview's URLs to the root |
-| `test/*.test.ts` | vitest: the clock, the bindings, the touch controls, play by keys and by touch, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, what a reload resumes, the run store and its lock, the run file, and the gate that plays one run at a time in a tab; the leaderboard and chunked logs, the season page's phases, close and pot, the best run and its settlement, the runs the operator settles, and a committed run's journals from calldata or a trace; the pages' header bar, head tags and banner; the vectors page's replay, and the probe's clock probe, frame gaps and edge distances |
+| `test/*.test.ts` | vitest: the clock, the bindings, the touch controls, play by keys and by touch, Training, replay and the level editor through the wasm build, the error names, the chain module on a mock EIP-1193 wallet, and the wallet-free pages' imports; the draw and run commitment, the deadline fixtures, the season check, the run's levels with reloads, what a reload resumes, the run store and its lock, the run file, and the gate that plays one run at a time in a tab; the players and chunked logs, the season page's phases, close and pot, tickets, the scoring runs and their settlement, the runs the operator settles, and a committed run's journals from calldata or a trace; the pages' header bar, head tags and banner; the vectors page's replay, and the probe's clock probe, frame gaps and edge distances |
 | `test/challenge.ts` | Plays a revealed run's levels without a chain, on a fake clock, with scripted keys and reloads |
 | `test/drive.ts` | Plays a level through the page's session on a fake clock, with the controls of a journal or a script, or any input source |
 | `test/fingers.ts` | Synthetic pointer events on the touch controls |
@@ -383,5 +385,5 @@ the phone projects only.
 | `scripts/bindings.mjs` | Generates `src/chain/bindings/` from `contracts/abi/` |
 | `scripts/preview-files.mjs` | Checks that `dist/` has the preview pages (`present`), or none of them and no vector file (`absent`) |
 | `scripts/chain-smoke.mjs` | `startRun` through `src/chain/` on a local chain |
-| `scripts/settle.mjs` | The operator's settlement of a season's best runs, proven with `zk-host` on zk (`--dry-run` lists them, `--export` writes their run files) |
-| `scripts/challenge-e2e.mjs` | Challenge runs from purchase to commit through `src/run/` on a local chain, with reloads, and with `--settle` their settlement, replay from calldata, leaderboard, close and claims |
+| `scripts/settle.mjs` | The operator's settlement of a season's scoring runs, proven with `zk-host` on zk (`--dry-run` lists them, `--export` writes their run files) |
+| `scripts/challenge-e2e.mjs` | Challenge runs from purchase to commit through `src/run/` on a local chain, with reloads, and with `--settle` their settlement, replay from calldata, players' prizes, close and claims |

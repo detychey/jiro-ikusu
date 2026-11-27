@@ -4,12 +4,13 @@
 // inputs, fed as keys through input.ts; a reload rebuilds the page's objects on the same
 // in-memory IndexedDB, and a reload while startRun confirms leaves the page's wallet unanswered. Account 2 plays, account 0 advances MockArbSys (0.25 s per block) and
 // account 3 settles against MockReferee. With --players n, accounts 2 to n + 1 each play a run.
-// With --settle (plan M5.3), the players' best runs settle through src/pages/settle.ts instead:
+// With --settle (plan M5.3, M5.15), the players' scoring runs settle through src/pages/settle.ts instead:
 // each player settles their own on the mock backend; on the zk backend, the operator settles the
 // season from chain data with web/scripts/settle.mjs (plan M5.5). Then the runs replay from their commit
 // calldata, a run committed through MockForwarder (account 8's stand-in for a smart account)
-// replays from its embedded call and its trace, the leaderboard is checked against Season, and
-// account 9 closes the season once its settlement has ended, which leaves no season accepting runs.
+// replays from its embedded call and its trace, the players' tickets and prizes are checked
+// against Season, and account 9 closes the season once its settlement has ended, which leaves no
+// season accepting runs, and the players claim their prizes.
 // Usage: node scripts/contracts/localnet.mjs --up [--backend zk], then
 //        node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545
 //          [--reload-at <level 1-6> | --reload-after-end out-of-lives|cleared | --reload-during-buy | --stale-season]
@@ -25,7 +26,7 @@ import { IDBFactory } from "fake-indexeddb";
 import { createServer } from "vite";
 import { buildContracts } from "../../scripts/contracts/deploy.mjs";
 import { nodeWallet, rpcClient } from "./node-wallet.mjs";
-import { settleBestRuns } from "./settle.mjs";
+import { settleScoringRuns } from "./settle.mjs";
 
 const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
@@ -114,7 +115,7 @@ async function e2e(load, options) {
   const { committedRun, tracedCommitRunCalls } = await load("/src/chain/calldata.ts");
   const { eventLogs } = await load("/src/chain/logs.ts");
   const { connectMockForwarder } = await load("/src/chain/bindings/MockForwarder.ts");
-  const { bestRun, operatorHandoff, settleOnchain, settlementCutoff, settlesInBrowser } = await load("/src/pages/settle.ts");
+  const { operatorHandoff, scoringRuns, settleOnchain, settlementCutoff, settlesInBrowser } = await load("/src/pages/settle.ts");
   const { readSeason } = await load("/src/pages/season.ts");
 
   const network = networkNamed(options.network);
@@ -370,49 +371,48 @@ async function e2e(load, options) {
     signer.provider.destroy();
   }
 
-  /** The players' best runs settle through settle.ts, replay from their commit calldata to the
-   *  referee's Outcomes, the leaderboard matches Season, and the season closes and pays out. */
+  /** The players' scoring runs settle through settle.ts, replay from their commit calldata to
+   *  the referee's Outcomes, the players' tickets and prizes match Season, and the season closes
+   *  and pays out. */
   async function settleSeason(played) {
     const reader = new JsonRpcProvider(options.rpc, network.chainId, { staticNetwork: true, cacheTimeout: -1 });
     const readContracts = connectContracts(deployment, reader);
     const { season, challenge } = readContracts;
     const number = BigInt(played[0].record.season);
-    const minClears = Number((await season.paramsOf(number)).minClears);
     const challengeAddress = await challenge.getAddress();
-    const bests = [];
+    const scored = [];
     for (const run of played) {
-      const best = bestRun(checker, levels, await run.env.store.runsOf(network.chainId, challengeAddress, run.player), number, minClears);
-      if (best === undefined) fail(`settle.ts finds no best run of ${run.player}`);
-      check(`${run.player}'s best run`, best.record.runId, run.record.runId);
-      await setRefereeOutcomes(best.record, run.outcomes);
-      bests.push(best);
+      const scoring = scoringRuns(checker, levels, await run.env.store.runsOf(network.chainId, challengeAddress, run.player), number);
+      check(`${run.player}'s scoring runs`, scoring.map(({ runId }) => String(runId)).join(", "), run.record.runId);
+      await setRefereeOutcomes(scoring[0].record, run.outcomes);
+      scored.push(scoring[0]);
     }
     const firstBlock = await reader.getBlockNumber();
-    if (!settlesInBrowser(deployment)) await operatorSettles(played, bests, number, season);
+    if (!settlesInBrowser(deployment)) await operatorSettles(played, scored, number, season);
     for (const [index, run] of played.entries()) {
-      const best = bests[index];
+      const scoring = scored[index];
       if (settlesInBrowser(deployment)) {
         // The second player's settleRun is refused for gas, so that it settles level by level.
         const gasCap = index === 1 ? 1n : undefined;
-        log(`${run.player} settles run ${best.record.runId} through settle.ts${gasCap === undefined ? "" : ", with a gas cap of 1 for settleRun"}:`);
-        await settleOnchain(run.contracts, best.file, (text) => log(`  ${text}`), gasCap);
+        log(`${run.player} settles run ${scoring.record.runId} through settle.ts${gasCap === undefined ? "" : ", with a gas cap of 1 for settleRun"}:`);
+        await settleOnchain(run.contracts, scoring.file, (text) => log(`  ${text}`), gasCap);
       }
-      const settlement = await challenge.settlements(BigInt(best.record.runId));
-      check(`run ${best.record.runId}'s settlement status`, settlement.status, 1n);
-      check(`run ${best.record.runId}'s settled score`, settlement.score, best.score);
-      const [settled] = await eventLogs(reader, challenge, "RunSettled", [BigInt(best.record.runId)], firstBlock, await reader.getBlockNumber());
-      await checkReplayFromCalldata(readContracts, reader, best, settled.log.blockNumber);
+      const settlement = await challenge.settlements(scoring.runId);
+      check(`run ${scoring.record.runId}'s settlement status`, settlement.status, 1n);
+      check(`run ${scoring.record.runId}'s settled score`, settlement.score, scoring.score);
+      check(`run ${scoring.record.runId}'s settled tickets`, settlement.tickets, scoring.tickets);
+      const [settled] = await eventLogs(reader, challenge, "RunSettled", [scoring.runId], firstBlock, await reader.getBlockNumber());
+      await checkReplayFromCalldata(readContracts, reader, scoring, settled.log.blockNumber);
     }
     await forwarderRun(readContracts, reader, number);
 
     const open = await readSeason(readContracts, reader, number);
-    check("the leaderboard's players", open.rows.length, played.length);
     for (const run of played) {
-      const best = await season.bestRunOf(number, run.player);
+      const tally = await season.tallyOf(number, run.player);
       const row = open.rows.find(({ player }) => player.toLowerCase() === run.player.toLowerCase());
-      if (row === undefined) fail(`the leaderboard has no row of ${run.player}`);
-      check(`${run.player}'s row`, JSON.stringify([row.runId, row.score, row.ticks, row.qualified].map(String)), JSON.stringify([best.runId, best.score, best.ticks, best.qualified].map(String)));
-      log(`leaderboard ${row.rank}. ${row.player}: run ${row.runId}, score ${row.score}, ${row.ticks} ticks, qualified ${row.qualified}, ${row.runs} run(s): Season.bestRunOf's`);
+      if (row === undefined) fail(`the season page has no row of ${run.player}`);
+      check(`${run.player}'s row`, JSON.stringify([row.games, row.tickets, row.prize].map(String)), JSON.stringify([tally.games, tally.tickets, await season.prizeOf(number, run.player)].map(String)));
+      log(`${row.player}: ${row.runs} run(s), ${row.games} games, tickets ${row.tickets} bp, prize ${formatEth(row.prize)} if it closed now: Season.tallyOf's and prizeOf's`);
     }
 
     const closeAt = Number(open.settlementEnd) + 1;
@@ -428,47 +428,47 @@ async function e2e(load, options) {
     for (const run of played) {
       const row = shown.rows.find(({ player }) => player.toLowerCase() === run.player.toLowerCase());
       const contractClaim = await run.contracts.season.claim.staticCall(number);
-      check(`${run.player}'s claim shown`, row.claim, contractClaim);
+      check(`${run.player}'s prize shown`, row.prize, contractClaim);
       const paid = await claim(run.contracts, number);
-      check(`${run.player}'s claim paid`, paid, row.claim);
-      log(`${run.player} claims ${formatEth(paid)}, the claim the page shows`);
+      check(`${run.player}'s claim paid`, paid, row.prize);
+      log(`${run.player} claims ${formatEth(paid)}, the prize the page shows`);
     }
     check("Season.isSolvent()", await season.isSolvent(), true);
     reader.destroy();
   }
 
-  /** On zk, settle.ts shows each player the cutoff and exports the run file, and the operator
+  /** On zk, settle.ts shows each player the cutoff and exports the run files, and the operator
    *  settles the season from chain data with web/scripts/settle.mjs: each run it rebuilds is the
-   *  run file the dApp wrote at commit, and it settles exactly the players' best runs. */
-  async function operatorSettles(played, bests, number, season) {
+   *  run file the dApp wrote at commit, and it settles exactly the players' scoring runs. */
+  async function operatorSettles(played, scored, number, season) {
     for (const [index, run] of played.entries()) {
       const cutoff = await settlementCutoff(run.contracts, number);
       check("the cutoff settle.ts shows", cutoff, await season.settlementEndOf(number));
       const handoff = operatorHandoff(network.chainName, cutoff);
       if (!handoff.includes(`block time ${cutoff}`)) fail(`settle.ts does not show the cutoff ${cutoff}: ${handoff}`);
       log(`settle.ts, on the zk backend: ${handoff}`);
-      const file = parseRunFile(JSON.stringify(bests[index].file, null, 2));
+      const file = parseRunFile(JSON.stringify(scored[index].file, null, 2));
       const reloaded = replayRunFile(checker, file, run.record.weightsBp);
       check("the exported run file's Outcomes", JSON.stringify(reloaded), JSON.stringify(run.outcomes));
     }
     const label = Object.keys(deployment.seasons).find((name) => BigInt(deployment.seasons[name]) === number);
     log(`the operator settles ${label} from chain data (web/scripts/settle.mjs):`);
-    const { runs, failed } = await settleBestRuns(load, { network: options.network, season: label, rpc: options.rpc, signer: operator, log: (line) => log(`  ${line}`) });
+    const { runs, failed } = await settleScoringRuns(load, { network: options.network, season: label, rpc: options.rpc, signer: operator, log: (line) => log(`  ${line}`) });
     if (failed.length > 0) fail(`the operator did not settle ${failed.map(({ runId, error }) => `run ${runId} (${error.message})`).join(", ")}`);
     const ids = (list) => list.map(String).sort().join(", ");
-    check("the runs the operator settles", ids(runs.map(({ runId }) => runId)), ids(bests.map(({ record }) => record.runId)));
-    for (const best of bests) {
-      const rebuilt = runs.find(({ runId }) => String(runId) === best.record.runId);
-      check(`run ${best.record.runId}'s file, rebuilt from chain data`, JSON.stringify(rebuilt.file), JSON.stringify(best.file));
+    check("the runs the operator settles", ids(runs.map(({ runId }) => runId)), ids(scored.map(({ record }) => record.runId)));
+    for (const scoring of scored) {
+      const rebuilt = runs.find(({ runId }) => String(runId) === scoring.record.runId);
+      check(`run ${scoring.record.runId}'s file, rebuilt from chain data`, JSON.stringify(rebuilt.file), JSON.stringify(scoring.file));
     }
     log("each run file the operator rebuilt from chain data is the one the dApp wrote at commit");
   }
 
   /** A run committed from its commit calldata replays to the Outcomes the referee returned when
    *  it settled, at the settlement's block. */
-  async function checkReplayFromCalldata(readContracts, reader, best, block) {
-    const loaded = await committedRun(readContracts, reader, checker, levels, BigInt(best.record.runId));
-    check(`run ${best.record.runId}'s journals' source`, loaded.source, "its commitRun call");
+  async function checkReplayFromCalldata(readContracts, reader, settledRun, block) {
+    const loaded = await committedRun(readContracts, reader, checker, levels, BigInt(settledRun.record.runId));
+    check(`run ${settledRun.record.runId}'s journals' source`, loaded.source, "its commitRun call");
     const replayed = replayRunFile(checker, loaded.file, loaded.weightsBp);
     const weights = loaded.file.drawSlots.map((slot) => loaded.weightsBp[slot]);
     const returned = await referee.verifyRun(loaded.file.levels, loaded.file.journals, weights, "0x", { blockTag: block });
@@ -483,8 +483,8 @@ async function e2e(load, options) {
       ticksUsed: Number(outcome.ticksUsed),
       levelScore: Number(outcome.levelScore),
     }));
-    check(`run ${best.record.runId} replayed from its commit calldata`, JSON.stringify(replayed), JSON.stringify(asCore));
-    log(`run ${best.record.runId}, replayed from its commit transaction ${loaded.transaction}, gives the Outcomes the referee returned at its settlement, block ${block}`);
+    check(`run ${settledRun.record.runId} replayed from its commit calldata`, JSON.stringify(replayed), JSON.stringify(asCore));
+    log(`run ${settledRun.record.runId}, replayed from its commit transaction ${loaded.transaction}, gives the Outcomes the referee returned at its settlement, block ${block}`);
   }
 
   /** A run that MockForwarder buys, reveals and commits for account FORWARDER_OWNER, as a smart

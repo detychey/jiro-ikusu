@@ -7,8 +7,9 @@
 //            operator (plan M5.3), and MockReferee stands in for ZkReferee: it ignores the proof.
 //   --check  runs a Challenge run's happy path on a fresh anvil, then stops it: start, reveal,
 //            commit with six gate-set vectors' journals, settleRun against MockReferee, with each
-//            result checked against the vectors. It writes its record to a temporary file and
-//            checks it against the schema of deployments/README.md.
+//            result checked against the vectors; then, past the season's end plus grace, the
+//            close and the player's claim of the v1 payout (README §8.4). It writes its record to
+//            a temporary file and checks it against the schema of deployments/README.md.
 // Usage: node localnet.mjs --up|--check [--port <port>] [--backend mock|zk, with --up]
 import { spawn } from "node:child_process";
 import { closeSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
@@ -31,12 +32,14 @@ const LOCAL_SEASON = {
   length: 14n * 24n * 3600n,
   grace: 48n * 3600n,
   commitSlack: 120n,
-  minClears: 1,
 };
 // The run of contracts/test/Settlement.t.sol: levels that end Cleared, out of lives and at the time limit.
 const RUN_VECTORS = ["05-synthetic", "13-worst", "10-synthetic", "08-worst", "01-synthetic", "16-worst"];
 const MODE_CHALLENGE = 1;
 const END_REASON_CLEARED = 2;
+const END_REASON_OUT_OF_LIVES = 3;
+// Level bytes v1 (README §5): the target claim, a big-endian u16.
+const LEVEL_TARGET_OFFSET = 470;
 const SETTLEMENT_SETTLED = 1n;
 const ALL_LEVELS_SETTLED = 0x3fn;
 const JOURNAL_MODE_OFFSET = 3;
@@ -153,6 +156,17 @@ function playedLevelOf(name, runNonce, levelIndex) {
   };
 }
 
+/**
+ * README §8.4: a game's ticket in basis points, min(claimBp, target) × 10,000 / target rounded
+ * down, or 0 when the lives ran out, with the target read from the game's level bytes.
+ */
+export function ticketOf(outcome, level) {
+  if (outcome.endReason === END_REASON_OUT_OF_LIVES) return 0;
+  const bytes = getBytes(level);
+  const target = (bytes[LEVEL_TARGET_OFFSET] << 8) | bytes[LEVEL_TARGET_OFFSET + 1];
+  return Math.floor((Math.min(outcome.claimBp, target) * 10_000) / target);
+}
+
 export function eventOf(contract, receipt, name) {
   const event = receipt.logs.map((log) => contract.interface.parseLog(log)).find((parsed) => parsed?.name === name);
   if (!event) throw new Error(`transaction ${receipt.hash} emitted no ${name}`);
@@ -198,23 +212,47 @@ export async function checkHappyPath(artifacts, provider, generation) {
   const score = played.reduce((sum, { outcome }) => sum + outcome.levelScore, 0);
   const ticks = played.reduce((sum, { outcome }) => sum + outcome.ticksUsed, 0);
   const clears = played.filter(({ outcome }) => outcome.endReason === END_REASON_CLEARED).length;
+  const tickets = played.reduce((sum, { outcome, level }) => sum + ticketOf(outcome, level), 0);
   const event = eventOf(challenge, settled, "RunSettled");
   assertEqual("RunSettled's player", event.player, playerAddress);
   assertEqual("RunSettled's score", event.score, score);
   assertEqual("RunSettled's ticks", event.ticks, ticks);
   assertEqual("RunSettled's clears", event.clears, clears);
+  assertEqual("RunSettled's tickets", event.tickets, tickets);
   const settlement = await challenge.settlements(runId);
   assertEqual("the settlement status", settlement.status, SETTLEMENT_SETTLED);
   assertEqual("the settled levels", settlement.settledLevels, ALL_LEVELS_SETTLED);
-  const best = await season.bestRunOf(number, playerAddress);
-  assertEqual("the player's best run", best.runId, runId);
-  assertEqual("the best run's score", best.score, score);
-  assertEqual("the best run's ticks", best.ticks, ticks);
-  assertEqual("the best run's qualification", best.qualified, clears >= LOCAL_SEASON.minClears);
-  assertEqual("the season's fees", (await season.seasons(number)).fees, LOCAL_SEASON.runFee);
+  const tally = await season.tallyOf(number, playerAddress);
+  assertEqual("the player's games", tally.games, 6);
+  assertEqual("the player's tickets", tally.tickets, tickets);
+  const state = await season.seasons(number);
+  assertEqual("the season's fees", state.fees, LOCAL_SEASON.runFee);
+  assertEqual("the season's tickets", state.tickets, tickets);
   assertEqual("Season.isSolvent()", await season.isSolvent(), true);
-  console.log(`localnet --check: run ${runId} settled, score ${score}, ticks ${ticks}, clears ${clears}: every result matches the vectors`);
+  console.log(`localnet --check: run ${runId} settled, score ${score}, ticks ${ticks}, clears ${clears}, tickets ${tickets}: every result matches the vectors`);
   return runId;
+}
+
+/**
+ * Closes the local season once its end plus grace has passed, moving anvil's clock there, and
+ * claims the prize of anvil's account 2, its only player: the whole players' pot (README §8.4).
+ */
+async function checkCloseAndClaim(artifacts, provider, generation) {
+  const [keeper, player] = await Promise.all([3, 2].map((index) => provider.getSigner(index)));
+  const number = generation.seasons[SEASON_LABEL];
+  const season = new Contract(generation.Season, artifacts.Season.abi, keeper);
+  const settlementEnd = await season.settlementEndOf(number);
+  const { timestamp } = await provider.getBlock("latest");
+  await provider.send("evm_increaseTime", [Number(settlementEnd) - timestamp + 1]);
+  await provider.send("evm_mine", []);
+  const closed = eventOf(season, await sendTransaction("Season.closeSeason", season.closeSeason(), season), "SeasonClosed");
+  const rake = (LOCAL_SEASON.runFee * BigInt(LOCAL_SEASON.rakeBp)) / 10_000n;
+  assertEqual("SeasonClosed's rake", closed.rake, rake);
+  assertEqual("SeasonClosed's players' pot", closed.playersPot, LOCAL_SEASON.runFee - rake);
+  const claimed = eventOf(season, await sendTransaction("Season.claim", season.connect(player).claim(number), season), "Claimed");
+  assertEqual("the only player's claim", claimed.amount, closed.playersPot);
+  assertEqual("Season.isSolvent()", await season.isSolvent(), true);
+  console.log(`localnet --check: season ${number} closed, and its only player claimed the players' pot, ${claimed.amount} wei`);
 }
 
 async function up(port, backend) {
@@ -247,6 +285,7 @@ async function check(port) {
     const [generation] = readDeploymentRecord(file).generations;
     console.log("localnet --check: the deployment record matches the schema");
     await checkHappyPath(artifacts, provider, generation);
+    await checkCloseAndClaim(artifacts, provider, generation);
     provider.destroy();
   } finally {
     anvil.kill();

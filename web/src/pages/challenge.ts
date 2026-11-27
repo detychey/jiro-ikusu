@@ -29,7 +29,7 @@ import { Renderer } from "../render";
 import { buyRun, continueRun, playUnfinished, type RunEnv, SeasonChanged } from "../run/flow";
 import type { Margin } from "../run/play";
 import { replayRunFile, runFileOf } from "../run/runfile";
-import { checkSeason, rolloverOf, seasonEntries } from "../run/season";
+import { checkSeason, seasonEntries } from "../run/season";
 import { openRunStore, type RunRecord, type RunStore, withRunLock } from "../run/store";
 import { shippedLevels } from "../shipped";
 import { browserStorage } from "../storage";
@@ -191,15 +191,10 @@ export function mount(): void {
   /** Shows the season accepting runs, and whether this page can play it. */
   async function showSeason(env: RunEnv, contracts: Contracts): Promise<void> {
     const accepting = await acceptingSeason(contracts.season, env.provider);
-    const [state, pendingRollover, lastClosed] = await Promise.all([
-      contracts.season.seasons(accepting.number),
-      contracts.season.pendingRollover(),
-      contracts.season.lastClosedSeason(),
-    ]);
-    const rollover = rolloverOf(accepting.number === lastClosed + 1n, pendingRollover);
+    const state = await contracts.season.seasons(accepting.number);
     const { number, runFee, end, params } = accepting;
-    const { rulesVersion, rakeBp, grace, commitSlack, minClears } = params;
-    const facts = { number, runFee, end, rulesVersion, rakeBp, grace, commitSlack, minClears, fees: state.fees, rollover };
+    const { rulesVersion, rakeBp, grace, commitSlack } = params;
+    const facts = { number, runFee, end, rulesVersion, rakeBp, grace, commitSlack, fees: state.fees, games: state.games, tickets: state.tickets };
     const list = element("season-facts");
     list.replaceChildren(
       ...seasonEntries(facts, formatEth).flatMap(([label, text]) => {

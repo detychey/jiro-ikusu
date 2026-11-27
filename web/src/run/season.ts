@@ -33,36 +33,37 @@ export interface SeasonFacts {
   rakeBp: bigint;
   grace: bigint;
   commitSlack: bigint;
-  minClears: bigint;
   /** The season's run fees so far. */
   fees: bigint;
-  /** The players' pots of earlier seasons that had no qualified points (Season.pendingRollover). */
-  rollover: bigint;
-}
-
-/** The rollover a season's pot takes when it closes: Season.pendingRollover goes only to the
- *  season that closes next, the oldest one not yet closed (README §8.4). */
-export function rolloverOf(closesNext: boolean, pendingRollover: bigint): bigint {
-  return closesNext ? pendingRollover : 0n;
+  /** Its paid games so far, 6 per run bought. */
+  games: bigint;
+  /** The tickets of its on-time settled runs so far, in basis points. */
+  tickets: bigint;
 }
 
 /** The players' pot that closing the season now would give (README §8.4): the fees, less the
- *  rake rounded down, plus the rollover. */
-export function projectedPlayersPot(facts: Pick<SeasonFacts, "fees" | "rakeBp" | "rollover">): bigint {
-  return facts.fees - (facts.fees * facts.rakeBp) / 10_000n + facts.rollover;
+ *  rake rounded down. Nothing rolls over. */
+export function projectedPlayersPot(facts: Pick<SeasonFacts, "fees" | "rakeBp">): bigint {
+  return facts.fees - (facts.fees * facts.rakeBp) / 10_000n;
+}
+
+/** The season's average ticket so far, w̄ = W / G, to four places, or "none" before its first run. */
+export function averageTicket({ games, tickets }: Pick<SeasonFacts, "games" | "tickets">): string {
+  if (games === 0n) return "none";
+  return (Number((tickets * 10_000n) / games) / 1e8).toFixed(4);
 }
 
 /** The season view's entries, as label and text, with the players' pot of `projectedPlayersPot`. */
 export function seasonEntries(facts: SeasonFacts, formatEth: (wei: bigint) => string): [string, string][] {
-  const rollover = facts.rollover === 0n ? "" : `, with ${formatEth(facts.rollover)} rolled over`;
   return [
     ["Season", String(facts.number)],
     ["Run fee", formatEth(facts.runFee)],
-    ["Players' pot", `${formatEth(projectedPlayersPot(facts))}: ${formatEth(facts.fees)} of fees less the ${Number(facts.rakeBp) / 100} % rake${rollover}`],
+    ["Players' pot", `${formatEth(projectedPlayersPot(facts))}: ${formatEth(facts.fees)} of fees less the ${Number(facts.rakeBp) / 100} % rake`],
+    ["Payout", "every game earns by its ticket, its claim over its level's target up to 1; no game earns more than its fee"],
+    ["Games", `${facts.games}, average ticket ${averageTicket(facts)}`],
     ["Ends", new Date(Number(facts.end) * 1000).toISOString()],
     ["Settlement", `until ${Number(facts.grace) / 3600} h after the end`],
     ["Commit slack", `${facts.commitSlack} s`],
-    ["Qualifies with", `${facts.minClears} cleared level${facts.minClears === 1n ? "" : "s"}`],
     ["Rules version", String(facts.rulesVersion)],
   ];
 }

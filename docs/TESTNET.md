@@ -1,6 +1,6 @@
 # Testing Jiro-ikusu on Arbitrum Sepolia
 
-Testnet season 1 runs for 14 days on Arbitrum Sepolia, with test ETH only. You play Challenge runs in the browser at [jiro-ikusu.win](https://jiro-ikusu.win); each player's best run is settled for you, and qualified players share the season's pot. [`SEASON_RUNBOOK.md`](SEASON_RUNBOOK.md) gives the season's dates and how it is operated.
+Testnet season 1 runs for 14 days on Arbitrum Sepolia, with test ETH only. You play Challenge runs in the browser at [jiro-ikusu.win](https://jiro-ikusu.win); every run that scores is settled for you, and the season's pot is shared among all its games, each by its ticket. [`SEASON_RUNBOOK.md`](SEASON_RUNBOOK.md) gives the season's dates and how it is operated.
 
 ## 1. Before you play
 
@@ -23,8 +23,9 @@ A, B and X are the keys that print those letters on your keyboard layout, where 
 
 - **You capture the field** by cutting from the border and back. A level is cleared at its target claim, 75 % by default. A level lasts at most 3 minutes.
 - **Running out of lives scores 0 for the level.** X banks the claim you have: commit when the rest of the level is not worth the risk.
-- **A run is six levels,** drawn from the 16 by the chain after you pay, and played back to back. Its score is the sum of the six level scores: your claim on each level times that level's weight, so the draw does not decide the ranking. A run qualifies for the pot when it clears at least one level.
-- **Your best run counts,** by qualification, then score, then fewer ticks. At the end of the season, qualified players share the pot in proportion to their best scores.
+- **A run is six levels,** drawn from the 16 by the chain after you pay, and played back to back. Each level is one paid game.
+- **Every game earns a ticket:** your claim over the level's target, capped at 1, or 0 when you ran out of lives. A cleared level is a full ticket.
+- **Every game of every run counts.** At the end of the season, the pot, the fees less the rake, is shared among all the season's games: the higher a game's ticket, the larger its prize, and no game earns more than its fee (README §8.4). A run you bought but never played or committed counts with tickets of 0. There is no ranking and no best run.
 
 ## 4. A Challenge run, step by step
 
@@ -32,8 +33,8 @@ A, B and X are the keys that print those letters on your keyboard layout, where 
 2. **Reveal.** The page waits 10 to 20 s for the run's entropy block, then asks you to confirm `revealRun`. Confirm it within about a minute: a reveal that comes too late forfeits the run. Keep the page open from the purchase until level 1 starts.
 3. **Play** the six levels. The clock runs from the reveal: the run must commit within its playing time plus 120 s, which covers the level transitions, a reload and the transactions.
 4. **Commit.** After level 6, confirm `commitRun` at once. The page shows how many seconds were left before the deadline.
-5. **Nothing else to do.** The operator settles each player's best run from the chain's data, so you send nothing. If you want to prove and settle a run yourself, download its run file from the [season page](https://jiro-ikusu.win/season.html) and settle it before the season's settlement ends.
-6. **Claim.** Once the season has closed, two days after its end, connect to the season page and claim your share if your best run qualified.
+5. **Nothing else to do.** The operator settles every run with a ticket above 0 from the chain's data, so you send nothing. If you want to prove and settle a run yourself, download its run file from the [season page](https://jiro-ikusu.win/season.html) and settle it before the season's settlement ends.
+6. **Claim.** Once the season has closed, two days after its end, connect to the season page and claim the prize of your games: every player who bought a run has one.
 
 ## 5. Feedback
 

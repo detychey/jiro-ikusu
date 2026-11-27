@@ -137,7 +137,7 @@ function seasonCalls(current: bigint, runFee: bigint, end: bigint) {
     if (call?.name === "currentSeason") return SEASON.encodeFunctionResult("currentSeason", [current]);
     if (call?.name === "endOf") return SEASON.encodeFunctionResult("endOf", [end]);
     if (call?.name === "paramsOf") {
-      const params = [OLDER.Referee, 3, Array(16).fill(`0x${"01".repeat(32)}`), Array(16).fill(1), runFee, 1000, 1, 1, 1, 1];
+      const params = [OLDER.Referee, 3, Array(16).fill(`0x${"01".repeat(32)}`), Array(16).fill(1), runFee, 1000, 1, 1, 1];
       return SEASON.encodeFunctionResult("paramsOf", [params]);
     }
     throw new Error(`mock Season: unexpected call ${call?.name}`);
@@ -337,13 +337,13 @@ describe("the season accepting runs", () => {
 
 describe("a returned struct", () => {
   it("reads Season's length field by index, as a Result's length is its field count", () => {
-    const params = [OLDER.Referee, 3, Array(16).fill(`0x${"01".repeat(32)}`), Array(16).fill(1), 1, 1000, 604_800, 1, 1, 1];
+    const params = [OLDER.Referee, 3, Array(16).fill(`0x${"01".repeat(32)}`), Array(16).fill(1), 1, 1000, 604_800, 1, 1];
     const result = SEASON.decodeFunctionResult("paramsOf", SEASON.encodeFunctionResult("paramsOf", [params]));
     const decoded = result[0] as SeasonParams;
     expect(decoded[6]).toBe(604_800n);
     // @ts-expect-error SeasonParams names no length field: the name reads the Result's field count.
     const shadowed: bigint = decoded.length;
-    expect(shadowed).toBe(10);
+    expect(shadowed).toBe(9);
   });
 });
 

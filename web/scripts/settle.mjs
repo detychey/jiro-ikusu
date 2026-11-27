@@ -1,11 +1,11 @@
-// The operator's settlement of a season (plan M5.5, README §7.5). src/chain/operator.ts picks,
-// from chain data, each player's best on-time run that Season does not already hold or beat; this
-// script settles each with one settleRun. On zk it first proves the run on this machine with
+// The operator's settlement of a season (plan M5.5, M5.15, README §7.5). src/chain/operator.ts
+// picks, from chain data, every on-time scoring run not yet settled, one with a ticket above 0
+// (README §7.3), cheapest first; this script settles each with one settleRun, in that order. On zk it first proves the run on this machine with
 // zk-host, in minutes on a GPU and hours on 4 CPUs (docs/SEASON_RUNBOOK.md), and keeps the run
 // file and its proof under seasons/<label>/runs/, so that a settlement cut short resumes without
 // proving again. On Stylus, and on the local chain, whose MockReferee takes any proof, it settles
 // the run as the dApp does (src/pages/settle.ts). Before each run it checks that settlement is
-// still open and that the run is still to settle. A run that never settles is reported, with the
+// still open and that the run is not settled yet. A run that never settles is reported, with the
 // reason. A run it cannot read or settle is reported, the others still settle, and the script
 // exits 1. --dry-run lists the runs and sends nothing. --export writes their run files and sends
 // nothing either, for a GPU machine that holds no key: referee/zk/prove-runs.sh proves them there,
@@ -63,7 +63,7 @@ function writeRunFile(runsDir, run) {
  * the run files under seasons/<label>/runs/ and settles nothing.
  * Returns the runs it settled, or would settle, and those it could not.
  */
-export async function settleBestRuns(load, { network: name, season: label, rpc, dryRun, exportOnly, signer, segmentPo2, log = console.log }) {
+export async function settleScoringRuns(load, { network: name, season: label, rpc, dryRun, exportOnly, signer, segmentPo2, log = console.log }) {
   const { networkNamed } = await load("/src/chain/networks.ts");
   const { bundledDeployment } = await load("/src/chain/deployments.ts");
   const { confirmed, connectContracts } = await load("/src/chain/contracts.ts");
@@ -87,8 +87,7 @@ export async function settleBestRuns(load, { network: name, season: label, rpc, 
     const { runs, unread, rejected } = await runsToSettle(reader, core, BigInt(number), (runId) => committedRun(reader, provider, core, levels, runId));
     log(`${label}, season ${number} on ${network.chainName}: ${runs.length} run(s) to settle`);
     for (const run of runs) {
-      const rank = run.qualified ? "qualifies" : "does not qualify";
-      log(`  run ${run.runId} of ${run.player}: score ${run.score}, ${run.ticks} ticks, ${run.clears} cleared, ${rank}`);
+      log(`  run ${run.runId} of ${run.player}: score ${run.score}, ${run.ticks} ticks, ${run.clears} cleared, tickets ${(run.tickets / 10_000).toFixed(4)}`);
     }
     for (const { runId, reason } of rejected) log(`  run ${runId} never settles: ${reason}`);
     const failed = unread.map(({ runId, error }) => ({ runId, error: new Error(`cannot be read: ${messageOf(error)}`, { cause: error }) }));
@@ -113,12 +112,12 @@ export async function settleBestRuns(load, { network: name, season: label, rpc, 
     const settlementEnd = await reader.season.settlementEndOf(BigInt(number));
     for (const run of runs) {
       try {
-        // A proof can take hours: the season's settlement may end, or the run be settled or beaten, meanwhile.
+        // A proof can take hours: the season's settlement may end, or someone settle the run, meanwhile.
         if (BigInt((await provider.getBlock("latest")).timestamp) > settlementEnd) {
           throw new Error(`the season's settlement ended at ${new Date(Number(settlementEnd) * 1000).toISOString()}`);
         }
-        if (!(await stillToSettle(reader, BigInt(number), run))) {
-          log(`  run ${run.runId} was settled, or beaten by the best run Season holds, since the selection: skipped`);
+        if (!(await stillToSettle(reader, run))) {
+          log(`  run ${run.runId} was settled since the selection: skipped`);
           continue;
         }
         if (!proves) {
@@ -172,7 +171,7 @@ async function main() {
       signerProvider = new JsonRpcProvider(values.rpc ?? network.rpcUrls[0], network.chainId, { staticNetwork: true, cacheTimeout: -1 });
       signer = key === undefined ? await signerProvider.getSigner(0) : new Wallet(key, signerProvider);
     }
-    const { failed } = await settleBestRuns(load, {
+    const { failed } = await settleScoringRuns(load, {
       network: values.network,
       season: values.season,
       rpc: values.rpc,

@@ -1,7 +1,7 @@
-// The season page (README §8.4; plan M5.3): a season's parameters and players' pot, its end with
-// a countdown, its leaderboard from the season's events, the permissionless close once its
-// settlement has ended, the player's claim once it has closed, and the settlement of the player's
-// best run (settle.ts). Reads go through the network's public RPC, so the page shows the season
+// The season page (README §8.4; plan M5.3, M5.15): a season's parameters and players' pot, its end
+// with a countdown, its players with their games, tickets and prizes, the permissionless close once
+// its settlement has ended, the player's claim once it has closed, and the settlement of the
+// player's scoring runs (settle.ts). Reads go through the network's public RPC, so the page shows the season
 // without a wallet; closing, claiming and settling go through the player's wallet. `?season=<n>`
 // picks a season; by default it is the newest.
 
@@ -9,14 +9,14 @@ import type { Provider } from "ethers";
 import { claim, closeSeason, connectContracts, type Contracts } from "../chain/contracts";
 import { bundledDeployment, type Deployment } from "../chain/deployments";
 import { footerEntries, renderFooter } from "../chain/footer";
-import { claimOf, type LeaderboardRow, seasonLeaderboard } from "../chain/leaderboard";
+import { type PlayerRow, seasonPlayers } from "../chain/players";
 import { networkOfPage, readOnlyProvider } from "../chain/networks";
 import { connect, formatEth, injectedWallet, onNetwork, signerOf, switchNetwork, type Wallet } from "../chain/wallet";
 import { element, loadCore, messageOf, pending } from "../page";
-import { projectedPlayersPot, rolloverOf, type SeasonFacts, seasonEntries } from "../run/season";
+import { projectedPlayersPot, type SeasonFacts, seasonEntries } from "../run/season";
 import { openRunStore } from "../run/store";
 import { shippedLevels } from "../shipped";
-import { showSettlement } from "./settle";
+import { formatTickets, showSettlement } from "./settle";
 
 export interface SeasonView {
   facts: SeasonFacts;
@@ -25,11 +25,10 @@ export interface SeasonView {
   closed: boolean;
   /** Whether closeSeason closes this season: the oldest season not yet closed. */
   closesNext: boolean;
-  totalQualifiedPoints: bigint;
   /** The players' pot the claims share: the contract's once closed, projected before. */
   playersPot: bigint;
-  /** The leaderboard, with each player's claim from `playersPot`. */
-  rows: (LeaderboardRow & { claim: bigint })[];
+  /** The players, by prize. */
+  rows: PlayerRow[];
 }
 
 /** Season `number` as the page shows it. */
@@ -37,31 +36,22 @@ export async function readSeason(contracts: Pick<Contracts, "season" | "challeng
   const { season } = contracts;
   const latest = await provider.getBlockNumber();
   const at = { blockTag: latest };
-  const [params, state, end, settlementEnd, pendingRollover, lastClosed] = await Promise.all([
+  const [params, state, end, settlementEnd, lastClosed] = await Promise.all([
     season.paramsOf(number, at),
     season.seasons(number, at),
     season.endOf(number, at),
     season.settlementEndOf(number, at),
-    season.pendingRollover(at),
     season.lastClosedSeason(at),
   ]);
-  const { runFee, rulesVersion, rakeBp, grace, commitSlack, minClears } = params;
-  const closesNext = number === lastClosed + 1n;
-  const rollover = rolloverOf(closesNext, pendingRollover);
-  const facts = { number, runFee, end, rulesVersion, rakeBp, grace, commitSlack, minClears, fees: state.fees, rollover };
-  const playersPot = state.closed ? state.playersPot : projectedPlayersPot(facts);
-  const rows = (await seasonLeaderboard(contracts, provider, number, { latest })).map((row) => ({
-    ...row,
-    claim: claimOf(row, playersPot, state.totalQualifiedPoints),
-  }));
+  const { runFee, rulesVersion, rakeBp, grace, commitSlack } = params;
+  const facts = { number, runFee, end, rulesVersion, rakeBp, grace, commitSlack, fees: state.fees, games: state.games, tickets: state.tickets };
   return {
     facts,
     settlementEnd,
     closed: state.closed,
-    closesNext,
-    totalQualifiedPoints: state.totalQualifiedPoints,
-    playersPot,
-    rows,
+    closesNext: number === lastClosed + 1n,
+    playersPot: state.closed ? state.playersPot : projectedPlayersPot(facts),
+    rows: await seasonPlayers(contracts, provider, number, { latest }),
   };
 }
 
@@ -73,12 +63,8 @@ export function formatDuration(seconds: bigint): string {
 }
 
 /** Where the season stands at block.timestamp `now`, with the time left in that phase. */
-export function seasonPhase(view: Pick<SeasonView, "facts" | "settlementEnd" | "closed" | "totalQualifiedPoints">, now: bigint): string {
-  if (view.closed) {
-    return view.totalQualifiedPoints === 0n
-      ? "Closed with no qualified run: its players' pot rolled over to the next season to close."
-      : "Closed: each qualified player claims their share.";
-  }
+export function seasonPhase(view: Pick<SeasonView, "facts" | "settlementEnd" | "closed">, now: bigint): string {
+  if (view.closed) return "Closed: each player claims the prize of their games.";
   if (now < view.facts.end) return `Accepting runs: it ends in ${formatDuration(view.facts.end - now)}.`;
   if (now <= view.settlementEnd) return `Ended: its runs settle for ${formatDuration(view.settlementEnd - now + 1n)} more.`;
   return "Its settlement has ended: anyone may close it.";
@@ -107,19 +93,16 @@ function renderTable(table: HTMLTableElement, header: string[], rows: string[][]
   }
 }
 
-function renderLeaderboard(view: SeasonView): void {
+function renderPlayers(view: SeasonView): void {
   const final = view.closed ? "" : " (if it closed now)";
   const rows = view.rows.map((row) => [
-    String(row.rank),
     row.player,
-    String(row.runId),
-    String(row.score),
-    String(row.ticks),
-    row.qualified ? "yes" : "no",
     String(row.runs),
-    row.claimed === undefined ? formatEth(row.claim) : `${formatEth(row.claimed)}, claimed`,
+    String(row.games),
+    formatTickets(row.tickets),
+    row.claimed === undefined ? formatEth(row.prize) : `${formatEth(row.claimed)}, claimed`,
   ]);
-  renderTable(element("leaderboard"), ["Rank", "Player", "Best run", "Score", "Ticks", "Qualified", "Runs", `Claim${final}`], rows);
+  renderTable(element("players"), ["Player", "Runs", "Games", "Tickets", `Prize${final}`], rows);
 }
 
 /** Runs the page: season.html. */
@@ -156,8 +139,8 @@ export function mount(): void {
 
   function showClaim(): void {
     const row = view?.rows.find(({ player: account }) => account.toLowerCase() === player?.account.toLowerCase());
-    claimButton.hidden = !(view?.closed && row?.qualified && row.claimed === undefined && row.claim > 0n);
-    if (row !== undefined) claimButton.textContent = `Claim ${formatEth(row.claim)}`;
+    claimButton.hidden = !(view?.closed && row !== undefined && row.claimed === undefined);
+    if (row !== undefined) claimButton.textContent = `Claim ${formatEth(row.prize)}`;
   }
 
   async function load(): Promise<void> {
@@ -177,7 +160,7 @@ export function mount(): void {
         return [term, value];
       }),
     );
-    renderLeaderboard(view);
+    renderPlayers(view);
     showClaim();
     tick();
   }
@@ -209,7 +192,6 @@ export function mount(): void {
       deployment,
       player: connection.account,
       season: number,
-      minClears: Number(view.facts.minClears),
       settled: load,
     });
   }
