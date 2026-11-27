@@ -448,7 +448,8 @@ fn respawn_off_its_spawn_cell_adds_the_cells_searched() {
     assert_eq!(game.work, 1 + 541);
 }
 
-/// [R4.11-4] [R4.4-12] Work that reaches the budget ends the level at step 7, claim kept.
+/// [R4.11-4] [R4.4-12] [R4.10-5] Work that reaches the budget ends the level at step 7, claim
+/// kept.
 #[test]
 fn work_reaching_the_budget_ends_the_level() {
     let mut game = game();

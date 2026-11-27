@@ -422,10 +422,10 @@ impl Stage {
     }
 }
 
-/// A leg of a cut from `start` in `dir`, with A held so that the cut runs two cells a tick. Each
-/// length of `LEGS` within the open run ahead turns into the next stage; a length that a double
-/// step would overshoot takes its last cell without A (PIN-04 keeps A safe on the closing
-/// sub-step). When claimed ground ends the run, the leg also runs on until the cut closes, and
+/// A leg of a cut from `start` in `dir`, which the fast cut runs two cells a tick. Each length of
+/// `LEGS` within the open run ahead turns into the next stage; a length that a double step would
+/// overshoot takes its last cell with B held, which wins over the fast cut (PIN-04 stops the
+/// double step on the closing sub-step). When claimed ground ends the run, the leg also runs on until the cut closes, and
 /// `found` records the capture.
 fn leg(
     budget: &mut Budget,
@@ -453,7 +453,7 @@ fn leg(
                     }
                 } else if length == done + 1 && line.game.player.cutting {
                     let mut last = budget.fork(&line)?;
-                    if budget.advance(&mut last, dir.mask())?
+                    if budget.advance(&mut last, mask(&[dir.mask(), InputMask::B]))?
                         && last.game.end.is_none()
                         && distance(from, last.game.player.pos, dir) == length
                     {
@@ -468,7 +468,7 @@ fn leg(
             return Some(());
         }
         let captured = line.game.captured;
-        if !budget.advance(&mut line, mask(&[dir.mask(), InputMask::A]))? {
+        if !budget.advance(&mut line, dir.mask())? {
             return Some(());
         }
         if line.game.captured > captured || line.game.end.is_some() {

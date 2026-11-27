@@ -29,15 +29,15 @@ fn cut() -> Cut {
 
 /// Where the player stands on the cut, and the mask the cut asks for there.
 #[test]
-fn a_cut_follows_its_legs_and_holds_a_while_two_cells_are_left() {
+fn a_cut_follows_its_legs_and_holds_b_for_the_last_cell_of_out_and_side() {
     let mut game = open_field();
     game.player.cutting = true;
     let cases = [
-        (at(30, 57), mask(&[InputMask::UP, InputMask::A])),
-        (at(30, 55), InputMask::UP),
-        (at(30, 54), mask(&[InputMask::LEFT, InputMask::A])),
-        (at(27, 54), InputMask::LEFT),
-        (at(26, 54), mask(&[InputMask::DOWN, InputMask::A])),
+        (at(30, 57), InputMask::UP),
+        (at(30, 55), mask(&[InputMask::UP, InputMask::B])),
+        (at(30, 54), InputMask::LEFT),
+        (at(27, 54), mask(&[InputMask::LEFT, InputMask::B])),
+        (at(26, 54), InputMask::DOWN),
         (at(26, 58), InputMask::DOWN),
     ];
     let mut cut = cut();
@@ -55,7 +55,7 @@ fn a_cut_never_returns_to_an_earlier_leg() {
     game.player.pos = at(26, 54);
     cut.mask(&game);
     game.player.pos = at(26, 56);
-    assert_eq!(cut.mask(&game), mask(&[InputMask::DOWN, InputMask::A]));
+    assert_eq!(cut.mask(&game), InputMask::DOWN);
 }
 
 /// With the boss in the top-left corner, Greedy cuts the largest rectangle it may: up from the

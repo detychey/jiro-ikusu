@@ -66,11 +66,20 @@ fn boss_body_steps() -> Result<Vec<GameCase>, String> {
         &level_header,
         until_hit(|game| {
             let (boss, player) = (game.boss.pos, game.player.pos);
-            toward_column(player, boss.x + 5).unwrap_or(if player.y > boss.y + 4 {
-                InputMask::UP
-            } else {
-                InputMask::LEFT
-            })
+            // Tick 0 moves the boss, so the corner's column is known from tick 1. While cutting,
+            // the last cell up is a single step, which only B gives.
+            if game.ticks_used == 0 {
+                return InputMask::NONE;
+            }
+            toward_column(player, boss.x + 5).unwrap_or(
+                if player.y == boss.y + 5 && game.player.cutting {
+                    mask(&[InputMask::UP, InputMask::B])
+                } else if player.y > boss.y + 4 {
+                    InputMask::UP
+                } else {
+                    InputMask::LEFT
+                },
+            )
         }),
     )?;
     let hit_from = |run: &Run, mask: InputMask, offset: (u8, u8)| {
@@ -291,7 +300,7 @@ fn same_tick_ends() -> Result<Vec<GameCase>, String> {
     let mut presses = [InputMask::UP, InputMask::RIGHT, InputMask::DOWN].into_iter();
     let mut started = false;
     let clear = record(&level, &level_header, move |game| {
-        started |= minion_pos(game, 0) == Some(at(34, 59));
+        started |= minion_pos(game, 0) == Some(at(35, 59));
         if started {
             presses.next().unwrap_or(game.mask)
         } else {
@@ -425,11 +434,16 @@ fn minion_stranded_respawns() -> Result<GameCase, String> {
             && minion_pos(&run.states[respawn_tick + 1], 0) == Some(at(0, 0)),
         "respawns at (0, 0) at step 5 of tick t + R − 1",
     )?;
+    check(
+        name,
+        run.states[respawn_tick + 1].work - run.states[respawn_tick].work == 2,
+        "adds 2 to the work: its spawn cell, then (0, 0)",
+    )?;
     recorded(
         name,
         &[
             "§4.7", "R4.7-7", "R4.7-8", "R4.7-9", "R4.7-11", "R4.4-10", "PIN-16", "PIN-17",
-            "R4.3-5",
+            "R4.3-5", "R4.11-3",
         ],
         &level,
         level_header,

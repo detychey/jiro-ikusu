@@ -1,5 +1,5 @@
 //! Greedy: from the rail, the largest rectangle it can cut out while the boss and the minions stay
-//! clear of it, cut with A held. With no such rectangle in reach, it walks along the rail. Its
+//! clear of it, cut at the fast cut's two cells a tick. With no such rectangle in reach, it walks along the rail. Its
 //! `Caution` sets how far it keeps the boss.
 
 use jiro_core::boss::Boss;
@@ -71,8 +71,10 @@ enum Leg {
 }
 
 impl Cut {
-    /// The mask that carries the cut on: the leg's direction, with A while at least two cells of
-    /// the leg are left, so that the double step of a fast cut never overshoots a corner.
+    /// The mask that carries the cut on: the leg's direction, with B when one cell of the out or
+    /// side leg is left, so that the double step of the fast cut never overshoots a corner: B wins
+    /// over it. The back leg needs no B, since its cut closes on claimed ground, which ends the
+    /// tick's movement (PIN-04).
     fn mask(&mut self, game: &Game) -> InputMask {
         let plan = self.plan;
         let travelled = |dir: Dir| distance(plan.start, game.player.pos, dir);
@@ -87,8 +89,8 @@ impl Cut {
             Leg::Side => (plan.side, i16::from(plan.width) - travelled(plan.side)),
             Leg::Back => (reverse(plan.out), travelled(plan.out)),
         };
-        if left >= 2 {
-            mask(&[dir.mask(), InputMask::A])
+        if left == 1 && self.leg != Leg::Back {
+            mask(&[dir.mask(), InputMask::B])
         } else {
             dir.mask()
         }

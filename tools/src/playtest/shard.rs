@@ -114,6 +114,7 @@ impl Played {
             EndReason::Cleared,
             EndReason::OutOfLives,
             EndReason::TimeLimit,
+            EndReason::WorkBudget,
         ]
         .into_iter()
         .find(|end| *end as u8 == code)

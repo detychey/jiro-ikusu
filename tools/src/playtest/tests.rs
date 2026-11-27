@@ -261,6 +261,7 @@ fn stats_count_the_ends_and_take_quartiles_of_unsorted_runs() {
         sample(EndReason::Cleared, 9_000),
         sample(EndReason::Committed, 3_000),
         sample(EndReason::TimeLimit, 6_000),
+        sample(EndReason::WorkBudget, 7_000),
         sample(EndReason::Cleared, 8_000),
         sample(EndReason::Committed, 1_000),
         sample(EndReason::OutOfLives, 0),
@@ -268,11 +269,17 @@ fn stats_count_the_ends_and_take_quartiles_of_unsorted_runs() {
     let stats = Stats::of(samples.iter());
     assert_eq!(
         (
-            [stats.cleared, stats.died, stats.committed, stats.timed_out],
+            [
+                stats.cleared,
+                stats.died,
+                stats.committed,
+                stats.timed_out,
+                stats.work_budget
+            ],
             stats.effective_bp,
             stats.per_mille(stats.cleared)
         ),
-        ([2, 2, 2, 1], [0, 3_000, 6_000], 285)
+        ([2, 2, 2, 1, 1], [0, 3_000, 7_000], 250)
     );
 }
 
