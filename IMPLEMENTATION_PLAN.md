@@ -2130,11 +2130,13 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | M5.2 | Challenge run flow in the browser | M5.1 | L | none |
 | M5.3 | Settlement, season pages, replay of committed runs | M2.3, M4.9, M5.2 | L | none |
 | M5.5 | Season settlement, testnet-1 parameters and runbook | M5.3, M5.8 | M | Choose the proving route; approve the parameters, the schedule and the prover's secret |
-| M5.6 | Testnet season 1 | M5.3, M5.5, M5.9, M5.10 | M | Testers, play, approvals |
+| M5.6 | Testnet season 1 | M5.3, M5.5, M5.9, M5.12 | M | Testers, play, approvals |
 | M5.7 | Challenge page wiring | M5.2 | M | none |
 | M5.8 | Season operations: status, close, withdraw and claim; testnet-0 close | M4.14 | M | none |
 | M5.9 | GPU proving on a rented card | M5.5, M5.10 | M | Rent the GPU and run the measurement on it |
 | M5.10 | RISC Zero 3.1.0: the patched verifier, generation 2 on Arbitrum Sepolia | M4.14, M5.8 | M | Approve deploying generation 2 (round F4) |
+| M5.11 | Proving-cycle cap: design | M5.9 | S | Approve the cap's mechanism and value by merging (round F5) |
+| M5.12 | Rules version 3: the cycle cap and the fast cut always on; generation 3 | M5.11 | L | Approve deploying generation 3 (round F6) |
 
 Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4.11) with MockReferee, `e2e.yml` on nitro-devnode with the real referee, or Arbitrum Sepolia.
 
@@ -2271,7 +2273,7 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - rejected settlements;
     - payouts, the rake sent to the treasury, and `isSolvent` after every claim;
     - suspicious patterns found in the published journals;
-    - how players use the fast cut: from the published journals, the share of each player's cutting ticks with A held, which decides the slow-cut rule (`TODO.md`, owner, 2026-11-10);
+    - how players use the commit (X): from the published journals, the share of levels each person and each bot ended with X, which informs whether X stays (`TODO.md`, owner, 2026-11-27);
     - a summary of the tester feedback.
   - `deployments/arbitrum-sepolia.json`, with a new generation appended if anything was redeployed.
 - **Done when:**
@@ -2387,6 +2389,41 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - `node scripts/contracts/fork-rehearsal.mjs`; `node scripts/contracts/preflight.mjs --network arbitrum-sepolia --backend zk`
   - Arbitrum Sepolia: `node scripts/contracts/verify-proof.mjs --network arbitrum-sepolia --proof seasons/testnet-0/runs/run-1.risc0-3.1.proof.json --run seasons/testnet-0/runs/run-1.json --season seasons/testnet-0.json`, `node scripts/contracts/preflight.mjs --network arbitrum-sepolia --check-solvent` and `node scripts/contracts/season.mjs status --network arbitrum-sepolia`
 - **Skills:** `onchain-referee`, `security`, `addresses`, `ship`; tiers `zk`, `contracts`. **README:** §7.3, §13 D2. **Needs user:** approve deploying generation 2 (round F4).
+
+#### M5.11 Proving-cycle cap: design
+
+- **Goal:** a bound on the proving cycles of any legal run, chosen before testnet-1 opens, so that no run costs far more to prove than its fee and the grace always fits every player's best run.
+- **Why:** filed on 2026-11-27. M5.9's benchmark prices a run's proof at 7.3 s + 2.15 s per segment of 2^20 cycles on a rented RTX 4090. Its extrapolated cost-maximising legal run, about 2.9 billion cycles, takes about 99 min and 1.47 USD to prove, against a 0.085 USD fee: 14 such runs fill a 48 h grace. At the proposed cap of 150 million cycles a run takes 5.3 min and 0.08 USD, and the grace holds 269 runs. The owner agreed on 2026-11-27 to design the cap before testnet-1, and to ship it in one rules version with the fast cut always on (M5.12).
+- **Deliverables:** a decision PR, no code:
+  - the worst case: the proving cycles of the costliest legal level of each of the 16 levels, measured with the core's executor on inputs built to maximise them, replacing the 2.9 billion extrapolation;
+  - the mechanism, with its cost and fairness:
+    - a work budget in the core: a level ends once its cycles, or a deterministic proxy the core counts such as cells filled, reach the budget, as the time limit ends it; a rules change, in M5.12;
+    - a bound on the level set, checked when a season opens: every level's worst case times six stays under the cap; no rules change, if the worst case can be bounded;
+    - not settling runs above the cap is ruled out: it would strand honest runs;
+  - the cap's value, and testnet-1's grace from it: 12 h, 24 h or 48 h, with the runs each holds on one card;
+  - the README §4, §5, §7 or §8 text M5.12 implements.
+- **Done when:** the PR states the measured worst case per level, the mechanism, the value and the grace, with the README text to implement, and the owner merges it.
+- **Verify with:** `zk-host execute` on the worst-case inputs, with their cycle counts in the PR.
+- **Skills:** `deterministic-core`, `parity-testing`. **README:** §4, §5, §8.4. **Needs user:** approve the mechanism and the value by merging (round F5).
+
+#### M5.12 Rules version 3: the cycle cap and the fast cut always on; generation 3
+
+- **Goal:** testnet-1 opens on rules version 3: M5.11's cycle cap, and the fast cut always on while cutting.
+- **Why:** filed on 2026-11-27. The owner chose the fast cut always on, keeping the commit (X) for now, in one rules version with the cap (owner, 2026-11-27: "fast cut always on, keep X, bundle with the cap"). This supersedes the 2026-11-10 deferral of the slow-cut question to testnet-1's data (`TODO.md`). Generation 2's `ZkReferee` pins rules version 2 and its image id, so rules version 3 needs generation 3.
+- **Deliverables:**
+  - the core: while cutting, the player always takes two sub-steps, as with A held today ([README §4.5](README.md#45-player)); B still wins; the A bit of [README §6.1](README.md#61-input-mask)'s input mask either becomes reserved and rejected, as bit 7 is (§6.3), or is ignored: the PR chooses, and bumps the journal format's version if the byte format changes; M5.11's cap; `RULES_VERSION` 3;
+  - README §2 (the controls table: A removed), §4.5, §6.1 and §6.3, §13 D8, and the text M5.11 approved;
+  - `vectors/` regenerated, with the moved outcomes explained; the playtest bots without A; the playtest, its report and `levels/README.md`; `calibration-1.json` regenerated in place, since no season that references it has opened; `seasons/testnet-1.json` at rules version 3;
+  - the web client: no A binding, the touch controls without it, `docs/PHONE.md`; Training's bests restart, being kept per rules version;
+  - the zk guest rebuilt: a new image id, the fixtures of `contracts/test/fixtures/zk-proofs.json` proven again, as M5.10 did;
+  - generation 3 on Arbitrum Sepolia, as M5.10 deployed generation 2, after round F6; it opens no season.
+- **Done when:**
+  - `cargo test` and the parity checks pass on rules version 3, and `vectors/` replays on the core, the wasm build and the zk guest;
+  - `playtest --check levels/targets.json` passes, or the PR presents the moved clear rates for the owner's decision;
+  - `ci.yml` and `zk-prove.yml`'s pull-request run are green on the PR's final head;
+  - generation 3 is the newest generation of `deployments/arbitrum-sepolia.json`, its `ZkReferee` reads `rulesVersion()` 3 and the build's image id, its sources are verified on Sourcify, and `preflight.mjs --check-solvent` reads `ready: yes`.
+- **Verify with:** M5.10's commands, plus `jiro-tools playtest --check levels/targets.json` and `calibrate --check`.
+- **Skills:** `deterministic-core`, `journal-codec`, `parity-testing`, `onchain-referee`. **README:** §2, §4, §6.1, §6.3, §13 D8. **Needs user:** approve deploying generation 3 (round F6). The item may split the deployment into its own item if it outgrows L (§1).
 
 ## 11. Decision schedule
 
@@ -2578,7 +2615,9 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 - [x] **F3** (M4.14 merged; before G3 recruits testers): done on 2026-11-10.
   - Make the repository public in GitHub's settings, which only you can do (§15, question 15).
   - Then switch CI to the public profile (§1.3, P14): an agent's follow-up PR changes the workflows' triggers (`docs/TOOLING.md`), and you merge it.
-- [ ] **F4, critical** (M5.10 ready: its fixtures, fork rehearsal and preflight done): approve deploying generation 2 on Arbitrum Sepolia from M5.10's PR head: `ZkReferee` over RISC Zero's 3.1 emergency stop `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29`, image id `0xc9634ada…15a8`, rules version 2, the deployer as operator and treasury as in generation 1. An agent session with `DEPLOYER_KEY` deploys it and records it in the PR; then merge M5.10. Once M5.10's done-when lines are ticked, M5.9's 3.1.0 GPU session can start (G2b).
+- [x] **F4, critical** (M5.10 ready: its fixtures, fork rehearsal and preflight done): approve deploying generation 2 on Arbitrum Sepolia from M5.10's PR head: `ZkReferee` over RISC Zero's 3.1 emergency stop `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29`, image id `0xc9634ada…15a8`, rules version 2, the deployer as operator and treasury as in generation 1. An agent session with `DEPLOYER_KEY` deploys it and records it in the PR; then merge M5.10. Once M5.10's done-when lines are ticked, M5.9's 3.1.0 GPU session can start (G2b).
+- [ ] **F5, critical** (M5.11 ready): approve the proving-cycle cap's mechanism and value, and testnet-1's grace, by merging M5.11.
+- [ ] **F6, critical** (M5.12 ready: its vectors, playtest and fixtures done): approve deploying generation 3 on Arbitrum Sepolia from M5.12's PR head, at rules version 3, as generation 2 was deployed.
 
 ### Round G: testnet season
 
