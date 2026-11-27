@@ -58,9 +58,9 @@ impl Bosses {
         self.iter().any(|boss| boss.covers(pos))
     }
 
-    /// Step 4 of the tick (R4.4-9, R4.6-13, R4.6-14): boss 0 moves, with boss 1's body as a wall, then boss 1, with
-    /// boss 0's new body as a wall. Returns whether a leading edge held `TRAIL`, which hits the
-    /// player.
+    /// Step 4 of the tick (R4.4-9, R4.6-13, R4.6-14): boss 0 moves, with boss 1's body as a wall,
+    /// then boss 1, with boss 0's new body as a wall. Returns whether a leading edge held `TRAIL`,
+    /// which hits the player.
     pub fn step(&mut self, grid: &Grid, tick: u16) -> bool {
         let first_hit = self.first.step(grid, tick, self.second.as_ref());
         let second_hit = self
