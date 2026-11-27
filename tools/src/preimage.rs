@@ -1,4 +1,4 @@
-//! Reads a state-hash v1 preimage (README §6.4) field by field, for diagnosis: `replay
+//! Reads a state-hash v3 preimage (README §6.4) field by field, for diagnosis: `replay
 //! --dump-tick` prints it, and `--diff` names the fields that differ from another target's.
 
 /// How a field's bytes read.
@@ -6,6 +6,7 @@
 enum Kind {
     Byte,
     Word,
+    Long,
     Mask,
     Grid,
     Cell,
@@ -15,7 +16,7 @@ enum Kind {
 }
 
 /// The fields of the README §6.4 table, in order, with their widths.
-const FIELDS: [(&str, usize, Kind); 22] = [
+const FIELDS: [(&str, usize, Kind); 25] = [
     ("version", 1, Kind::Byte),
     ("tick", 2, Kind::Word),
     ("input mask", 1, Kind::Mask),
@@ -24,23 +25,26 @@ const FIELDS: [(&str, usize, Kind); 22] = [
     ("cutting", 1, Kind::Byte),
     ("cut start", 2, Kind::Cell),
     ("lives", 1, Kind::Byte),
-    ("shield charges", 1, Kind::Byte),
     ("invulnerability ticks", 1, Kind::Byte),
     ("previous direction", 1, Kind::Direction),
-    ("press_tick", 2, Kind::Word),
     ("boss position", 2, Kind::Cell),
     ("boss body size B", 1, Kind::Byte),
     ("vx, vy", 2, Kind::Velocity),
     ("boss move period", 1, Kind::Byte),
+    ("second boss position", 2, Kind::Cell),
+    ("second boss body size B", 1, Kind::Byte),
+    ("second boss vx, vy", 2, Kind::Velocity),
+    ("second boss move period", 1, Kind::Byte),
     ("minion slot 0", 7, Kind::Minion),
     ("minion slot 1", 7, Kind::Minion),
     ("minion slot 2", 7, Kind::Minion),
     ("captured cells", 2, Kind::Word),
+    ("work", 4, Kind::Long),
     ("claimable cells", 2, Kind::Word),
     ("next event index", 2, Kind::Word),
 ];
 
-pub const PREIMAGE_LEN: usize = 948;
+pub const PREIMAGE_LEN: usize = jiro_core::hash::PREIMAGE_LEN;
 
 /// A field of a preimage: its name, how it reads, and its bytes.
 struct Field<'a> {
@@ -118,6 +122,7 @@ fn value(kind: Kind, bytes: &[u8]) -> String {
     match kind {
         Kind::Byte => bytes[0].to_string(),
         Kind::Word => word(0).to_string(),
+        Kind::Long => u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]).to_string(),
         Kind::Mask => format!("0x{:02x}", bytes[0]),
         Kind::Cell => format!("({}, {})", bytes[0], bytes[1]),
         Kind::Direction => ["none", "up", "down", "left", "right"]

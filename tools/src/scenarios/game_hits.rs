@@ -57,7 +57,7 @@ fn boss_body_steps() -> Result<Vec<GameCase>, String> {
         &level,
         &level_header,
         until_hit(|game| {
-            let (boss, player) = (game.boss.pos, game.player.pos);
+            let (boss, player) = (game.bosses.first.pos, game.player.pos);
             toward_column(player, boss.x + 4).unwrap_or(InputMask::UP)
         }),
     )?;
@@ -69,7 +69,7 @@ fn boss_body_steps() -> Result<Vec<GameCase>, String> {
         &right_level,
         &right_header,
         until_hit(|game| {
-            let (boss, player) = (game.boss.pos, game.player.pos);
+            let (boss, player) = (game.bosses.first.pos, game.player.pos);
             // Tick 0 moves the boss, so the corner's column is known from tick 1.
             if game.ticks_used == 0 {
                 return InputMask::NONE;
@@ -83,7 +83,10 @@ fn boss_body_steps() -> Result<Vec<GameCase>, String> {
     )?;
     let hit_from = |run: &Run, mask: InputMask, offset: (u8, u8)| {
         run.ticks().any(|(before, ran, after)| {
-            let corner = at(before.boss.pos.x + offset.0, before.boss.pos.y + offset.1);
+            let corner = at(
+                before.bosses.first.pos.x + offset.0,
+                before.bosses.first.pos.y + offset.1,
+            );
             lost_a_life(before, after) && ran == mask && before.player.pos == corner
         })
     };
@@ -332,7 +335,7 @@ fn respawn_after_bottom_captured() -> Result<GameCase, String> {
                 captures += 1;
                 captured = game.captured;
             }
-            let (player, boss) = (game.player.pos, game.boss.pos);
+            let (player, boss) = (game.player.pos, game.bosses.first.pos);
             match captures {
                 0 if player.y > 56 => InputMask::UP,
                 0 => InputMask::RIGHT,

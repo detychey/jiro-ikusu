@@ -23,6 +23,7 @@ fn grid() -> Grid {
         time_limit: 2_700,
         lives: 3,
         target_bp: 7_500,
+        second_boss: None,
     })
 }
 

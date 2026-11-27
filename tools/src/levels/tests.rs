@@ -3,7 +3,12 @@ use std::path::PathBuf;
 use jiro_core::game::Game;
 use jiro_core::types::InputMask;
 
+use jiro_core::level::BossRecord;
+
 use super::*;
+
+/// The line of field row 0 of a level with one boss.
+const FIELD_LINE: usize = KEYS.len() + 2;
 
 /// The open-field level of README §5, as published in its worked example.
 const OPEN_FIELD_ID: &str = "0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9";
@@ -19,12 +24,7 @@ fn with_line(text: &str, line: usize, replacement: &str) -> String {
 }
 
 fn with_cells(text: &str, cells: &[(usize, usize, char)]) -> String {
-    let mut lines: Vec<String> = text.split('\n').map(String::from).collect();
-    for &(x, y, symbol) in cells {
-        let row = &mut lines[FIELD_LINE - 1 + y];
-        row.replace_range(x..=x, &symbol.to_string());
-    }
-    lines.join("\n")
+    with_cells_at(text, FIELD_LINE, cells)
 }
 
 /// `text` with minion spawns at `cells`, and the minion knobs that minions need.
@@ -84,6 +84,7 @@ fn rich_level() -> Level {
         time_limit: 1800,
         lives: 2,
         target_bp: 6000,
+        second_boss: None,
     }
 }
 
@@ -552,4 +553,72 @@ fn build_refuses_two_sources_with_one_index() {
     fs::write(dir.join("src/01-again.txt"), l01()).expect("source");
     let error = build_dir(&dir.join("src"), &dir.join("out")).expect_err("one index");
     assert!(error.contains("another source has index 01"), "{error}");
+}
+
+/// L01 with the second boss's three header lines after `boss_period`: B, the spawn rectangle
+/// `x0,y0,x1,y1` and the move period.
+fn twin(size: &str, spawn: &str, period: &str) -> String {
+    let l01 = l01();
+    let (first_boss, rest) = l01.split_at(l01.match_indices('\n').nth(2).expect("3 lines").0 + 1);
+    format!(
+        "{first_boss}second_boss_size={size}\nsecond_boss_spawn={spawn}\nsecond_boss_period={period}\n{rest}"
+    )
+}
+
+/// A source with the second boss's keys builds level bytes v2, whose render is the source.
+#[test]
+fn a_twin_boss_source_builds_v2_bytes_and_renders_back() {
+    let source = twin("4", "40,40,50,50", "3");
+    let level = decode(&build(&source).expect("valid")).expect("decode");
+    assert_eq!(
+        (level.second_boss, render(&level).expect("a source")),
+        (
+            Some(BossRecord {
+                size: 4,
+                spawn: Rect {
+                    x0: 40,
+                    y0: 40,
+                    x1: 50,
+                    y1: 50
+                },
+                period: 3
+            }),
+            source
+        )
+    );
+}
+
+/// The second boss's rules are reported on its header lines, and its field three lines lower.
+#[test]
+fn each_broken_second_boss_rule_is_reported_at_its_line() {
+    let twin_field = FIELD_LINE + 3;
+    let cases = [
+        (twin("9", "40,40,50,50", "3"), 4, Error::SecondBossSize),
+        (twin("4", "50,40,40,50", "3"), 5, Error::SecondSpawnOrder),
+        (twin("4", "40,40,56,50", "3"), 5, Error::SecondSpawnBounds),
+        (twin("4", "40,40,50,50", "0"), 6, Error::SecondBossPeriod),
+        (twin("4", "38,38,50,50", "3"), 5, Error::BossSpawnsOverlap),
+        (
+            with_cells_at(&twin("4", "40,40,50,50", "3"), twin_field, &[(53, 53, '#')]),
+            twin_field + 53,
+            Error::SecondBossSpawn,
+        ),
+    ];
+    for (text, line, rule) in cases {
+        let error = build(&text).expect_err("broken");
+        assert_eq!(
+            (error.line, error.rule),
+            (line, Some(rule.code())),
+            "{error:?}"
+        );
+    }
+}
+
+/// `text` with `cells` changed, row 0 of the field on line `field_line`.
+fn with_cells_at(text: &str, field_line: usize, cells: &[(usize, usize, char)]) -> String {
+    let mut lines: Vec<String> = text.split('\n').map(String::from).collect();
+    for &(x, y, symbol) in cells {
+        lines[field_line - 1 + y].replace_range(x..=x, &symbol.to_string());
+    }
+    lines.join("\n")
 }

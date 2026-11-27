@@ -1,17 +1,17 @@
-//! The random cases of differential fuzzing (plan M1.10): a valid level with B from 2 to 8, and a
-//! journal of random play recorded through the Recorder. `jiro-tools difffuzz` writes them with
+//! The random cases of differential fuzzing (plan M1.10): a valid level with one or two bosses
+//! with B from 2 to 8, and a journal of random play recorded through the Recorder. `jiro-tools difffuzz` writes them with
 //! the native outcome for every target's differential test, and jiro-core's property tests draw
 //! the same cases.
 
 use jiro_core::Error;
 use jiro_core::consts::{
-    BP, CAPTURE_STACK, LEVEL_LEN, MAX_BOSS_SIZE, MAX_TICKS, MIN_BOSS_SIZE, MINION_SLOTS,
-    OBSTACLE_BYTES, RUN_LEVELS, W,
+    BP, CAPTURE_STACK, MAX_BOSS_SIZE, MAX_TICKS, MIN_BOSS_SIZE, MINION_SLOTS, OBSTACLE_BYTES,
+    RUN_LEVELS, W,
 };
 use jiro_core::grid::Grid;
 use jiro_core::journal::{Header, Mode};
 use jiro_core::keccak::keccak256;
-use jiro_core::level::{Level, Rect, decode, encode, level_id, validate};
+use jiro_core::level::{BossRecord, Level, LevelBytes, Rect, decode, encode, level_id, validate};
 use jiro_core::recorder::Recorder;
 use jiro_core::types::Pos;
 
@@ -26,7 +26,7 @@ const MAX_DRAWS: u32 = 100;
 
 /// The level bytes, the journal with its header, and the level's weight of one case.
 pub struct Case {
-    pub level: [u8; LEVEL_LEN],
+    pub level: LevelBytes,
     pub header: Header,
     pub journal: Vec<u8>,
     pub weight_bp: u16,
@@ -87,8 +87,9 @@ pub fn with_obstacles(mut level: Level, cells: impl IntoIterator<Item = (u8, u8)
 }
 
 /// A random level, or `None` when the draw breaks a validity rule of README §5 that the draw does
-/// not exclude (codes 35, 37 and 39): up to 7 obstacle blocks, a spawn area for a B × B body with
-/// B from 2 to 8, and up to 3 minions on rail cells. The ranges hold by construction, and the at
+/// not exclude (codes 35, 37, 39, 44 and 45): up to 7 obstacle blocks, a spawn area for a B × B
+/// body with B from 2 to 8, on one level in three a second boss drawn the same way, and up to 3
+/// minions on rail cells. The ranges hold by construction, and the at
 /// most 1,008 obstacle cells leave more than the 1,682 open cells of rule 36, so any other error
 /// is a core bug.
 fn random_level(rng: &mut Rng) -> Result<Option<Level>, Error> {
@@ -100,15 +101,8 @@ fn random_level(rng: &mut Rng) -> Result<Option<Level>, Error> {
             blocks.extend((x0..x0 + width).map(|x| (x, y)));
         }
     }
-    let boss_size = rng.range(MIN_BOSS_SIZE, MAX_BOSS_SIZE);
-    let last = W - 1 - boss_size;
-    let (x0, y0) = (rng.range(1, last), rng.range(1, last));
-    let spawn = Rect {
-        x0,
-        y0,
-        x1: rng.range(x0, last.min(x0 + 10)),
-        y1: rng.range(y0, last.min(y0 + 10)),
-    };
+    let first = random_boss(rng);
+    let second_boss = rng.one_in(3).then(|| random_boss(rng));
     let time_limit = if rng.one_in(8) {
         1 + rng.below(100)
     } else {
@@ -116,9 +110,9 @@ fn random_level(rng: &mut Rng) -> Result<Option<Level>, Error> {
     };
     let level = Level {
         obstacles: [0; OBSTACLE_BYTES],
-        boss_size,
-        spawn,
-        boss_period: rng.range(1, 8),
+        boss_size: first.size,
+        spawn: first.spawn,
+        boss_period: first.period,
         minion_count: 0,
         minion_spawns: [Pos { x: 0, y: 0 }; MINION_SLOTS],
         minion_period: 0,
@@ -126,12 +120,19 @@ fn random_level(rng: &mut Rng) -> Result<Option<Level>, Error> {
         time_limit: u16::try_from(time_limit).expect("at most 2,700 ticks"),
         lives: rng.range(1, 5),
         target_bp: u16::try_from(1 + rng.below(u64::from(BP))).expect("at most 10,000 bp"),
+        second_boss,
     };
     let mut level = with_obstacles(level, blocks);
     let mut stack = [0; CAPTURE_STACK];
     let start = match validate(&level, &mut stack) {
         Ok(start) => start,
-        Err(Error::OpenAreaSplit | Error::BossSpawn | Error::PlayerStartRail) => return Ok(None),
+        Err(
+            Error::OpenAreaSplit
+            | Error::BossSpawn
+            | Error::PlayerStartRail
+            | Error::SecondBossSpawn
+            | Error::BossSpawnsOverlap,
+        ) => return Ok(None),
         Err(error) => return Err(error),
     };
     let count = rng.range(0, MINION_SLOTS as u8);
@@ -146,6 +147,24 @@ fn random_level(rng: &mut Rng) -> Result<Option<Level>, Error> {
     let level = decode(&encode(&level))?;
     validate(&level, &mut stack)?;
     Ok(Some(level))
+}
+
+/// A boss with B from 2 to 8, a spawn rectangle of up to 11 × 11 cells inside the border, and a
+/// move period from 1 to 8.
+fn random_boss(rng: &mut Rng) -> BossRecord {
+    let size = rng.range(MIN_BOSS_SIZE, MAX_BOSS_SIZE);
+    let last = W - 1 - size;
+    let (x0, y0) = (rng.range(1, last), rng.range(1, last));
+    BossRecord {
+        size,
+        spawn: Rect {
+            x0,
+            y0,
+            x1: rng.range(x0, last.min(x0 + 10)),
+            y1: rng.range(y0, last.min(y0 + 10)),
+        },
+        period: rng.range(1, 8),
+    }
 }
 
 /// A random rail cell of `grid`.

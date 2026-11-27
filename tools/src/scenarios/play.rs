@@ -154,8 +154,9 @@ pub fn reverse(dir: Dir) -> Dir {
     dir.clockwise().clockwise()
 }
 
+/// Whether a boss's body covers `pos`.
 pub fn in_boss(game: &Game, pos: Pos) -> bool {
-    game.boss.body().any(|cell| cell == pos)
+    game.bosses.covers(pos)
 }
 
 /// A bot that cuts small U shapes off the rail: out from the rail, sideways, then back until the

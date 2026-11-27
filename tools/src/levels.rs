@@ -3,9 +3,10 @@
 //!
 //! level build <src dir> <out dir> | validate <file>... | id <file>... | render <file>
 //!
-//! A source is the header, one `key=value` line per key of `KEYS` in that order, a blank line,
-//! then the 60 × 60 field, row y on line 10 + y: `#` an obstacle, `.` an open cell, `m` a minion
-//! spawn. The border is always claimed, so it is written `#`, or `m` for a spawn on it. A spawn
+//! A source is the header, one `key=value` line per key of `KEYS` in that order, with the three
+//! `SECOND_BOSS_KEYS` after `boss_period` on a level with two bosses, a blank line, then the
+//! 60 × 60 field, row y on line 10 + y, or 13 + y with two bosses: `#` an obstacle, `.` an open
+//! cell, `m` a minion spawn. The border is always claimed, so it is written `#`, or `m` for a spawn on it. A spawn
 //! is a rail cell, so an `m` inside the border is an obstacle too. The minions take their slots
 //! in row-major order, one minion per cell. Sources are canonical, with LF line endings, so each
 //! level has one source: the render of its bytes.
@@ -17,11 +18,10 @@ use std::str::FromStr;
 
 use jiro_core::Error;
 use jiro_core::consts::{
-    CAPTURE_STACK, LEVEL_LEN, MIN_OPEN_AREA, MINION_SLOTS, OBSTACLE_BYTES, PLAYER_START,
-    SEASON_LEVELS, W,
+    CAPTURE_STACK, MIN_OPEN_AREA, MINION_SLOTS, OBSTACLE_BYTES, PLAYER_START, SEASON_LEVELS, W,
 };
 use jiro_core::grid::Grid;
-use jiro_core::level::{Level, Rect, decode, encode, level_id, validate};
+use jiro_core::level::{BossRecord, Level, LevelBytes, Rect, decode, encode, level_id, validate};
 use jiro_core::types::{Cell, CellIndex, Pos};
 
 use crate::json::hex;
@@ -48,8 +48,27 @@ const KEYS: [&str; 8] = [
     "target_bp",
 ];
 
-/// The line of field row 0, after the header and its blank line.
-const FIELD_LINE: usize = KEYS.len() + 2;
+/// The header keys of a second boss, which follow `boss_period` on a level with two bosses.
+const SECOND_BOSS_KEYS: [&str; 3] = [
+    "second_boss_size",
+    "second_boss_spawn",
+    "second_boss_period",
+];
+
+/// The keys before which a source lists `SECOND_BOSS_KEYS`: the first boss's.
+const FIRST_BOSS_KEYS: usize = 3;
+
+/// The header keys of a level with one boss, or with two, in source order.
+fn keys(twin: bool) -> Vec<&'static str> {
+    let (first_boss, rest) = KEYS.split_at(FIRST_BOSS_KEYS);
+    let second: &[&str] = if twin { &SECOND_BOSS_KEYS } else { &[] };
+    [first_boss, second, rest].concat()
+}
+
+/// The line of field row 0 of a source with `keys`, after the header and its blank line.
+fn field_line(keys: &[&str]) -> usize {
+    keys.len() + 2
+}
 
 const FIELD_WIDTH: usize = W as usize;
 
@@ -110,7 +129,7 @@ pub fn run(args: &[&str]) -> Result<(), String> {
 }
 
 /// The level bytes of a source, if the source is well formed and the level valid.
-pub fn build(text: &str) -> Result<[u8; LEVEL_LEN], SourceError> {
+pub fn build(text: &str) -> Result<LevelBytes, SourceError> {
     let (level, spawns) = parse(text)?;
     let bytes = encode(&level);
     check(&bytes).map_err(|error| locate(&level, &spawns, error))?;
@@ -137,19 +156,26 @@ pub fn render(level: &Level) -> Result<String, String> {
             pair[0].x, pair[0].y
         ));
     }
-    let Rect { x0, y0, x1, y1 } = level.spawn;
-    let values = [
-        level.boss_size.to_string(),
-        format!("{x0},{y0},{x1},{y1}"),
-        level.boss_period.to_string(),
+    let bosses: Vec<String> = level
+        .bosses()
+        .flat_map(|boss| {
+            let Rect { x0, y0, x1, y1 } = boss.spawn;
+            [
+                boss.size.to_string(),
+                format!("{x0},{y0},{x1},{y1}"),
+                boss.period.to_string(),
+            ]
+        })
+        .collect();
+    let values = bosses.into_iter().chain([
         level.minion_period.to_string(),
         level.respawn_delay.to_string(),
         level.time_limit.to_string(),
         level.lives.to_string(),
         level.target_bp.to_string(),
-    ];
+    ]);
     let mut text = String::new();
-    for (key, value) in KEYS.iter().zip(values) {
+    for (key, value) in keys(level.second_boss.is_some()).iter().zip(values) {
         text.push_str(&format!("{key}={value}\n"));
     }
     text.push('\n');
@@ -188,36 +214,45 @@ fn parse(text: &str) -> Result<(Level, Vec<Pos>), SourceError> {
         .strip_suffix('\n')
         .ok_or_else(|| SourceError::at(text.split('\n').count(), "end the file with a newline"))?;
     let lines: Vec<&str> = body.split('\n').collect();
-    let boss_size = knob(&lines, 0)?;
-    let spawn: Vec<u8> = header_value(&lines, 1)?
-        .split(',')
-        .map(|text| number(2, text))
-        .collect::<Result<_, _>>()?;
-    let &[x0, y0, x1, y1] = spawn.as_slice() else {
-        return Err(SourceError::at(2, "expected boss_spawn=x0,y0,x1,y1"));
+    let twin = lines
+        .get(FIRST_BOSS_KEYS)
+        .is_some_and(|line| line.starts_with(&format!("{}=", SECOND_BOSS_KEYS[0])));
+    let header = Header {
+        lines: &lines,
+        keys: keys(twin),
     };
-    let boss_period = knob(&lines, 2)?;
-    let minion_period = knob(&lines, 3)?;
-    let respawn_delay = knob(&lines, 4)?;
-    let time_limit = knob(&lines, 5)?;
-    let lives = knob(&lines, 6)?;
-    let target_bp = knob(&lines, 7)?;
-    if lines.get(FIELD_LINE - 2) != Some(&"") {
+    let first = header.boss(KEYS[0], KEYS[1], KEYS[2])?;
+    let second_boss = twin
+        .then(|| {
+            header.boss(
+                SECOND_BOSS_KEYS[0],
+                SECOND_BOSS_KEYS[1],
+                SECOND_BOSS_KEYS[2],
+            )
+        })
+        .transpose()?;
+    let minion_period = header.knob("minion_period")?;
+    let respawn_delay = header.knob("respawn_delay")?;
+    let time_limit = header.knob("time_limit")?;
+    let lives = header.knob("lives")?;
+    let target_bp = header.knob("target_bp")?;
+    let field_line = field_line(&header.keys);
+    if lines.get(field_line - 2) != Some(&"") {
         return Err(SourceError::at(
-            FIELD_LINE - 1,
+            field_line - 1,
             "expected a blank line before the field",
         ));
     }
-    let (obstacles, spawns) = parse_field(&lines)?;
+    let (obstacles, spawns) = parse_field(&lines, field_line)?;
     let mut minion_spawns = [Pos { x: 0, y: 0 }; MINION_SLOTS];
     for (slot, &spawn) in minion_spawns.iter_mut().zip(&spawns) {
         *slot = spawn;
     }
     let level = Level {
         obstacles,
-        boss_size,
-        spawn: Rect { x0, y0, x1, y1 },
-        boss_period,
+        boss_size: first.size,
+        spawn: first.spawn,
+        boss_period: first.period,
         minion_count: u8::try_from(spawns.len()).unwrap_or(u8::MAX),
         minion_spawns,
         minion_period,
@@ -225,21 +260,61 @@ fn parse(text: &str) -> Result<(Level, Vec<Pos>), SourceError> {
         time_limit,
         lives,
         target_bp,
+        second_boss,
     };
     Ok((level, spawns))
 }
 
-/// The value of header line `index` + 1, which must hold the key `KEYS[index]`.
-fn header_value<'a>(lines: &[&'a str], index: usize) -> Result<&'a str, SourceError> {
-    let key = KEYS[index];
-    lines
-        .get(index)
-        .and_then(|line| line.strip_prefix(key)?.strip_prefix('='))
-        .ok_or_else(|| SourceError::at(index + 1, format!("expected {key}=<value>")))
+/// A source's lines, and the header keys they must hold, one a line from line 1.
+struct Header<'a> {
+    lines: &'a [&'a str],
+    keys: Vec<&'static str>,
 }
 
-fn knob<T: FromStr + ToString>(lines: &[&str], index: usize) -> Result<T, SourceError> {
-    number(index + 1, header_value(lines, index)?)
+impl<'a> Header<'a> {
+    /// The line number of `key`, which must be one of `keys`.
+    fn line(&self, key: &str) -> usize {
+        self.keys
+            .iter()
+            .position(|other| *other == key)
+            .expect("a key of the header")
+            + 1
+    }
+
+    /// The value on the line of `key`, which must hold that key.
+    fn value(&self, key: &str) -> Result<&'a str, SourceError> {
+        let line = self.line(key);
+        self.lines
+            .get(line - 1)
+            .and_then(|text| text.strip_prefix(key)?.strip_prefix('='))
+            .ok_or_else(|| SourceError::at(line, format!("expected {key}=<value>")))
+    }
+
+    fn knob<T: FromStr + ToString>(&self, key: &str) -> Result<T, SourceError> {
+        number(self.line(key), self.value(key)?)
+    }
+
+    /// A boss's size, spawn rectangle `x0,y0,x1,y1` and move period.
+    fn boss(&self, size: &str, spawn: &str, period: &str) -> Result<BossRecord, SourceError> {
+        let size = self.knob(size)?;
+        let line = self.line(spawn);
+        let corners: Vec<u8> = self
+            .value(spawn)?
+            .split(',')
+            .map(|text| number(line, text))
+            .collect::<Result<_, _>>()?;
+        let &[x0, y0, x1, y1] = corners.as_slice() else {
+            return Err(SourceError::at(
+                line,
+                format!("expected {spawn}=x0,y0,x1,y1"),
+            ));
+        };
+        Ok(BossRecord {
+            size,
+            spawn: Rect { x0, y0, x1, y1 },
+            period: self.knob(period)?,
+        })
+    }
 }
 
 /// A number written in its canonical form: decimal, no sign, no leading zero.
@@ -257,10 +332,13 @@ fn number<T: FromStr + ToString>(line: usize, text: &str) -> Result<T, SourceErr
     }
 }
 
-fn parse_field(lines: &[&str]) -> Result<([u8; OBSTACLE_BYTES], Vec<Pos>), SourceError> {
+fn parse_field(
+    lines: &[&str],
+    field_line: usize,
+) -> Result<([u8; OBSTACLE_BYTES], Vec<Pos>), SourceError> {
     let mut obstacles = [0; OBSTACLE_BYTES];
     let mut spawns = Vec::new();
-    for (y, line_number) in (0..W).zip(FIELD_LINE..) {
+    for (y, line_number) in (0..W).zip(field_line..) {
         let row = lines.get(line_number - 1).ok_or_else(|| {
             SourceError::at(line_number, format!("expected {FIELD_WIDTH} field rows"))
         })?;
@@ -299,7 +377,7 @@ fn parse_field(lines: &[&str]) -> Result<([u8; OBSTACLE_BYTES], Vec<Pos>), Sourc
             }
         }
     }
-    let after = FIELD_LINE + FIELD_WIDTH;
+    let after = field_line + FIELD_WIDTH;
     if lines.len() >= after {
         return Err(SourceError::at(after, "unexpected line after the field"));
     }
@@ -309,14 +387,25 @@ fn parse_field(lines: &[&str]) -> Result<([u8; OBSTACLE_BYTES], Vec<Pos>), Sourc
 /// The source line where `level`, drawn with `spawns`, breaks the rule of `error`, and why.
 fn locate(level: &Level, spawns: &[Pos], error: Error) -> SourceError {
     let grid = Grid::level_start(level);
+    let keys = keys(level.second_boss.is_some());
+    let field_line = field_line(&keys);
     let knob = |name: &str, rule: &str| {
-        let index = KEYS
+        let index = keys
             .iter()
             .position(|key| *key == name)
-            .expect("a key of KEYS");
+            .expect("a key of the header");
         (index + 1, format!("{name}: {rule}"))
     };
-    let row = |pos: Pos| FIELD_LINE + usize::from(pos.y);
+    let row = |pos: Pos| field_line + usize::from(pos.y);
+    let second = || level.second_boss.expect("a rule of the second boss");
+    let body_obstacle = |boss: BossRecord, rule: u8, what: &str| {
+        let pos = body_obstacle(&boss, &grid)
+            .unwrap_or_else(|| panic!("rule {rule} is broken by a claimed cell"));
+        (
+            row(pos),
+            format!("{what} can cover the obstacle at ({}, {})", pos.x, pos.y),
+        )
+    };
     let (line, message) = match error {
         Error::BossSize => knob("boss_size", "the body size B is 2 to 8"),
         Error::SpawnOrder => knob("boss_spawn", "x0 ≤ x1 and y0 ≤ y1"),
@@ -325,6 +414,19 @@ fn locate(level: &Level, spawns: &[Pos], error: Error) -> SourceError {
             "the body stays inside the border: x0, y0 ≥ 1 and x1, y1 ≤ 59 − B",
         ),
         Error::BossPeriod => knob("boss_period", "at least 1"),
+        Error::SecondBossSize => knob("second_boss_size", "the body size B is 2 to 8"),
+        Error::SecondSpawnOrder => knob("second_boss_spawn", "x0 ≤ x1 and y0 ≤ y1"),
+        Error::SecondSpawnBounds => knob(
+            "second_boss_spawn",
+            "the body stays inside the border: x0, y0 ≥ 1 and x1, y1 ≤ 59 − B",
+        ),
+        Error::SecondBossPeriod => knob("second_boss_period", "at least 1"),
+        Error::SecondBossSpawn => body_obstacle(second(), 44, "the second boss body"),
+        Error::BossSpawnsOverlap => knob(
+            "second_boss_spawn",
+            "the two bosses' start bodies can overlap: their spawn rectangles, grown by B − 1 to \
+             the right and down, must not meet",
+        ),
         Error::MinionCount => {
             let extra = spawns[MINION_SLOTS];
             (
@@ -348,25 +450,16 @@ fn locate(level: &Level, spawns: &[Pos], error: Error) -> SourceError {
                     pos.x, pos.y
                 ),
             ),
-            None => (FIELD_LINE, "the field has no open cell".to_string()),
+            None => (field_line, "the field has no open cell".to_string()),
         },
         Error::OpenAreaSmall => (
-            FIELD_LINE,
+            field_line,
             format!(
                 "the open area has {} cells, fewer than {MIN_OPEN_AREA}",
                 grid.count(Cell::Empty)
             ),
         ),
-        Error::BossSpawn => {
-            let pos = body_obstacle(level, &grid).expect("rule 37 is broken by a claimed cell");
-            (
-                row(pos),
-                format!(
-                    "the boss body can cover the obstacle at ({}, {})",
-                    pos.x, pos.y
-                ),
-            )
-        }
+        Error::BossSpawn => body_obstacle(level.first_boss(), 37, "the boss body"),
         Error::MinionSpawnRail => {
             let pos = level
                 .minions()
@@ -420,9 +513,9 @@ fn cut_off(grid: &Grid) -> Option<Pos> {
 }
 
 /// The first claimed cell, in row-major order, that the boss body covers from some start.
-fn body_obstacle(level: &Level, grid: &Grid) -> Option<Pos> {
-    let Rect { x0, y0, x1, y1 } = level.spawn;
-    let covered = |at: u8, start: u8, end: u8| at >= start && at < end + level.boss_size;
+fn body_obstacle(boss: &BossRecord, grid: &Grid) -> Option<Pos> {
+    let Rect { x0, y0, x1, y1 } = boss.spawn;
+    let covered = |at: u8, start: u8, end: u8| at >= start && at < end + boss.size;
     CellIndex::all()
         .map(CellIndex::pos)
         .filter(|pos| covered(pos.x, x0, x1) && covered(pos.y, y0, y1))
@@ -434,7 +527,7 @@ fn load(file: &str) -> Result<Vec<u8>, String> {
     if file.ends_with(".txt") {
         let text = fs::read_to_string(file).map_err(|e| format!("{file}: {e}"))?;
         return build(&text)
-            .map(Vec::from)
+            .map(|bytes| bytes.to_vec())
             .map_err(|error| error.describe(file));
     }
     let bytes = fs::read(file).map_err(|e| format!("{file}: {e}"))?;
@@ -458,7 +551,7 @@ fn failures(errors: Vec<String>) -> Result<(), String> {
 struct Built {
     stem: String,
     source: String,
-    bytes: [u8; LEVEL_LEN],
+    bytes: LevelBytes,
     level: Level,
 }
 

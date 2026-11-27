@@ -132,7 +132,7 @@ fn boss_corridors() -> Result<Vec<GameCase>, String> {
                 &level,
                 || Box::new(|_: &Game| InputMask::NONE),
                 |run| {
-                    let positions = || run.states.iter().map(|game| game.boss.pos);
+                    let positions = || run.states.iter().map(|game| game.bosses.first.pos);
                     positions().all(|pos| pos.y == top)
                         && positions().any(|pos| pos.x == 1)
                         && positions().any(|pos| pos.x == right_end)
