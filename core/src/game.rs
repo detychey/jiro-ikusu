@@ -95,14 +95,14 @@ impl Game {
 
     /// The steps of R4.4-5, stopping at the first that ends the level [R4.4-4].
     fn tick(&mut self, tick: u16, mask: InputMask) -> Result<Option<EndReason>, Error> {
-        self.input(tick, mask);
+        self.input(mask);
         if mask.contains(InputMask::X) {
             self.player.abandon_cut(&mut self.grid);
             return Ok(Some(EndReason::Committed));
         }
         let moves = self
             .player
-            .step(&mut self.grid, &self.boss, mask, tick, &mut self.stack)
+            .step(&mut self.grid, &self.boss, mask, &mut self.stack)
             .ok_or(Error::Invariant)?;
         if let Some(done) = moves.captured {
             self.captured = self.captured.saturating_add(done.size);
@@ -116,7 +116,7 @@ impl Game {
         let minions = self.minions.step(&self.grid, tick);
         self.work = self.work.saturating_add(minions.work);
         let hit = moves.hit || boss_hit || minion_hits(&moves, &minions.moved);
-        if resolve(&mut self.player, &mut self.grid, hit, mask) && self.player.lives == 0 {
+        if resolve(&mut self.player, &mut self.grid, hit) && self.player.lives == 0 {
             return Ok(Some(EndReason::OutOfLives));
         }
         Ok(self.time_and_work(tick))
@@ -134,11 +134,10 @@ impl Game {
     }
 
     /// Step 1: the mask of this tick's event, if any, replaces the mask in force [R4.4-6].
-    fn input(&mut self, tick: u16, mask: InputMask) {
+    fn input(&mut self, mask: InputMask) {
         if mask != self.mask {
             self.events_applied = self.events_applied.saturating_add(1);
         }
-        self.player.input(self.mask, mask, tick);
         self.mask = mask;
     }
 }

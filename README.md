@@ -47,13 +47,12 @@ The draft names the controls a joystick and Key0–Key3. The keys map to A, B, X
 | Control | Action |
 |---|---|
 | Directions | Move one cell per tick on the rail; two while cutting, the **fast cut** |
-| Key1 = B | **Slow shield:** one cell every second tick, absorbs one hit *(D6)* |
 | Key2 = X | **Commit:** end the level now and keep its claim |
-| Key0 = A, Key3 = Y | Unused and not journaled. A held the fast cut until rules version 3 made it always on ([§4.5](#45-player)) |
+| Key0 = A, Key1 = B, Key3 = Y | Unused and not journaled. Until rules version 3, A held the fast cut, now always on ([§4.5](#45-player)), and B held the slow shield, now removed *(D6)* |
 
 The draft's Key2 is "Commit/Forfeit (ends game immediately)". Here it ends the current level, not the whole run, and the level keeps its claim.
 
-**The keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome. By default, B and X are the keys that print those letters, where the browser reports the keyboard layout; elsewhere they are the keys at those letters' places on a QWERTY keyboard, which the controls panel says.
+**The keys are configurable** *(D8)*: each control can be bound to any key, and the choice is stored per browser. The journal records controls, not keys, so remapping never changes a game's outcome. By default, X is the key that prints that letter, where the browser reports the keyboard layout; elsewhere it is the key at that letter's place on a QWERTY keyboard, which the controls panel says.
 
 **On a touchscreen,** on-screen controls produce the same controls, and X may need a short hold, whose length [`docs/PHONE.md`](docs/PHONE.md#34-sampling-releases-and-parameters) sets.
 
@@ -136,11 +135,11 @@ All entity fields are small integers: [R4.3-1]
 
 | Entity | State |
 |---|---|
-| Player | position; cutting flag; cut start cell; lives; shield charges; invulnerability ticks; previous direction; `press_tick` [R4.3-2] |
+| Player | position; cutting flag; cut start cell; lives; invulnerability ticks; previous direction [R4.3-2] |
 | Boss | position (the top-left cell of its body); body size B (set per level); vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) [R4.3-3] |
 | Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period; respawn countdown [R4.3-4] |
 
-- **Field values.** The cut start keeps the last cut's start cell between cuts. Invulnerability ticks counts the protected ticks left: the player is invulnerable at step 6 while it is above 0; after the hits are resolved, a life lost sets it to 30, and otherwise it drops by one if above 0; starting a cut sets it to 0 at step 3. `press_tick` is the tick on which B last went from released to held, 0 before any press. A destroyed minion's position and heading are 0 until it respawns, and a live minion's respawn countdown is 0. [R4.3-5]
+- **Field values.** The cut start keeps the last cut's start cell between cuts. Invulnerability ticks counts the protected ticks left: the player is invulnerable at step 6 while it is above 0; after the hits are resolved, a life lost sets it to 30, and otherwise it drops by one if above 0; starting a cut sets it to 0 at step 3. A destroyed minion's position and heading are 0 until it respawns, and a live minion's respawn countdown is 0. [R4.3-5]
 
 ### 4.4 Tick order
 
@@ -161,7 +160,7 @@ Once per tick, in this order: [R4.4-5]
 
 ### 4.5 Player
 
-- **Initial state.** At level start the player stands on cell (30, 59), which level validity keeps a rail cell ([§5](#5-levels)), with the level's lives, 1 shield charge, invulnerability 0, previous direction none, not cutting, cut start (30, 59), and `press_tick` 0. [PIN-01]
+- **Initial state.** At level start the player stands on cell (30, 59), which level validity keeps a rail cell ([§5](#5-levels)), with the level's lives, invulnerability 0, previous direction none, not cutting, and cut start (30, 59). [PIN-01]
 - **Direction.** The direction is resolved on every tick, whether or not the player moves. If the direction resolved on the previous tick is still held, keep it. Otherwise take the first held direction in the order up, down, left, right. If none is held, the direction is none, and the player stands still. The draft doesn't say what happens when two directions are held, but a 5-way joystick reports two at once while rolling from one direction to the next. [R4.5-1]
   - A move that doesn't happen (onto the own trail, onto the boss's body, or off the rail) still keeps the resolved direction as the previous direction. [PIN-05]
 - **On the rail,** the player moves only from rail cell to rail cell *(D3)*. Stepping into `EMPTY` starts a cut: the cell the player leaves becomes the **cut start**, and every `EMPTY` cell entered becomes `TRAIL`. [R4.5-2]
@@ -171,8 +170,7 @@ Once per tick, in this order: [R4.4-5]
 - **Fast cut.** If the player is cutting at the start of the tick, the player takes two sub-steps. On the rail, and on the tick a cut starts, speed stays normal. [R4.5-6]
   - If sub-step 1 is blocked by the own trail, hits the boss's body, or closes the cut, there is no sub-step 2. [PIN-04]
   - **Always on since rules version 3** (owner, 2026-11-27). Before, it needed A held. Its trigger stays "cutting at the start of the tick", so a capture still takes two ticks, one to enter the field and one to close the cut; a cut that could start and close in one tick would about double the captures a level can hold ([`reports/cycle-cap-2026-11-27.md`](reports/cycle-cap-2026-11-27.md) §4). <!-- rationale -->
-- **Slow shield (B).** While B is held, the player moves only on the ticks where `(tick − press_tick) % 2 == 0`. `press_tick` is the tick on which B went from released to held. B wins over the fast cut: a player cutting with B held takes at most one sub-step. [R4.5-7]
-  - When the journal's event at tick 0 holds B, `press_tick` is 0. [PIN-03]
+- **No slow shield** since rules version 3 (owner, 2026-11-27: "let's remove the shield and simplify the game play, less button to press is better"). Until then, B held moved the player every second tick and spent the level's one shield charge on a hit *(D6)*; its rules were R4.5-7, PIN-03 and R4.9-15. <!-- rationale -->
 - **Stopping mid-cut** is allowed: there is no *Qix*-style fuse *(D4)*. [R4.5-8]
 
 ### 4.6 Boss
@@ -293,8 +291,7 @@ Why this procedure: <!-- rationale -->
   - A minion that respawns at step 5 onto the player's cell hits the player, by the share case. [PIN-11]
 - **Resolution** (at step 6), in this order: [R4.9-13]
   1. If the player is invulnerable, nothing happens. [R4.9-14]
-  2. Otherwise, if B is held and a shield charge is left, the charge is spent and nothing else happens *(D6)*. [R4.9-15]
-  3. Otherwise, the player loses a life (see the next point). All its effects apply even to the last life; the level then ends at step 6 ([§4.10](#410-end-of-level)). [R4.9-16]
+  2. Otherwise, the player loses a life (see the next point). All its effects apply even to the last life; the level then ends at step 6 ([§4.10](#410-end-of-level)). [R4.9-16]
 - **Losing a life.** The trail is erased. If the player is still cutting when the hit is resolved, they return to the cut start; otherwise, including after a cut closed at step 3 of the same tick, they stay in place. They are then invulnerable during the 30 ticks (2 s) after the hit tick, or until they start a cut, whichever comes first. Without that limit, invulnerability would be a window for a risk-free cut. [R4.9-17]
   - A life lost at tick h makes the player invulnerable on ticks h + 1 to h + 30 inclusive. Starting a cut ends that invulnerability at step 3 of that tick, before that tick's collisions. [PIN-02]
 - **Respawn point.** The draft respawns the player at (30, 59). That stops working after the first capture along the bottom border: (30, 59) is no longer a rail cell, so a rail-bound player would be stuck there. The cut start, by contrast, is always a rail cell, because the rail only changes on capture. <!-- rationale -->
@@ -387,9 +384,9 @@ blocked-start validity: 39
 
 | Bit | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |---|---|---|---|---|---|---|---|---|
-| Input | Up | Down | Left | Right | Unused, ignored | B (shield) | X (commit) | Reserved, must be 0 |
+| Input | Up | Down | Left | Right | Unused, ignored | Unused, ignored | X (commit) | Reserved, must be 0 |
 
-Bit 4 was A, the fast cut, until rules version 3, which made the fast cut always on ([§4.5](#45-player)). The rules ignore it, and the decoder accepts it, so the journal format stays v1; clients never set it.
+Until rules version 3, bit 4 was A, the fast cut, now always on ([§4.5](#45-player)), and bit 5 was B, the slow shield, now removed. The rules ignore both, and the decoder accepts them, so the journal format stays v1; clients never set them.
 
 Inputs are sampled once per tick, at the tick boundary. Sampling at 15 Hz also debounces the buttons, whose contacts bounce for a few milliseconds.
 
@@ -426,7 +423,7 @@ eventCount × (u16 tick, u8 mask)
 5. `levelIndex` 6 or above (6);
 6. `eventCount` above 2,700 (7);
 7. fewer than 71 + 3 × `eventCount` bytes: truncated (1); more: trailing bytes (2);
-8. the events, one at a time in journal order. For each event, the first of these rules it breaks: a tick of 2,700 or more (8), a tick not above the previous event's (9), reserved bit 7 set (10; bit 4, unused since rules version 3, is accepted, [§6.1](#61-input-mask)), a mask equal to the previous one, which is 0 before the first event (11).
+8. the events, one at a time in journal order. For each event, the first of these rules it breaks: a tick of 2,700 or more (8), a tick not above the previous event's (9), reserved bit 7 set (10; bits 4 and 5, unused since rules version 3, are accepted, [§6.1](#61-input-mask)), a mask equal to the previous one, which is 0 before the first event (11).
 
 **Replay** knows the level. Before play, it checks in this order and returns the first broken rule's code: the journal, as above (1 to 11); the level bytes and the level's validity, in the order of [§5](#5-levels) (20 to 39); a `levelId` other than keccak256 of the level bytes (12); an event at or after the level's time limit (13). Then it plays the level. After play, it rejects an event after the tick on which the level ended (14). Code 15 marks a broken internal invariant, such as a capture-stack overflow, which the rules exclude: no input reaches it, and a target that returns it has a bug.
 
@@ -469,10 +466,8 @@ The draft also asks for a C++ PRNG that matches "the state-transition hashing lo
 | 1 | cutting | u8, 1 if cutting, else 0 |
 | 2 | cut start | u8 x, u8 y |
 | 1 | lives | u8 |
-| 1 | shield charges | u8 |
 | 1 | invulnerability ticks | u8 ([§4.3](#43-entities)) |
 | 1 | previous direction | u8: 0 none, 1 up, 2 down, 3 left, 4 right; the direction resolved at this tick's step 3, unchanged on a tick that ends at step 2 |
-| 2 | `press_tick` | u16 |
 | 2 | boss position | u8 x, u8 y, the body's top-left cell |
 | 1 | boss body size B | u8 |
 | 2 | vx, vy | i8 each: +1 is `0x01`, −1 is `0xff` |
@@ -483,7 +478,7 @@ The draft also asks for a C++ PRNG that matches "the state-transition hashing lo
 | 2 | claimable cells | u16 ([§4.1](#41-grid)) |
 | 2 | next event index | u16, the index of the first journal event not yet applied |
 
-The preimage is 952 bytes in all. Version 1, before rules version 3, had no work field: 948 bytes. The deflection key ([§4.6](#46-boss)) is not in it: like the boss start, it is a function of the level seed, and a deflection leaves nothing behind but the boss's velocity.
+The preimage is 949 bytes in all. Version 1, before rules version 3, held the shield charges and `press_tick` after the lives and the invulnerability ticks, and no work: 948 bytes. The deflection key ([§4.6](#46-boss)) is not in it: like the boss start, it is a function of the level seed, and a deflection leaves nothing behind but the boss's velocity.
 
 **Worked examples.** The examples use `runNonce` = keccak256(`"jiro.example.9"`), chosen so that the draw of [§8.2](#82-challenge-paid-runs) both keeps a card in place and revisits a swapped position. For the open-field level ([§5](#5-levels)) at `levelIndex` 0, the seed, the boss start, and the state after tick 0 of `open-field-empty` are:
 
@@ -496,8 +491,8 @@ boss start (spawn rectangle (20, 20) to (34, 25)): candidates 90, index 78, top-
 deflection key (levelIndex 0): 0x94676303
 fmix32 test values: fmix32(0x00000000) 0x00000000, fmix32(0x00000001) 0x514e28b7, fmix32(0xffffffff) 0x81f16f39
 open-field-empty tick 0 boss: top-left (22, 21), vx -1, vy -1
-open-field-empty tick 0 preimage length: 952
-open-field-empty tick 0 state hash: 0x8f6232922930e959f15a929eeab8d1c64165ff9ebe64b6b33d399dba22ef0d91
+open-field-empty tick 0 preimage length: 949
+open-field-empty tick 0 state hash: 0xda8d937602aeedbccd99b0f28519c8763d400688e9331c0065191673cb756e79
 open-field-empty tick 0 deflection draw: fmix32(0x94676303) 0x5cb2ceac, r 23, no deflection
 open-field-empty first deflection: tick 82, r 1 inverts vy; boss after the move: top-left (20, 19), vx +1, vy -1
 open-field-empty second deflection: tick 140, r 0 inverts vx; boss after the move: top-left (47, 11), vx -1, vy +1
@@ -746,7 +741,7 @@ A season fixes its parameters when it opens, and shares its pot among its paid g
 - **Tickets** *(D10)*. A game's ticket is w = min(claim, target) / target, or 0 when the lives ran out (`endReason` 3): the share of the level's target that the game reached, capped at 1. A game that ends by Commit, by clearing, at the time limit or at the work budget keeps the ticket of its claim. Onchain, a ticket is in basis points: `ticket_bp = min(claimBp, target) × 10_000 / target`, rounded down, where `target` is the `u16` at offset 470 of the level bytes ([§5](#5-levels)), which settlement submits and checks against the level id. A cleared game's ticket is 10,000. The weight does not enter the ticket.
 - **Weights** *(D18)*. Under the v1 payout, every weight is 10,000 bp, so a level score equals its claim. Weights were meant to normalize difficulty, so that the random draw would not decide a ranking that no longer exists. Paying more for a win on a hard level would pay bots most, since a bot wins hard levels as surely as easy ones: on the 16 levels, tickets weighted by the weights of `calibration-1.json` would raise the reference mix's bot edge ρ (below) from 1.405 to 1.615 (scripted proxies, rules version 2).
 - **Level review between seasons** *(D21)*. Between two seasons, a person reviews the paid levels from the replays of every committed journal of the season, unsettled runs included, which costs nothing: per level, the share of people's games that ran out of lives and the people's average ticket. A level that people fail is replaced at the next open by another level, never removed, so a season always draws from 16 levels; at most one new level comes each season. No rule acts by itself and nothing changes during a season: bots raise every level's statistics alike, and an automatic rule can be steered by throwing games on purpose ([`docs/ECONOMY.md`](docs/ECONOMY.md)). [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) gives the review's steps.
-- **Testnet seasons** are named `testnet-N`, and their journals never feed mainnet weights. Before the v1 payout they took their weights from playtest-bot data: `jiro-tools calibrate` writes those weights to `seasons/calibration-1.json` from the reference mix of [§5](#5-levels): each level's weight is P × 10,000 / max(m, floor), rounded down, where m is the mix's median effective claim on the level and the floor is the one of `levels/targets.json`, so that a median run scores P points on every level, or P − 1 by rounding. P is the largest multiple of 1,000 points that keeps every weight within a `uint16`. A season file takes the rules version, the level ids and the weights of a calibration file, names it in its `calibration` key, and owns every other parameter. Its `referee` is null until `season.mjs open` writes the referee the season opened with; the season number `open` assigns is recorded in `deployments/<network>.json`. `seasons/testnet-0.json` is the 1-day rehearsal season that the first Arbitrum Sepolia deployment opens ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). `seasons/testnet-1.json` is the 14-day season of testers; [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) derives its slack and grace and gives its schedule. Under the v1 payout, a season takes equal weights *(D18)* and the paid levels *(D17)*: M5.16 rewrites `testnet-1.json` for both, on rules version 3.
+- **Testnet seasons** are named `testnet-N`, and their journals never feed mainnet weights. Before the v1 payout they took their weights from playtest-bot data: `jiro-tools calibrate` writes those weights to a calibration file, `seasons/calibration-1.json` for rules version 2 and `seasons/calibration-2.json` for rules version 3, from the reference mix of [§5](#5-levels): each level's weight is P × 10,000 / max(m, floor), rounded down, where m is the mix's median effective claim on the level and the floor is the one of `levels/targets.json`, so that a median run scores P points on every level, or P − 1 by rounding. P is the largest multiple of 1,000 points that keeps every weight within a `uint16`. A season file takes the rules version, the level ids and the weights of a calibration file, names it in its `calibration` key, and owns every other parameter. Its `referee` is null until `season.mjs open` writes the referee the season opened with; the season number `open` assigns is recorded in `deployments/<network>.json`. `seasons/testnet-0.json` is the 1-day rehearsal season that the first Arbitrum Sepolia deployment opens ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). `seasons/testnet-1.json` is the 14-day season of testers; [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) derives its slack and grace and gives its schedule. Under the v1 payout, a season takes equal weights *(D18)* and the paid levels *(D17)*: M5.16 rewrites `testnet-1.json` for both, on rules version 3.
 
 **The v1 payout: the bot-neutral pot** *(D10)*. Chosen by the owner on 2026-11-27, it replaces the best run per player and its qualification. M5.15 implements it in `Season` and `Challenge`, from generation 3 of the contracts; generations 1 and 2 pay each qualified player's best run pro rata by score, as D10 first decided, and no season of testers opens on them. Let f be the fee per game, `runFee` / 6, and r the rake, `rakeBp` / 10,000. A season's games G are its paid games, 6 per run bought, whatever happens to the run afterwards. Its tickets W are the sum of the tickets of its on-time settled runs: a run that is unsettled, lapsed or late counts in G with tickets of 0. The season's average ticket is w̄ = W / G. At the close, each paid game earns
 
@@ -937,9 +932,9 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D3 | Player movement on claimed cells | **Decided:** rail only, as in *Qix* and *Volfied*, which keeps minions dangerous. |
 | D4 | Trail rules | **Decided:** the own trail blocks movement (*Qix*) rather than killing (*Xonix*); no fuse in v1. |
 | D5 | Level defaults, and running out of lives | **Decided:** 3 lives, 2,700 ticks and a 75% target, adjustable per level. Running out of lives scores zero, which makes Commit meaningful. |
-| D6 | Shield (B) | **Decided:** one charge per level; an absorbed hit costs the charge and nothing else. |
+| D6 | Shield (B) | **Removed** in rules version 3 (owner, 2026-11-27: "let's remove the shield and simplify the game play, less button to press is better"; [plan](IMPLEMENTATION_PLAN.md) M5.12). **Replaced:** one charge per level, which B held spent on a hit, B also slowing the player to one cell every second tick (M0). |
 | D7 | Minion patrol rule, and minions stranded by a capture | **Decided:** approved in M1.14 on 2026-10-29, under the owner's standing instruction of that day to proceed, and built in M1.15 (`RULES_VERSION` 2). The right-hand rule, with an orientation step that faces open field on the right or behind the right ([§4.7](#47-minions)). The patrol then traces the field's boundary and covers the rail (PIN-14). M1.7 measured the earlier orientation step, which trapped a minion on about 1.2 % of boards (131 of 10,000; 1,213 of 100,000); this rule traps none on the same boards. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([§4.7](#47-minions), PIN-17). |
-| D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y stays unused: a pause button would give human players free thinking time in paid modes. A is unused since rules version 3, which made the fast cut always on while cutting; the commit (X) stays (owner, 2026-11-27, "fast cut always on, keep X, bundle with the cap"; [plan](IMPLEMENTATION_PLAN.md) M5.12). Players can rebind the keyboard keys ([§2](#2-platform)). |
+| D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y stays unused: a pause button would give human players free thinking time in paid modes. A and B are unused since rules version 3, which made the fast cut always on while cutting and removed the shield *(D6)*; the commit (X) stays (owner, 2026-11-27, "fast cut always on, keep X, bundle with the cap"; [plan](IMPLEMENTATION_PLAN.md) M5.12). Players can rebind the keyboard keys ([§2](#2-platform)). |
 | D9 | Boss size | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. |
 | D10 | Challenge payout | **Decided** (owner, 2026-11-27, "Let's follow all your recommendations for the 9 items"; [plan](IMPLEMENTATION_PLAN.md) M5.14): the v1 payout. Every paid game earns a ticket, w = min(claim, target) / target, or 0 when the lives ran out, and the season's pot is shared among all its paid games by the bot-neutral pot: prize = f × [(1 − r) + s × (w − w̄)], with s = min((1 − r) / w̄, r / (1 − w̄)) ([§8.4](#84-season-scoring)). No game earns more than its fee, so a bot gains nothing by playing perfectly. Every scoring run is settled ([§7.3](#73-verification-cost)), and nothing rolls over. M5.15 implements it, from generation 3. **Replaced:** the best settled run per season, paid pro rata by score among qualified players (owner, 2026-10-28), with ties to fewer ticks and qualification by `minClears` (M0.7). Under it, harder levels paid a bot more, and one wallet per run made every run count anyway. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |

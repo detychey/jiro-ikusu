@@ -1,5 +1,5 @@
 // The local chain for the dApp work (plan M4.11, M5): anvil, with the full set of deploy.mjs on the
-// mock backend, MockReferee returning the rules version of seasons/calibration-1.json, and a season
+// mock backend, MockReferee returning the rules version of seasons/calibration-2.json, and a season
 // opened with that file's 16 level ids and weights. Anvil has no ArbSys precompile, so MockArbSys
 // stands in for it, and MockArbSys.setBlockNumber advances the reveal.
 //   --up     leaves anvil running in the background and writes deployments/local.json. With
@@ -24,13 +24,13 @@ const NETWORK = "local";
 const CHAIN_ID = NETWORKS[NETWORK].chainId;
 const SEASON_LABEL = "local";
 const LOCAL_BACKENDS = ["mock", "zk"];
-export const CALIBRATION = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "calibration-1.json"), "utf8"));
+export const CALIBRATION = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "calibration-2.json"), "utf8"));
 // README §8.4's proposals and D12's fee; the rake is the contract tests' RAKE_BP.
 const LOCAL_SEASON = {
   runFee: 50_000_000_000_000n,
   rakeBp: 1_000,
   length: 14n * 24n * 3600n,
-  grace: 48n * 3600n,
+  grace: 24n * 3600n,
   commitSlack: 120n,
 };
 // The run of contracts/test/Settlement.t.sol: levels that end Cleared, out of lives and at the time limit.
@@ -129,7 +129,7 @@ function readVector(name) {
   const vector = JSON.parse(readFileSync(join(REPO_ROOT, "vectors", "levels", `${name}.json`), "utf8"));
   assertEqual(`${name}'s rules version`, vector.rulesVersion, CALIBRATION.rulesVersion);
   const slot = CALIBRATION.levelIds.indexOf(vector.outcome.levelId);
-  if (slot < 0) throw new Error(`localnet --check: ${name}'s level is not in seasons/calibration-1.json`);
+  if (slot < 0) throw new Error(`localnet --check: ${name}'s level is not in seasons/calibration-2.json`);
   assertEqual(`${name}'s weight`, vector.weightBp, CALIBRATION.weightsBp[slot]);
   const journal = getBytes(vector.journal);
   assertEqual(`${name}'s journal mode`, journal[JOURNAL_MODE_OFFSET], vector.mode);

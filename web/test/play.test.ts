@@ -18,7 +18,7 @@ async function playVector(name: string) {
 const SCRIPT: [number, Control[]][] = [
   [0, ["up"]],
   [10, ["left"]],
-  [20, ["down", "a"]],
+  [20, ["down"]],
   [32, []],
   [40, ["x"]],
 ];

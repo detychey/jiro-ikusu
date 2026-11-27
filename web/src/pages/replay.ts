@@ -6,7 +6,7 @@
 // A committed Challenge run's journals load from its commit transaction (plan M5.3), through the
 // public RPC of the network `?network=<name>` names, Arbitrum Sepolia by default: no wallet.
 
-import calibration from "../../../seasons/calibration-1.json";
+import calibration from "../../../seasons/calibration-2.json";
 import { type CommittedRun, committedRun } from "../chain/calldata";
 import { connectContracts } from "../chain/contracts";
 import { bundledDeployment } from "../chain/deployments";

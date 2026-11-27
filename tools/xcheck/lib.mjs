@@ -260,7 +260,7 @@ export function statePreimage({ tick, mask, grid, player, boss, captured, work, 
   for (let cell = 0; cell < CELLS; cell++) packedGrid[cell >> 2] |= grid[cell] << (6 - 2 * (cell & 3));
   const playerBytes = [
     player.x, player.y, player.cutting, player.cutStart.x, player.cutStart.y,
-    player.lives, player.shield, player.invulnerable, player.previousDirection, ...u16(player.pressTick),
+    player.lives, player.invulnerable, player.previousDirection,
   ];
   const bossBytes = [boss.x, boss.y, boss.size, boss.vx & 0xff, boss.vy & 0xff, boss.period];
   const emptyMinionSlots = new Uint8Array(3 * 7);

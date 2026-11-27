@@ -23,11 +23,11 @@ function masksFor(bindings: Bindings, script: Control[][]): number[] {
   });
 }
 
-const script: Control[][] = [[], ["up"], ["up", "a"], ["left", "b"], ["right", "down"], ["x"]];
+const script: Control[][] = [[], ["up"], ["up", "right"], ["left", "x"], ["right", "down"], ["x"]];
 
 describe("input", () => {
   it("gives the README §6.1 bits for the default bindings", () => {
-    expect(masksFor(DEFAULT_BINDINGS, script)).toEqual([0, 0x01, 0x11, 0x24, 0x0a, 0x40]);
+    expect(masksFor(DEFAULT_BINDINGS, script)).toEqual([0, 0x01, 0x09, 0x44, 0x0a, 0x40]);
   });
 
   it("gives the same masks after every control is rebound to other keys", () => {
@@ -41,7 +41,7 @@ describe("input", () => {
   });
 
   it("refuses a key already bound to another control, with a message", () => {
-    expect(rebind(DEFAULT_BINDINGS, "a", "ArrowUp")).toBe("ArrowUp is already bound to up");
+    expect(rebind(DEFAULT_BINDINGS, "x", "ArrowUp")).toBe("ArrowUp is already bound to up");
   });
 
   it("falls back to the default bindings when reading storage throws", () => {
@@ -133,25 +133,25 @@ const DVORAK: KeyboardLayout = new Map([
 ]);
 
 describe("keyboard layouts", () => {
-  it("binds the QWERTY places of A, B and X when the layout is unknown", () => {
+  it("binds the QWERTY place of X when the layout is unknown", () => {
     expect(defaultBindings(undefined)).toEqual(DEFAULT_BINDINGS);
   });
 
-  it("binds A to the key that prints it on AZERTY", () => {
-    expect(defaultBindings(AZERTY)).toEqual({ ...DEFAULT_BINDINGS, a: "KeyQ" });
+  it("binds X to its QWERTY place on AZERTY, which prints it there", () => {
+    expect(defaultBindings(AZERTY)).toEqual(DEFAULT_BINDINGS);
   });
 
-  it("binds B and X to the keys that print them on Dvorak", () => {
-    expect(defaultBindings(DVORAK)).toEqual({ ...DEFAULT_BINDINGS, b: "KeyN", x: "KeyB" });
+  it("binds X to the key that prints it on Dvorak", () => {
+    expect(defaultBindings(DVORAK)).toEqual({ ...DEFAULT_BINDINGS, x: "KeyB" });
   });
 
   it("keeps the QWERTY place of a letter the layout doesn't print", () => {
-    expect(defaultBindings(new Map([["KeyA", "ф"]]))).toEqual(DEFAULT_BINDINGS);
+    expect(defaultBindings(new Map([["KeyX", "ф"]]))).toEqual(DEFAULT_BINDINGS);
   });
 
   it("loads the layout's defaults when nothing is stored", () => {
     const empty = { getItem: () => null, setItem: () => undefined };
-    expect(loadBindings(empty, defaultBindings(AZERTY))).toEqual({ ...DEFAULT_BINDINGS, a: "KeyQ" });
+    expect(loadBindings(empty, defaultBindings(DVORAK))).toEqual({ ...DEFAULT_BINDINGS, x: "KeyB" });
   });
 
   it.each([
@@ -165,6 +165,6 @@ describe("keyboard layouts", () => {
   });
 
   it("names the key in its refusal", () => {
-    expect(rebind(DEFAULT_BINDINGS, "a", "ArrowUp", keyLabel("ArrowUp", undefined))).toBe("↑ is already bound to up");
+    expect(rebind(DEFAULT_BINDINGS, "x", "ArrowUp", keyLabel("ArrowUp", undefined))).toBe("↑ is already bound to up");
   });
 });

@@ -22,6 +22,7 @@ uint8 constant MODE_CHALLENGE = 1;
 uint8 constant END_REASON_CLEARED = 2;
 uint8 constant END_REASON_OUT_OF_LIVES = 3;
 uint8 constant END_REASON_TIME_LIMIT = 4;
+uint8 constant END_REASON_WORK_BUDGET = 5;
 uint256 constant TICKS_PER_SECOND = 15;
 
 /// What a run's settlement submits for one level, with the Outcome the referee returns for it.
@@ -131,7 +132,7 @@ function challengeJournalOf(bytes memory journal, bytes32 runNonce, uint8 levelI
     return journal;
 }
 
-/// A run of the calibration season (seasons/calibration-1.json) whose six levels replay six
+/// A run of the calibration season (seasons/calibration-2.json) whose six levels replay six
 /// gate-set vectors (vectors/levels/): MockReferee returns each vector's Outcome, its level id,
 /// rules version, end reason, claim, ticks used and score at the season's weight, bound to the
 /// run: the vectors are training journals of other run nonces, so the journal hash, run nonce,
@@ -144,11 +145,17 @@ abstract contract SettlementFixture is ChallengeFixture {
 
     function setUp() public virtual override {
         super.setUp();
-        string memory calibration = vm.readFile(string.concat(vm.projectRoot(), "/../seasons/calibration-1.json"));
+        string memory calibration = vm.readFile(string.concat(vm.projectRoot(), "/../", calibrationFile()));
         calibrationLevelIds = vm.parseJsonBytes32Array(calibration, ".levelIds");
         calibrationWeightsBp = vm.parseJsonUintArray(calibration, ".weightsBp");
         calibrationRulesVersion = uint16(vm.parseJsonUint(calibration, ".rulesVersion"));
+        referee = new MockReferee(calibrationRulesVersion);
         number = openSeason(calibrationParams(referee));
+    }
+
+    /// The calibration of the gate-set vectors' rules version.
+    function calibrationFile() internal pure virtual returns (string memory) {
+        return "seasons/calibration-2.json";
     }
 
     function calibrationParams(IReferee referee_) internal view returns (SeasonParams memory params) {
@@ -739,8 +746,8 @@ contract SettlementTest is SettlementFixture {
     function test_SettleRun_RecordsTheTicketsOfTheVectorsResults() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRun();
         settleRun(runId, played);
-        // Cleared, out of lives, cleared, 7,907 of 8,000 bp, cleared, 7,357 of 7,500 bp.
-        assertEq(settlementOf(challenge, runId).tickets, 10_000 + 0 + 10_000 + 9_883 + 10_000 + 9_809);
+        // Cleared, out of lives twice, cleared, 2,749 of 7,500 bp at the time limit, out of lives.
+        assertEq(settlementOf(challenge, runId).tickets, 10_000 + 0 + 0 + 10_000 + 3_665 + 0);
     }
 
     function test_SettleRun_AGameAboveItsTargetEarnsAFullTicket() public {
@@ -762,8 +769,14 @@ contract SettlementTest is SettlementFixture {
         assertEq(settlementOf(challenge, runId).tickets, 4 * 4_000 + 3_333 + 3_750);
     }
 
+    function test_SettleRun_AGameEndedByTheWorkBudgetKeepsTheTicketOfItsClaim() public {
+        (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(END_REASON_WORK_BUDGET, 3_000);
+        settleRun(runId, played);
+        assertEq(settlementOf(challenge, runId).tickets, 4 * 4_000 + 3_333 + 3_750);
+    }
+
     function testFuzz_SettleRun_TicketsFollowTheClaimTheTargetAndTheEndReason(uint8 endReason, uint16 claimBp) public {
-        endReason = uint8(bound(endReason, 1, 4));
+        endReason = uint8(bound(endReason, 1, 5));
         claimBp = uint16(bound(claimBp, 0, 10_000));
         (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(endReason, claimBp);
         settleRun(runId, played);

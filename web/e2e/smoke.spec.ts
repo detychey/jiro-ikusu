@@ -13,8 +13,9 @@ const vector = JSON.parse(readFileSync(new URL(`vectors/game/${VECTOR}.json`, re
 const trace = readFileSync(new URL(`vectors/game/${vector.trace}`, repo));
 const finalHash = "0x" + trace.subarray(trace.length - 32).toString("hex");
 
-/** The default binding of each input-mask bit (README §6.1, web/README.md). */
-const KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyA", "KeyB", "KeyX"];
+/** The default binding of each input-mask bit (README §6.1, web/README.md); bits 4 and 5 have
+ *  none since rules version 3. */
+const KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", undefined, undefined, "KeyX"];
 
 /** The mask the journal sets at each tick (README §6.2). */
 function events(journalHex: string): Map<number, number> {
@@ -59,6 +60,7 @@ test(`plays ${VECTOR}'s keys to its final state hash`, async ({ page }) => {
     const mask = masks.get(tick);
     if (mask !== undefined) {
       for (const [bit, key] of KEYS.entries()) {
+        if (key === undefined) continue;
         const wanted = (mask >> bit) & 1;
         if (wanted !== ((held >> bit) & 1)) await (wanted ? page.keyboard.down(key) : page.keyboard.up(key));
       }

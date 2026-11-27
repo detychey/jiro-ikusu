@@ -21,6 +21,7 @@ fs_permissions = [
     { access = "read", path = "../vectors/levels" },
     { access = "read", path = "../vectors/game" },
     { access = "read", path = "../seasons/calibration-1.json" },
+    { access = "read", path = "../seasons/calibration-2.json" },
     { access = "read", path = "./test/fixtures" },
 ]
 

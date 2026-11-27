@@ -2412,20 +2412,20 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Verify with:** `zk-host execute` on the worst-case inputs, with their cycle counts in the PR.
 - **Skills:** `deterministic-core`, `parity-testing`. **README:** §4, §5, §8.4. **Needs user:** approve the mechanism and the value by merging (round F5).
 
-#### M5.12 Rules version 3: the cycle cap and the fast cut always on
+#### M5.12 Rules version 3: the cycle cap, the fast cut always on, and no shield
 
-- **Goal:** testnet-1 opens on rules version 3: M5.11's cycle cap, and the fast cut always on while cutting.
-- **Why:** filed on 2026-11-27. The owner chose the fast cut always on, keeping the commit (X) for now, in one rules version with the cap (owner, 2026-11-27: "fast cut always on, keep X, bundle with the cap"). This supersedes the 2026-11-10 deferral of the slow-cut question to testnet-1's data (`TODO.md`). Generation 2's `ZkReferee` pins rules version 2 and its image id, so rules version 3 needs generation 3, which M5.17 deploys with the v1 payout's contracts.
+- **Goal:** testnet-1 opens on rules version 3: M5.11's cycle cap, the fast cut always on while cutting, and the shield (B) removed.
+- **Why:** filed on 2026-11-27. The owner chose the fast cut always on, keeping the commit (X) for now, in one rules version with the cap (owner, 2026-11-27: "fast cut always on, keep X, bundle with the cap"). This supersedes the 2026-11-10 deferral of the slow-cut question to testnet-1's data (`TODO.md`). On the playtest of the first draft, the owner also removed the shield, in the same rules version (owner, 2026-11-27: "let's remove the shield and simplify the game play, less button to press is better"), and chose to accept rules version 3's difficulty curve, re-centring each level's band on its measured clear rate and retuning only the levels that break the curve's order. Generation 2's `ZkReferee` pins rules version 2 and its image id, so rules version 3 needs generation 3, which M5.17 deploys with the v1 payout's contracts.
 - **Deliverables:**
-  - the core: while cutting, the player always takes two sub-steps, as with A held today ([README §4.5](README.md#45-player)); B still wins; the A bit of [README §6.1](README.md#61-input-mask)'s input mask either becomes reserved and rejected, as bit 7 is (§6.3), or is ignored: the PR chooses, and bumps the journal format's version if the byte format changes; M5.11's cap; `RULES_VERSION` 3;
-  - README §2 (the controls table: A removed), §4.5, §6.1 and §6.3, §13 D8, and the text M5.11 approved;
-  - `vectors/` regenerated, with the moved outcomes explained; the playtest bots without A; the playtest, its report and `levels/README.md`; `calibration-1.json` regenerated in place, since no season that references it has opened; `seasons/testnet-1.json` at rules version 3;
-  - the web client: no A binding, the touch controls without it, `docs/PHONE.md`; Training's bests restart, being kept per rules version;
-  - the zk guest rebuilt: a new image id, the fixtures of `contracts/test/fixtures/zk-proofs.json` proven again, as M5.10 did;
+  - the core: while cutting, the player always takes two sub-steps, as with A held before ([README §4.5](README.md#45-player)), except where PIN-04 stops the second; the shield, its charge, its slow movement and `press_tick` removed (D6); the A and B bits of [README §6.1](README.md#61-input-mask)'s input mask ignored, so the journal format stays v1; M5.11's cap; the state hash v2; `RULES_VERSION` 3;
+  - README §2 (the controls table: A and B removed), §4.3, §4.5, §4.9, §6.1, §6.3 and §6.4, §13 D6 and D8, and the text M5.11 approved;
+  - `vectors/` regenerated, with the moved outcomes explained; the playtest bots without A and B; the playtest, its report and `levels/README.md`; `levels/targets.json`'s bands re-centred on the measured rates, and the levels that break the curve's order retuned; a new calibration file, `calibration-2.json`, since `testnet-0` opened with `calibration-1.json` (`CLAUDE.md`'s sync table); `seasons/testnet-1.json` at rules version 3, on `calibration-2.json`, with a 24 h grace;
+  - the web client: no A or B binding, the touch controls with X alone, no shield in the HUD, end reason 5, `docs/PHONE.md`; Training's bests restart, being kept per rules version;
+  - the zk guest rebuilt: a new image id. The fixtures of `contracts/test/fixtures/zk-proofs.json` stay on rules version 2, with the vectors they prove frozen beside them, and are proven again after twin bosses (owner, 2026-11-27);
 - **Done when:**
   - `cargo test` and the parity checks pass on rules version 3, and `vectors/` replays on the core, the wasm build and the zk guest;
   - `playtest --check levels/targets.json` passes, or the PR presents the moved clear rates for the owner's decision;
-  - `ci.yml` and `zk-prove.yml`'s pull-request run are green on the PR's final head.
+  - `ci.yml` is green on the PR's final head.
 - **Verify with:** M5.10's commands, plus `jiro-tools playtest --check levels/targets.json` and `calibrate --check`.
 - **Skills:** `deterministic-core`, `journal-codec`, `parity-testing`, `onchain-referee`. **README:** §2, §4, §6.1, §6.3, §13 D8. **Needs user:** none; the moved clear rates, if `playtest --check` fails.
 

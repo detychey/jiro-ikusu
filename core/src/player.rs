@@ -1,5 +1,5 @@
-//! The player (README §4.5): direction, rail movement, cuts, the fast cut and the slow shield,
-//! at step 3 of the tick (R4.4-8).
+//! The player (README §4.5): direction, rail movement, cuts and the fast cut, at step 3 of the
+//! tick (R4.4-8).
 
 use crate::boss::Boss;
 use crate::capture::{Capture, capture};
@@ -14,13 +14,10 @@ pub struct Player {
     /// The cell the last cut left from; it keeps its value between cuts (R4.3-5).
     pub cut_start: Pos,
     pub lives: u8,
-    pub shield: u8,
     /// Protected ticks left (R4.3-5); the hits of step 6 set and count it down.
     pub invulnerable: u8,
     /// The direction resolved at the last step 3 (R4.5-1, PIN-05).
     pub direction: Option<Dir>,
-    /// The tick on which B last went from released to held, 0 before any press (R4.3-5).
-    pub press_tick: u16,
 }
 
 /// What step 3 did, for the steps after it.
@@ -56,18 +53,8 @@ impl Player {
             cutting: false,
             cut_start: PLAYER_START,
             lives,
-            shield: 1,
             invulnerable: 0,
             direction: None,
-            press_tick: 0,
-        }
-    }
-
-    /// Step 1's part for the player: B going from released to held sets `press_tick`
-    /// (R4.3-5, PIN-03).
-    pub fn input(&mut self, previous: InputMask, current: InputMask, tick: u16) {
-        if current.contains(InputMask::B) && !previous.contains(InputMask::B) {
-            self.press_tick = tick;
         }
     }
 
@@ -79,7 +66,6 @@ impl Player {
         grid: &mut Grid,
         boss: &Boss,
         mask: InputMask,
-        tick: u16,
         stack: &mut [u16; CAPTURE_STACK],
     ) -> Option<Moves> {
         self.direction = self.resolve_direction(mask);
@@ -92,11 +78,7 @@ impl Player {
         let Some(direction) = self.direction else {
             return Some(moves);
         };
-        for entered in moves
-            .entered
-            .iter_mut()
-            .take(self.sub_steps(mask, tick).into())
-        {
+        for entered in moves.entered.iter_mut().take(self.sub_steps().into()) {
             match self.sub_step(grid, boss, direction, stack)? {
                 SubStep::Cut(pos) => *entered = Some(pos),
                 SubStep::Entered(pos) => {
@@ -140,18 +122,9 @@ impl Player {
             })
     }
 
-    /// B held: one sub-step on the ticks where (tick − press_tick) % 2 == 0, else none, and B
-    /// wins over the fast cut [R4.5-7]. Otherwise two when cutting at the start of the tick
-    /// [R4.5-6], else one.
-    fn sub_steps(&self, mask: InputMask, tick: u16) -> u8 {
-        if mask.contains(InputMask::B) {
-            // press_tick ≤ tick, and 2^16 is even, so the wrapping difference has the right parity.
-            u8::from(tick.wrapping_sub(self.press_tick).is_multiple_of(2))
-        } else if self.cutting {
-            2
-        } else {
-            1
-        }
+    /// Two when cutting at the start of the tick, else one [R4.5-6].
+    fn sub_steps(&self) -> u8 {
+        if self.cutting { 2 } else { 1 }
     }
 
     fn sub_step(
@@ -266,9 +239,9 @@ mod tests {
         InputMask::new(masks.iter().fold(0, |bits, mask| bits | mask.bits())).unwrap()
     }
 
-    fn step(player: &mut Player, grid: &mut Grid, mask: InputMask, tick: u16) -> Moves {
+    fn step(player: &mut Player, grid: &mut Grid, mask: InputMask) -> Moves {
         player
-            .step(grid, &boss_at(40, 40), mask, tick, &mut [0; CAPTURE_STACK])
+            .step(grid, &boss_at(40, 40), mask, &mut [0; CAPTURE_STACK])
             .unwrap()
     }
 
@@ -286,12 +259,10 @@ mod tests {
                 player.cutting,
                 player.cut_start,
                 player.lives,
-                player.shield,
                 player.invulnerable,
-                player.direction,
-                player.press_tick
+                player.direction
             ),
-            (at(30, 59), false, at(30, 59), 4, 1, 0, None, 0)
+            (at(30, 59), false, at(30, 59), 4, 0, None)
         );
     }
 
@@ -307,7 +278,6 @@ mod tests {
             &mut player,
             &mut grid,
             held(&[InputMask::UP, InputMask::LEFT]),
-            0,
         );
         assert_eq!(
             (player.direction, player.pos),
@@ -334,7 +304,7 @@ mod tests {
         for (mask, expected) in cases {
             let mut grid = grid(&[]);
             let mut player = Player::start(3);
-            step(&mut player, &mut grid, mask, 0);
+            step(&mut player, &mut grid, mask);
             assert_eq!(player.direction, Some(expected), "{mask:?}");
         }
     }
@@ -347,7 +317,7 @@ mod tests {
             direction: Some(Dir::Left),
             ..Player::start(3)
         };
-        let moves = step(&mut player, &mut grid, InputMask::NONE, 0);
+        let moves = step(&mut player, &mut grid, InputMask::NONE);
         assert_eq!(
             (player.direction, player.pos, moves.entered),
             (None, at(30, 59), [None, None])
@@ -359,7 +329,7 @@ mod tests {
     fn player_keeps_the_resolved_direction_when_the_move_does_not_happen() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        let moves = step(&mut player, &mut grid, InputMask::DOWN, 0);
+        let moves = step(&mut player, &mut grid, InputMask::DOWN);
         assert_eq!(
             (player.direction, player.pos, moves.hit),
             (Some(Dir::Down), at(30, 59), false)
@@ -371,7 +341,7 @@ mod tests {
     fn player_moves_from_rail_cell_to_rail_cell() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        step(&mut player, &mut grid, InputMask::RIGHT, 0);
+        step(&mut player, &mut grid, InputMask::RIGHT);
         assert_eq!(player.pos, at(31, 59));
     }
 
@@ -383,7 +353,7 @@ mod tests {
             .collect();
         let mut grid = grid(&block);
         let mut player = player_at(10, 0);
-        let moves = step(&mut player, &mut grid, InputMask::RIGHT, 0);
+        let moves = step(&mut player, &mut grid, InputMask::RIGHT);
         assert_eq!((player.pos, moves.hit), (at(10, 0), false));
     }
 
@@ -396,7 +366,7 @@ mod tests {
             invulnerable: 12,
             ..player_at(31, 59)
         };
-        step(&mut player, &mut grid, InputMask::UP, 0);
+        step(&mut player, &mut grid, InputMask::UP);
         assert_eq!(
             (
                 player.pos,
@@ -432,14 +402,14 @@ mod tests {
         let mut grid = grid(&obstacles);
         let mut player = player_at(10, 3);
         for _ in 0..3 {
-            step(&mut player, &mut grid, InputMask::RIGHT, 0);
+            step(&mut player, &mut grid, InputMask::RIGHT);
         }
         let state =
             |player: &Player, grid: &Grid| (player.pos, player.cutting, grid.is_rail(player.pos));
         let stranded = state(&player, &grid);
-        step(&mut player, &mut grid, InputMask::DOWN, 1);
+        step(&mut player, &mut grid, InputMask::DOWN);
         let between = state(&player, &grid);
-        step(&mut player, &mut grid, InputMask::DOWN, 2);
+        step(&mut player, &mut grid, InputMask::DOWN);
         assert_eq!(
             [stranded, between, state(&player, &grid)],
             [
@@ -455,9 +425,9 @@ mod tests {
     fn player_cannot_step_onto_its_own_trail() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        step(&mut player, &mut grid, InputMask::UP, 0);
-        step(&mut player, &mut grid, InputMask::UP, 1);
-        let moves = step(&mut player, &mut grid, InputMask::DOWN, 2);
+        step(&mut player, &mut grid, InputMask::UP);
+        step(&mut player, &mut grid, InputMask::UP);
+        let moves = step(&mut player, &mut grid, InputMask::DOWN);
         assert_eq!(
             (player.pos, moves.hit, moves.entered),
             (at(30, 56), false, [None, None])
@@ -475,7 +445,7 @@ mod tests {
         };
         let boss = boss_at(28, 50);
         let moves = player
-            .step(&mut grid, &boss, InputMask::UP, 0, &mut [0; CAPTURE_STACK])
+            .step(&mut grid, &boss, InputMask::UP, &mut [0; CAPTURE_STACK])
             .unwrap();
         assert_eq!(
             (moves.hit, player.pos, moves.entered, player.direction),
@@ -488,8 +458,8 @@ mod tests {
     fn player_closing_a_cut_captures() {
         let mut grid = grid(&[]);
         let mut player = player_at(2, 59);
-        step(&mut player, &mut grid, InputMask::UP, 0);
-        let moves = step(&mut player, &mut grid, InputMask::LEFT, 1);
+        step(&mut player, &mut grid, InputMask::UP);
+        let moves = step(&mut player, &mut grid, InputMask::LEFT);
         assert_eq!(
             (
                 moves.captured.map(|done| done.size),
@@ -507,8 +477,8 @@ mod tests {
     fn player_fast_cut_takes_two_sub_steps() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        step(&mut player, &mut grid, InputMask::UP, 0);
-        let moves = step(&mut player, &mut grid, InputMask::UP, 1);
+        step(&mut player, &mut grid, InputMask::UP);
+        let moves = step(&mut player, &mut grid, InputMask::UP);
         assert_eq!(
             (
                 moves.from,
@@ -530,24 +500,25 @@ mod tests {
     fn player_fast_cut_starts_only_when_already_cutting() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        let moves = step(&mut player, &mut grid, InputMask::UP, 0);
+        let moves = step(&mut player, &mut grid, InputMask::UP);
         assert_eq!(moves.entered, [Some(at(30, 58)), None]);
     }
 
-    /// [R4.5-6]: the fast cut needs no key; the bit that held A before rules version 3 changes
-    /// nothing.
+    /// [R4.5-6]: the fast cut needs no key, and the bits of A and B, unused since rules
+    /// version 3, change nothing.
     #[test]
-    fn player_fast_cut_ignores_bit_4() {
-        let mut grid = grid(&[]);
-        let mut player = Player::start(3);
-        step(&mut player, &mut grid, InputMask::UP, 0);
-        let moves = step(
-            &mut player,
-            &mut grid,
-            held(&[InputMask::UP, InputMask::IGNORED]),
-            1,
-        );
-        assert_eq!(moves.entered, [Some(at(30, 57)), Some(at(30, 56))]);
+    fn player_fast_cut_ignores_bits_4_and_5() {
+        for ignored in [InputMask::IGNORED_A, InputMask::IGNORED_B] {
+            let mut grid = grid(&[]);
+            let mut player = Player::start(3);
+            step(&mut player, &mut grid, InputMask::UP);
+            let moves = step(&mut player, &mut grid, held(&[InputMask::UP, ignored]));
+            assert_eq!(
+                moves.entered,
+                [Some(at(30, 57)), Some(at(30, 56))],
+                "{ignored:?}"
+            );
+        }
     }
 
     /// [PIN-04]: a fast cut that closes on its first sub-step, onto the obstacle (30, 51), stops
@@ -556,10 +527,10 @@ mod tests {
     fn player_fast_cut_closing_on_its_first_sub_step_stops() {
         let mut grid = grid(&[(30, 51)]);
         let mut player = Player::start(3);
-        for tick in 0..4 {
-            step(&mut player, &mut grid, InputMask::UP, tick);
+        for _ in 0..4 {
+            step(&mut player, &mut grid, InputMask::UP);
         }
-        let moves = step(&mut player, &mut grid, InputMask::UP, 4);
+        let moves = step(&mut player, &mut grid, InputMask::UP);
         assert_eq!(
             (
                 moves.entered,
@@ -583,9 +554,9 @@ mod tests {
     fn player_fast_cut_blocked_by_its_trail_stops() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        step(&mut player, &mut grid, InputMask::UP, 0);
-        step(&mut player, &mut grid, InputMask::UP, 1);
-        let moves = step(&mut player, &mut grid, InputMask::DOWN, 2);
+        step(&mut player, &mut grid, InputMask::UP);
+        step(&mut player, &mut grid, InputMask::UP);
+        let moves = step(&mut player, &mut grid, InputMask::DOWN);
         assert_eq!((moves.entered, player.pos), ([None, None], at(30, 56)));
     }
 
@@ -603,66 +574,10 @@ mod tests {
                 &mut grid,
                 &boss_at(28, 50),
                 InputMask::UP,
-                0,
                 &mut [0; CAPTURE_STACK],
             )
             .unwrap();
         assert_eq!((moves.hit, moves.entered), (true, [None, None]));
-    }
-
-    /// [R4.5-7]
-    #[test]
-    fn player_with_the_shield_moves_every_second_tick_from_the_press() {
-        let mut grid = grid(&[]);
-        let mut player = Player {
-            press_tick: 3,
-            ..Player::start(3)
-        };
-        let moved: Vec<bool> = (3..7)
-            .map(|tick| {
-                let before = player.pos;
-                step(
-                    &mut player,
-                    &mut grid,
-                    held(&[InputMask::RIGHT, InputMask::B]),
-                    tick,
-                );
-                player.pos != before
-            })
-            .collect();
-        assert_eq!(moved, [true, false, true, false]);
-    }
-
-    /// [R4.5-7]: cutting with B held, B wins over the fast cut.
-    #[test]
-    fn player_cutting_with_b_held_takes_one_sub_step() {
-        let mut grid = grid(&[]);
-        let mut player = Player::start(3);
-        step(&mut player, &mut grid, InputMask::UP, 0);
-        let shield = held(&[InputMask::UP, InputMask::B]);
-        player.input(InputMask::UP, shield, 1);
-        let moves = step(&mut player, &mut grid, shield, 1);
-        assert_eq!(moves.entered, [Some(at(30, 57)), None]);
-    }
-
-    /// [PIN-03]
-    #[test]
-    fn player_press_tick_is_0_when_b_is_held_at_tick_0() {
-        let mut player = Player {
-            press_tick: 9,
-            ..Player::start(3)
-        };
-        player.input(InputMask::NONE, InputMask::B, 0);
-        assert_eq!(player.press_tick, 0);
-    }
-
-    /// R4.3-5: only B going from released to held sets `press_tick`.
-    #[test]
-    fn player_press_tick_follows_new_presses_of_b_only() {
-        let mut player = Player::start(3);
-        player.input(InputMask::NONE, InputMask::B, 7);
-        player.input(InputMask::B, held(&[InputMask::B, InputMask::UP]), 9);
-        assert_eq!(player.press_tick, 7);
     }
 
     /// [R4.5-8]
@@ -670,8 +585,8 @@ mod tests {
     fn player_may_stop_mid_cut() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        step(&mut player, &mut grid, InputMask::UP, 0);
-        step(&mut player, &mut grid, InputMask::NONE, 1);
+        step(&mut player, &mut grid, InputMask::UP);
+        step(&mut player, &mut grid, InputMask::NONE);
         assert_eq!(
             (player.pos, player.cutting, cell(&grid, 30, 58)),
             (at(30, 58), true, Cell::Trail)

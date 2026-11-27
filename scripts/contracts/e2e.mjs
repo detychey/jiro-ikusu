@@ -81,7 +81,7 @@ const BACKEND_OF = { local: "mock", "nitro-devnode": "stylus" };
 const FUNDING = parseEther("1");
 // The reference mix of levels/targets.json first; a level keeps the first journal that clears.
 const POLICIES = ["bold", "committer", "greedy", "edge-nibbler"];
-const CALIBRATION_FILE = join(REPO_ROOT, "seasons", "calibration-1.json");
+const CALIBRATION_FILE = join(REPO_ROOT, "seasons", "calibration-2.json");
 const OUTCOME_FIELDS = ["journalHash", "levelId", "runNonce", "levelIndex", "drawSlot", "mode", "rulesVersion", "endReason", "claimBp", "ticksUsed", "levelScore"];
 const READ_WINDOW = 256n;
 const TICKS_PER_SECOND = 15n;

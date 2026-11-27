@@ -29,14 +29,14 @@ fn cut() -> Cut {
 
 /// Where the player stands on the cut, and the mask the cut asks for there.
 #[test]
-fn a_cut_follows_its_legs_and_holds_b_for_the_last_cell_of_out_and_side() {
+fn a_cut_follows_its_legs() {
     let mut game = open_field();
     game.player.cutting = true;
     let cases = [
         (at(30, 57), InputMask::UP),
-        (at(30, 55), mask(&[InputMask::UP, InputMask::B])),
+        (at(30, 55), InputMask::UP),
         (at(30, 54), InputMask::LEFT),
-        (at(27, 54), mask(&[InputMask::LEFT, InputMask::B])),
+        (at(27, 54), InputMask::LEFT),
         (at(26, 54), InputMask::DOWN),
         (at(26, 58), InputMask::DOWN),
     ];

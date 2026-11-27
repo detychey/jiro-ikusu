@@ -7,7 +7,7 @@ use jiro_core::types::{Cell, InputMask};
 
 use super::game::{GameCase, calm, check, recorded};
 use super::level::{open_field, with_obstacles};
-use super::play::{CaptureBot, Run, at, first_run, header, mask, record, script};
+use super::play::{CaptureBot, Run, at, first_run, header, record, script};
 
 pub fn cases() -> Result<Vec<GameCase>, String> {
     let mut cases = capture_shapes()?;
@@ -152,8 +152,8 @@ fn boss_corridors() -> Result<Vec<GameCase>, String> {
         .collect()
 }
 
-/// The fast cut, a fast cut closing on its first sub-step, the slow shield, and a player
-/// stranded off the rail by their own capture.
+/// The fast cut, a fast cut closing on its first sub-step, and a player stranded off the rail by
+/// their own capture.
 fn cut_moves() -> Result<Vec<GameCase>, String> {
     let (up, down, left, right) = (
         InputMask::UP,
@@ -188,19 +188,6 @@ fn cut_moves() -> Result<Vec<GameCase>, String> {
             && after.captured > before.captured
             && after.grid.at(at(30, 50)) == Some(Cell::Empty),
         "closes on the first sub-step and takes no second one",
-    )?;
-
-    let (slow_header, slow) = scripted(&calm, &[(mask(&[up, InputMask::B]), 10)])?;
-    check(
-        "slow-shield",
-        slow.ticks()
-            .take(10)
-            .enumerate()
-            .all(|(tick, (before, _, after))| {
-                (before.player.pos != after.player.pos) == (tick % 2 == 0)
-            })
-            && slow.states[1].player.press_tick == 0,
-        "moves only on even ticks with B held from tick 0",
     )?;
 
     let pocket: Vec<(u8, u8)> = (10..=14)
@@ -254,14 +241,6 @@ fn cut_moves() -> Result<Vec<GameCase>, String> {
             &blocked,
             close_header,
             close,
-            EndReason::Committed,
-        )?,
-        recorded(
-            "slow-shield",
-            &["§4.5", "R4.5-7", "PIN-03", "R4.3-5"],
-            &calm,
-            slow_header,
-            slow,
             EndReason::Committed,
         )?,
         recorded(

@@ -1,5 +1,5 @@
-// The touch controls (docs/PHONE.md §3): a floating stick for the directions, and the buttons A, B
-// and X, an input source the tick samples beside the keyboard. Touch produces controls, never
+// The touch controls (docs/PHONE.md §3): a floating stick for the directions, and the button X, an
+// input source the tick samples beside the keyboard. Touch produces controls, never
 // keys, so a touch schedule journals as the same controls on keys do (A2).
 
 import { CONTROL_BITS, type InputSource } from "./input";
@@ -54,7 +54,7 @@ function followed(origin: Point, finger: Point, radius: number): Point {
   return { x: origin.x + (finger.x - origin.x) * pull, y: origin.y + (finger.y - origin.y) * pull };
 }
 
-const PADS = ["stick", "a", "b", "x"] as const;
+const PADS = ["stick", "x"] as const;
 export type Pad = (typeof PADS)[number];
 type Button = Exclude<Pad, "stick">;
 /** A pad's box in client coordinates, as getBoundingClientRect gives it. */
@@ -219,17 +219,17 @@ function place(part: HTMLElement, at: Point | undefined, zone: Box): void {
 /** The page's touch controls, `#touch`: its pads take their pointers, and show the stick where the
  *  thumb is, the buttons held, and X's hold. */
 export function mountTouchControls(params: TouchParams = TOUCH_DEFAULTS): TouchControls {
-  const pads: Record<Pad, HTMLElement> = { stick: element("stick"), a: element("pad-a"), b: element("pad-b"), x: element("pad-x") };
+  const pads: Record<Pad, HTMLElement> = { stick: element("stick"), x: element("pad-x") };
   const [ring, knob, hold] = [element("stick-ring"), element("stick-knob"), element("x-hold")];
   for (const [part, radius] of [[ring, params.follow], [knob, params.deadZone]] as const) part.style.width = part.style.height = `${2 * radius}px`;
   const rect = (pad: Pad) => pads[pad].getBoundingClientRect();
-  const boxes = (): Boxes => ({ stick: rect("stick"), a: rect("a"), b: rect("b"), x: rect("x") });
+  const boxes = (): Boxes => ({ stick: rect("stick"), x: rect("x") });
   const controls: TouchControls = new TouchControls(boxes, params, () => {
     const zone = pads.stick.getBoundingClientRect();
     place(ring, controls.stickAt?.origin, zone);
     place(knob, controls.stickAt?.at, zone);
     const held = controls.held();
-    for (const button of ["a", "b", "x"] as const) pads[button].classList.toggle("pressed", (held & CONTROL_BITS[button]) !== 0);
+    pads.x.classList.toggle("pressed", (held & X) !== 0);
     hold.style.width = `${(100 * controls.xHeld) / (params.xHold + 1)}%`;
   });
   listenTouch(controls, element("touch"));

@@ -4,48 +4,45 @@
       "index": 1,
       "levelId": "0x73b1224cbb7c3f5cfbdd2ee95895a9189c65470c8ddd2760fd675ae2753205fe",
       "mix": {
-        "clearRatePerMille": 959,
-        "commitRatePerMille": 28,
-        "deathRatePerMille": 12,
+        "clearRatePerMille": 948,
+        "commitRatePerMille": 36,
+        "deathRatePerMille": 15,
         "effectiveClaimQuartilesBp": [
-          7577,
-          7734,
-          8002
+          7580,
+          7740,
+          8035
         ],
         "medianTicksUsed": 352,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "open",
       "policies": {
         "bold": {
-          "clearRatePerMille": 976,
+          "clearRatePerMille": 969,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 24,
+          "deathRatePerMille": 31,
           "effectiveClaimQuartilesBp": [
-            7586,
-            7740,
-            8023
+            7589,
+            7749,
+            8046
           ],
           "medianTicksUsed": 353,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 943,
-          "commitRatePerMille": 57,
+          "clearRatePerMille": 928,
+          "commitRatePerMille": 72,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            7571,
+            7574,
             7728,
-            7993
+            8017
           ],
-          "medianTicksUsed": 350,
+          "medianTicksUsed": 349,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -53,48 +50,45 @@
       "index": 2,
       "levelId": "0x375f7c990d1dcc86b0be8ef4457fa00b1493e275d2058116ced5b37d7b694e6c",
       "mix": {
-        "clearRatePerMille": 891,
-        "commitRatePerMille": 81,
-        "deathRatePerMille": 28,
+        "clearRatePerMille": 871,
+        "commitRatePerMille": 91,
+        "deathRatePerMille": 37,
         "effectiveClaimQuartilesBp": [
-          7550,
+          7547,
           7699,
-          7948
+          7939
         ],
-        "medianTicksUsed": 346,
+        "medianTicksUsed": 345,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "sentry",
       "policies": {
         "bold": {
-          "clearRatePerMille": 944,
+          "clearRatePerMille": 926,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 56,
+          "deathRatePerMille": 74,
           "effectiveClaimQuartilesBp": [
-            7571,
-            7725,
+            7568,
+            7722,
             7981
           ],
-          "medianTicksUsed": 352,
+          "medianTicksUsed": 351,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 838,
-          "commitRatePerMille": 162,
+          "clearRatePerMille": 817,
+          "commitRatePerMille": 183,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            7532,
-            7681,
-            7928
+            7529,
+            7678,
+            7922
           ],
-          "medianTicksUsed": 338,
+          "medianTicksUsed": 335,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -102,48 +96,45 @@
       "index": 3,
       "levelId": "0x0c3bc3b8170d4abf0f4f99b5e8292f85f27a19e9b3de75e5022c29f33b205cbd",
       "mix": {
-        "clearRatePerMille": 866,
-        "commitRatePerMille": 94,
-        "deathRatePerMille": 39,
+        "clearRatePerMille": 838,
+        "commitRatePerMille": 111,
+        "deathRatePerMille": 51,
         "effectiveClaimQuartilesBp": [
-          7526,
-          7615,
-          7794
+          7520,
+          7609,
+          7791
         ],
-        "medianTicksUsed": 434,
+        "medianTicksUsed": 431,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "heavy",
       "policies": {
         "bold": {
-          "clearRatePerMille": 921,
+          "clearRatePerMille": 898,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 79,
+          "deathRatePerMille": 102,
           "effectiveClaimQuartilesBp": [
-            7535,
+            7532,
             7624,
-            7812
+            7821
           ],
-          "medianTicksUsed": 443,
+          "medianTicksUsed": 442,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 811,
-          "commitRatePerMille": 189,
+          "clearRatePerMille": 778,
+          "commitRatePerMille": 222,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            7514,
-            7604,
-            7782
+            7505,
+            7592,
+            7767
           ],
-          "medianTicksUsed": 427,
+          "medianTicksUsed": 420,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -151,48 +142,45 @@
       "index": 4,
       "levelId": "0xd722b95f38fe3457f0468c2fadcf1970d85eb6a580b05d5dbb5bfda2830b376a",
       "mix": {
-        "clearRatePerMille": 822,
-        "commitRatePerMille": 122,
-        "deathRatePerMille": 56,
+        "clearRatePerMille": 794,
+        "commitRatePerMille": 140,
+        "deathRatePerMille": 66,
         "effectiveClaimQuartilesBp": [
-          7517,
-          7624,
-          7880
+          7511,
+          7615,
+          7874
         ],
-        "medianTicksUsed": 370,
+        "medianTicksUsed": 368,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "pair",
       "policies": {
         "bold": {
-          "clearRatePerMille": 888,
+          "clearRatePerMille": 868,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 112,
+          "deathRatePerMille": 132,
           "effectiveClaimQuartilesBp": [
-            7538,
-            7648,
+            7532,
+            7642,
             7916
           ],
-          "medianTicksUsed": 385,
+          "medianTicksUsed": 384,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 756,
-          "commitRatePerMille": 244,
+          "clearRatePerMille": 720,
+          "commitRatePerMille": 280,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            7500,
-            7592,
-            7841
+            7196,
+            7583,
+            7829
           ],
-          "medianTicksUsed": 358,
+          "medianTicksUsed": 354,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -200,48 +188,45 @@
       "index": 5,
       "levelId": "0xb040ea303d18553f574e40f3bf93636e8501932ef0c2aadd91e926264c4faf00",
       "mix": {
-        "clearRatePerMille": 798,
-        "commitRatePerMille": 134,
-        "deathRatePerMille": 67,
+        "clearRatePerMille": 729,
+        "commitRatePerMille": 173,
+        "deathRatePerMille": 97,
         "effectiveClaimQuartilesBp": [
-          7509,
-          7607,
-          8082
+          7015,
+          7575,
+          7889
         ],
-        "medianTicksUsed": 486,
+        "medianTicksUsed": 481,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "comb",
       "policies": {
         "bold": {
-          "clearRatePerMille": 865,
+          "clearRatePerMille": 805,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 135,
+          "deathRatePerMille": 195,
           "effectiveClaimQuartilesBp": [
-            7525,
-            7632,
-            8208
+            7509,
+            7594,
+            7965
           ],
           "medianTicksUsed": 506,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 732,
-          "commitRatePerMille": 268,
+          "clearRatePerMille": 654,
+          "commitRatePerMille": 346,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            7303,
-            7579,
-            7984
+            6550,
+            7544,
+            7806
           ],
-          "medianTicksUsed": 467,
+          "medianTicksUsed": 453,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -249,48 +234,45 @@
       "index": 6,
       "levelId": "0xed7870d82f99c44fef7b96e93115f24092c0575359b940aaef7b1b81fb6d4523",
       "mix": {
-        "clearRatePerMille": 746,
-        "commitRatePerMille": 172,
-        "deathRatePerMille": 81,
+        "clearRatePerMille": 664,
+        "commitRatePerMille": 214,
+        "deathRatePerMille": 121,
         "effectiveClaimQuartilesBp": [
-          7455,
-          7582,
-          7817
+          6193,
+          7557,
+          7774
         ],
-        "medianTicksUsed": 430,
+        "medianTicksUsed": 410,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "serpent",
       "policies": {
         "bold": {
-          "clearRatePerMille": 838,
+          "clearRatePerMille": 757,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 162,
+          "deathRatePerMille": 243,
           "effectiveClaimQuartilesBp": [
-            7520,
-            7613,
-            7873
+            7501,
+            7585,
+            7817
           ],
-          "medianTicksUsed": 452,
+          "medianTicksUsed": 434,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 655,
-          "commitRatePerMille": 345,
+          "clearRatePerMille": 572,
+          "commitRatePerMille": 428,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            6704,
-            7551,
-            7774
+            6156,
+            7523,
+            7712
           ],
-          "medianTicksUsed": 408,
+          "medianTicksUsed": 389,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -298,48 +280,45 @@
       "index": 7,
       "levelId": "0x29aff2c9a509266323092ec0f62beb2b41cf2362e91296a8704bde301512dbba",
       "mix": {
-        "clearRatePerMille": 691,
-        "commitRatePerMille": 195,
-        "deathRatePerMille": 114,
+        "clearRatePerMille": 601,
+        "commitRatePerMille": 247,
+        "deathRatePerMille": 152,
         "effectiveClaimQuartilesBp": [
-          7134,
-          8041,
-          8180
+          5808,
+          8020,
+          8118
         ],
-        "medianTicksUsed": 636,
+        "medianTicksUsed": 619,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "rush",
       "policies": {
         "bold": {
-          "clearRatePerMille": 772,
+          "clearRatePerMille": 696,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 228,
+          "deathRatePerMille": 304,
           "effectiveClaimQuartilesBp": [
-            8002,
-            8055,
-            8198
+            0,
+            8041,
+            8153
           ],
-          "medianTicksUsed": 664,
+          "medianTicksUsed": 652,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 610,
-          "commitRatePerMille": 390,
+          "clearRatePerMille": 506,
+          "commitRatePerMille": 494,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            6967,
-            8023,
-            8139
+            6391,
+            8002,
+            8085
           ],
-          "medianTicksUsed": 604,
+          "medianTicksUsed": 580,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -347,48 +326,45 @@
       "index": 8,
       "levelId": "0xe657d92152f173a09413204c8ba84739054d4e197485ed51adfa6ed1ef2557b8",
       "mix": {
-        "clearRatePerMille": 654,
-        "commitRatePerMille": 212,
-        "deathRatePerMille": 133,
+        "clearRatePerMille": 558,
+        "commitRatePerMille": 268,
+        "deathRatePerMille": 173,
         "effectiveClaimQuartilesBp": [
-          6608,
-          8029,
-          8121
+          5118,
+          8011,
+          8100
         ],
-        "medianTicksUsed": 650,
+        "medianTicksUsed": 619,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "storm",
       "policies": {
         "bold": {
-          "clearRatePerMille": 734,
+          "clearRatePerMille": 653,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 266,
+          "deathRatePerMille": 347,
           "effectiveClaimQuartilesBp": [
             0,
-            8038,
-            8136
+            8029,
+            8124
           ],
-          "medianTicksUsed": 682,
+          "medianTicksUsed": 651,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 575,
-          "commitRatePerMille": 425,
+          "clearRatePerMille": 463,
+          "commitRatePerMille": 537,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            6771,
-            8011,
-            8100
+            6126,
+            7752,
+            8073
           ],
-          "medianTicksUsed": 623,
+          "medianTicksUsed": 585,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -396,48 +372,45 @@
       "index": 9,
       "levelId": "0x5061c11b9d0b64a353fcfed17a0ca2f20dc9bdbd1c13c65ae2e24b191185a393",
       "mix": {
-        "clearRatePerMille": 611,
-        "commitRatePerMille": 253,
-        "deathRatePerMille": 135,
+        "clearRatePerMille": 527,
+        "commitRatePerMille": 294,
+        "deathRatePerMille": 178,
         "effectiveClaimQuartilesBp": [
-          5894,
-          8024,
-          8159
+          5141,
+          8003,
+          8104
         ],
-        "medianTicksUsed": 524,
+        "medianTicksUsed": 500,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "cross",
       "policies": {
         "bold": {
-          "clearRatePerMille": 730,
+          "clearRatePerMille": 643,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 270,
+          "deathRatePerMille": 357,
           "effectiveClaimQuartilesBp": [
             0,
-            8046,
-            8189
+            8028,
+            8159
           ],
-          "medianTicksUsed": 571,
+          "medianTicksUsed": 552,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 493,
-          "commitRatePerMille": 507,
+          "clearRatePerMille": 411,
+          "commitRatePerMille": 589,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            6062,
-            7973,
-            8107
+            5705,
+            7561,
+            8055
           ],
-          "medianTicksUsed": 485,
+          "medianTicksUsed": 460,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -445,48 +418,45 @@
       "index": 10,
       "levelId": "0xe2dc45925b74c4b0892e626277f5f8be89f43a2e0d13891e71fe260a6833b767",
       "mix": {
-        "clearRatePerMille": 562,
-        "commitRatePerMille": 270,
-        "deathRatePerMille": 167,
+        "clearRatePerMille": 465,
+        "commitRatePerMille": 318,
+        "deathRatePerMille": 216,
         "effectiveClaimQuartilesBp": [
-          5969,
-          9010,
-          9090
+          3268,
+          8764,
+          9055
         ],
-        "medianTicksUsed": 661,
+        "medianTicksUsed": 621,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "maze",
       "policies": {
         "bold": {
-          "clearRatePerMille": 665,
+          "clearRatePerMille": 566,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 335,
+          "deathRatePerMille": 433,
           "effectiveClaimQuartilesBp": [
             0,
-            9026,
-            9119
+            9010,
+            9087
           ],
-          "medianTicksUsed": 706,
+          "medianTicksUsed": 674,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 1
         },
         "committer": {
-          "clearRatePerMille": 459,
-          "commitRatePerMille": 541,
+          "clearRatePerMille": 364,
+          "commitRatePerMille": 636,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            7336,
-            8892,
-            9058
+            6549,
+            8556,
+            9033
           ],
-          "medianTicksUsed": 608,
+          "medianTicksUsed": 558,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -494,48 +464,45 @@
       "index": 11,
       "levelId": "0x4aeda7cb5ca8f300130c26ccb5c47721928b32c1fc5ba95052d3c9a0e45d759f",
       "mix": {
-        "clearRatePerMille": 451,
-        "commitRatePerMille": 347,
-        "deathRatePerMille": 201,
+        "clearRatePerMille": 392,
+        "commitRatePerMille": 372,
+        "deathRatePerMille": 235,
         "effectiveClaimQuartilesBp": [
-          3070,
-          7252,
-          8105
+          2143,
+          6353,
+          8086
         ],
-        "medianTicksUsed": 326,
+        "medianTicksUsed": 314,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "labyrinth",
       "policies": {
         "bold": {
-          "clearRatePerMille": 597,
+          "clearRatePerMille": 530,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 403,
+          "deathRatePerMille": 470,
           "effectiveClaimQuartilesBp": [
             0,
-            8027,
-            8207
+            8008,
+            8151
           ],
-          "medianTicksUsed": 387,
+          "medianTicksUsed": 366,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 305,
-          "commitRatePerMille": 695,
+          "clearRatePerMille": 255,
+          "commitRatePerMille": 745,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            4315,
-            6393,
-            8033
+            3970,
+            6151,
+            8002
           ],
-          "medianTicksUsed": 275,
+          "medianTicksUsed": 260,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -543,48 +510,45 @@
       "index": 12,
       "levelId": "0x0ce0e37a7a91efdabe56e4f073cf7dbd09d4f8ffb4e50d15f1ca6d64960a44c9",
       "mix": {
-        "clearRatePerMille": 393,
-        "commitRatePerMille": 360,
-        "deathRatePerMille": 247,
+        "clearRatePerMille": 334,
+        "commitRatePerMille": 382,
+        "deathRatePerMille": 284,
         "effectiveClaimQuartilesBp": [
-          1599,
-          6354,
-          7699
+          0,
+          5559,
+          7683
         ],
-        "medianTicksUsed": 430,
+        "medianTicksUsed": 404,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "ring",
       "policies": {
         "bold": {
-          "clearRatePerMille": 506,
+          "clearRatePerMille": 432,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 494,
+          "deathRatePerMille": 568,
           "effectiveClaimQuartilesBp": [
             0,
-            7651,
-            7744
+            0,
+            7718
           ],
-          "medianTicksUsed": 483,
+          "medianTicksUsed": 458,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 280,
-          "commitRatePerMille": 720,
+          "clearRatePerMille": 236,
+          "commitRatePerMille": 764,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            4543,
-            6338,
-            7660
+            4337,
+            6003,
+            7522
           ],
-          "medianTicksUsed": 377,
+          "medianTicksUsed": 349,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -592,48 +556,45 @@
       "index": 13,
       "levelId": "0xf895c67a7c9da3483377c068e2cc8340a52f5be218bedba8329ff5cab26dfb2c",
       "mix": {
-        "clearRatePerMille": 358,
-        "commitRatePerMille": 374,
-        "deathRatePerMille": 267,
+        "clearRatePerMille": 298,
+        "commitRatePerMille": 397,
+        "deathRatePerMille": 304,
         "effectiveClaimQuartilesBp": [
           0,
-          4494,
-          7553
+          3379,
+          7526
         ],
-        "medianTicksUsed": 376,
+        "medianTicksUsed": 358,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "trio",
       "policies": {
         "bold": {
-          "clearRatePerMille": 466,
+          "clearRatePerMille": 391,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 534,
+          "deathRatePerMille": 609,
           "effectiveClaimQuartilesBp": [
             0,
             0,
-            7592
+            7574
           ],
-          "medianTicksUsed": 453,
+          "medianTicksUsed": 433,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 251,
-          "commitRatePerMille": 749,
+          "clearRatePerMille": 206,
+          "commitRatePerMille": 794,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            2740,
-            4875,
-            7500
+            2523,
+            4337,
+            7101
           ],
-          "medianTicksUsed": 310,
+          "medianTicksUsed": 288,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -641,48 +602,45 @@
       "index": 14,
       "levelId": "0xb4e94c1cc587baa759a528758c934fcae418e9926a55838740f69e189f2d7cd1",
       "mix": {
-        "clearRatePerMille": 317,
-        "commitRatePerMille": 384,
-        "deathRatePerMille": 298,
+        "clearRatePerMille": 228,
+        "commitRatePerMille": 422,
+        "deathRatePerMille": 349,
         "effectiveClaimQuartilesBp": [
           0,
-          5636,
-          8168
+          4197,
+          7803
         ],
-        "medianTicksUsed": 581,
+        "medianTicksUsed": 516,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "titan",
       "policies": {
         "bold": {
-          "clearRatePerMille": 404,
+          "clearRatePerMille": 301,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 596,
+          "deathRatePerMille": 699,
           "effectiveClaimQuartilesBp": [
             0,
             0,
-            8189
+            8165
           ],
-          "medianTicksUsed": 646,
+          "medianTicksUsed": 593,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 231,
-          "commitRatePerMille": 769,
+          "clearRatePerMille": 156,
+          "commitRatePerMille": 844,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            4343,
-            6486,
-            8023
+            3766,
+            5630,
+            7494
           ],
-          "medianTicksUsed": 501,
+          "medianTicksUsed": 440,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -690,48 +648,45 @@
       "index": 15,
       "levelId": "0x58c4cb97b4f836054f3ab701f3689d1893466c6ba607d1b688485d70f6c81056",
       "mix": {
-        "clearRatePerMille": 257,
-        "commitRatePerMille": 419,
-        "deathRatePerMille": 323,
+        "clearRatePerMille": 197,
+        "commitRatePerMille": 439,
+        "deathRatePerMille": 363,
         "effectiveClaimQuartilesBp": [
           0,
-          3213,
-          7500
+          2372,
+          6254
         ],
-        "medianTicksUsed": 388,
+        "medianTicksUsed": 354,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "swarm",
       "policies": {
         "bold": {
-          "clearRatePerMille": 353,
+          "clearRatePerMille": 274,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 647,
+          "deathRatePerMille": 726,
           "effectiveClaimQuartilesBp": [
             0,
             0,
-            7538
+            7508
           ],
-          "medianTicksUsed": 462,
+          "medianTicksUsed": 425,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 162,
-          "commitRatePerMille": 838,
+          "clearRatePerMille": 121,
+          "commitRatePerMille": 879,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            2488,
-            4313,
-            6608
+            2268,
+            3837,
+            6010
           ],
-          "medianTicksUsed": 302,
+          "medianTicksUsed": 264,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     },
@@ -739,48 +694,45 @@
       "index": 16,
       "levelId": "0x707a28d515655c5c992335ef52552acff01bdf75110c141319c540234487acd8",
       "mix": {
-        "clearRatePerMille": 235,
-        "commitRatePerMille": 429,
-        "deathRatePerMille": 336,
+        "clearRatePerMille": 153,
+        "commitRatePerMille": 457,
+        "deathRatePerMille": 389,
         "effectiveClaimQuartilesBp": [
           0,
-          2945,
-          7217
+          1857,
+          5431
         ],
-        "medianTicksUsed": 386,
+        "medianTicksUsed": 332,
         "runs": 2000,
-        "timeLimitRatePerMille": 0,
-        "workBudgetRatePerMille": 0
+        "timeLimitRatePerMille": 0
       },
       "name": "doom",
       "policies": {
         "bold": {
-          "clearRatePerMille": 328,
+          "clearRatePerMille": 221,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 672,
+          "deathRatePerMille": 779,
           "effectiveClaimQuartilesBp": [
             0,
             0,
-            7523
+            0
           ],
-          "medianTicksUsed": 468,
+          "medianTicksUsed": 418,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         },
         "committer": {
-          "clearRatePerMille": 142,
-          "commitRatePerMille": 858,
+          "clearRatePerMille": 85,
+          "commitRatePerMille": 915,
           "deathRatePerMille": 0,
           "effectiveClaimQuartilesBp": [
-            2392,
-            4304,
-            6504
+            2006,
+            3570,
+            5665
           ],
-          "medianTicksUsed": 305,
+          "medianTicksUsed": 263,
           "runs": 1000,
-          "timeLimitRatePerMille": 0,
-          "workBudgetRatePerMille": 0
+          "timeLimitRatePerMille": 0
         }
       }
     }
@@ -791,7 +743,7 @@
     "committer"
   ],
   "referenceMix": true,
-  "rulesVersion": 3,
+  "rulesVersion": 2,
   "runs": 1000,
   "seed": 1
 }

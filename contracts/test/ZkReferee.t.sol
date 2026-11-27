@@ -36,6 +36,12 @@ contract ZkRefereeTest is SettlementFixture, ZkFixtures {
         number = openSeason(calibrationParams(zkReferee));
     }
 
+    /// The proof fixtures are of rules version 2 and its calibration; they are proven again on
+    /// the rules that follow twin bosses.
+    function calibrationFile() internal pure override returns (string memory) {
+        return "seasons/calibration-1.json";
+    }
+
     function imageIdOf(string memory fixture) private view returns (bytes32) {
         return vm.parseJsonBytes32(zkFixtures(), string.concat(fixture, ".imageId"));
     }

@@ -10,7 +10,7 @@ How to read it:
 - `reports/` numbers are measurements. Idea-page numbers are agents' estimates unless they cite a report; their trial runs "were not repeated and are not committed" ([Limits](README.md#the-taxonomy-and-the-ideas)): this guide marks them *scratch*. Their files (sim_boss.py, gen_levels.py, work/lv, 16-mines) are not in the repository: rebuild from the rule sketch. *Computed*: derived here from committed files (reports, calibration-1, `levels/src/`); *derived*: worked out from rule text; neither is measured.
 - **Score** sums three judges' 1-5 scores, out of 15. **Gap** is the fairness judge's view of the search-versus-human gap, a judgment, not a measurement ([IDEAS.md](IDEAS.md)). Judges scored ten ideas at a time and batches were never compared ([Limits](README.md#the-taxonomy-and-the-ideas)); a one-point difference is noise (IDEAS.md).
 - **Tiers:** T0 client only; T1 new levels on v1 knobs; T2 per-level fields in a format v2, "usually with T3"; T3 a new core rule. **Verdicts** in §4 are this guide's: **In the 16** (Today); **v1 knobs, not in the 16**, **Format v2**, **New core rule** (Proposal); **Out of scope**, a reading of README rules, not a research verdict.
-- **Codes** ([README §13](../../README.md#13-open-decisions)): D4 trail blocks, no fuse; D5 no lives, score 0; D6 one shield charge; D9 one B × B boss; D13 game titles here only cite where a pattern comes from; D14 the seed keeps steering the boss, so no two runs share a game. P11: the mix, targets, tolerance and floor. R4.x, PIN-xx: README §4 tags; M-numbers: plan items.
+- **Codes** ([README §13](../../README.md#13-open-decisions)): D4 trail blocks, no fuse; D5 no lives, score 0; D6 the shield, removed in rules version 3; D9 one B × B boss; D13 game titles here only cite where a pattern comes from; D14 the seed keeps steering the boss, so no two runs share a game. P11: the mix, targets, tolerance and floor. R4.x, PIN-xx: README §4 tags; M-numbers: plan items.
 
 **Making a board now?** Read [§1.2](#12-validity-and-what-no-tool-checks), [§3](#3-how-the-16-levels-ramp) (What moves the clear rate), [§6](#6-patterns-to-avoid), [§7.4](#74-d14-and-safe-pockets) and [§2.4](#24-steps-to-ship-a-board).
 
@@ -33,7 +33,7 @@ How to read it:
 | `lives` | ≥ 1 (33); default 3 | Losing the last life scores 0 (D5) | 2-5 |
 | `target_bp` | 1-10,000 (34); default 7,500 | Cleared when `claim_bp` reaches it (PIN-10) | 7,500-9,000 |
 
-**Not knobs:** the 60 × 60 grid (R4.1-1); four cell states, so no lethal terrain (R4.1-2); the start (30, 59) and 1 shield charge (PIN-01, D6); one boss; one minion period and R; minion headings (R4.7-3). They need a new byte format and usually a rule change ([§8](#8-levers-that-may-come-proposals)).
+**Not knobs:** the 60 × 60 grid (R4.1-1); four cell states, so no lethal terrain (R4.1-2); the start (30, 59) (PIN-01); one boss; one minion period and R; minion headings (R4.7-3). They need a new byte format and usually a rule change ([§8](#8-levers-that-may-come-proposals)).
 
 ### 1.2 Validity, and what no tool checks
 

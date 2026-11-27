@@ -37,7 +37,7 @@ MIN_PO2, MAX_PO2 = 16, 21
 WARM_ROLES = ("ladder", "sweep")
 MIN_REPEATS = 3
 
-SMALL_VECTORS = ("commit-at-tick-0", "commit-during-cut", "fast-cut", "event-at-last-tick", "slow-shield", "last-life-on-last-tick")
+SMALL_VECTORS = ("commit-at-tick-0", "commit-during-cut", "fast-cut", "event-at-last-tick", "fast-cut-close-first-sub-step", "last-life-on-last-tick")
 # The ladder: committed run-mode inputs of 7 to about 177 segments of 2^20 cycles, smallest first.
 INPUTS = {
     "small": [f"vectors/game/{name}.json" for name in SMALL_VECTORS],
@@ -70,8 +70,8 @@ PLAYER_RUNS = (
     ("greedy bot, max", 79e6),
     ("edge-nibbler, mean", 69.7e6),
     ("edge-nibbler, max", 102e6),
-    ("proposed cap", 150e6),
-    ("cost-maximising legal run (estimate)", 2.9e9),
+    # The work budget's bound on any legal run (README §4.11, reports/cycle-cap-2026-11-27.md).
+    ("cap: the work budget's bound", 370e6),
 )
 # settleRun through ZkReferee (docs/DEPLOYMENT.md): testnet-0's run 1, with 7,300 bytes of calldata,
 # measured; and about 1,000,000 for a whole bot run's longer journals, estimated in its Funding.

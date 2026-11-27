@@ -155,11 +155,11 @@ fn every_bot_journal_decodes_and_replays_to_its_sample() {
 fn each_policy_plays_run_0_of_l01_as_pinned() {
     let level = l01();
     let cases = [
-        (Policy::EdgeNibbler, EndReason::Cleared, 7654, 2340),
-        (Policy::Greedy, EndReason::Cleared, 7514, 266),
-        (Policy::Bold, EndReason::Cleared, 8041, 409),
-        (Policy::Committer, EndReason::Cleared, 8041, 409),
-        (Policy::RandomWalk, EndReason::OutOfLives, 0, 1072),
+        (Policy::EdgeNibbler, EndReason::Cleared, 7761, 1203),
+        (Policy::Greedy, EndReason::Cleared, 8299, 315),
+        (Policy::Bold, EndReason::Cleared, 7630, 365),
+        (Policy::Committer, EndReason::Cleared, 7630, 365),
+        (Policy::RandomWalk, EndReason::Cleared, 8275, 79),
     ];
     for (policy, end, effective_bp, ticks_used) in cases {
         let (_, played) =

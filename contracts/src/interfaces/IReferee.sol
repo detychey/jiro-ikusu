@@ -13,7 +13,7 @@ struct Outcome {
     uint8 drawSlot;       // draw(runNonce)[levelIndex] (§8.2), computed by the core
     uint8 mode;           // from the header
     uint16 rulesVersion;  // from the header
-    uint8 endReason;      // 1 Committed, 2 Cleared, 3 out of lives, 4 time limit (§4.10)
+    uint8 endReason;      // 1 Committed, 2 Cleared, 3 out of lives, 4 time limit, 5 work budget (§4.10)
     uint16 claimBp;       // claim_bp when the level ended
     uint16 ticksUsed;     // §4.10
     uint32 levelScore;    // claimBp × weightBp / 10_000, rounded down; 0 if endReason is 3

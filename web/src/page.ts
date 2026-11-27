@@ -30,12 +30,10 @@ export function fitField(renderer: Renderer): void {
   renderer.fit(Math.min(window.innerWidth - 32, 960), window.innerHeight - 160);
 }
 
-/** The HUD of the level in play: the claim against the target, the lives, the shield charges and
- *  the time left. */
-export function showHud({ claimBp, targetBp, lives, shield, ticksLeft }: Snapshot): void {
+/** The HUD of the level in play: the claim against the target, the lives and the time left. */
+export function showHud({ claimBp, targetBp, lives, ticksLeft }: Snapshot): void {
   element("hud-claim").textContent = `${percent(claimBp)} of ${percent(targetBp)}`;
   element("hud-lives").textContent = String(lives);
-  element("hud-shield").textContent = String(shield);
   element("hud-time").textContent = `${Math.ceil(ticksLeft / 15)} s`;
 }
 

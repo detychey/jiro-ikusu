@@ -88,15 +88,12 @@ for (const width of [320, 412]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/");
     const boxes = await page.evaluate(() =>
-      Object.fromEntries(["touch", "stick", "pad-a", "pad-b", "pad-x"].map((id) => [id, document.getElementById(id)?.getBoundingClientRect().toJSON()])),
+      Object.fromEntries(["stick", "pad-x"].map((id) => [id, document.getElementById(id)?.getBoundingClientRect().toJSON()])),
     );
-    const { touch: bar, stick, "pad-a": a, "pad-b": b, "pad-x": x } = boxes;
-    const side = bar.width - stick.width - 8 >= 152 ? 72 : 64;
-    const sizes = [a, b, x].map((box) => `${box.width} x ${box.height}`);
-    expect([stick.width >= 144 && stick.height >= 144, ...sizes]).toEqual([true, `${side} x ${side}`, `${side} x ${side}`, "56 x 56"]);
-    expect(Math.min(distance(x, a), distance(x, b))).toBeGreaterThanOrEqual(24);
-    expect(Math.min(distance(stick, a), distance(stick, x), distance(a, b))).toBeGreaterThanOrEqual(8);
-    expect(Math.min(stick.left, width - b.right)).toBeGreaterThanOrEqual(16);
+    const { stick, "pad-x": x } = boxes;
+    expect([stick.width >= 144 && stick.height >= 144, `${x.width} x ${x.height}`]).toEqual([true, "56 x 56"]);
+    expect(distance(stick, x)).toBeGreaterThanOrEqual(8);
+    expect(Math.min(stick.left, width - x.right)).toBeGreaterThanOrEqual(16);
   });
 }
 
@@ -106,6 +103,6 @@ test("the mirrored setting puts the stick on the right, and stays after a reload
   await page.locator("#touch-mirrored").tap();
   await page.reload();
   await expect(page.locator("#touch-mirrored")).toBeChecked();
-  const [stick, a] = await Promise.all([page.locator("#stick").boundingBox(), page.locator("#pad-a").boundingBox()]);
-  expect((stick?.x ?? 0) > (a?.x ?? 0)).toBe(true);
+  const [stick, x] = await Promise.all([page.locator("#stick").boundingBox(), page.locator("#pad-x").boundingBox()]);
+  expect((stick?.x ?? 0) > (x?.x ?? 0)).toBe(true);
 });

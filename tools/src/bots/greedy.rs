@@ -8,7 +8,7 @@ use jiro_core::grid::Grid;
 use jiro_core::minion::State;
 use jiro_core::types::{Cell, CellIndex, Dir, InputMask, Pos};
 
-use crate::scenarios::play::{Plan, Rng, distance, mask, reverse, walk_rail};
+use crate::scenarios::play::{Plan, Rng, distance, reverse, walk_rail};
 
 #[cfg(test)]
 mod tests;
@@ -71,10 +71,8 @@ enum Leg {
 }
 
 impl Cut {
-    /// The mask that carries the cut on: the leg's direction, with B when one cell of the out or
-    /// side leg is left, so that the double step of the fast cut never overshoots a corner: B wins
-    /// over it. The back leg needs no B, since its cut closes on claimed ground, which ends the
-    /// tick's movement (PIN-04).
+    /// The mask that carries the cut on: the leg's direction. The fast cut's double step can
+    /// overshoot a leg of odd length by one cell, and the next leg then starts from there.
     fn mask(&mut self, game: &Game) -> InputMask {
         let plan = self.plan;
         let travelled = |dir: Dir| distance(plan.start, game.player.pos, dir);
@@ -84,16 +82,12 @@ impl Cut {
         if self.leg == Leg::Side && travelled(plan.side) >= i16::from(plan.width) {
             self.leg = Leg::Back;
         }
-        let (dir, left) = match self.leg {
-            Leg::Out => (plan.out, i16::from(plan.depth) - travelled(plan.out)),
-            Leg::Side => (plan.side, i16::from(plan.width) - travelled(plan.side)),
-            Leg::Back => (reverse(plan.out), travelled(plan.out)),
-        };
-        if left == 1 && self.leg != Leg::Back {
-            mask(&[dir.mask(), InputMask::B])
-        } else {
-            dir.mask()
+        match self.leg {
+            Leg::Out => plan.out,
+            Leg::Side => plan.side,
+            Leg::Back => reverse(plan.out),
         }
+        .mask()
     }
 }
 

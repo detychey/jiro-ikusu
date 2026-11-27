@@ -178,7 +178,7 @@ fn search_plays_l01_as_pinned() {
     let game = recorder.game();
     assert_eq!(
         (game.end, game.claim_bp(), game.ticks_used, bot.spent),
-        (Some(EndReason::Cleared), Ok(9643), 101, 50_856)
+        (Some(EndReason::Cleared), Ok(9619), 101, 50_936)
     );
 }
 

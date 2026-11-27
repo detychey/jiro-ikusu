@@ -54,10 +54,6 @@ fn at(x: u8, y: u8) -> Pos {
     Pos { x, y }
 }
 
-fn mask(parts: &[InputMask]) -> InputMask {
-    InputMask::new(parts.iter().fold(0, |bits, part| bits | part.bits())).unwrap()
-}
-
 fn paint(game: &mut Game, cells: &[(u8, u8)], cell: Cell) {
     for &(x, y) in cells {
         game.grid.set(CellIndex::new(at(x, y)).unwrap(), cell);
@@ -201,32 +197,15 @@ fn three_hits_in_one_tick_cost_one_life() {
     assert_eq!(lives_after(&mut game, &[InputMask::UP]), 2);
 }
 
-/// [R4.9-15] With B held and a charge left, a hit spends the charge and nothing else.
-#[test]
-fn hit_with_b_held_and_a_charge_left_spends_only_the_charge() {
-    let mut game = game();
-    minion(&mut game, 0, at(31, 59), Dir::Left, 1);
-    game.step(InputMask::B).unwrap();
-    let player = game.player;
-    assert_eq!(
-        (player.lives, player.shield, player.invulnerable),
-        (3, 0, 0)
-    );
-}
-
-/// [R4.9-14] An invulnerable player ignores a hit, even with B held and a charge left: the
-/// charge stays, and invulnerability counts down.
+/// [R4.9-14] An invulnerable player ignores a hit, and invulnerability counts down.
 #[test]
 fn hit_while_invulnerable_does_nothing() {
     let mut game = game();
     game.player.invulnerable = 5;
     minion(&mut game, 0, at(31, 59), Dir::Left, 1);
-    game.step(InputMask::B).unwrap();
+    game.step(InputMask::NONE).unwrap();
     let player = game.player;
-    assert_eq!(
-        (player.lives, player.shield, player.invulnerable),
-        (3, 1, 4)
-    );
+    assert_eq!((player.lives, player.invulnerable), (3, 4));
 }
 
 /// A minion that never moves shares the player's cell on every tick from tick 1 on, so tick 1
@@ -382,23 +361,6 @@ fn captured_cells_add_up_across_captures() {
     cutting(&mut game, at(31, 58), at(30, 59), &[(30, 58), (31, 58)]);
     game.step(InputMask::DOWN).unwrap();
     assert_eq!(game.captured, 102);
-}
-
-/// [R4.5-7] [R4.4-6] B pressed at the odd tick 3 sets press_tick to 3 at step 1: the player
-/// moves on ticks 3 and 5, not 4.
-#[test]
-fn b_pressed_at_a_tick_sets_the_slow_shield_phase() {
-    let mut game = game();
-    game.step(InputMask::NONE).unwrap();
-    game.step(InputMask::NONE).unwrap();
-    let held = mask(&[InputMask::UP, InputMask::B]);
-    let positions: Vec<Pos> = (3..=5)
-        .map(|_| {
-            game.step(held).unwrap();
-            game.player.pos
-        })
-        .collect();
-    assert_eq!(positions, [at(30, 58), at(30, 58), at(30, 57)]);
 }
 
 /// The player cutting at (31, 58) from (30, 59): a step down closes a cut of 2 cells, whose

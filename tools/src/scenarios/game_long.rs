@@ -191,7 +191,7 @@ fn random_games() -> Result<Vec<GameCase>, String> {
                 |run| run.last().ticks_used >= 500,
             )?;
             let covers: &[&str] = if all_bits {
-                &["§4", "R4.4-3", "R4.5-6", "R4.5-7"]
+                &["§4", "R4.4-3", "R4.5-6", "§6.1"]
             } else {
                 &["§4", "R4.4-3", "R4.5-1"]
             };

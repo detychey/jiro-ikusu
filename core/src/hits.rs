@@ -4,7 +4,6 @@ use crate::consts::{INVULNERABLE_TICKS, MINION_SLOTS};
 use crate::grid::Grid;
 use crate::minion::Moved;
 use crate::player::{Moves, Player};
-use crate::types::InputMask;
 
 /// Whether a minion meets the player at step 5: it ends on the player's last cell (share),
 /// swaps cells with it across one sub-step (swap), or ends on the cell a fast cut passed
@@ -27,19 +26,15 @@ pub fn minion_hits(moves: &Moves, minions: &[Option<Moved>; MINION_SLOTS]) -> bo
 }
 
 /// Step 6: resolves the tick's single hit flag, then counts the invulnerability down. An
-/// invulnerable player ignores the hit; otherwise B held with a charge left spends the charge;
-/// otherwise a life is lost, the cut is abandoned, and the player is invulnerable for the next
-/// 30 ticks. Returns whether a life was lost [R4.9-13 to R4.9-17, PIN-02, R4.3-5].
-pub fn resolve(player: &mut Player, grid: &mut Grid, hit: bool, mask: InputMask) -> bool {
+/// invulnerable player ignores the hit; otherwise a life is lost, the cut is abandoned, and the
+/// player is invulnerable for the next 30 ticks. Returns whether a life was lost [R4.9-13 to
+/// R4.9-17, PIN-02, R4.3-5].
+pub fn resolve(player: &mut Player, grid: &mut Grid, hit: bool) -> bool {
     if hit && player.invulnerable == 0 {
-        if mask.contains(InputMask::B) && player.shield > 0 {
-            player.shield = player.shield.saturating_sub(1);
-        } else {
-            player.lives = player.lives.saturating_sub(1);
-            player.abandon_cut(grid);
-            player.invulnerable = INVULNERABLE_TICKS;
-            return true;
-        }
+        player.lives = player.lives.saturating_sub(1);
+        player.abandon_cut(grid);
+        player.invulnerable = INVULNERABLE_TICKS;
+        return true;
     }
     player.invulnerable = player.invulnerable.saturating_sub(1);
     false

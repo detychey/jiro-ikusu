@@ -11,7 +11,7 @@ import { averageTicket, checkSeason, seasonEntries } from "../src/run/season";
 import { freshStore, runEnv, shippedLevels } from "./challenge";
 import { loadEngine, repo } from "./drive";
 
-const CALIBRATION = JSON.parse(readFileSync(new URL("seasons/calibration-1.json", repo), "utf8"));
+const CALIBRATION = JSON.parse(readFileSync(new URL("seasons/calibration-2.json", repo), "utf8"));
 const core = await loadEngine();
 const LEVELS = shippedLevels();
 const SHIPPED_IDS = LEVELS.map((level) => hex(core.levelId(level)));
@@ -32,7 +32,7 @@ async function envWithStartRun() {
 }
 
 describe("the season check", () => {
-  it("passes the season of seasons/calibration-1.json, whose 16 levels the page ships", () => {
+  it("passes the season of seasons/calibration-2.json, whose 16 levels the page ships", () => {
     expect(() => checkSeason(core.rulesVersion, SHIPPED_IDS, seasonWith(CALIBRATION.rulesVersion, CALIBRATION.levelIds).params)).not.toThrow();
   });
 

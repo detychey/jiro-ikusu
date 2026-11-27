@@ -10,8 +10,8 @@ fn input_mask_bits_are_the_readme_bits() {
         (InputMask::DOWN, 1),
         (InputMask::LEFT, 2),
         (InputMask::RIGHT, 3),
-        (InputMask::IGNORED, 4),
-        (InputMask::B, 5),
+        (InputMask::IGNORED_A, 4),
+        (InputMask::IGNORED_B, 5),
         (InputMask::X, 6),
     ];
     for (mask, bit) in bits {
@@ -34,7 +34,7 @@ fn input_mask_contains_only_its_subsets() {
     let up_and_ignored = InputMask::new(0x11).unwrap();
     let cases = [
         (InputMask::UP, true),
-        (InputMask::IGNORED, true),
+        (InputMask::IGNORED_A, true),
         (up_and_ignored, true),
         (InputMask::NONE, true),
         (InputMask::DOWN, false),
