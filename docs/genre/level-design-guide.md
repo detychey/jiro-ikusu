@@ -226,7 +226,7 @@ The genre default is a [per-level enemy ramp](taxonomy/level-structure-and-progr
 *Computed* from calibrate.rs (`weights`) and calibration-1:
 
 - Only ratios matter: weight_i / weight_j = m_j / m_i.
-- **The lowest median sets P.** P = 12,000 while it is 1,832 to 1,983 bp; 13,000 from 1,984; 15,000 if doom (1,857) left and swarm (2,372) became the lowest; 9,000 at 1,500. P scales every weight alike and the pot is shared pro-rata by score ([README §8.2](../../README.md#82-challenge-000005-eth-per-run), Rewards), so P changes a player's share only through rounding; shares move with a slot's weight relative to the others.
+- **The lowest median sets P.** P = 12,000 while it is 1,832 to 1,983 bp; 13,000 from 1,984; 15,000 if doom (1,857) left and swarm (2,372) became the lowest; 9,000 at 1,500. P scales every weight alike and the pot is shared pro-rata by score ([README §8.2](../../README.md#82-challenge-paid-runs), Rewards), so P changes a player's share only through rounding; shares move with a slot's weight relative to the others.
 - **The floor is a backstop**: `--check` already rejects medians at or below 500. If it bound, P would be 3,000, that weight 60,000.
 - **Weight follows the median, not the clear rate:** trio (29.8 %, median 3,379) outweighs titan (22.8 %, 4,197). Maze's 9,000 target lifts its median to 8,764, the lowest weight.
 
