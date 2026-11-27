@@ -198,7 +198,7 @@ fn the_table_shows_every_knob_and_the_field_of_a_level() {
     };
     let table = table(&[built], None, &BTreeMap::new());
     let row = format!(
-        "| 07 | rich | `{}` | 3 | (10, 12)-(40, 44) | 4 | 3 | 2 | 45 | 1800 | 2 | 6000 bp | – | – |\n",
+        "| 07 | rich | `{}` | 3 | (10, 12)-(40, 44) | 4 | – | 3 | 2 | 45 | 1800 | 2 | 6000 bp | – | – |\n",
         hex(&level_id(&bytes))
     );
     let (_, field) = source.split_once("\n\n").expect("blank line");
