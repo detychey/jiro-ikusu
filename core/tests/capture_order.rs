@@ -48,7 +48,9 @@ fn body(x: u8, y: u8, size: u8) -> Vec<CellIndex> {
 }
 
 fn core_capture(grid: &mut Grid, body: &[CellIndex]) -> u16 {
-    capture(grid, body.iter().copied(), &mut [0; CAPTURE_STACK]).unwrap()
+    capture(grid, body.iter().copied(), &mut [0; CAPTURE_STACK])
+        .unwrap()
+        .size
 }
 
 fn cell_at(grid: &Grid, x: u8, y: u8) -> Cell {
@@ -72,6 +74,19 @@ fn cut_along_the_top_border_claims_the_rectangle_it_closes() {
         enclosed
             .chain(top_u())
             .all(|(x, y)| cell_at(&grid, x, y) == Cell::Claimed)
+    );
+}
+
+/// [R4.11-2] A capture's work is 150 plus the cells its fill marked `BOSS_ZONE`: here every
+/// interior cell it did not claim.
+#[test]
+fn capture_work_counts_the_boss_zone() {
+    let mut grid = Grid::level_start(&open_field());
+    paint(&mut grid, top_u(), Cell::Trail);
+    let done = capture(&mut grid, body(30, 30, 5), &mut [0; CAPTURE_STACK]).unwrap();
+    assert_eq!(
+        (done.size, done.boss_zone, done.work()),
+        (55, 3_364 - 55, 150 + 3_364 - 55)
     );
 }
 

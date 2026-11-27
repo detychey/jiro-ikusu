@@ -147,7 +147,7 @@ fn open_field_empty_outcome() {
         level_index: 0,
         draw_slot: draw(&example_nonce())[0],
         mode: Mode::Training,
-        rules_version: 2,
+        rules_version: 3,
         end_reason: EndReason::TimeLimit,
         claim_bp: 0,
         ticks_used: 2_700,
@@ -193,7 +193,7 @@ fn open_field_empty_tick_0_hashes_to_the_worked_example() {
     let hashes = trace(&level, &journal(&header(&level, 0), &[]));
     assert_eq!(
         hex(&hashes[0]),
-        "0xc9775c491d677d941c3ac733e1b47b51a64024cb4da22f9c05ceea58d93c76d1"
+        "0x8f6232922930e959f15a929eeab8d1c64165ff9ebe64b6b33d399dba22ef0d91"
     );
 }
 
@@ -233,15 +233,16 @@ fn preimage_follows_the_readme_layout() {
         }),
         None,
     ];
-    (game.captured, game.events_applied) = (0x0506, 0x0708);
+    (game.captured, game.work, game.events_applied) = (0x0506, 0x090a_0b0c, 0x0708);
     let preimage = preimage(&game);
-    let tail: [u8; 44] = [
+    let tail: [u8; 48] = [
         30, 58, 1, 30, 59, 2, 0, 7, 3, 2, 3, // player
         40, 10, 5, 0x01, 0xff, 2, // boss
         1, 0, 5, 1, 3, 0, 0, // live minion: x 0, y 5, heading E, period 3
         2, 0, 0, 0, 3, 1, 4, // destroyed minion, countdown 0x0104
         0, 0, 0, 0, 0, 0, 0, // unused slot
-        5, 6, 0x0d, 0x24, 7, 8, // captured, claimable 3,364, next event index
+        5, 6, 9, 10, 11, 12, 0x0d, 0x24, 7,
+        8, // captured, work, claimable 3,364, next event index
     ];
     let fields = (
         &preimage[..4],
@@ -249,7 +250,7 @@ fn preimage_follows_the_readme_layout() {
         preimage[4 + 877],
         &preimage[904..],
     );
-    assert_eq!(fields, (&[1, 0x01, 0x02, 0x11][..], 0x55, 0x08, &tail[..]));
+    assert_eq!(fields, (&[2, 0x01, 0x02, 0x11][..], 0x55, 0x08, &tail[..]));
 }
 
 /// README §6.2: the Recorder's journal replays to the per-tick trace of the live run.
@@ -310,7 +311,7 @@ fn commit_tick_records_its_mask_and_event_index() {
         game.step(mask).unwrap();
     }
     let preimage = preimage(&game);
-    assert_eq!((preimage[3], &preimage[946..]), (0x40, &[0, 2][..]));
+    assert_eq!((preimage[3], &preimage[950..]), (0x40, &[0, 2][..]));
 }
 
 /// README §6.4: the direction codes (1 up, 2 down, 3 left, 4 right) and the heading codes

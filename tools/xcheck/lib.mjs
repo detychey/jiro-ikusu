@@ -7,10 +7,10 @@ export const CELLS = WIDTH * WIDTH;
 export const MIN_OPEN_AREA = 1682;
 export const MAX_TICKS = 2700;
 export const TICKS_PER_SECOND = 15;
-export const RULES_VERSION = 2;
+export const RULES_VERSION = 3;
 export const LEVEL_VERSION = 1;
 export const JOURNAL_VERSION = 1;
-export const STATE_HASH_VERSION = 1;
+export const STATE_HASH_VERSION = 2;
 export const PLAYER_START = { x: 30, y: 59 };
 export const EMPTY = 0;
 export const CLAIMED = 1;
@@ -58,6 +58,7 @@ export const hex = (bytes) => "0x" + Buffer.from(bytes).toString("hex");
 export const readU16 = (bytes, offset) => (bytes[offset] << 8) | bytes[offset + 1];
 export const readU32 = (bytes, offset) => readU16(bytes, offset) * 0x10000 + readU16(bytes, offset + 2);
 export const u16 = (value) => [value >> 8, value & 0xff];
+export const u32 = (value) => [value >>> 24, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
 export const isBorder = (x, y) => x === 0 || y === 0 || x === WIDTH - 1 || y === WIDTH - 1;
 export const index = (x, y) => y * WIDTH + x;
 export const isObstacle = (levelBytes, cell) => (levelBytes[LEVEL.bitmap + (cell >> 3)] >> (7 - (cell & 7))) & 1;
@@ -254,7 +255,7 @@ export function playBoss(grid, boss, key, timeLimit) {
   return deflections;
 }
 
-export function statePreimage({ tick, mask, grid, player, boss, captured, claimable, nextEvent }) {
+export function statePreimage({ tick, mask, grid, player, boss, captured, work, claimable, nextEvent }) {
   const packedGrid = new Uint8Array(CELLS / 4);
   for (let cell = 0; cell < CELLS; cell++) packedGrid[cell >> 2] |= grid[cell] << (6 - 2 * (cell & 3));
   const playerBytes = [
@@ -269,7 +270,7 @@ export function statePreimage({ tick, mask, grid, player, boss, captured, claima
     new Uint8Array(playerBytes),
     new Uint8Array(bossBytes),
     emptyMinionSlots,
-    new Uint8Array([...u16(captured), ...u16(claimable), ...u16(nextEvent)]),
+    new Uint8Array([...u16(captured), ...u32(work), ...u16(claimable), ...u16(nextEvent)]),
   ]));
 }
 

@@ -128,14 +128,16 @@ pub fn script(steps: &[(InputMask, u16)], then: InputMask) -> impl FnMut(&Game) 
     move |_| schedule.pop().unwrap_or(then)
 }
 
-/// Changes the mask on every tick: when `policy` repeats the mask in force, A is toggled.
+/// Changes the mask on every tick: when `policy` repeats the mask in force, the ignored bit 4 is
+/// toggled.
 pub fn every_tick(mut policy: impl FnMut(&Game) -> InputMask) -> impl FnMut(&Game) -> InputMask {
     move |game| {
         let wanted = policy(game);
         if wanted != game.mask {
             return wanted;
         }
-        let toggled = InputMask::new(wanted.bits() ^ InputMask::A.bits()).expect("bit 7 clear");
+        let toggled =
+            InputMask::new(wanted.bits() ^ InputMask::IGNORED.bits()).expect("bit 7 clear");
         if toggled == InputMask::NONE {
             InputMask::B
         } else {

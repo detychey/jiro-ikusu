@@ -2,7 +2,7 @@
 //! at step 3 of the tick (R4.4-8).
 
 use crate::boss::Boss;
-use crate::capture::capture;
+use crate::capture::{Capture, capture};
 use crate::consts::{CAPTURE_STACK, PLAYER_START};
 use crate::grid::Grid;
 use crate::types::{Cell, CellIndex, Dir, InputMask, Pos};
@@ -32,8 +32,8 @@ pub struct Moves {
     pub entered: [Option<Pos>; 2],
     /// The player tried to step onto the boss's body (R4.9-3).
     pub hit: bool,
-    /// The capture size, if a cut closed this tick (R4.5-5).
-    pub captured: Option<u16>,
+    /// The capture, if a cut closed this tick (R4.5-5).
+    pub captured: Option<Capture>,
 }
 
 /// The outcome of one sub-step.
@@ -42,8 +42,8 @@ enum SubStep {
     Cut(Pos),
     /// The player entered a cell, and the tick's movement ends.
     Entered(Pos),
-    /// The cut closed onto this cell, with this capture size.
-    Closed(Pos, u16),
+    /// The cut closed onto this cell, with this capture.
+    Closed(Pos, Capture),
     Hit,
     Ignored,
 }
@@ -103,9 +103,9 @@ impl Player {
                     *entered = Some(pos);
                     break;
                 }
-                SubStep::Closed(pos, size) => {
+                SubStep::Closed(pos, done) => {
                     *entered = Some(pos);
-                    moves.captured = Some(size);
+                    moves.captured = Some(done);
                     break;
                 }
                 SubStep::Hit => {
@@ -141,13 +141,13 @@ impl Player {
     }
 
     /// B held: one sub-step on the ticks where (tick − press_tick) % 2 == 0, else none, and B
-    /// wins over A [R4.5-7]. Otherwise two when cutting at the start of the tick with A held
+    /// wins over the fast cut [R4.5-7]. Otherwise two when cutting at the start of the tick
     /// [R4.5-6], else one.
     fn sub_steps(&self, mask: InputMask, tick: u16) -> u8 {
         if mask.contains(InputMask::B) {
             // press_tick ≤ tick, and 2^16 is even, so the wrapping difference has the right parity.
             u8::from(tick.wrapping_sub(self.press_tick).is_multiple_of(2))
-        } else if self.cutting && mask.contains(InputMask::A) {
+        } else if self.cutting {
             2
         } else {
             1
@@ -431,7 +431,7 @@ mod tests {
         ]);
         let mut grid = grid(&obstacles);
         let mut player = player_at(10, 3);
-        for _ in 0..4 {
+        for _ in 0..3 {
             step(&mut player, &mut grid, InputMask::RIGHT, 0);
         }
         let state =
@@ -460,7 +460,7 @@ mod tests {
         let moves = step(&mut player, &mut grid, InputMask::DOWN, 2);
         assert_eq!(
             (player.pos, moves.hit, moves.entered),
-            (at(30, 57), false, [None, None])
+            (at(30, 56), false, [None, None])
         );
     }
 
@@ -489,11 +489,10 @@ mod tests {
         let mut grid = grid(&[]);
         let mut player = player_at(2, 59);
         step(&mut player, &mut grid, InputMask::UP, 0);
-        step(&mut player, &mut grid, InputMask::LEFT, 1);
-        let moves = step(&mut player, &mut grid, InputMask::LEFT, 2);
+        let moves = step(&mut player, &mut grid, InputMask::LEFT, 1);
         assert_eq!(
             (
-                moves.captured,
+                moves.captured.map(|done| done.size),
                 player.pos,
                 player.cutting,
                 cell(&grid, 1, 58),
@@ -509,12 +508,7 @@ mod tests {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
         step(&mut player, &mut grid, InputMask::UP, 0);
-        let moves = step(
-            &mut player,
-            &mut grid,
-            held(&[InputMask::UP, InputMask::A]),
-            1,
-        );
+        let moves = step(&mut player, &mut grid, InputMask::UP, 1);
         assert_eq!(
             (
                 moves.from,
@@ -536,42 +530,48 @@ mod tests {
     fn player_fast_cut_starts_only_when_already_cutting() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        let moves = step(
-            &mut player,
-            &mut grid,
-            held(&[InputMask::UP, InputMask::A]),
-            0,
-        );
+        let moves = step(&mut player, &mut grid, InputMask::UP, 0);
         assert_eq!(moves.entered, [Some(at(30, 58)), None]);
     }
 
-    /// [PIN-04]: a fast cut that closes on its first sub-step, onto the obstacle (30, 50), stops
-    /// there, although a second sub-step could enter the open cell (30, 49) beyond it.
+    /// [R4.5-6]: the fast cut needs no key; the bit that held A before rules version 3 changes
+    /// nothing.
     #[test]
-    fn player_fast_cut_closing_on_its_first_sub_step_stops() {
-        let mut grid = grid(&[(30, 50)]);
+    fn player_fast_cut_ignores_bit_4() {
+        let mut grid = grid(&[]);
         let mut player = Player::start(3);
-        for tick in 0..8 {
-            step(&mut player, &mut grid, InputMask::UP, tick);
-        }
+        step(&mut player, &mut grid, InputMask::UP, 0);
         let moves = step(
             &mut player,
             &mut grid,
-            held(&[InputMask::UP, InputMask::A]),
-            8,
+            held(&[InputMask::UP, InputMask::IGNORED]),
+            1,
         );
+        assert_eq!(moves.entered, [Some(at(30, 57)), Some(at(30, 56))]);
+    }
+
+    /// [PIN-04]: a fast cut that closes on its first sub-step, onto the obstacle (30, 51), stops
+    /// there, although a second sub-step could enter the open cell (30, 50) beyond it.
+    #[test]
+    fn player_fast_cut_closing_on_its_first_sub_step_stops() {
+        let mut grid = grid(&[(30, 51)]);
+        let mut player = Player::start(3);
+        for tick in 0..4 {
+            step(&mut player, &mut grid, InputMask::UP, tick);
+        }
+        let moves = step(&mut player, &mut grid, InputMask::UP, 4);
         assert_eq!(
             (
                 moves.entered,
                 moves.captured.is_some(),
                 player.pos,
                 player.cutting,
-                cell(&grid, 30, 49)
+                cell(&grid, 30, 50)
             ),
             (
-                [Some(at(30, 50)), None],
+                [Some(at(30, 51)), None],
                 true,
-                at(30, 50),
+                at(30, 51),
                 false,
                 Cell::Empty
             )
@@ -585,13 +585,8 @@ mod tests {
         let mut player = Player::start(3);
         step(&mut player, &mut grid, InputMask::UP, 0);
         step(&mut player, &mut grid, InputMask::UP, 1);
-        let moves = step(
-            &mut player,
-            &mut grid,
-            held(&[InputMask::DOWN, InputMask::A]),
-            2,
-        );
-        assert_eq!((moves.entered, player.pos), ([None, None], at(30, 57)));
+        let moves = step(&mut player, &mut grid, InputMask::DOWN, 2);
+        assert_eq!((moves.entered, player.pos), ([None, None], at(30, 56)));
     }
 
     /// [PIN-04]: a first sub-step onto the boss's body ends the tick.
@@ -607,7 +602,7 @@ mod tests {
             .step(
                 &mut grid,
                 &boss_at(28, 50),
-                held(&[InputMask::UP, InputMask::A]),
+                InputMask::UP,
                 0,
                 &mut [0; CAPTURE_STACK],
             )
@@ -638,15 +633,15 @@ mod tests {
         assert_eq!(moved, [true, false, true, false]);
     }
 
-    /// [R4.5-7]: with A and B held, B wins.
+    /// [R4.5-7]: cutting with B held, B wins over the fast cut.
     #[test]
-    fn player_with_a_and_b_held_takes_one_sub_step() {
+    fn player_cutting_with_b_held_takes_one_sub_step() {
         let mut grid = grid(&[]);
         let mut player = Player::start(3);
         step(&mut player, &mut grid, InputMask::UP, 0);
-        let shield_and_fast = held(&[InputMask::UP, InputMask::A, InputMask::B]);
-        player.input(InputMask::UP, shield_and_fast, 1);
-        let moves = step(&mut player, &mut grid, shield_and_fast, 1);
+        let shield = held(&[InputMask::UP, InputMask::B]);
+        player.input(InputMask::UP, shield, 1);
+        let moves = step(&mut player, &mut grid, shield, 1);
         assert_eq!(moves.entered, [Some(at(30, 57)), None]);
     }
 

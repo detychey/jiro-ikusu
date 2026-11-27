@@ -34,6 +34,15 @@ pub struct Moved {
     pub to: Pos,
 }
 
+/// What step 5 did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Step {
+    /// Each present minion's cells, for the hit predicate.
+    pub moved: [Option<Moved>; MINION_SLOTS],
+    /// The cells the respawns tested for the rail (R4.11-3).
+    pub work: u32,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Minions {
     pub slots: [Option<Minion>; MINION_SLOTS],
@@ -83,21 +92,25 @@ impl Minions {
 
     /// Step 5, in index order: a destroyed minion counts down and respawns, oriented and without
     /// moving, at zero; a live one takes one right-hand step on the ticks that are multiples of
-    /// the period [R4.7-9, R4.7-10]. Returns each present minion's cells for the hit predicate.
-    pub fn step(&mut self, grid: &Grid, tick: u16) -> [Option<Moved>; MINION_SLOTS] {
+    /// the period [R4.7-9, R4.7-10].
+    pub fn step(&mut self, grid: &Grid, tick: u16) -> Step {
         let moves_now = tick.checked_rem(u16::from(self.period)) == Some(0);
-        let mut moved = [None; MINION_SLOTS];
-        for (slot, moved) in self.slots.iter_mut().zip(moved.iter_mut()) {
+        let mut step = Step {
+            moved: [None; MINION_SLOTS],
+            work: 0,
+        };
+        for (slot, moved) in self.slots.iter_mut().zip(step.moved.iter_mut()) {
             let Some(minion) = slot else { continue };
             minion.state = match minion.state {
                 State::Destroyed { countdown } => match countdown.checked_sub(1) {
-                    Some(0) | None => respawn(grid, minion.spawn).map_or(
-                        State::Destroyed { countdown: 0 },
-                        |pos| State::Live {
+                    Some(0) | None => {
+                        let (cell, tested) = respawn(grid, minion.spawn);
+                        step.work = step.work.saturating_add(tested);
+                        cell.map_or(State::Destroyed { countdown: 0 }, |pos| State::Live {
                             pos,
                             heading: orient(grid, pos, Dir::Up),
-                        },
-                    ),
+                        })
+                    }
                     Some(countdown) => State::Destroyed { countdown },
                 },
                 State::Live { pos, heading } if moves_now => {
@@ -111,7 +124,7 @@ impl Minions {
                 *moved = Some(Moved { from: pos, to: pos });
             }
         }
-        moved
+        step
     }
 }
 
@@ -155,14 +168,19 @@ pub fn right_hand_step(grid: &Grid, pos: Pos, heading: Dir) -> (Pos, Dir) {
         .unwrap_or((pos, heading))
 }
 
-/// The spawn cell if it is a rail cell, else the first rail cell in row-major order [R4.7-7].
-fn respawn(grid: &Grid, spawn: Pos) -> Option<Pos> {
+/// The spawn cell if it is a rail cell, else the first rail cell in row-major order [R4.7-7],
+/// with the number of cells tested for the rail: the spawn cell, then each cell of the search up
+/// to the one taken [R4.11-3].
+fn respawn(grid: &Grid, spawn: Pos) -> (Option<Pos>, u32) {
     if grid.is_rail(spawn) {
-        return Some(spawn);
+        return (Some(spawn), 1);
     }
-    CellIndex::all()
-        .map(CellIndex::pos)
-        .find(|&pos| grid.is_rail(pos))
+    let mut tested: u32 = 1;
+    let cell = CellIndex::all().map(CellIndex::pos).find(|&pos| {
+        tested = tested.saturating_add(1);
+        grid.is_rail(pos)
+    });
+    (cell, tested)
 }
 
 fn neighbor(pos: Pos, direction: Dir) -> Option<Pos> {

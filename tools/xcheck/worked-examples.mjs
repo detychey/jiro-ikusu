@@ -67,6 +67,7 @@ const preimage = statePreimage({
   },
   boss,
   captured: 0,
+  work: 0,
   claimable: openArea(grid).size,
   nextEvent: 0,
 });
