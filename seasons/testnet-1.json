@@ -1,7 +1,7 @@
 {
   "network": "arbitrum-sepolia",
   "calibration": "seasons/calibration-2.json",
-  "rulesVersion": 4,
+  "rulesVersion": 5,
   "levelIds": [
     "0x73b1224cbb7c3f5cfbdd2ee95895a9189c65470c8ddd2760fd675ae2753205fe",
     "0x375f7c990d1dcc86b0be8ef4457fa00b1493e275d2058116ced5b37d7b694e6c",

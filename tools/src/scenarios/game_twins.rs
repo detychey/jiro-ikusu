@@ -1,5 +1,6 @@
 //! Game vectors of levels with two bosses (README §4.6, §4.8): a bounce off the other body, a
-//! boss pinned between the other body and a wall, a capture that separates the bosses, one that
+//! boss pinned between the other body and a wall, a capture that separates the bosses under the
+//! separation floor, a later capture that reaches the floor with the bosses apart, one that
 //! leaves them together, and a random game.
 
 use jiro_core::boss::Boss;
@@ -16,6 +17,7 @@ pub fn cases() -> Result<Vec<GameCase>, String> {
         bounce()?,
         pinned()?,
         separation()?,
+        separation_floor()?,
         capture_together()?,
         random_twin()?,
     ])
@@ -137,7 +139,8 @@ fn pinned() -> Result<GameCase, String> {
 }
 
 /// The bosses still on either side of x = 30, and a cut up that column: the capture separates
-/// them, and the level clears with the claim of the cut raised to the target.
+/// them, under the floor of half the target, so both sides stay open and the level goes on
+/// until the commit.
 fn separation() -> Result<GameCase, String> {
     let name = "twin-bosses-separation";
     let level = Level {
@@ -153,12 +156,52 @@ fn separation() -> Result<GameCase, String> {
     let last = run.last();
     check(
         name,
-        last.separated && last.captured == 58 && last.claim_bp() == Ok(level.target_bp),
-        "separates the bosses with a cut of 58 cells, at the target",
+        last.separated && last.captured == 58 && last.claim_bp() == Ok(172),
+        "separates the bosses with a cut of 58 cells, under the floor",
     )?;
     recorded(
         name,
-        &["§4.8", "R4.8-2", "R4.8-5", "R4.8-6", "R4.11-2", "PIN-10"],
+        &["§4.8", "R4.8-2", "R4.8-5", "R4.8-6", "R4.11-2"],
+        &level,
+        level_header,
+        run,
+        EndReason::Committed,
+    )
+}
+
+/// Both bosses near the top, on either side of x = 30: the cut up that column separates them
+/// under the floor, then a cut right along y = 15 takes the bossless region below it, which
+/// brings the claim to 3,834 bp, past the floor of 3,750: the level clears at the target.
+fn separation_floor() -> Result<GameCase, String> {
+    let name = "twin-bosses-separation-floor";
+    let level = Level {
+        second_boss: Some(calm_second(4, (45, 5))),
+        ..calm((5, 5))
+    };
+    let level_header = header(&level, super::journal::header().run_nonce);
+    let run = record(
+        &level,
+        &level_header,
+        script(
+            &[
+                (InputMask::UP, 59),
+                (InputMask::DOWN, 15),
+                (InputMask::RIGHT, 59),
+            ],
+            InputMask::X,
+        ),
+    )?;
+    let last = run.last();
+    check(
+        name,
+        last.separated
+            && last.captured == 58 + 28 * 43 + 28
+            && last.claim_bp() == Ok(level.target_bp),
+        "reaches the floor with the bosses apart, at the target",
+    )?;
+    recorded(
+        name,
+        &["§4.8", "R4.8-5", "R4.8-6", "PIN-10"],
         &level,
         level_header,
         run,

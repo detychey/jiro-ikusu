@@ -700,7 +700,7 @@ pub extern "C" fn minion_heading(slot: u32) -> u32 {
 }
 
 /// The claim in basis points (README §4.1), raised to the target once the bosses are separated
-/// (README §4.8).
+/// with the claim at the separation floor (README §4.8).
 #[unsafe(no_mangle)]
 pub extern "C" fn claim_bp() -> u32 {
     with_game(|game| game.claim_bp().map_or(0, u32::from))

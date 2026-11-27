@@ -148,7 +148,7 @@ fn open_field_empty_outcome() {
         level_index: 0,
         draw_slot: draw(&example_nonce())[0],
         mode: Mode::Training,
-        rules_version: 4,
+        rules_version: 5,
         end_reason: EndReason::TimeLimit,
         claim_bp: 0,
         ticks_used: 2_700,

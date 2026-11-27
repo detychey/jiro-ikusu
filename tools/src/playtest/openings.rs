@@ -5,6 +5,11 @@
 //! either side border across, or every door of one bar closed in order. The player walks the rail
 //! to the line's first cell, then cuts along it, resting on each claimed cell it reaches.
 //!
+//! A plan splits the bosses when one of its captures leaves them in different regions. Under
+//! rules version 5 that clears the level only once the claim reaches the separation floor, half
+//! the target (README §4.8), so the report also plays on from a blind split with Bold, to see
+//! whether and when that clear comes.
+//!
 //! - **Blind:** from tick 0, with no waiting: a plan made without reading the bosses.
 //! - **Timed:** each cut waits for the first tick from which it closes without a hit. The core
 //!   is deterministic, so this is the foresight of a player who knows the bosses' future; the
@@ -19,11 +24,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
 
-use jiro_core::game::Game;
+use jiro_core::game::{EndReason, Game};
 use jiro_core::level::Level;
 use jiro_core::types::{Cell, Dir, InputMask, Pos};
 
 use super::{LevelFile, load_levels, nonce, number, percent};
+use crate::bots::Policy;
 use crate::scenarios::play::neighbor;
 
 const USAGE: &str = "usage: jiro-tools playtest [--levels <dir>] --openings [--runs <n>] [--seed \
@@ -54,10 +60,10 @@ pub(super) struct Segment {
     dir: Dir,
 }
 
-/// How a plan ended: the tick of the separation, if any, and the claim it reached otherwise.
+/// How a plan ended: the tick of its split, if any, and the claim it reached.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct End {
-    pub(super) separated_at: Option<u16>,
+    pub(super) split_at: Option<u16>,
     pub(super) claim_bp: u16,
 }
 
@@ -108,16 +114,20 @@ pub(super) fn run(args: &[&str]) -> Result<(), String> {
          walked to on the rail and cut with a rest on each claimed cell. Blind: from tick 0 with \
          no waiting. Timed: each cut waits for the first tick from which it closes without a \
          hit, which the core's determinism allows. Large capture: {LARGE_BP} bp or more.\n\n\
-         The best fixed line is the one plan that works on the most seeds; the other blind \
-         columns take, on each seed, the best of all plans.\n\n\
-         | # | Name | Best fixed line: split | Best fixed line: capture ≥ {LARGE_BP} bp | Any line: \
-         split | Any line: capture ≥ {LARGE_BP} bp | Any line: capture median (bp) | Timed \
-         split: min / median / Q3 tick | Timed split before tick 150 |\n\
-         |---|---|---|---|---|---|---|---|---|\n"
+         A split leaves the bosses in different regions; it clears the level only at the \
+         separation floor. The best fixed line is the one plan that works on the most seeds; \
+         after its split, Bold plays on, and the next column gives the share of all seeds on \
+         which the level then clears and the median tick of that clear. The any-line columns \
+         take, on each seed, the best of all plans.\n\n\
+         | # | Name | Best fixed line: split | Then cleared: seeds, median tick | Best fixed line: \
+         capture ≥ {LARGE_BP} bp | Any line: split | Any line: capture ≥ {LARGE_BP} bp | Any \
+         line: capture median (bp) | Timed split: min / median / Q3 tick | Timed split before \
+         tick 150 |\n\
+         |---|---|---|---|---|---|---|---|---|---|\n"
     );
     for level in twins {
         let seeds = measure(&level.level, seed, runs);
-        markdown.push_str(&row(level, &seeds));
+        markdown.push_str(&row(level, &seeds, seed));
     }
     write(&out, &markdown)
 }
@@ -157,8 +167,9 @@ pub(super) fn measure(level: &Level, seed: u64, runs: u32) -> Vec<Seed> {
     seeds.into_iter().map(|(_, seed)| seed).collect()
 }
 
-fn row(level: &LevelFile, seeds: &[Seed]) -> String {
+fn row(level: &LevelFile, seeds: &[Seed], seed: u64) -> String {
     let n = seeds.len();
+    let share = |count: usize| percent((count * 1_000 / n) as u32);
     let names: Vec<String> =
         plans(&Game::new(&level.level, &nonce(0, 0), 0).expect("a valid level"))
             .into_iter()
@@ -175,17 +186,22 @@ fn row(level: &LevelFile, seeds: &[Seed]) -> String {
             .max_by_key(|(count, _)| *count)
             .expect("at least one plan")
     };
-    let (split_count, split_plan) = best(&|end| end.separated_at.is_some());
+    let (split_count, split_plan) = best(&|end| end.split_at.is_some());
     let (capture_count, capture_plan) =
-        best(&|end| end.separated_at.is_none() && end.claim_bp >= LARGE_BP);
-    let share = |count: usize| percent((count * 1_000 / n) as u32);
+        best(&|end| end.split_at.is_none() && end.claim_bp >= LARGE_BP);
+    let mut clears = cleared_after_split(&level.level, seed, seeds, &names, split_plan);
+    clears.sort_unstable();
+    let cleared = match clears.len() {
+        0 => "0.0 %".to_string(),
+        count => format!("{}, tick {}", share(count), clears[(count - 1) / 2]),
+    };
     let mut claims: Vec<u16> = seeds.iter().map(|seed| seed.blind_claim_bp).collect();
     let mut ticks: Vec<u16> = seeds.iter().map(|seed| seed.timed_split_at).collect();
     claims.sort_unstable();
     ticks.sort_unstable();
     let at = |sorted: &[u16], k: usize| sorted[(n - 1) * k / 4];
     format!(
-        "| {:02} | {} | {} ({split_plan}) | {} ({capture_plan}) | {} | {} | {} | {} / {} / {} | {} |\n",
+        "| {:02} | {} | {} ({split_plan}) | {cleared} | {} ({capture_plan}) | {} | {} | {} | {} / {} / {} | {} |\n",
         level.index,
         level.name,
         share(split_count),
@@ -212,11 +228,11 @@ pub(super) fn openings(game: &Game) -> Seed {
     for (_, plan) in &plans {
         let blind = run_plan(game, plan, Timing::Blind);
         seed.blind.push(blind);
-        match blind.separated_at {
+        match blind.split_at {
             Some(_) => seed.blind_split = true,
             None => seed.blind_claim_bp = seed.blind_claim_bp.max(blind.claim_bp),
         }
-        if let Some(tick) = run_plan(game, plan, Timing::Timed).separated_at {
+        if let Some(tick) = run_plan(game, plan, Timing::Timed).split_at {
             seed.timed_split_at = seed.timed_split_at.min(tick);
         }
     }
@@ -273,33 +289,66 @@ fn doors(game: &Game, y: u8) -> Vec<Segment> {
         .collect()
 }
 
-/// Plays `plan` on a copy of `start`, stopping at the separation, at the first segment that
-/// fails, or at the horizon.
+/// Plays `plan` on a copy of `start`, stopping at its split, at the first segment that fails,
+/// at the end of the level or at the horizon.
 pub(super) fn run_plan(start: &Game, plan: &[Segment], timing: Timing) -> End {
-    let mut game = start.clone();
-    for segment in plan {
-        let done = segment.start.is_none_or(|to| walk(&mut game, to))
-            && cut(&mut game, segment.dir, timing);
-        if game.separated {
-            return End {
-                separated_at: Some(game.ticks_used),
-                claim_bp: game.claim_bp().unwrap_or(0),
-            };
-        }
-        if !done || game.end.is_some() || game.ticks_used >= HORIZON {
-            break;
-        }
-    }
+    end_of(&play_plan(start, plan, timing))
+}
+
+fn end_of(game: &Game) -> End {
     End {
-        separated_at: None,
+        split_at: game.separated.then_some(game.ticks_used),
         claim_bp: game.claim_bp().unwrap_or(0),
     }
 }
 
-/// Steps `mask`; false once the level has ended other than by a separation.
+/// The game where `plan`, played on a copy of `start`, stops.
+fn play_plan(start: &Game, plan: &[Segment], timing: Timing) -> Game {
+    let mut game = start.clone();
+    for segment in plan {
+        let done = segment.start.is_none_or(|to| walk(&mut game, to))
+            && cut(&mut game, segment.dir, timing);
+        if !done || game.separated || game.end.is_some() || game.ticks_used >= HORIZON {
+            break;
+        }
+    }
+    game
+}
+
+/// The ticks at which the level clears, over the seeds on which the blind plan `name` splits the
+/// bosses, when Bold plays on from the split.
+fn cleared_after_split(
+    level: &Level,
+    seed: u64,
+    seeds: &[Seed],
+    names: &[String],
+    name: &str,
+) -> Vec<u16> {
+    let index = names
+        .iter()
+        .position(|plan| plan == name)
+        .expect("a plan of the level");
+    (0..seeds.len() as u32)
+        .filter(|&k| seeds[k as usize].blind[index].split_at.is_some())
+        .filter_map(|k| {
+            let start = Game::new(level, &nonce(seed, k), 0).expect("a valid level");
+            let (_, plan) = plans(&start).swap_remove(index);
+            let mut game = play_plan(&start, &plan, Timing::Blind);
+            let mut bold = Policy::Bold.bot(u64::from(k));
+            while game.end.is_none() {
+                let mask = bold(&game);
+                game.step(mask).expect("the core steps a valid game");
+            }
+            (game.end == Some(EndReason::Cleared)).then_some(game.ticks_used)
+        })
+        .collect()
+}
+
+/// Steps `mask`; false once the level has ended.
 fn step(game: &mut Game, mask: InputMask) -> bool {
-    let end = game.step(mask).expect("the core steps a valid game");
-    end.is_none() || game.separated
+    game.step(mask)
+        .expect("the core steps a valid game")
+        .is_none()
 }
 
 fn rail(game: &Game, pos: Pos) -> bool {
@@ -381,11 +430,15 @@ fn closed_cut(game: &Game, dir: Dir) -> Option<Game> {
     let mut cutting = game.clone();
     let (lives, captured) = (game.player.lives, game.captured);
     for _ in 0..CUT_TICKS {
-        if !step(&mut cutting, dir.mask()) || cutting.player.lives < lives {
+        let playing = step(&mut cutting, dir.mask());
+        if cutting.player.lives < lives {
             return None;
         }
-        if !cutting.player.cutting && (cutting.captured != captured || cutting.separated) {
+        if !cutting.player.cutting && cutting.captured != captured {
             return Some(cutting);
+        }
+        if !playing {
+            return None;
         }
     }
     None

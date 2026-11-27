@@ -44,7 +44,7 @@ fn a_blind_line_captures_the_side_without_bosses() {
         .find(|(name, _)| name == "column 40 up")
         .expect("column 40");
     let end = run_plan(&game, &line, Timing::Blind);
-    assert!(end.separated_at.is_none() && end.claim_bp >= LARGE_BP);
+    assert!(end.split_at.is_none() && end.claim_bp >= LARGE_BP);
 }
 
 /// A blind plan that walks into a boss's body does not close.
@@ -61,7 +61,7 @@ fn a_blind_column_through_a_boss_does_not_close() {
     assert_eq!(
         run_plan(&game, &plan, Timing::Blind),
         End {
-            separated_at: None,
+            split_at: None,
             claim_bp: 0
         }
     );

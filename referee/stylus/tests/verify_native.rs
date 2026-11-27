@@ -164,7 +164,7 @@ fn every_game_vector_verifies_to_its_outcome_or_reverts_with_its_code() {
             ),
         }
     }
-    assert_eq!(games.len(), 46, "vectors/game holds 46 vectors");
+    assert_eq!(games.len(), 47, "vectors/game holds 47 vectors");
 }
 
 #[test]
