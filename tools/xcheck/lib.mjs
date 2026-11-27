@@ -7,10 +7,9 @@ export const CELLS = WIDTH * WIDTH;
 export const MIN_OPEN_AREA = 1682;
 export const MAX_TICKS = 2700;
 export const TICKS_PER_SECOND = 15;
-export const RULES_VERSION = 3;
-export const LEVEL_VERSION = 1;
+export const RULES_VERSION = 4;
 export const JOURNAL_VERSION = 1;
-export const STATE_HASH_VERSION = 2;
+export const STATE_HASH_VERSION = 3;
 export const PLAYER_START = { x: 30, y: 59 };
 export const EMPTY = 0;
 export const CLAIMED = 1;
@@ -18,6 +17,8 @@ export const TRAIL = 2;
 
 export const LEVEL = {
   length: 472,
+  twinLength: 478,
+  secondBoss: 472,
   bitmap: 1,
   bossSize: 451,
   spawnRect: 452,
@@ -52,7 +53,20 @@ export const LEVEL_ERRORS = {
   bossSpawn: 37,
   minionSpawnRail: 38,
   playerStartRail: 39,
+  secondBossSize: 40,
+  secondSpawnOrder: 41,
+  secondSpawnBounds: 42,
+  secondBossPeriod: 43,
+  secondBossSpawn: 44,
+  bossSpawnsOverlap: 45,
 };
+
+// Where each boss's seed material lies (README §6.4): its start index's first byte, its vx bit
+// of seed byte 4 (vy is the next bit), and its deflection key's first byte.
+export const SEED_BYTES = [
+  { start: 0, directionBit: 0, key: 5 },
+  { start: 21, directionBit: 2, key: 25 },
+];
 
 export const hex = (bytes) => "0x" + Buffer.from(bytes).toString("hex");
 export const readU16 = (bytes, offset) => (bytes[offset] << 8) | bytes[offset + 1];
@@ -62,15 +76,24 @@ export const u32 = (value) => [value >>> 24, (value >>> 16) & 0xff, (value >>> 8
 export const isBorder = (x, y) => x === 0 || y === 0 || x === WIDTH - 1 || y === WIDTH - 1;
 export const index = (x, y) => y * WIDTH + x;
 export const isObstacle = (levelBytes, cell) => (levelBytes[LEVEL.bitmap + (cell >> 3)] >> (7 - (cell & 7))) & 1;
-export const spawnRect = (levelBytes) => levelBytes.subarray(LEVEL.spawnRect, LEVEL.spawnRect + 4);
+// A boss's size, spawn rectangle and move period: boss 0 from bytes 451 to 456, boss 1 from v2's
+// bytes 472 to 477.
+export const bossRecord = (levelBytes, boss) => {
+  const at = boss === 0 ? LEVEL.bossSize : LEVEL.secondBoss;
+  return { size: levelBytes[at], rect: [...levelBytes.subarray(at + 1, at + 5)], period: levelBytes[at + 5] };
+};
+export const bossCount = (levelBytes) => (levelBytes.length === LEVEL.twinLength ? 2 : 1);
 export const minionSpawn = (levelBytes, slot) => ({
   x: levelBytes[LEVEL.minionSpawns + 2 * slot],
   y: levelBytes[LEVEL.minionSpawns + 2 * slot + 1],
 });
 
+// Level bytes v1, or v2 when the level has a `secondBoss` ({ size, spawnRect, period }).
 export function encodeLevel(level) {
-  const bytes = new Uint8Array(LEVEL.length);
-  bytes[0] = LEVEL_VERSION;
+  const second = level.secondBoss;
+  const bytes = new Uint8Array(second ? LEVEL.twinLength : LEVEL.length);
+  bytes[0] = second ? 2 : 1;
+  if (second) bytes.set([second.size, ...second.spawnRect, second.period], LEVEL.secondBoss);
   for (const { x, y } of level.obstacles) {
     const cell = index(x, y);
     bytes[LEVEL.bitmap + (cell >> 3)] |= 0x80 >> (cell & 7);
@@ -132,18 +155,37 @@ export function openArea(grid) {
   return { size: open.length, connected: reached === open.length };
 }
 
+const FIRST_BOSS_ERRORS = ["bossSize", "spawnOrder", "spawnBounds", "bossPeriod"];
+const SECOND_BOSS_ERRORS = ["secondBossSize", "secondSpawnOrder", "secondSpawnBounds", "secondBossPeriod"];
+
+function bossRangeError({ size, rect: [x0, y0, x1, y1], period }, [sizeError, orderError, boundsError, periodError]) {
+  if (size < 2 || size > 8) return LEVEL_ERRORS[sizeError];
+  if (x0 > x1 || y0 > y1) return LEVEL_ERRORS[orderError];
+  if (x0 < 1 || y0 < 1 || x1 > 59 - size || y1 > 59 - size) return LEVEL_ERRORS[boundsError];
+  if (period === 0) return LEVEL_ERRORS[periodError];
+  return 0;
+}
+
+// The cells some start of the boss's body covers.
+const footprint = ({ size, rect: [x0, y0, x1, y1] }) => [x0, y0, x1 + size - 1, y1 + size - 1];
+
+function bodyAreaOpen(grid, boss) {
+  const [x0, y0, x1, y1] = footprint(boss);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) if (grid[index(x, y)] !== EMPTY) return false;
+  }
+  return true;
+}
+
 export function validateLevel(bytes) {
-  if (bytes.length !== LEVEL.length) return LEVEL_ERRORS.length;
-  if (bytes[0] !== LEVEL_VERSION) return LEVEL_ERRORS.version;
+  if (bytes.length !== LEVEL.length && bytes.length !== LEVEL.twinLength) return LEVEL_ERRORS.length;
+  if (bytes[0] !== bossCount(bytes)) return LEVEL_ERRORS.version;
   for (let cell = 0; cell < CELLS; cell++) {
     if (isBorder(cell % WIDTH, Math.floor(cell / WIDTH)) && isObstacle(bytes, cell)) return LEVEL_ERRORS.borderObstacle;
   }
-  const size = bytes[LEVEL.bossSize];
-  if (size < 2 || size > 8) return LEVEL_ERRORS.bossSize;
-  const [x0, y0, x1, y1] = spawnRect(bytes);
-  if (x0 > x1 || y0 > y1) return LEVEL_ERRORS.spawnOrder;
-  if (x0 < 1 || y0 < 1 || x1 > 59 - size || y1 > 59 - size) return LEVEL_ERRORS.spawnBounds;
-  if (bytes[LEVEL.bossPeriod] === 0) return LEVEL_ERRORS.bossPeriod;
+  const first = bossRecord(bytes, 0);
+  const firstError = bossRangeError(first, FIRST_BOSS_ERRORS);
+  if (firstError) return firstError;
   const minionCount = bytes[LEVEL.minionCount];
   if (minionCount > 3) return LEVEL_ERRORS.minionCount;
   for (let slot = 0; slot < minionCount; slot++) {
@@ -161,23 +203,25 @@ export function validateLevel(bytes) {
   if (bytes[LEVEL.lives] === 0) return LEVEL_ERRORS.lives;
   const target = readU16(bytes, LEVEL.target);
   if (target < 1 || target > 10000) return LEVEL_ERRORS.target;
+  const second = bossCount(bytes) === 2 ? bossRecord(bytes, 1) : null;
+  const secondError = second ? bossRangeError(second, SECOND_BOSS_ERRORS) : 0;
+  if (secondError) return secondError;
 
   const grid = startGrid(bytes);
   const area = openArea(grid);
   if (!area.connected) return LEVEL_ERRORS.openAreaSplit;
   if (area.size < MIN_OPEN_AREA) return LEVEL_ERRORS.openAreaSmall;
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
-      for (let dy = 0; dy < size; dy++) {
-        for (let dx = 0; dx < size; dx++) if (grid[index(x + dx, y + dy)] !== EMPTY) return LEVEL_ERRORS.bossSpawn;
-      }
-    }
-  }
+  if (!bodyAreaOpen(grid, first)) return LEVEL_ERRORS.bossSpawn;
   for (let slot = 0; slot < minionCount; slot++) {
     const { x, y } = minionSpawn(bytes, slot);
     if (!isRail(grid, x, y)) return LEVEL_ERRORS.minionSpawnRail;
   }
   if (!isRail(grid, PLAYER_START.x, PLAYER_START.y)) return LEVEL_ERRORS.playerStartRail;
+  if (second) {
+    if (!bodyAreaOpen(grid, second)) return LEVEL_ERRORS.secondBossSpawn;
+    const [a, b] = [footprint(first), footprint(second)];
+    if (a[0] <= b[2] && b[0] <= a[2] && a[1] <= b[3] && b[1] <= a[3]) return LEVEL_ERRORS.bossSpawnsOverlap;
+  }
   return 0;
 }
 
@@ -191,18 +235,19 @@ export const deadline = (revealedAt, ticksUsed, commitSlack) => {
 export const levelSeed = (runNonce, levelIndex) =>
   getBytes(solidityPackedKeccak256(["string", "bytes32", "uint8"], ["jiro.level", runNonce, levelIndex]));
 
-export function bossStart(levelBytes, seed) {
-  const [x0, y0, x1, y1] = spawnRect(levelBytes);
+export function bossStart(levelBytes, seed, boss = 0) {
+  const [x0, y0, x1, y1] = bossRecord(levelBytes, boss).rect;
+  const { start, directionBit } = SEED_BYTES[boss];
   const width = x1 - x0 + 1;
   const candidates = width * (y1 - y0 + 1);
-  const pick = readU32(seed, 0) % candidates;
+  const pick = readU32(seed, start) % candidates;
   return {
     candidates,
     pick,
     x: x0 + (pick % width),
     y: y0 + Math.floor(pick / width),
-    vx: seed[4] & 1 ? 1 : -1,
-    vy: seed[4] & 2 ? 1 : -1,
+    vx: (seed[4] >> directionBit) & 1 ? 1 : -1,
+    vy: (seed[4] >> (directionBit + 1)) & 1 ? 1 : -1,
   };
 }
 
@@ -226,20 +271,27 @@ export function fmix32(h) {
   return (h ^ (h >>> 16)) >>> 0;
 }
 
-export const deflectionKey = (seed) => readU32(seed, 5);
+export const deflectionKey = (seed, boss = 0) => readU32(seed, SEED_BYTES[boss].key);
 export const deflectionDraw = (key, tick) => fmix32((key ^ tick) >>> 0) >>> 26;
 
-export function moveBoss(grid, boss, key, tick) {
+const covers = (boss, x, y) => x >= boss.x && x < boss.x + boss.size && y >= boss.y && y < boss.y + boss.size;
+
+// One move of `boss` (R4.6-3, R4.6-7), with the `other` boss's body, if any, as a wall (R4.6-14).
+export function moveBoss(grid, boss, key, tick, other = null) {
   const draw = deflectionDraw(key, tick);
   if (draw === 0) boss.vx = -boss.vx;
   if (draw === 1) boss.vy = -boss.vy;
-  const blocked = (cells) => cells.some((cell) => grid[cell] === CLAIMED || grid[cell] === TRAIL);
+  const blocked = (cells) =>
+    cells.some(([x, y]) => {
+      const cell = grid[index(x, y)];
+      return cell === CLAIMED || cell === TRAIL || (other !== null && covers(other, x, y));
+    });
   const column = boss.vx > 0 ? boss.x + boss.size : boss.x - 1;
-  const xEdge = Array.from({ length: boss.size }, (_, k) => index(column, boss.y + k));
+  const xEdge = Array.from({ length: boss.size }, (_, k) => [column, boss.y + k]);
   if (blocked(xEdge)) boss.vx = -boss.vx;
   else boss.x += boss.vx;
   const row = boss.vy > 0 ? boss.y + boss.size : boss.y - 1;
-  const yEdge = Array.from({ length: boss.size }, (_, k) => index(boss.x + k, row));
+  const yEdge = Array.from({ length: boss.size }, (_, k) => [boss.x + k, row]);
   if (blocked(yEdge)) boss.vy = -boss.vy;
   else boss.y += boss.vy;
   return draw;
@@ -255,20 +307,38 @@ export function playBoss(grid, boss, key, timeLimit) {
   return deflections;
 }
 
-export function statePreimage({ tick, mask, grid, player, boss, captured, work, claimable, nextEvent }) {
+// Two bosses for `timeLimit` ticks: boss 0 moves with boss 1's body as a wall, then boss 1 with
+// boss 0's new body (R4.6-13, R4.6-14). Returns the moves on which a boss bounced off the other.
+export function playTwinBosses(grid, bosses, keys, timeLimit) {
+  let bounces = 0;
+  for (let tick = 0; tick < timeLimit; tick++) {
+    for (const [i, boss] of bosses.entries()) {
+      if (tick % boss.period !== 0) continue;
+      const other = bosses[1 - i];
+      const alone = { ...boss };
+      moveBoss(grid, alone, keys[i], tick);
+      moveBoss(grid, boss, keys[i], tick, other);
+      if (alone.x !== boss.x || alone.y !== boss.y || alone.vx !== boss.vx || alone.vy !== boss.vy) bounces++;
+    }
+  }
+  return bounces;
+}
+
+export function statePreimage({ tick, mask, grid, player, boss, secondBoss, captured, work, claimable, nextEvent }) {
   const packedGrid = new Uint8Array(CELLS / 4);
   for (let cell = 0; cell < CELLS; cell++) packedGrid[cell >> 2] |= grid[cell] << (6 - 2 * (cell & 3));
   const playerBytes = [
     player.x, player.y, player.cutting, player.cutStart.x, player.cutStart.y,
     player.lives, player.invulnerable, player.previousDirection,
   ];
-  const bossBytes = [boss.x, boss.y, boss.size, boss.vx & 0xff, boss.vy & 0xff, boss.period];
+  const bossBytes = ({ x, y, size, vx, vy, period }) => [x, y, size, vx & 0xff, vy & 0xff, period];
   const emptyMinionSlots = new Uint8Array(3 * 7);
   return getBytes(concat([
     new Uint8Array([STATE_HASH_VERSION, ...u16(tick), mask]),
     packedGrid,
     new Uint8Array(playerBytes),
-    new Uint8Array(bossBytes),
+    new Uint8Array(bossBytes(boss)),
+    new Uint8Array(secondBoss ? bossBytes(secondBoss) : 6),
     emptyMinionSlots,
     new Uint8Array([...u16(captured), ...u32(work), ...u16(claimable), ...u16(nextEvent)]),
   ]));
@@ -299,5 +369,6 @@ export const openField = {
 };
 export const blockedStart = { ...openField, obstacles: [{ x: 29, y: 58 }, { x: 30, y: 58 }, { x: 31, y: 58 }] };
 export const wideSpawn = { ...openField, spawnRect: [20, 20, 34, 25] };
+export const twinField = { ...openField, secondBoss: { size: 4, spawnRect: [40, 40, 50, 50], period: 3 } };
 export const exampleRunNonce = getBytes(keccak256(toUtf8Bytes("jiro.example.9")));
 export const exampleEntropy = getBytes(keccak256(toUtf8Bytes("jiro.example.entropy")));

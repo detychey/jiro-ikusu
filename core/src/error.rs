@@ -39,6 +39,12 @@ pub enum Error {
     BossSpawn = 37,
     MinionSpawnRail = 38,
     PlayerStartRail = 39,
+    SecondBossSize = 40,
+    SecondSpawnOrder = 41,
+    SecondSpawnBounds = 42,
+    SecondBossPeriod = 43,
+    SecondBossSpawn = 44,
+    BossSpawnsOverlap = 45,
 }
 
 impl Error {

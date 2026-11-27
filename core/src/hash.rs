@@ -1,20 +1,21 @@
-//! State hash v2 (README §6.4): keccak256 of a fixed-order, fixed-width serialization of the
+//! State hash v3 (README §6.4): keccak256 of a fixed-order, fixed-width serialization of the
 //! whole state, for traces and diagnosis. Stepping never computes it.
 
+use crate::boss::Boss;
 use crate::game::Game;
 use crate::keccak::keccak256;
 use crate::minion::{Minion, State};
 use crate::types::{CellIndex, Dir};
 
-pub const STATE_HASH_VERSION: u8 = 2;
-pub const PREIMAGE_LEN: usize = 949;
+pub const STATE_HASH_VERSION: u8 = 3;
+pub const PREIMAGE_LEN: usize = 955;
 
 /// The state-hash preimage after the tick just processed, field by field in the order of the
 /// README §6.4 table.
 pub fn preimage(game: &Game) -> [u8; PREIMAGE_LEN] {
     let Game {
         player,
-        boss,
+        bosses,
         minions,
         ..
     } = game;
@@ -24,7 +25,7 @@ pub fn preimage(game: &Game) -> [u8; PREIMAGE_LEN] {
     let [claimable_high, claimable_low] = game.claimable.get().to_be_bytes();
     let [event_high, event_low] = game.events_applied.to_be_bytes();
     let head = [STATE_HASH_VERSION, tick_high, tick_low, game.mask.bits()];
-    let player_and_boss = [
+    let player_fields = [
         player.pos.x,
         player.pos.y,
         u8::from(player.cutting),
@@ -33,13 +34,10 @@ pub fn preimage(game: &Game) -> [u8; PREIMAGE_LEN] {
         player.lives,
         player.invulnerable,
         player.direction.map_or(0, direction_code),
-        boss.pos.x,
-        boss.pos.y,
-        boss.size,
-        boss.vx.to_be_bytes()[0],
-        boss.vy.to_be_bytes()[0],
-        boss.period,
     ];
+    let boss_fields = boss_bytes(Some(bosses.first))
+        .into_iter()
+        .chain(boss_bytes(bosses.second));
     let minion_slots = minions
         .slots
         .iter()
@@ -59,7 +57,8 @@ pub fn preimage(game: &Game) -> [u8; PREIMAGE_LEN] {
     let bytes = head
         .into_iter()
         .chain(grid_bytes(game))
-        .chain(player_and_boss)
+        .chain(player_fields)
+        .chain(boss_fields)
         .chain(minion_slots)
         .chain(counters);
     let mut out = [0; PREIMAGE_LEN];
@@ -80,6 +79,20 @@ fn grid_bytes(game: &Game) -> impl Iterator<Item = u8> + '_ {
     core::iter::from_fn(move || {
         let [a, b, c, d] = [cells.next()?, cells.next()?, cells.next()?, cells.next()?];
         Some(a << 6 | b << 4 | c << 2 | d)
+    })
+}
+
+/// x, y, body size B, vx, vy (i8, two's complement) and move period; all zero for no boss.
+fn boss_bytes(boss: Option<Boss>) -> [u8; 6] {
+    boss.map_or([0; 6], |boss| {
+        [
+            boss.pos.x,
+            boss.pos.y,
+            boss.size,
+            boss.vx.to_be_bytes()[0],
+            boss.vy.to_be_bytes()[0],
+            boss.period,
+        ]
     })
 }
 

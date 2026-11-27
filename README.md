@@ -136,7 +136,7 @@ All entity fields are small integers: [R4.3-1]
 | Entity | State |
 |---|---|
 | Player | position; cutting flag; cut start cell; lives; invulnerability ticks; previous direction [R4.3-2] |
-| Boss | position (the top-left cell of its body); body size B (set per level); vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) [R4.3-3] |
+| Boss (1 or 2 per level: boss 0, and boss 1 on a level with two) | position (the top-left cell of its body); body size B (set per level); vx, vy ∈ {−1, +1}; move period (moves every N ticks, set per level) [R4.3-3] |
 | Minions (0–3 per level; the draft has 3) | position; heading 0–3 (N, E, S, W); move period; respawn countdown [R4.3-4] |
 
 - **Field values.** The cut start keeps the last cut's start cell between cuts. Invulnerability ticks counts the protected ticks left: the player is invulnerable at step 6 while it is above 0; after the hits are resolved, a life lost sets it to 30, and otherwise it drops by one if above 0; starting a cut sets it to 0 at step 3. A destroyed minion's position and heading are 0 until it respawns, and a live minion's respawn countdown is 0. [R4.3-5]
@@ -152,8 +152,8 @@ Once per tick, in this order: [R4.4-5]
 
 1. **Input.** A journal event at this tick replaces the current input mask ([§6](#6-input-journal-and-byte-formats)). [R4.4-6]
 2. **Commit.** If X is pressed, the level ends. An unfinished cut is discarded: its trail is erased, the player returns to the cut start and stops cutting, and nothing is captured. [R4.4-7]
-3. **Player.** The player moves 0, 1 or 2 sub-steps ([§4.5](#45-player)). A cut that reaches `CLAIMED` captures at once ([§4.8](#48-capture)), and the player moves no further this tick. If the capture brings the claim to the level's target, the level is cleared. [R4.4-8]
-4. **Boss.** The boss moves ([§4.6](#46-boss)). If it bumps into `TRAIL`, the player is hit. [R4.4-9]
+3. **Player.** The player moves 0, 1 or 2 sub-steps ([§4.5](#45-player)). A cut that reaches `CLAIMED` captures at once ([§4.8](#48-capture)), and the player moves no further this tick. If the capture brings the claim to the level's target, or separates two bosses, the level is cleared. [R4.4-8]
+4. **Bosses.** The boss moves ([§4.6](#46-boss)), or, on a level with two, boss 0 moves and then boss 1. If a boss bumps into `TRAIL`, the player is hit. [R4.4-9]
 5. **Minions.** The minions move, in index order ([§4.7](#47-minions)). Respawn countdowns also tick down here. [R4.4-10]
 6. **Collisions.** The tick's hits are resolved ([§4.9](#49-hits-lives-and-respawn)). [R4.4-11]
 7. **Time and work.** If this was tick T − 1, the level ends. Otherwise, if the level's work has reached the work budget ([§4.11](#411-work-budget)), the level ends. [R4.4-12]
@@ -162,13 +162,13 @@ Once per tick, in this order: [R4.4-5]
 
 - **Initial state.** At level start the player stands on cell (30, 59), which level validity keeps a rail cell ([§5](#5-levels)), with the level's lives, invulnerability 0, previous direction none, not cutting, and cut start (30, 59). [PIN-01]
 - **Direction.** The direction is resolved on every tick, whether or not the player moves. If the direction resolved on the previous tick is still held, keep it. Otherwise take the first held direction in the order up, down, left, right. If none is held, the direction is none, and the player stands still. The draft doesn't say what happens when two directions are held, but a 5-way joystick reports two at once while rolling from one direction to the next. [R4.5-1]
-  - A move that doesn't happen (onto the own trail, onto the boss's body, or off the rail) still keeps the resolved direction as the previous direction. [PIN-05]
+  - A move that doesn't happen (onto the own trail, onto a boss's body, or off the rail) still keeps the resolved direction as the previous direction. [PIN-05]
 - **On the rail,** the player moves only from rail cell to rail cell *(D3)*. Stepping into `EMPTY` starts a cut: the cell the player leaves becomes the **cut start**, and every `EMPTY` cell entered becomes `TRAIL`. [R4.5-2]
 - **Off the rail.** A capture can leave the player's own cell off the rail, for example when a cut closes into a pocket next to an obstacle. While off the rail, the player may step onto any `CLAIMED` cell, until back on the rail. [R4.5-3]
 - **Own trail.** The player cannot step onto `TRAIL`; the move is ignored *(D4)*. The draft only forbids moving backward, which is one case of this rule. [R4.5-4]
 - **Closing a cut.** Stepping from `TRAIL` onto `CLAIMED` completes the cut and triggers a capture: from that sub-step on, the player is no longer cutting. That cell is a rail cell at that moment, though the capture can take it off the rail (see "Off the rail" above). [R4.5-5]
 - **Fast cut.** If the player is cutting at the start of the tick, the player takes two sub-steps. On the rail, and on the tick a cut starts, speed stays normal. [R4.5-6]
-  - If sub-step 1 is blocked by the own trail, hits the boss's body, or closes the cut, there is no sub-step 2. [PIN-04]
+  - If sub-step 1 is blocked by the own trail, hits a boss's body, or closes the cut, there is no sub-step 2. [PIN-04]
   - **Always on since rules version 3** (owner, 2026-11-27). Before, it needed A held. Its trigger stays "cutting at the start of the tick", so a capture still takes two ticks, one to enter the field and one to close the cut; a cut that could start and close in one tick would about double the captures a level can hold ([`reports/cycle-cap-2026-11-27.md`](reports/cycle-cap-2026-11-27.md) §4). <!-- rationale -->
 - **No slow shield** since rules version 3 (owner, 2026-11-27: "let's remove the shield and simplify the game play, less button to press is better"). Until then, B held moved the player every second tick and spent the level's one shield charge on a hit *(D6)*; its rules were R4.5-7, PIN-03 and R4.9-15. <!-- rationale -->
 - **Stopping mid-cut** is allowed: there is no *Qix*-style fuse *(D4)*. [R4.5-8]
@@ -200,14 +200,15 @@ The draft tests `grid[next_x][y]` and `grid[x][next_y]` from the same starting c
 
 Testing one axis at a time, with the second test made after the first move, never enters a solid cell and needs no special cases. This is how the Xonix reference moves its enemies ([§11](#11-reference-implementations)). A quick simulation (not committed) ran bodies with B = 2, 3, 5 and 7 for 3,000 ticks on 232 random boards, and no body ever covered a cell that wasn't `EMPTY`. <!-- rationale -->
 
-The draft starts the boss at (30, 30). Here the level defines a spawn area, the set of cells where the body's top-left cell may start. The level seed picks the start position inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)). [R4.6-5]
+The draft starts the boss at (30, 30). Here the level defines a spawn area, the set of cells where the body's top-left cell may start. The level seed picks the start position inside it and the diagonal direction ([§6.4](#64-seeds-and-commitments)), for each boss from its own seed bytes. [R4.6-5]
 
 **Seeded deflections** *(D14)*. The level seed keeps steering the boss through the level, so that no two runs share a game ([§7.4](#74-bots)). On each tick the boss moves, a draw computed from the level seed and the tick may invert vx or vy, before the first edge test of R4.6-3. [R4.6-6]
 
 ```text
 # [R4.6-7]
 at level start:
-    key = the big-endian u32 of level seed bytes 5 to 8     # byte 5 is the most significant
+    key = the big-endian u32 of the boss's key bytes of the level seed
+          # bytes 5 to 8 for boss 0 and 25 to 28 for boss 1 (§6.4), the first the most significant
 if the boss moves this tick, before the first edge test of R4.6-3:
     r = fmix32(key XOR tick) >> 26         # tick (R4.4-1) as a u32; r is 0 to 63
     if r = 0:  vx = -vx
@@ -229,12 +230,20 @@ fmix32(h):
 
 - **The edge tests are unchanged.** A deflection only inverts vx or vy, which stay ±1. It never sets a position and never skips a move. R4.6-3 then runs as written with the new velocity, so the body still only ever covers `EMPTY` cells. A deflection toward a blocked edge is undone by that edge's own test on the same move, and if that edge holds `TRAIL`, the player is hit, as with any bounce. [R4.6-10]
 - **No state.** The draw is a pure function of the key and the tick, used only by R4.6-7, and a tick on which the boss doesn't move draws nothing. The key is a constant of the level, derived from the level seed like the boss start. It is not boss state, and it is not in the state hash ([§6.4](#64-seeds-and-commitments)). [R4.6-11]
-- **Divergence** *(D14)*. Two level seeds with the same bytes 0 to 4, so the same boss start and direction, but different keys give boss trajectories, the (x, y, vx, vy) after each move, that part at the first move on which their draws differ in effect, on any board and journal they share. For two different random keys, that move comes by the boss's 400th move (N = 400) except with probability about 1.1 × 10^−11, that is by tick 399 × the move period in a level that lasts that long. M1.5's property test checks N = 400 on seed pairs whose bytes 5 to 8 are drawn at random and differ. [R4.6-12]
-- **Why it diverges on any board.** Two bosses that share a board and a journal move alike until the first move on which their draws differ in effect: one draw is 0 or 1 and the other is not, or one is 0 and the other 1. On that move, one boss tests the opposite edge of one axis from the other. Whatever the two edges hold, the bosses leave that axis with a different coordinate or a different velocity component, and the other axis's test changes neither. <!-- rationale -->
+- **Divergence** *(D14)*. On a level with one boss, two level seeds with the same bytes 0 to 4, so the same boss start and direction, but different keys give boss trajectories, the (x, y, vx, vy) after each move, that part at the first move on which their draws differ in effect, on any board and journal they share. For two different random keys, that move comes by the boss's 400th move (N = 400) except with probability about 1.1 × 10^−11, that is by tick 399 × the move period in a level that lasts that long. M1.5's property test checks N = 400 on seed pairs whose bytes 5 to 8 are drawn at random and differ. [R4.6-12]
+- **Why it diverges on any board.** The bosses of two runs that share a board and a journal move alike until the first move on which their draws differ in effect: one draw is 0 or 1 and the other is not, or one is 0 and the other 1. On that move, one boss tests the opposite edge of one axis from the other. Whatever the two edges hold, the bosses leave that axis with a different coordinate or a different velocity component, and the other axis's test changes neither. <!-- rationale -->
 - **Why 400.** For two different random keys, the draws of a move differ in effect with probability q = 1 − (62/64)^2 − 2 × (1/64)^2 ≈ 0.061, independently from move to move, so a pair agrees on its first 400 moves with probability (1 − q)^400 ≈ 1.1 × 10^−11. A throwaway prototype for M1.18 measured a median of 12 moves and a maximum of 248 over 6,000,000 key pairs at move periods 1 to 6, and no unsafe body on 5,000 random boards × 2,700 ticks for each B from 2 to 8. <!-- rationale -->
 - **Limits of N.** Two equal keys never part; two keccak256-derived seeds share a key with probability 2^−32. Keys that differ only in their low 12 bits diverge about half as fast (up to 433 moves measured); two such seeds give such keys with probability 2^−20. A level with move period 7 or more has fewer than 400 boss moves, and two of its runs still end on the same trajectory with probability 6 × 10^−10 at period 8 and 2 × 10^−5 at period 16. M1.5's test therefore draws two different random values for bytes 5 to 8 and uses move periods 1 to 6. <!-- rationale -->
 - **Why fmix32.** It is a bijection on u32 in which each input bit flips each output bit with probability close to 1/2, for two multiplications per move. With no generator state, the draw for any tick stands alone, and every key, 0 included, is valid. <!-- rationale -->
 - **Play.** A deflection is a quarter turn, as if the boss bounced off an invisible wall, and comes on 1 move in 32: about 42 times in a 2,700-tick level at move period 2. Without deflections, the boss repeats one closed loop for a given start and direction, and on the open-field level three quarters of the interior is never under its body: a safe zone that a player or a bot could learn. With them, the body passes over 95% of the interior. <!-- rationale -->
+
+**Two bosses** *(D9)*. A level has one boss or two ([§5](#5-levels)). With two, boss 0 is the boss of the level bytes' first boss fields and boss 1 the second boss of level bytes v2, each with its own body size, spawn area, move period, start, direction and deflection key ([§6.4](#64-seeds-and-commitments)). At step 4, boss 0 moves, then boss 1, each on its own move period (R4.4-2), by R4.6-7 with its own key and then R4.6-3. [R4.6-13]
+
+- **The other body is a wall.** In R4.6-3's edge tests, a cell under the other boss's body blocks like `CLAIMED`, with no hit: the boss bounces off it as off a wall. Boss 0 tests boss 1's body where it is before boss 1 moves, and boss 1 tests boss 0's body where boss 0 has just moved, one axis at a time, so the two bodies never overlap. An edge that holds `TRAIL` hits the player, whatever else it holds. [R4.6-14]
+- **Pinned.** A boss blocked on both axes, by walls, `TRAIL` or the other body, inverts vx and vy and holds still for that move, as R4.6-3 does with any edge. [R4.6-15]
+- **Divergence with two bosses** *(D14)*. Two level seeds that give both bosses the same starts and directions, and one boss the same key, but the other boss different keys give pair trajectories, both bosses' (x, y, vx, vy) after each tick on which a boss moves, that part at the first move on which that other boss's draws differ in effect, on any board and journal they share; for two different random keys, by that boss's 400th move except with probability about 1.1 × 10^−11, as in R4.6-12. M1.5's property test checks it on pairs: 2,000 random boards for each B of boss 0 from 2 to 8, with a second boss of random size, move periods 1 to 6, and half of the pairs differing in boss 0's key, half in boss 1's. [R4.6-16]
+- **Why the pair diverges.** Until the trajectories part, both runs hold the same bodies at the same cells, so each boss tests the same edges, the other body included, and the boss whose keys agree draws alike. On the first move on which the other boss's draws differ in effect, that boss tests opposite edges of one axis in the two runs, and R4.6-12's argument holds whatever those edges hold: the other body is one more wall. So the pair parts on that move, and the bound of R4.6-12 applies to that boss's moves. <!-- rationale -->
+- **Why a wall** (owner, 2026-11-27: "just make them rebound as if they hit a wall"). Bodies that passed through each other would read as one blob while they overlap. Treating the other body as a wall reuses R4.6-3 as it is: a deflection, a bounce and a hold are the same edge tests, and each body still only ever covers `EMPTY` cells. The bodies are not in the grid, so the fill of [§4.8](#48-capture) and the minions ignore them; only the edge tests and the player's step see them. <!-- rationale -->
 
 ### 4.7 Minions
 
@@ -261,22 +270,27 @@ fmix32(h):
 
 When a cut reaches `CLAIMED`: [R4.8-1]
 
-1. Mark every cell of the boss's body `BOSS_ZONE` and push it on a stack. With several bosses, do this for each one. [R4.8-2]
+1. Mark every cell of boss 0's body `BOSS_ZONE` and push it on a stack. [R4.8-2]
 2. Pop a cell. Mark each of its 4 neighbors that is `EMPTY` as `BOSS_ZONE`, and push it. Repeat until the stack is empty. `TRAIL` and `CLAIMED` stop the fill, so the trail acts as a wall. [R4.8-3]
-3. Make one pass over all 3,600 cells: `BOSS_ZONE` becomes `EMPTY`, and `EMPTY` and `TRAIL` become `CLAIMED`. The number of cells that became `CLAIMED` is the capture size. [R4.8-4]
+3. On a level with two bosses, if boss 1's top-left cell is not `BOSS_ZONE` now, the bosses are **separated**: mark every cell of boss 1's body `BOSS_ZONE`, push it, and fill as in step 2. [R4.8-5]
+4. Make one pass over all 3,600 cells: `BOSS_ZONE` becomes `EMPTY`, and `EMPTY` and `TRAIL` become `CLAIMED`. The number of cells that became `CLAIMED` is the capture size. [R4.8-4]
+
+**The dividing wall.** A capture that separates the bosses clears the level at step 3, whatever the claim, and the level's claim is then the larger of `claim_bp` and the level's target: the Outcome's `claimBp` ([§7.3](#73-verification-cost)) is max(claim_bp, target). [R4.8-6]
 
 Why this procedure: <!-- rationale -->
 
 - **No recursion.** A cell is marked when it is pushed, not when it is popped, so it is pushed at most once. A static stack of 3,364 entries can therefore never overflow. A recursive fill needs up to 3,364 nested calls, so its stack use would depend on the level. <!-- rationale -->
-- **Visit order doesn't matter.** The result depends only on which `EMPTY` cells are 4-connected to the boss's body. A stack, a queue or a scanline fill all give the same grid. <!-- rationale -->
+- **Visit order doesn't matter.** The result depends only on which `EMPTY` cells are 4-connected to a boss's body. A stack, a queue or a scanline fill all give the same grid. <!-- rationale -->
 - **The boss's side stays open, as one region.** Since the boss moves one axis at a time, it cannot cross a gap that is only diagonal, so it never reaches a cell that the fill treats as a separate region. The fill may include pockets narrower than the body, which the boss can't physically enter. They stay open because they connect to the boss's side: as in *Qix* and *Volfied*, a capture takes the regions without the boss, not the cells the boss can't reach. <!-- rationale -->
-- **One pass instead of three.** The draft's steps 3–5 (claim unreached cells, convert the trail, revert `BOSS_ZONE`) collapse into the single pass of step 3. <!-- rationale -->
+- **One pass instead of three.** The draft's steps 3–5 (claim unreached cells, convert the trail, revert `BOSS_ZONE`) collapse into the single pass of step 4. <!-- rationale -->
+- **One cell decides the separation.** Each body covers only `EMPTY` cells, which are 4-connected to each other, so if the fill from boss 0 did not reach boss 1's top-left cell, it reached no cell of boss 1's body. When the bosses share a region, boss 1's body is already `BOSS_ZONE` after step 2, so step 3 does nothing, and the capture is the one that marking both bodies at step 1 gave until rules version 4. Step 3 pushes only cells that step 2 left `EMPTY`, so each cell is pushed at most once over both fills, and the stack still never overflows. <!-- rationale -->
+- **Why separation ends the level.** Walls only grow, so two separated bosses stay apart. Ending the level at once means the open field is never left in two regions, so D7's argument that a minion's patrol covers the rail (PIN-14) still holds. The level pays the target and no more, so a player who can clear by area keeps the larger claim, and a split is a second way to reach the target, not a bonus (catalogue idea "Twin bosses and the dividing wall", owner, 2026-11-27; [plan](IMPLEMENTATION_PLAN.md) M5.18). <!-- rationale -->
 
 ### 4.9 Hits, lives and respawn
 
 - **Hits.** The player is hit in these cases: [R4.9-1]
-  - the boss bumps into `TRAIL`; [R4.9-2]
-  - the player tries to step onto a cell of the boss's body. The move doesn't happen, so the body never covers the trail. [R4.9-3]
+  - a boss bumps into `TRAIL`; [R4.9-2]
+  - the player tries to step onto a cell of a boss's body. The move doesn't happen, so the body never covers the trail. [R4.9-3]
   - a minion meets the player at step 5: they share a cell, swap cells, or the minion stops on the cell a fast cut passed through, as the predicate below defines. [R4.9-4]
 
   Hits set a single flag for the tick, so several hits in one tick count as one. [R4.9-5]
@@ -303,7 +317,7 @@ The first condition met ends the level, in tick-step order: [R4.10-1]
 | Condition | Step | Result |
 |---|---|---|
 | X pressed | 2 | Committed: claim kept, unfinished cut discarded [R4.10-2] |
-| `claim_bp` ≥ the level's target (default 7,500) | 3 | Cleared [PIN-10] |
+| `claim_bp` ≥ the level's target (default 7,500), or a capture separated two bosses ([§4.8](#48-capture)) | 3 | Cleared [PIN-10] |
 | No lives left (default 3) | 6 | Over, and the level scores zero *(D5)* [R4.10-3] |
 | Tick T − 1 processed (default T = 2,700, i.e. 3 min) | 7 | Over, claim kept [R4.10-4] |
 | Work budget reached ([§4.11](#411-work-budget)) | 7 | Over, claim kept [R4.10-5] |
@@ -318,7 +332,7 @@ Scoring zero when the lives run out is what gives Commit its purpose: bank the c
 ### 4.11 Work budget
 
 - **Work.** The core counts the work of each level, from 0 at level start: [R4.11-1]
-  - a capture adds 150 plus the number of cells marked `BOSS_ZONE` in its steps 1 and 2 ([§4.8](#48-capture)); [R4.11-2]
+  - a capture adds 150 plus the number of cells marked `BOSS_ZONE` in its steps 1 to 3, both fills of a separation included ([§4.8](#48-capture)); [R4.11-2]
   - a minion respawn adds the number of cells it tests for the rail: 1 for its spawn cell, and, when that is not a rail cell, each cell of the row-major search up to and including the one it takes (R4.7-7). [R4.11-3]
 - **Budget.** A level ends at step 7 of the first tick after which its work is at least 300,000, unless it ended earlier in that tick or at its time limit ([§4.10](#410-end-of-level)). It keeps its claim. [R4.11-4]
 - **Why.** The referee proves each replay, and a capture's fill costs the same whatever it captures, so captures of one cell every other tick drove a level to about 590 million proving cycles, and a run to 3.5 billion ([`reports/cycle-cap-2026-11-27.md`](reports/cycle-cap-2026-11-27.md)). The work counts what the core spends on captures and respawn searches, about 152 cycles a unit, so the budget caps a level at about 62 million proving cycles and a run at 370 million, on any valid level. No run of the reference playtest reaches it. <!-- rationale -->
@@ -332,17 +346,18 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 |---|---|
 | Obstacles | Cells that start `CLAIMED` (a 3,600-bit bitmap, 450 bytes) |
 | Boss | Body size B, the side of the square body (B = 2 to 8, default 5); spawn area, the cells where the body's top-left cell may start; move period |
+| Second boss | None, or a second boss with its own B, spawn area and move period ([§4.6](#46-boss)), whose possible start bodies never meet the first boss's |
 | Minions | Count (0–3); spawn cells; move period; respawn delay R |
 | Rules | Time limit (at most 2,700 ticks), lives, target claim. Defaults: 2,700 ticks, 3 lives, 7,500 bp. The work budget is the same for every level ([§4.11](#411-work-budget)). |
 
 `level_id = keccak256(level bytes)`. Contracts store level ids, clients ship the level bytes, and the referee checks the bytes against the id.
 
-**Level bytes v1** are 472 bytes, big-endian. The core reads them in this order and rejects the first broken rule with its code:
+**Level bytes** are big-endian. **v1** is 472 bytes, a level with one boss, and **v2** is 478 bytes, a level with two: v1's fields at v1's offsets, with version 2, then the second boss's 6 bytes. The core reads both, in this order, and rejects the first broken rule with its code:
 
 | Offset | Field | Type | Rule (code) |
 |---|---|---|---|
-| | whole level | 472 bytes | exactly 472 bytes (20) |
-| 0 | version | u8 | 1 (21) |
+| | whole level | 472 or 478 bytes | exactly 472 or 478 bytes (20) |
+| 0 | version | u8 | 1 for 472 bytes, 2 for 478 (21) |
 | 1 | obstacle bitmap | 450 bytes | cell i = y × 60 + x is bit 7 − i % 8 of byte i / 8, so the first byte's high bit is cell (0, 0); a set bit is an obstacle; border bits must be 0 (22) |
 | 451 | boss body size B | u8 | 2 to 8 *(D9)* (23) |
 | 452 | boss spawn rectangle | 4 × u8: x0, y0, x1, y1 | the top-left cells the body may start on, inclusive. x0 ≤ x1 and y0 ≤ y1 (24). x0 ≥ 1, y0 ≥ 1, x1 ≤ 59 − B and y1 ≤ 59 − B, so the body stays inside the border; B is checked first, so 59 − B cannot underflow (25) |
@@ -354,15 +369,20 @@ A level is data, not code. The 16 built-in levels use this format, and so will S
 | 467 | time limit T | u16 | 1 to 2,700, the size of the static journal buffer ([§6.2](#62-events)) (32) |
 | 469 | lives | u8 | at least 1 (33) |
 | 470 | target | u16, basis points | 1 to 10,000 (34) |
+| 472 | second boss body size B | u8, v2 only | 2 to 8 *(D9)* (40) |
+| 473 | second boss spawn rectangle | 4 × u8: x0, y0, x1, y1, v2 only | as at offset 452: x0 ≤ x1 and y0 ≤ y1 (41); x0 ≥ 1, y0 ≥ 1, x1 ≤ 59 − B and y1 ≤ 59 − B, with the second boss's B (42) |
+| 477 | second boss move period | u8, v2 only | at least 1 (43) |
 
-The zero rules keep the bytes canonical, so a level has exactly one id.
+The zero rules keep the bytes canonical, and a level with one boss is always v1, so a level has exactly one id: every v1 level keeps the id it had before v2.
 
 **Validity.** After the bytes, the core checks the level itself, in this order. A valid level meets these conditions:
 
 - the open area, the cells `EMPTY` at level start, is a single 4-connected region (35), of at least 1,682 cells, half of the 3,364-cell interior (36). An empty open area is not a region;
 - from every cell of the boss spawn rectangle, the B × B body covers only open cells (37);
 - the spawn of each of the first `count` minion slots is a rail cell (38);
-- the player start (30, 59) is a rail cell (39).
+- the player start (30, 59) is a rail cell (39);
+- in v2, from every cell of the second boss's spawn rectangle, its body covers only open cells (44);
+- in v2, the two bosses' possible start bodies are disjoint: the first spawn rectangle grown by its B − 1 to the right and down, and the second grown by its own, share no cell (45). Any two starts then leave the bodies apart, as R4.6-14 keeps them.
 
 **Worked example.** The **open-field level** is the reference level of the worked examples and of the `open-field-*` vectors: no obstacles, B = 5, spawn rectangle (20, 20) to (34, 34), boss move period 2, no minions, T = 2,700, 3 lives and a 7,500 bp target. Its bytes are `0x01`, then 450 zero bytes, then bytes 451 to 471 below. Obstacles at (29, 58), (30, 58) and (31, 58) set the low three bits of the bitmap byte printed below, whose level offset is one more, and leave the player start with no open neighbor. [`tools/xcheck/worked-examples.mjs`](tools/xcheck/worked-examples.mjs) prints these lines; validity 0 means valid:
 
@@ -372,7 +392,12 @@ open-field level_id: 0x04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a534
 open-field validity: 0
 blocked-start bitmap byte 438: 0x07
 blocked-start validity: 39
+twin-field level bytes 472-477: 0x042828323203
+twin-field level_id: 0x5f3f47b7edde1cb69ab633fce643a984415694732a671a68b2ff58087045082d
+twin-field validity: 0
 ```
+
+The **twin-field level** is the open-field level with a second boss of B = 4, spawn rectangle (40, 40) to (50, 50) and move period 3: its v2 bytes are the open-field bytes with version 2, then the six bytes printed above.
 
 **The 16 levels** ramp up difficulty with the knobs in the table above: boss body size, boss and minion periods, minion count, obstacle layouts that create corridors, time limit, lives and target. Each level gets a target clear rate for a reference mix of scripted playtest bots, the method ethblockdigger uses for balancing ([§10](#10-reuse-from-ethblockdigger)). `levels/targets.json` holds the mix, each level's target rate with its tolerance, and a floor that the mix's median effective claim on each level must stay above *(P11)*. The effective claim of a level played is the claim it scores: `claim_bp`, or 0 when the lives ran out *(D5)*. Before the v1 payout, the bots' completion data seeded the scoring weights of the testnet seasons; under it, every weight is equal *(D18, [§8.4](#84-season-scoring))*.
 
@@ -425,12 +450,12 @@ eventCount × (u16 tick, u8 mask)
 7. fewer than 71 + 3 × `eventCount` bytes: truncated (1); more: trailing bytes (2);
 8. the events, one at a time in journal order. For each event, the first of these rules it breaks: a tick of 2,700 or more (8), a tick not above the previous event's (9), reserved bit 7 set (10; bits 4 and 5, unused since rules version 3, are accepted, [§6.1](#61-input-mask)), a mask equal to the previous one, which is 0 before the first event (11).
 
-**Replay** knows the level. Before play, it checks in this order and returns the first broken rule's code: the journal, as above (1 to 11); the level bytes and the level's validity, in the order of [§5](#5-levels) (20 to 39); a `levelId` other than keccak256 of the level bytes (12); an event at or after the level's time limit (13). Then it plays the level. After play, it rejects an event after the tick on which the level ended (14). Code 15 marks a broken internal invariant, such as a capture-stack overflow, which the rules exclude: no input reaches it, and a target that returns it has a bug.
+**Replay** knows the level. Before play, it checks in this order and returns the first broken rule's code: the journal, as above (1 to 11); the level bytes and the level's validity, in the order of [§5](#5-levels) (20 to 45); a `levelId` other than keccak256 of the level bytes (12); an event at or after the level's time limit (13). Then it plays the level. After play, it rejects an event after the tick on which the level ended (14). Code 15 marks a broken internal invariant, such as a capture-stack overflow, which the rules exclude: no input reaches it, and a target that returns it has a bug.
 
 **Worked example.** The journal of `open-field-empty`, a training run of the open-field level at `levelIndex` 0 with no events, played under the worked-example `runNonce` of [§6.4](#64-seeds-and-commitments):
 
 ```text
-open-field-empty journal: 0x01000300277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000
+open-field-empty journal: 0x01000400277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000
 ```
 
 **No struct dumps.** Never serialize an event as a C struct: padding makes `struct { uint16_t tick; uint8_t mask; }` 4 bytes long, not 3.
@@ -440,21 +465,36 @@ open-field-empty journal: 0x01000300277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a7
 ### 6.4 Seeds and commitments
 
 - **Level seed:** `keccak256("jiro.level" ‖ runNonce ‖ levelIndex)`.
-  - **What it decides.** The boss's start position (its body's top-left cell) inside the level's spawn rectangle, the boss's diagonal direction, and the key of the boss's deflections, which keep steering the boss through the whole level, so that no two runs share a game *(D14)* ([§4.6](#46-boss)). Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
-  - **Boss start.** The candidates are the cells of the spawn rectangle in row-major order: y from y0 to y1, and within each row x from x0 to x1. Validity ensures the body covers only `EMPTY` cells at any of them. With index = the big-endian u32 of seed bytes 0 to 3, modulo the number of candidates, the start is candidate number index, counting from 0. vx = +1 if bit 0 of seed byte 4 is set, otherwise −1; vy is the same, from bit 1. There are at most 57 × 57 = 3,249 candidates, under 2^12, so the modulo bias stays below 2^12 / 2^32 = 2^−20.
-  - **Deflection key** *(D14)*. The big-endian u32 of seed bytes 5 to 8, byte 5 the most significant ([§4.6](#46-boss), R4.6-7). Bits 2 to 7 of byte 4 and bytes 9 to 31 are unused.
-  - **Once per level.** keccak256 runs once per level, never per tick. Any randomness during play comes from an integer PRNG seeded from the level seed *(D14)*: the boss's deflection draw, fmix32(key XOR tick) with 32-bit wrapping multiplications ([§4.6](#46-boss), R4.6-7 to R4.6-9). It keeps no state.
+  - **What it decides.** Each boss's start position (its body's top-left cell) inside its spawn rectangle, its diagonal direction, and the key of its deflections, which keep steering it through the whole level, so that no two runs share a game *(D14)* ([§4.6](#46-boss)). Minions start at their level-defined spawn cells, with headings from the orientation step ([§4.7](#47-minions)).
+  - **Boss start.** The candidates are the cells of the boss's spawn rectangle in row-major order: y from y0 to y1, and within each row x from x0 to x1. Validity ensures the body covers only `EMPTY` cells at any of them. With index = the big-endian u32 of the boss's 4 start bytes, the first the most significant, modulo the number of candidates, the start is candidate number index, counting from 0. vx = +1 if the boss's vx bit of seed byte 4 is set, otherwise −1; vy is the same, from its vy bit. There are at most 57 × 57 = 3,249 candidates, under 2^12, so the modulo bias stays below 2^12 / 2^32 = 2^−20.
+  - **Deflection key** *(D14)*. The big-endian u32 of the boss's 4 key bytes, the first the most significant ([§4.6](#46-boss), R4.6-7).
+  - **Seed bytes.** This table allocates the level seed's 32 bytes, once for every rule: a later rule that needs seed material takes it from the unused rows and adds its own. Boss 1's bytes are unused on a level with one boss.
+
+    | Seed bytes | Use |
+    |---|---|
+    | 0 to 3 | boss 0's start index |
+    | 4, bits 0 and 1 | boss 0's vx and vy |
+    | 4, bits 2 and 3 | boss 1's vx and vy |
+    | 4, bits 4 to 7 | unused |
+    | 5 to 8 | boss 0's deflection key |
+    | 9 to 20 | unused |
+    | 21 to 24 | boss 1's start index |
+    | 25 to 28 | boss 1's deflection key |
+    | 29 to 31 | unused |
+
+    Boss 1's bytes are those of the catalogue idea the owner chose ("Twin bosses and the dividing wall", [`docs/genre/ideas/level-structure-and-progression.md`](docs/genre/ideas/level-structure-and-progression.md#twin-bosses-and-the-dividing-wall)). Every byte a boss uses is its own, so its start and key are independent of the other boss's, and D14 holds for each boss.
+  - **Once per level.** keccak256 runs once per level, never per tick. Any randomness during play comes from an integer PRNG seeded from the level seed *(D14)*: each boss's deflection draw, fmix32(key XOR tick) with 32-bit wrapping multiplications ([§4.6](#46-boss), R4.6-7 to R4.6-9). It keeps no state.
   - **Packing.** Every derivation in this section packs its inputs as Solidity's `abi.encodePacked` would: tags as ASCII bytes, `bytes32` values such as `runNonce` as 32 bytes, `levelIndex` as one byte, and `runId` as a 32-byte `uint256`.
   - **Domain tags.** Every tagged derivation (level seed, run nonce, draw) has its own tag, so two of them never share an input.
 - **Run nonce** (Challenge): `keccak256("jiro.run" ‖ entropy ‖ runId)`, where `entropy` is the `bytes32` that the entropy source returns for the run ([§7.2](#72-run-flow)) and `runId` is the run's `uint256` id. Only the `Challenge` contract computes it, when the player reveals the run. The core takes `runNonce` as an input and never derives it.
 - **The chain chooses the seed** in paid modes ([§7.2](#72-run-flow)), never the client. Otherwise a player could try seeds offline until the spawns were easy.
 - **Run commitment** (Challenge): `keccak256(keccak256(journal₀) ‖ … ‖ keccak256(journal₅))`. `Challenge` computes it from the six journals at commit ([§7.2](#72-run-flow)). Settlement checks the journals against it, for the whole run at once or one level at a time.
-- **State hash** (tests and debugging): keccak256 over a fixed-order, fixed-width serialization of the whole state: tick, grid at 2 bits per cell, player, boss, minions, counters. Version 2 is the 952-byte preimage below.
+- **State hash** (tests and debugging): keccak256 over a fixed-order, fixed-width serialization of the whole state: tick, grid at 2 bits per cell, player, bosses, minions, counters. Version 3 is the 955-byte preimage below.
 - **Settlement submits the level bytes and the journals,** plus a proof on zk ([§7.2](#72-run-flow)). The weights come from the season. The seed is never submitted, because the chain already has the run nonce, and neither is the score, because the referee computes it. The draft's Phase 6 submits seed, score, claim and events; a score or claim may still travel along for display, offchain and never in a contract call, but nothing trusts it.
 
 The draft also asks for a C++ PRNG that matches "the state-transition hashing logic of keccak256" in Solidity. With one core, and keccak used only to derive seeds, there is no second implementation to match.
 
-**State hash v2.** The core records keccak256 of this preimage after every processed tick, the ending tick included. Fields follow the order of [§4.3](#43-entities), at fixed widths, big-endian:
+**State hash v3.** The core records keccak256 of this preimage after every processed tick, the ending tick included. Fields follow the order of [§4.3](#43-entities), at fixed widths, big-endian:
 
 | Bytes | Field | Encoding |
 |---|---|---|
@@ -472,13 +512,14 @@ The draft also asks for a C++ PRNG that matches "the state-transition hashing lo
 | 1 | boss body size B | u8 |
 | 2 | vx, vy | i8 each: +1 is `0x01`, −1 is `0xff` |
 | 1 | boss move period | u8 |
+| 6 | second boss | the 6 bytes above for boss 1, in the same order; all zero on a level with one boss |
 | 21 | 3 minion slots of 7 bytes, in index order | u8 presence (0 unused slot, 1 live, 2 destroyed), u8 x, u8 y, u8 heading (0 N, 1 E, 2 S, 3 W), u8 move period, u16 respawn countdown. An unused slot is all zero. |
 | 2 | captured cells | u16, cells captured so far in the level |
 | 4 | work | u32, the level's work so far ([§4.11](#411-work-budget)) |
 | 2 | claimable cells | u16 ([§4.1](#41-grid)) |
 | 2 | next event index | u16, the index of the first journal event not yet applied |
 
-The preimage is 949 bytes in all. Version 1, before rules version 3, held the shield charges and `press_tick` after the lives and the invulnerability ticks, and no work: 948 bytes. The deflection key ([§4.6](#46-boss)) is not in it: like the boss start, it is a function of the level seed, and a deflection leaves nothing behind but the boss's velocity.
+The preimage is 955 bytes in all. Version 2, under rules version 3, had no second boss: 949 bytes. Version 1, before rules version 3, also held the shield charges and `press_tick` after the lives and the invulnerability ticks, and no work: 948 bytes. The deflection keys ([§4.6](#46-boss)) are not in it: like the boss starts, they are functions of the level seed, and a deflection leaves nothing behind but the boss's velocity. Nor is the separation of [§4.8](#48-capture), which ends the level on the tick it happens.
 
 **Worked examples.** The examples use `runNonce` = keccak256(`"jiro.example.9"`), chosen so that the draw of [§8.2](#82-challenge-paid-runs) both keeps a card in place and revisits a swapped position. For the open-field level ([§5](#5-levels)) at `levelIndex` 0, the seed, the boss start, and the state after tick 0 of `open-field-empty` are:
 
@@ -491,15 +532,20 @@ boss start (spawn rectangle (20, 20) to (34, 25)): candidates 90, index 78, top-
 deflection key (levelIndex 0): 0x94676303
 fmix32 test values: fmix32(0x00000000) 0x00000000, fmix32(0x00000001) 0x514e28b7, fmix32(0xffffffff) 0x81f16f39
 open-field-empty tick 0 boss: top-left (22, 21), vx -1, vy -1
-open-field-empty tick 0 preimage length: 949
-open-field-empty tick 0 state hash: 0xda8d937602aeedbccd99b0f28519c8763d400688e9331c0065191673cb756e79
+open-field-empty tick 0 preimage length: 955
+open-field-empty tick 0 state hash: 0xb5535231486623b9396b6d436769db5fc7ba3518b3b37de5e3a9ddf08343d4ab
 open-field-empty tick 0 deflection draw: fmix32(0x94676303) 0x5cb2ceac, r 23, no deflection
 open-field-empty first deflection: tick 82, r 1 inverts vy; boss after the move: top-left (20, 19), vx +1, vy -1
 open-field-empty second deflection: tick 140, r 0 inverts vx; boss after the move: top-left (47, 11), vx -1, vy +1
 open-field-empty boss after tick 2699: top-left (3, 18), vx +1, vy -1, after 43 deflections
+second boss start (levelIndex 0): candidates 121, index 52, top-left (48, 44), vx +1, vy -1
+second deflection key (levelIndex 0): 0x94bd9fca
+twin-field bosses after tick 2699, standing still: boss 0 top-left (54, 11), vx -1, vy +1; boss 1 top-left (36, 17), vx +1, vy -1; 10 bounces off the other boss
 ```
 
 The second and third lines check the bit order of seed byte 4 and the row-major order of a non-square rectangle. On tick 0 the boss moves (0 % 2 = 0) one step diagonally, from its start to the `tick 0 boss` position, and the player stands still. The tick-0 deflection draw is 23, neither 0 nor 1, so the boss doesn't deflect on tick 0. With the player standing still for the whole level, the boss first deflects on tick 82, then on tick 140, and 43 times in all by the last tick, 2,699.
+
+The last three lines are the twin-field level ([§5](#5-levels)) at `levelIndex` 0, with the same seed: boss 1's start from seed bytes 21 to 24 (0x013491d3) and bits 2 and 3 of byte 4 (0x34), and its key from bytes 25 to 28. With the player standing still for the whole level, a boss's move differs from the one it would have made alone on 10 moves, where it bounces off the other body.
 
 The run nonce of run 1, with the entropy keccak256(`"jiro.example.entropy"`):
 
@@ -633,7 +679,7 @@ struct Outcome {
     uint8 mode;           // from the header
     uint16 rulesVersion;  // from the header
     uint8 endReason;      // 1 Committed, 2 Cleared, 3 out of lives, 4 time limit, 5 work budget (§4.10)
-    uint16 claimBp;       // claim_bp when the level ended
+    uint16 claimBp;       // claim_bp when the level ended, at least the target after a separation (§4.8)
     uint16 ticksUsed;     // §4.10
     uint32 levelScore;    // claimBp × weightBp / 10_000, rounded down; 0 if endReason is 3
 }
@@ -741,7 +787,7 @@ A season fixes its parameters when it opens, and shares its pot among its paid g
 - **Tickets** *(D10)*. A game's ticket is w = min(claim, target) / target, or 0 when the lives ran out (`endReason` 3): the share of the level's target that the game reached, capped at 1. A game that ends by Commit, by clearing, at the time limit or at the work budget keeps the ticket of its claim. Onchain, a ticket is in basis points: `ticket_bp = min(claimBp, target) × 10_000 / target`, rounded down, where `target` is the `u16` at offset 470 of the level bytes ([§5](#5-levels)), which settlement submits and checks against the level id. A cleared game's ticket is 10,000. The weight does not enter the ticket.
 - **Weights** *(D18)*. Under the v1 payout, every weight is 10,000 bp, so a level score equals its claim. Weights were meant to normalize difficulty, so that the random draw would not decide a ranking that no longer exists. Paying more for a win on a hard level would pay bots most, since a bot wins hard levels as surely as easy ones: on the 16 levels, tickets weighted by the weights of `calibration-1.json` would raise the reference mix's bot edge ρ (below) from 1.405 to 1.615 (scripted proxies, rules version 2).
 - **Level review between seasons** *(D21)*. Between two seasons, a person reviews the paid levels from the replays of every committed journal of the season, unsettled runs included, which costs nothing: per level, the share of people's games that ran out of lives and the people's average ticket. A level that people fail is replaced at the next open by another level, never removed, so a season always draws from 16 levels; at most one new level comes each season. No rule acts by itself and nothing changes during a season: bots raise every level's statistics alike, and an automatic rule can be steered by throwing games on purpose ([`docs/ECONOMY.md`](docs/ECONOMY.md)). [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) gives the review's steps.
-- **Testnet seasons** are named `testnet-N`, and their journals never feed mainnet weights. Before the v1 payout they took their weights from playtest-bot data: `jiro-tools calibrate` writes those weights to a calibration file, `seasons/calibration-1.json` for rules version 2 and `seasons/calibration-2.json` for rules version 3, from the reference mix of [§5](#5-levels): each level's weight is P × 10,000 / max(m, floor), rounded down, where m is the mix's median effective claim on the level and the floor is the one of `levels/targets.json`, so that a median run scores P points on every level, or P − 1 by rounding. P is the largest multiple of 1,000 points that keeps every weight within a `uint16`. A season file takes the rules version, the level ids and the weights of a calibration file, names it in its `calibration` key, and owns every other parameter. Its `referee` is null until `season.mjs open` writes the referee the season opened with; the season number `open` assigns is recorded in `deployments/<network>.json`. `seasons/testnet-0.json` is the 1-day rehearsal season that the first Arbitrum Sepolia deployment opens ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). `seasons/testnet-1.json` is the 14-day season of testers; [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) derives its slack and grace and gives its schedule. Under the v1 payout, a season takes equal weights *(D18)* and the paid levels *(D17)*: M5.16 rewrites `testnet-1.json` for both, on rules version 3.
+- **Testnet seasons** are named `testnet-N`, and their journals never feed mainnet weights. Before the v1 payout they took their weights from playtest-bot data: `jiro-tools calibrate` writes those weights to a calibration file, `seasons/calibration-1.json` for rules version 2 and `seasons/calibration-2.json` for rules version 3, regenerated in place for rules version 4, on which the 16 one-boss levels play as on rules version 3, from the reference mix of [§5](#5-levels): each level's weight is P × 10,000 / max(m, floor), rounded down, where m is the mix's median effective claim on the level and the floor is the one of `levels/targets.json`, so that a median run scores P points on every level, or P − 1 by rounding. P is the largest multiple of 1,000 points that keeps every weight within a `uint16`. A season file takes the rules version, the level ids and the weights of a calibration file, names it in its `calibration` key, and owns every other parameter. Its `referee` is null until `season.mjs open` writes the referee the season opened with; the season number `open` assigns is recorded in `deployments/<network>.json`. `seasons/testnet-0.json` is the 1-day rehearsal season that the first Arbitrum Sepolia deployment opens ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). `seasons/testnet-1.json` is the 14-day season of testers; [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) derives its slack and grace and gives its schedule. Under the v1 payout, a season takes equal weights *(D18)* and the paid levels *(D17)*: M5.16 rewrites `testnet-1.json` for both, on rules version 4.
 
 **The v1 payout: the bot-neutral pot** *(D10)*. Chosen by the owner on 2026-11-27, it replaces the best run per player and its qualification. M5.15 implements it in `Season` and `Challenge`, from generation 3 of the contracts; generations 1 and 2 pay each qualified player's best run pro rata by score, as D10 first decided, and no season of testers opens on them. Let f be the fee per game, `runFee` / 6, and r the rake, `rakeBp` / 10,000. A season's games G are its paid games, 6 per run bought, whatever happens to the run afterwards. Its tickets W are the sum of the tickets of its on-time settled runs: a run that is unsettled, lapsed or late counts in G with tickets of 0. The season's average ticket is w̄ = W / G. At the close, each paid game earns
 
@@ -935,12 +981,12 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D6 | Shield (B) | **Removed** in rules version 3 (owner, 2026-11-27: "let's remove the shield and simplify the game play, less button to press is better"; [plan](IMPLEMENTATION_PLAN.md) M5.12). **Replaced:** one charge per level, which B held spent on a hit, B also slowing the player to one cell every second tick (M0). |
 | D7 | Minion patrol rule, and minions stranded by a capture | **Decided:** approved in M1.14 on 2026-10-29, under the owner's standing instruction of that day to proceed, and built in M1.15 (`RULES_VERSION` 2). The right-hand rule, with an orientation step that faces open field on the right or behind the right ([§4.7](#47-minions)). The patrol then traces the field's boundary and covers the rail (PIN-14). M1.7 measured the earlier orientation step, which trapped a minion on about 1.2 % of boards (131 of 10,000; 1,213 of 100,000); this rule traps none on the same boards. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([§4.7](#47-minions), PIN-17). |
 | D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y stays unused: a pause button would give human players free thinking time in paid modes. A and B are unused since rules version 3, which made the fast cut always on while cutting and removed the shield *(D6)*; the commit (X) stays (owner, 2026-11-27, "fast cut always on, keep X, bundle with the cap"; [plan](IMPLEMENTATION_PLAN.md) M5.12). Players can rebind the keyboard keys ([§2](#2-platform)). |
-| D9 | Boss size | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. |
+| D9 | Boss size, and twin bosses | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. **Twin bosses** (owner, 2026-11-27; [plan](IMPLEMENTATION_PLAN.md) M5.18, rules version 4): a level may have a second boss, in level bytes v2 ([§5](#5-levels)). The two bounce off each other as if they hit a wall ("just make them rebound as if they hit a wall"), and a capture that separates them clears the level, its claim raised to at least the target: the dividing wall ([§4.6](#46-boss), [§4.8](#48-capture)). Levels 10, 13, 15 and 16 get twin bosses in M5.19. |
 | D10 | Challenge payout | **Decided** (owner, 2026-11-27, "Let's follow all your recommendations for the 9 items"; [plan](IMPLEMENTATION_PLAN.md) M5.14): the v1 payout. Every paid game earns a ticket, w = min(claim, target) / target, or 0 when the lives ran out, and the season's pot is shared among all its paid games by the bot-neutral pot: prize = f × [(1 − r) + s × (w − w̄)], with s = min((1 − r) / w̄, r / (1 − w̄)) ([§8.4](#84-season-scoring)). No game earns more than its fee, so a bot gains nothing by playing perfectly. Every scoring run is settled ([§7.3](#73-verification-cost)), and nothing rolls over. M5.15 implements it, from generation 3. **Replaced:** the best settled run per season, paid pro rata by score among qualified players (owner, 2026-10-28), with ties to fewer ticks and qualification by `minClears` (M0.7). Under it, harder levels paid a bot more, and one wallet per run made every run count anyway. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)), **replaced** (owner, 2026-11-27) by a fee in ETH of about 0.30 USD a run, 0.05 USD a game, set at each open from the ETH price; 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
 | D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
-| D14 | Seed space | **Decided** (owner, 2026-10-29): the level seed keeps driving the boss through the level, so that no two runs share a game and inputs can be neither copied from another run nor precomputed ([§7.4](#74-bots)). [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 wrote the rule, seeded deflections ([§4.6](#46-boss), R4.6-6 to R4.6-12; [§6.4](#64-seeds-and-commitments)): a stateless draw from level seed bytes 5 to 8 and the tick turns the boss a quarter turn on 1 move in 32. |
+| D14 | Seed space | **Decided** (owner, 2026-10-29): the level seed keeps driving the boss through the level, so that no two runs share a game and inputs can be neither copied from another run nor precomputed ([§7.4](#74-bots)). [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 wrote the rule, seeded deflections ([§4.6](#46-boss), R4.6-6 to R4.6-12; [§6.4](#64-seeds-and-commitments)): a stateless draw from level seed bytes 5 to 8 and the tick turns the boss a quarter turn on 1 move in 32. A second boss *(D9)* has its own start and key from seed bytes it alone uses (§6.4), and two runs still part: the divergence argument holds for two bodies that deflect each other (R4.6-16). |
 | D15 | Device scope | **Withdrawn** (owner, 2026-11-10): the game plays in the browser, and a phone version comes later *(D1)*. |
 | D16 | Phone version: platform, order and scope | **Decided** (owner, 2026-11-11, when scheduling M3): on phones, the game is the same web client on the same wasm core, touch-first and installable for Training. Challenge is played in a wallet app's own browser; a connector for other browsers comes only if Challenge outside wallet browsers is wanted later. The service worker, for offline Training, comes last and is optional. No store build exists while paid runs exist, and there is no native client. [`docs/PHONE.md`](docs/PHONE.md) specifies it, and records the owner's answers to its decisions. |
 | D17 | Paid levels | **Decided** (owner, 2026-11-27): Challenge seasons draw from copies of the 16 levels with 3 more lives and a target of 5,000 bp, tuned toward a measured people's average ticket of 0.80 to 0.85; the 16 levels stay as they are for Training and records ([§8.2](#82-challenge-paid-runs)). On them the bot edge ρ of the scripted players is 1.007 to 1.223, against 1.405 to 2.089 on the 16 levels (rules version 2; M5.16 builds the copies and measures them on rules version 3). |

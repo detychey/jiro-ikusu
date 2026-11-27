@@ -4,6 +4,7 @@
 
 use std::collections::VecDeque;
 
+use jiro_core::boss::{Boss, Bosses};
 use jiro_core::capture::capture;
 use jiro_core::consts::CAPTURE_STACK;
 use jiro_core::grid::Grid;
@@ -28,6 +29,7 @@ fn open_field() -> Level {
         time_limit: 2_700,
         lives: 3,
         target_bp: 7_500,
+        second_boss: None,
     }
 }
 
@@ -47,8 +49,24 @@ fn body(x: u8, y: u8, size: u8) -> Vec<CellIndex> {
         .collect()
 }
 
+/// The single boss whose body is `body`, a B × B square in row-major order.
+fn boss_of(body: &[CellIndex]) -> Bosses {
+    let corner = body[0].pos();
+    Bosses {
+        first: Boss {
+            pos: corner,
+            size: body.len().isqrt() as u8,
+            vx: 1,
+            vy: 1,
+            period: 1,
+            deflection_key: 0,
+        },
+        second: None,
+    }
+}
+
 fn core_capture(grid: &mut Grid, body: &[CellIndex]) -> u16 {
-    capture(grid, body.iter().copied(), &mut [0; CAPTURE_STACK])
+    capture(grid, &boss_of(body), &mut [0; CAPTURE_STACK])
         .unwrap()
         .size
 }
@@ -83,7 +101,12 @@ fn cut_along_the_top_border_claims_the_rectangle_it_closes() {
 fn capture_work_counts_the_boss_zone() {
     let mut grid = Grid::level_start(&open_field());
     paint(&mut grid, top_u(), Cell::Trail);
-    let done = capture(&mut grid, body(30, 30, 5), &mut [0; CAPTURE_STACK]).unwrap();
+    let done = capture(
+        &mut grid,
+        &boss_of(&body(30, 30, 5)),
+        &mut [0; CAPTURE_STACK],
+    )
+    .unwrap();
     assert_eq!(
         (done.size, done.boss_zone, done.work()),
         (55, 3_364 - 55, 150 + 3_364 - 55)
@@ -169,7 +192,7 @@ fn body_cells_stay_empty_after_a_capture() {
 fn fill_pushes_each_cell_once() {
     let mut grid = Grid::level_start(&open_field());
     let mut stack = [u16::MAX; CAPTURE_STACK];
-    capture(&mut grid, body(1, 1, 8), &mut stack).unwrap();
+    capture(&mut grid, &boss_of(&body(1, 1, 8)), &mut stack).unwrap();
     let mut pushed: Vec<u16> = stack
         .into_iter()
         .take_while(|&entry| entry != u16::MAX)

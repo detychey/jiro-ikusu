@@ -6,7 +6,7 @@
 use jiro_core::boss::deflection_draw;
 use jiro_core::consts::WORK_BUDGET;
 use jiro_core::game::{EndReason, Game};
-use jiro_core::level::{Level, Rect};
+use jiro_core::level::{BossRecord, Level, Rect};
 use jiro_core::minion::{Minion, State};
 use jiro_core::types::{Cell, CellIndex, Dir, InputMask, Pos};
 
@@ -28,6 +28,7 @@ fn level(obstacles: &[(u8, u8)]) -> Level {
         time_limit: 2_700,
         lives: 3,
         target_bp: 7_500,
+        second_boss: None,
     };
     for &(x, y) in obstacles {
         let cell = usize::from(y) * 60 + usize::from(x);
@@ -41,8 +42,8 @@ fn level(obstacles: &[(u8, u8)]) -> Level {
 fn game_on(level: &Level) -> Game {
     let mut game = Game::new(level, &[7; 32], 0).unwrap();
     game.ticks_used = 1;
-    game.boss.pos = at(40, 10);
-    game.boss.period = 255;
+    game.bosses.first.pos = at(40, 10);
+    game.bosses.first.period = 255;
     game
 }
 
@@ -81,10 +82,10 @@ fn minion(game: &mut Game, slot: usize, pos: Pos, heading: Dir, period: u8) {
 /// The boss moving at every tick toward −x and −y from `pos`, with a deflection key that draws
 /// no deflection on ticks 1 to 40.
 fn boss_moving(game: &mut Game, pos: Pos) {
-    game.boss.pos = pos;
-    game.boss.period = 1;
-    (game.boss.vx, game.boss.vy) = (-1, -1);
-    game.boss.deflection_key = (0..)
+    game.bosses.first.pos = pos;
+    game.bosses.first.period = 1;
+    (game.bosses.first.vx, game.bosses.first.vy) = (-1, -1);
+    game.bosses.first.deflection_key = (0..)
         .find(|&key| (1..=40).all(|tick| deflection_draw(key, tick) >= 2))
         .unwrap();
 }
@@ -108,7 +109,7 @@ fn boss_bumping_into_the_trail_hits() {
 #[test]
 fn step_onto_the_boss_body_hits_and_does_not_move() {
     let mut game = game();
-    game.boss.pos = at(28, 54);
+    game.bosses.first.pos = at(28, 54);
     let lives = lives_after(&mut game, &[InputMask::UP]);
     assert_eq!((lives, game.player.pos), (2, at(30, 59)));
 }
@@ -191,7 +192,7 @@ fn minion_respawning_onto_the_player_hits() {
 #[test]
 fn three_hits_in_one_tick_cost_one_life() {
     let mut game = game();
-    game.boss.pos = at(28, 54);
+    game.bosses.first.pos = at(28, 54);
     minion(&mut game, 0, at(29, 59), Dir::Right, 1);
     minion(&mut game, 1, at(31, 59), Dir::Left, 1);
     assert_eq!(lives_after(&mut game, &[InputMask::UP]), 2);
@@ -453,4 +454,90 @@ fn time_limit_wins_over_the_work_budget() {
         game.step(InputMask::NONE).unwrap(),
         Some(EndReason::TimeLimit)
     );
+}
+
+/// The open field with a second boss parked at `second`, B = 4: both bosses still until tick 255.
+fn twin_game(second: Pos) -> Game {
+    let level = Level {
+        second_boss: Some(BossRecord {
+            size: 4,
+            spawn: Rect {
+                x0: 40,
+                y0: 40,
+                x1: 50,
+                y1: 50,
+            },
+            period: 3,
+        }),
+        ..level(&[])
+    };
+    let mut game = game_on(&level);
+    let boss = game.bosses.second.as_mut().unwrap();
+    boss.pos = second;
+    boss.period = 255;
+    game
+}
+
+/// The player at (30, 1), cutting a wall from (30, 58) up to it: a step up closes the cut.
+fn wall_at_x_30(game: &mut Game) {
+    let wall: Vec<(u8, u8)> = (1..59).map(|y| (30, y)).collect();
+    cutting(game, at(30, 1), at(30, 59), &wall);
+}
+
+/// [R4.8-5] [R4.8-6] A capture that leaves the bosses on either side of a wall separates them: the level
+/// is cleared at step 3, with the claim of the 58 trail cells raised to the target.
+#[test]
+fn separating_the_bosses_clears_the_level_at_the_target() {
+    let mut game = twin_game(at(10, 10));
+    wall_at_x_30(&mut game);
+    let end = game.step(InputMask::UP).unwrap();
+    assert_eq!(
+        (end, game.captured, game.claim_bp().unwrap(), game.separated),
+        (Some(EndReason::Cleared), 58, 7_500, true)
+    );
+}
+
+/// [R4.8-5] [R4.11-2] The separating capture fills from both bodies, and its work counts both
+/// fills: every interior cell but the 58 of the wall.
+#[test]
+fn a_separating_capture_counts_both_fills() {
+    let mut game = twin_game(at(10, 10));
+    wall_at_x_30(&mut game);
+    game.step(InputMask::UP).unwrap();
+    assert_eq!(game.work, 150 + 3_364 - 58);
+}
+
+/// [R4.8-6] Separation raises the claim to the target, never lowers it: with a target of 5 bp,
+/// the claim stays 172 bp.
+#[test]
+fn separation_keeps_a_claim_above_the_target() {
+    let mut game = twin_game(at(10, 10));
+    game.target_bp = 5;
+    wall_at_x_30(&mut game);
+    let end = game.step(InputMask::UP).unwrap();
+    assert_eq!(
+        (end, game.claim_bp().unwrap()),
+        (Some(EndReason::Cleared), 172)
+    );
+}
+
+/// [R4.8-2] [R4.8-5] With both bosses right of the wall, the capture takes the left side, and the
+/// level goes on.
+#[test]
+fn a_capture_that_keeps_the_bosses_together_does_not_clear() {
+    let mut game = twin_game(at(45, 40));
+    wall_at_x_30(&mut game);
+    let end = game.step(InputMask::UP).unwrap();
+    assert_eq!(
+        (end, game.captured, game.separated),
+        (None, 29 * 58 + 58, false)
+    );
+}
+
+/// [R4.9-3] A step onto the second boss's body is a hit, and the player stays.
+#[test]
+fn step_onto_the_second_boss_body_hits_and_does_not_move() {
+    let mut game = twin_game(at(28, 55));
+    let lives = lives_after(&mut game, &[InputMask::UP]);
+    assert_eq!((lives, game.player.pos), (2, at(30, 59)));
 }
