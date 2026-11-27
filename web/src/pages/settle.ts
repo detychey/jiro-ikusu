@@ -1,12 +1,14 @@
-// Settlement from the dApp (README §7.2, §7.3; plan M5.3), verified by exception: the player's
-// best run of the season, among the committed runs this browser holds, replayed by the core and
-// ranked in D10's order. The deployment's backend decides who settles it:
-// - Stylus, and the local chain's MockReferee: the page, with one settleRun, or six settleLevel
-//   when settleRun does not fit in one transaction, with progress, retries and decoded reverts;
-// - zk: the operator (D2, README §7.5), which settles each player's best run from chain data
+// Settlement from the dApp (README §7.2, §7.3; plan M5.3, M5.15), verified by exception: the
+// player's scoring runs of the season, those with a ticket above 0, among the committed runs this
+// browser holds, replayed by the core, cheapest first. The deployment's backend decides who
+// settles them:
+// - Stylus, and the local chain's MockReferee: the page, each with one settleRun, or six
+//   settleLevel when settleRun does not fit in one transaction, with progress, retries and decoded
+//   reverts;
+// - zk: the operator (D2, README §7.5), which settles every scoring run from chain data
 //   (src/chain/operator.ts, scripts/settle.mjs): a proof takes hours and gigabytes that a browser
 //   does not have. The page shows the cutoff, the season's end plus grace, and exports the run
-//   file for a player who proves their own: Challenge takes a settlement from anyone (README §7.2).
+//   files for a player who proves their own: Challenge takes a settlement from anyone (README §7.2).
 
 import { isError, keccak256 } from "ethers";
 import { chainErrorMessage, confirmed, type Contracts } from "../chain/contracts";
@@ -14,7 +16,7 @@ import type { Deployment } from "../chain/deployments";
 import { type Core, RUN_LEVELS } from "../core";
 import { downloadJson, element, messageOf } from "../page";
 import { isOnTime } from "../run/deadline";
-import { ranksAbove, type RunScore, scoreRun } from "../run/rank";
+import { cheaperFirst, isScoring, type RunScore, scoreRun } from "../run/score";
 import { type RunFile, runFileOf } from "../run/runfile";
 import type { RunRecord, RunStore } from "../run/store";
 
@@ -23,29 +25,31 @@ export const SETTLE_ATTEMPTS = 3;
 /** Challenge's SettlementStatus. */
 export const SETTLEMENT_STATUS = ["unsettled", "settled", "late"] as const;
 
-export interface RankedRun extends RunScore {
+export interface ScoredRun extends RunScore {
+  runId: bigint;
   record: RunRecord;
   file: RunFile;
 }
 
 /** A committed run, replayed with its season's weights, as settlement would score it. */
-export function rankedRun(core: Core, levels: readonly Uint8Array[], record: RunRecord, minClears: number): RankedRun {
+export function scoredRun(core: Core, levels: readonly Uint8Array[], record: RunRecord): ScoredRun {
   const file = runFileOf(record, levels);
-  return { record, file, ...scoreRun(core, file, record.weightsBp, minClears) };
+  return { runId: BigInt(record.runId), record, file, ...scoreRun(core, file, record.weightsBp) };
 }
 
-/** The best of `records` in season `season`: committed, on time by the contract's deadline, and
- *  first in D10's order; on a full tie, the run committed first. */
-export function bestRun(core: Core, levels: readonly Uint8Array[], records: readonly RunRecord[], season: bigint, minClears: number): RankedRun | undefined {
-  let best: RankedRun | undefined;
+/** The scoring runs of `records` in season `season`, cheapest first: committed, on time by the
+ *  contract's deadline, and with a ticket above 0. A run whose tickets are all 0 earns the same
+ *  settled or not (README §7.3). */
+export function scoringRuns(core: Core, levels: readonly Uint8Array[], records: readonly RunRecord[], season: bigint): ScoredRun[] {
+  const runs: ScoredRun[] = [];
   for (const record of records) {
     if (record.season !== String(season) || record.commit === undefined || record.reveal === undefined) continue;
-    const run = rankedRun(core, levels, record, minClears);
+    const run = scoredRun(core, levels, record);
     const ticksUsed = run.outcomes.map(({ ticksUsed }) => ticksUsed);
-    if (!isOnTime(BigInt(record.commit.committedAt), BigInt(record.reveal.revealedAt), ticksUsed, BigInt(record.commitSlack))) continue;
-    if (best === undefined || ranksAbove(run, best)) best = run;
+    if (!isScoring(run) || !isOnTime(BigInt(record.commit.committedAt), BigInt(record.reveal.revealedAt), ticksUsed, BigInt(record.commitSlack))) continue;
+    runs.push(run);
   }
-  return best;
+  return runs.sort(cheaperFirst);
 }
 
 export type Progress = (text: string) => void;
@@ -145,63 +149,75 @@ export interface SettleEnv {
   deployment: Deployment;
   player: string;
   season: bigint;
-  minClears: number;
-  /** Called once a settlement went through, as the leaderboard changes. */
+  /** Called once the settlements went through, as the players' tickets and prizes change. */
   settled(): Promise<void>;
 }
 
 /** What the page says on zk, where the operator settles: the cutoff, from `settlementCutoff`. */
 export function operatorHandoff(chainName: string, cutoff: bigint): string {
   const at = new Date(Number(cutoff) * 1000).toISOString();
-  return `On ${chainName}, the operator settles each player's best run from the chain's data, so you have nothing to send: the season's settlement closes at ${at} (block time ${cutoff}). To prove and settle this run yourself before then, download its run file.`;
+  return `On ${chainName}, the operator settles every scoring run from the chain's data, so you have nothing to send: the season's settlement closes at ${at} (block time ${cutoff}). To prove and settle these runs yourself before then, download their run files.`;
 }
 
-function runSummary({ record, score, ticks, clears, qualified }: RankedRun): string {
-  const qualifies = qualified ? "it qualifies" : "it does not qualify";
-  return `Your best run of the season in this browser is run ${record.runId}: score ${score}, ${ticks} ticks, ${clears} cleared, so ${qualifies}.`;
+/** Tickets in basis points, as tickets: 49,692 bp is 4.9692. */
+export function formatTickets(tickets: number | bigint): string {
+  return (Number(tickets) / 10_000).toFixed(4);
 }
 
-/** Shows the settlement section of the season page for the player's best run. */
+function runsSummary(runs: readonly ScoredRun[], statuses: readonly bigint[]): string {
+  const listed = runs.map(({ runId, tickets }, i) => `run ${runId}, tickets ${formatTickets(tickets)}, ${SETTLEMENT_STATUS[Number(statuses[i])]}`);
+  return `Your scoring runs of the season in this browser, cheapest to settle first: ${listed.join("; ")}.`;
+}
+
+/** Shows the settlement section of the season page for the player's scoring runs. */
 export async function showSettlement(env: SettleEnv): Promise<void> {
-  const { core, levels, store, contracts, deployment, player, season, minClears } = env;
+  const { core, levels, store, contracts, deployment, player, season } = env;
   const status = element("settle-status");
   const button = element<HTMLButtonElement>("settle");
   const download = element<HTMLButtonElement>("settle-file");
   const error = element("settle-error");
   element("settle-section").hidden = false;
   const challenge = await contracts.challenge.getAddress();
-  const best = bestRun(core, levels, await store.runsOf(deployment.network.chainId, challenge, player), season, minClears);
+  const runs = scoringRuns(core, levels, await store.runsOf(deployment.network.chainId, challenge, player), season);
   button.hidden = download.hidden = true;
-  if (best === undefined) {
-    status.textContent = `This browser holds no on-time committed run of yours in season ${season}.`;
+  if (runs.length === 0) {
+    status.textContent = `This browser holds no on-time committed run of yours in season ${season} with a ticket above 0: a run whose tickets are all 0 earns the same settled or not.`;
     return;
   }
-  const onchain = await contracts.challenge.settlements(BigInt(best.record.runId));
-  if (onchain.status !== 0n) {
-    status.textContent = `${runSummary(best)} It is ${SETTLEMENT_STATUS[Number(onchain.status)]}.`;
+  const statuses = await Promise.all(runs.map(async ({ runId }) => (await contracts.challenge.settlements(runId)).status));
+  const unsettled = runs.filter((_, i) => statuses[i] === 0n);
+  if (unsettled.length === 0) {
+    status.textContent = runsSummary(runs, statuses);
     return;
   }
   if (!settlesInBrowser(deployment)) {
     const cutoff = await settlementCutoff(contracts, season);
-    status.textContent = `${runSummary(best)} ${operatorHandoff(deployment.network.chainName, cutoff)}`;
+    status.textContent = `${runsSummary(runs, statuses)} ${operatorHandoff(deployment.network.chainName, cutoff)}`;
     download.hidden = false;
-    download.onclick = () => downloadJson(`jiro-run-${best.file.chainId}-${best.file.runId}.json`, best.file);
+    download.onclick = () => {
+      for (const { file } of unsettled) downloadJson(`jiro-run-${file.chainId}-${file.runId}.json`, file);
+    };
     return;
   }
-  status.textContent = runSummary(best);
+  status.textContent = runsSummary(runs, statuses);
   button.hidden = false;
+  button.textContent = `Settle ${unsettled.length} run${unsettled.length === 1 ? "" : "s"}`;
   button.onclick = () => {
     button.disabled = true;
     error.textContent = "";
-    settleOnchain(contracts, best.file, (text) => (status.textContent = text))
+    settleInOrder(contracts, unsettled, (text) => (status.textContent = text))
       .then(async () => {
         await env.settled();
         await showSettlement(env);
       })
       .catch((failure: unknown) => {
-        error.textContent = `${messageOf(failure)}. Settle again to continue from the levels already settled.`;
+        error.textContent = `${messageOf(failure)}. Settle again to continue from what is already settled.`;
       })
       .finally(() => (button.disabled = false));
   };
 }
 
+/** Settles `runs` one after another, in their order. */
+export async function settleInOrder(contracts: Contracts, runs: readonly ScoredRun[], progress: Progress): Promise<void> {
+  for (const { file } of runs) await settleOnchain(contracts, file, progress);
+}

@@ -16,7 +16,7 @@ export interface Challenge extends BaseContract {
   seasons: BaseContractMethod<[], string, string>;
   settleLevel: BaseContractMethod<[runId: BigNumberish, i: BigNumberish, journalHashes: BytesLike[], level: BytesLike, journal: BytesLike, proof: BytesLike], void, ContractTransactionResponse>;
   settleRun: BaseContractMethod<[runId: BigNumberish, levels: BytesLike[], journals: BytesLike[], proof: BytesLike], void, ContractTransactionResponse>;
-  settlements: BaseContractMethod<[runId: BigNumberish], [bigint, bigint, bigint, bigint, bigint] & { status: bigint; settledLevels: bigint; clears: bigint; score: bigint; ticks: bigint }, [bigint, bigint, bigint, bigint, bigint] & { status: bigint; settledLevels: bigint; clears: bigint; score: bigint; ticks: bigint }>;
+  settlements: BaseContractMethod<[runId: BigNumberish], [bigint, bigint, bigint, bigint, bigint, bigint] & { status: bigint; settledLevels: bigint; clears: bigint; score: bigint; ticks: bigint; tickets: bigint }, [bigint, bigint, bigint, bigint, bigint, bigint] & { status: bigint; settledLevels: bigint; clears: bigint; score: bigint; ticks: bigint; tickets: bigint }>;
   startRun: BaseContractMethod<[season: BigNumberish], bigint, ContractTransactionResponse>;
 }
 
@@ -25,7 +25,7 @@ export interface ChallengeEvents {
   RunCommitted: { runId: bigint; commitment: string; committedAt: bigint };
   RunLate: { runId: bigint; deadline: bigint; committedAt: bigint };
   RunRevealed: { runId: bigint; runNonce: string; revealedAt: bigint };
-  RunSettled: { runId: bigint; player: string; score: bigint; ticks: bigint; clears: bigint };
+  RunSettled: { runId: bigint; player: string; score: bigint; ticks: bigint; clears: bigint; tickets: bigint };
   RunStarted: { runId: bigint; player: string; season: bigint; entropyId: string };
 }
 

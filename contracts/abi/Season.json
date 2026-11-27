@@ -17,6 +17,19 @@
   },
   {
     "type": "function",
+    "name": "GAMES_PER_RUN",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_COMMIT_SLACK",
     "inputs": [],
     "outputs": [
@@ -56,19 +69,6 @@
   },
   {
     "type": "function",
-    "name": "MAX_MIN_CLEARS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "MAX_RAKE_BP",
     "inputs": [],
     "outputs": [
@@ -82,7 +82,7 @@
   },
   {
     "type": "function",
-    "name": "bestRunOf",
+    "name": "addTickets",
     "inputs": [
       {
         "name": "season",
@@ -93,31 +93,20 @@
         "name": "player",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "outputs": [
+      },
       {
         "name": "runId",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "score",
+        "name": "tickets",
         "type": "uint32",
         "internalType": "uint32"
-      },
-      {
-        "name": "ticks",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "qualified",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -163,30 +152,6 @@
       }
     ],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claimed",
-    "inputs": [
-      {
-        "name": "season",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "player",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -331,11 +296,6 @@
             "name": "commitSlack",
             "type": "uint64",
             "internalType": "uint64"
-          },
-          {
-            "name": "minClears",
-            "type": "uint8",
-            "internalType": "uint8"
           }
         ]
       }
@@ -422,11 +382,6 @@
             "name": "commitSlack",
             "type": "uint64",
             "internalType": "uint64"
-          },
-          {
-            "name": "minClears",
-            "type": "uint8",
-            "internalType": "uint8"
           }
         ]
       }
@@ -441,6 +396,11 @@
         "name": "season",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -448,8 +408,19 @@
   },
   {
     "type": "function",
-    "name": "pendingRollover",
-    "inputs": [],
+    "name": "prizeOf",
+    "inputs": [
+      {
+        "name": "season",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "outputs": [
       {
         "name": "",
@@ -471,44 +442,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "recordRun",
-    "inputs": [
-      {
-        "name": "season",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "player",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "runId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "score",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "ticks",
-        "type": "uint32",
-        "internalType": "uint32"
-      },
-      {
-        "name": "clears",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -566,17 +499,22 @@
         "internalType": "uint256"
       },
       {
+        "name": "games",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "tickets",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
         "name": "playersPot",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
         "name": "totalClaimed",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "totalQualifiedPoints",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -622,6 +560,40 @@
         "name": "",
         "type": "uint8",
         "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tallyOf",
+    "inputs": [
+      {
+        "name": "season",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "games",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "tickets",
+        "type": "uint128",
+        "internalType": "uint128"
+      },
+      {
+        "name": "claimed",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -675,49 +647,6 @@
       }
     ],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "event",
-    "name": "BestRunRecorded",
-    "inputs": [
-      {
-        "name": "season",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "player",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "runId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "score",
-        "type": "uint32",
-        "indexed": false,
-        "internalType": "uint32"
-      },
-      {
-        "name": "ticks",
-        "type": "uint32",
-        "indexed": false,
-        "internalType": "uint32"
-      },
-      {
-        "name": "qualified",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      }
-    ],
-    "anonymous": false
   },
   {
     "type": "event",
@@ -791,12 +720,6 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      },
-      {
-        "name": "rolledOver",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -834,6 +757,37 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TicketsAdded",
+    "inputs": [
+      {
+        "name": "season",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "runId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "tickets",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
       }
     ],
     "anonymous": false
@@ -927,12 +881,17 @@
   },
   {
     "type": "error",
-    "name": "MinClearsOutOfRange",
+    "name": "NoGames",
     "inputs": [
       {
-        "name": "minClears",
-        "type": "uint8",
-        "internalType": "uint8"
+        "name": "season",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
       }
     ]
   },
@@ -969,22 +928,6 @@
     "inputs": [
       {
         "name": "caller",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "NotQualified",
-    "inputs": [
-      {
-        "name": "season",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "player",
         "type": "address",
         "internalType": "address"
       }
@@ -1047,17 +990,6 @@
   {
     "type": "error",
     "name": "SeasonNotClosed",
-    "inputs": [
-      {
-        "name": "season",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "SeasonRolledOver",
     "inputs": [
       {
         "name": "season",

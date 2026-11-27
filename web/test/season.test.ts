@@ -11,8 +11,8 @@ import { closable, formatDuration, readSeason, seasonPhase } from "../src/pages/
 const END = 2_000_000n;
 const SETTLEMENT_END = END + 172_800n;
 
-function phaseView(closed = false, totalQualifiedPoints = 10n) {
-  return { facts: { end: END } as never, settlementEnd: SETTLEMENT_END, closed, totalQualifiedPoints, closesNext: true };
+function phaseView(closed = false) {
+  return { facts: { end: END } as never, settlementEnd: SETTLEMENT_END, closed, closesNext: true };
 }
 
 describe("the season's phase", () => {
@@ -28,8 +28,8 @@ describe("the season's phase", () => {
     expect(seasonPhase(phaseView(), SETTLEMENT_END + 1n)).toBe("Its settlement has ended: anyone may close it.");
   });
 
-  it("says a closed season with no qualified run rolled over", () => {
-    expect(seasonPhase(phaseView(true, 0n), SETTLEMENT_END + 1n)).toContain("rolled over");
+  it("says a closed season's players claim their prizes", () => {
+    expect(seasonPhase(phaseView(true), SETTLEMENT_END + 1n)).toBe("Closed: each player claims the prize of their games.");
   });
 
   it("formats a duration", () => {
@@ -51,17 +51,15 @@ describe("the close", () => {
   });
 });
 
-/** Season 1 with fees of 1,000 wei, a 10 % rake, 7 wei rolled over, and no settled run; closed,
- *  its players' pot is 500 wei. */
+/** Season 1 with fees of 1,000 wei, a 10 % rake, and no run; closed, its players' pot is 900 wei. */
 function seasonOne(closed: boolean) {
   const season = {
     interface: new Interface(SEASON_ABI),
     getAddress: async () => "0x0000000000000000000000000000000000000005",
-    paramsOf: async () => ({ runFee: 50n, rulesVersion: 2n, rakeBp: 1_000n, grace: 172_800n, commitSlack: 120n, minClears: 1n }),
-    seasons: async () => ({ start: 1n, closed, fees: 1_000n, playersPot: closed ? 500n : 0n, totalQualifiedPoints: 0n }),
+    paramsOf: async () => ({ runFee: 50n, rulesVersion: 2n, rakeBp: 1_000n, grace: 172_800n, commitSlack: 120n }),
+    seasons: async () => ({ start: 1n, closed, fees: 1_000n, games: 0n, tickets: 0n, playersPot: closed ? 900n : 0n }),
     endOf: async () => END,
     settlementEndOf: async () => SETTLEMENT_END,
-    pendingRollover: async () => 7n,
     lastClosedSeason: async () => (closed ? 1n : 0n),
   };
   const challenge = { interface: new Interface(CHALLENGE_ABI), getAddress: async () => "0x0000000000000000000000000000000000000006" };
@@ -70,18 +68,13 @@ function seasonOne(closed: boolean) {
 }
 
 describe("the players' pot of the claims", () => {
-  it("is projected from the fees, the rake and the rollover while the season is open", async () => {
+  it("is projected from the fees and the rake while the season is open", async () => {
     const { contracts, provider } = seasonOne(false);
-    expect((await readSeason(contracts, provider, 1n)).playersPot).toBe(907n);
-  });
-
-  it("leaves out the rollover while an earlier season is still to close", async () => {
-    const { contracts, provider } = seasonOne(false);
-    expect((await readSeason(contracts, provider, 2n)).playersPot).toBe(900n);
+    expect((await readSeason(contracts, provider, 1n)).playersPot).toBe(900n);
   });
 
   it("is the contract's once the season has closed", async () => {
     const { contracts, provider } = seasonOne(true);
-    expect((await readSeason(contracts, provider, 1n)).playersPot).toBe(500n);
+    expect((await readSeason(contracts, provider, 1n)).playersPot).toBe(900n);
   });
 });

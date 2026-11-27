@@ -43,6 +43,5 @@
   "rakeBp": 1000,
   "length": 1209600,
   "grace": 172800,
-  "commitSlack": 120,
-  "minClears": 1
+  "commitSlack": 120
 }

@@ -5,14 +5,23 @@ import {Vm} from "forge-std/Vm.sol";
 import {Challenge, Run, Settlement, SettlementStatus} from "../src/Challenge.sol";
 import {IReferee, Outcome} from "../src/interfaces/IReferee.sol";
 import {MockReferee} from "../src/mocks/MockReferee.sol";
-import {Season, SeasonParams, BestRun} from "../src/Season.sol";
+import {Season, SeasonParams} from "../src/Season.sol";
 import {ChallengeFixture, calldataGasOf, journalOf, runOf} from "./Challenge.t.sol";
-import {RULES_VERSION, COMMIT_SLACK, defaultParams, bestRunOf, settlementEndOf} from "./Season.t.sol";
+import {
+    RULES_VERSION,
+    COMMIT_SLACK,
+    defaultLevelOf,
+    defaultParams,
+    settlementEndOf,
+    stateOf,
+    tallyOf
+} from "./Season.t.sol";
 
 uint8 constant MODE_TRAINING = 0;
 uint8 constant MODE_CHALLENGE = 1;
 uint8 constant END_REASON_CLEARED = 2;
 uint8 constant END_REASON_OUT_OF_LIVES = 3;
+uint8 constant END_REASON_TIME_LIMIT = 4;
 uint256 constant TICKS_PER_SECOND = 15;
 
 /// What a run's settlement submits for one level, with the Outcome the referee returns for it.
@@ -24,13 +33,30 @@ struct PlayedLevel {
 }
 
 function settlementOf(Challenge challenge, uint256 runId) view returns (Settlement memory settlement) {
-    (settlement.status, settlement.settledLevels, settlement.clears, settlement.score, settlement.ticks) =
-        challenge.settlements(runId);
+    (
+        settlement.status,
+        settlement.settledLevels,
+        settlement.clears,
+        settlement.score,
+        settlement.ticks,
+        settlement.tickets
+    ) = challenge.settlements(runId);
 }
 
-/// The level bytes whose id `defaultParams` puts in `slot`.
-function defaultLevelOf(uint256 slot) pure returns (bytes memory) {
-    return abi.encodePacked("level", slot);
+/// README §8.4's ticket of a game, from its Outcome and the target at offset 470 of its level
+/// bytes, a big-endian u16: min(claimBp, target) × 10,000 / target, rounded down, or 0 when the
+/// lives ran out.
+function ticketOf(Outcome memory outcome, bytes memory level) pure returns (uint32) {
+    if (outcome.endReason == END_REASON_OUT_OF_LIVES) return 0;
+    uint256 target = uint256(uint8(level[470])) << 8 | uint8(level[471]);
+    uint256 claimBp = outcome.claimBp < target ? outcome.claimBp : target;
+    return uint32(claimBp * 10_000 / target);
+}
+
+function ticketsOf(PlayedLevel[6] memory played) pure returns (uint32 tickets) {
+    for (uint256 i; i < 6; ++i) {
+        tickets += ticketOf(played[i].outcome, played[i].level);
+    }
 }
 
 /// Level `slot` of a `defaultParams` season, played at `levelIndex` of a run, with the Outcome of
@@ -242,19 +268,21 @@ abstract contract SettlementFixture is ChallengeFixture {
         }
     }
 
-    function expectedRecordRun(uint256 runId, PlayedLevel[6] memory played) internal view returns (bytes memory) {
-        (uint32 score, uint32 ticks, uint8 clears) = totalsOf(played);
-        return abi.encodeCall(Season.recordRun, (number, runOf(challenge, runId).player, runId, score, ticks, clears));
+    function expectedAddTickets(uint256 runId, PlayedLevel[6] memory played) internal view returns (bytes memory) {
+        return abi.encodeCall(Season.addTickets, (number, runOf(challenge, runId).player, runId, ticketsOf(played)));
     }
 
+    /// The run settled on time, with its Outcomes' sums, and its tickets added to its player's,
+    /// who has settled no other run.
     function assertRecorded(uint256 runId, PlayedLevel[6] memory played) internal view {
         (uint32 score, uint32 ticks, uint8 clears) = totalsOf(played);
-        BestRun memory best = bestRunOf(season, number, runOf(challenge, runId).player);
-        assertEq(uint8(settlementOf(challenge, runId).status), uint8(SettlementStatus.Settled), "status");
-        assertEq(best.runId, runId, "best run");
-        assertEq(best.score, score, "score");
-        assertEq(best.ticks, ticks, "ticks");
-        assertEq(best.qualified, clears >= season.paramsOf(number).minClears, "qualified");
+        Settlement memory settlement = settlementOf(challenge, runId);
+        assertEq(uint8(settlement.status), uint8(SettlementStatus.Settled), "status");
+        assertEq(settlement.score, score, "score");
+        assertEq(settlement.ticks, ticks, "ticks");
+        assertEq(settlement.clears, clears, "clears");
+        assertEq(settlement.tickets, ticketsOf(played), "tickets");
+        assertEq(tallyOf(season, number, runOf(challenge, runId).player).tickets, ticketsOf(played), "player's tickets");
     }
 }
 
@@ -268,8 +296,8 @@ contract SettlementTest is SettlementFixture {
         return vm.parseJsonBytes(fixture, ".levelIds[0].level");
     }
 
-    function expectNoRecordRun() private {
-        vm.expectCall(address(season), abi.encodeWithSelector(Season.recordRun.selector), 0);
+    function expectNoTickets() private {
+        vm.expectCall(address(season), abi.encodeWithSelector(Season.addTickets.selector), 0);
     }
 
     // Happy paths, with the vectors' Outcomes.
@@ -293,21 +321,27 @@ contract SettlementTest is SettlementFixture {
         assertRecorded(runId, played);
     }
 
-    function test_SettleRun_PassesTheRunsScoreTicksAndClearsToRecordRun() public {
+    function test_SettleRun_PassesTheRunsTicketsToAddTickets() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRun();
-        vm.expectCall(address(season), expectedRecordRun(runId, played), 1);
+        vm.expectCall(address(season), expectedAddTickets(runId, played), 1);
         settleRun(runId, played);
     }
 
-    function test_SettleLevel_PassesTheRunsScoreTicksAndClearsToRecordRun() public {
+    function test_SettleLevel_PassesTheRunsTicketsToAddTickets() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRun();
-        vm.expectCall(address(season), expectedRecordRun(runId, played), 1);
+        vm.expectCall(address(season), expectedAddTickets(runId, played), 1);
         settleLevels(runId, played, 6);
     }
 
-    function test_SettleLevel_DoesNotRecordTheRunBeforeItsSixthLevel() public {
+    function test_SettleRun_AddsTheRunsTicketsToTheSeason() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRun();
-        expectNoRecordRun();
+        settleRun(runId, played);
+        assertEq(stateOf(season, number).tickets, ticketsOf(played));
+    }
+
+    function test_SettleLevel_DoesNotAddTicketsBeforeItsSixthLevel() public {
+        (uint256 runId, PlayedLevel[6] memory played) = committedRun();
+        expectNoTickets();
         settleLevels(runId, played, 5);
     }
 
@@ -321,15 +355,15 @@ contract SettlementTest is SettlementFixture {
         (uint256 runId, PlayedLevel[6] memory played) = committedRun();
         vm.prank(bob);
         challenge.settleRun(runId, levelBytesOf(played), journalBytesOf(played), "");
-        assertEq(bestRunOf(season, number, alice).runId, runId, "alice is credited");
-        assertEq(bestRunOf(season, number, bob).runId, 0, "bob is not");
+        assertEq(tallyOf(season, number, alice).tickets, ticketsOf(played), "alice is credited");
+        assertEq(tallyOf(season, number, bob).tickets, 0, "bob is not");
     }
 
     function test_SettleRun_EmitsRunSettled() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRun();
         (uint32 score, uint32 ticks, uint8 clears) = totalsOf(played);
         vm.expectEmit(address(challenge));
-        emit Challenge.RunSettled(runId, alice, score, ticks, clears);
+        emit Challenge.RunSettled(runId, alice, score, ticks, clears, ticketsOf(played));
         settleRun(runId, played);
     }
 
@@ -631,7 +665,7 @@ contract SettlementTest is SettlementFixture {
 
     function test_SettleRun_ALateRunEarnsNothing() public {
         (uint256 runId, PlayedLevel[6] memory played) = lateRun();
-        expectNoRecordRun();
+        expectNoTickets();
         settleRun(runId, played);
     }
 
@@ -649,7 +683,7 @@ contract SettlementTest is SettlementFixture {
 
     function test_SettleLevel_ALateRunEarnsNothing() public {
         (uint256 runId, PlayedLevel[6] memory played) = lateRun();
-        expectNoRecordRun();
+        expectNoTickets();
         settleLevels(runId, played, 6);
     }
 
@@ -665,6 +699,134 @@ contract SettlementTest is SettlementFixture {
         vm.expectEmit(address(challenge));
         emit Challenge.RunLate(runId, run.committedAt - 1, run.committedAt);
         settleRun(runId, played);
+    }
+
+    function test_SettleRun_ALateRunsGamesStillCountInTheSeason() public {
+        (uint256 runId, PlayedLevel[6] memory played) = lateRun();
+        settleRun(runId, played);
+        assertEq(stateOf(season, number).games, 6, "season's games");
+        assertEq(tallyOf(season, number, alice).games, 6, "player's games");
+        assertEq(tallyOf(season, number, alice).tickets, 0, "player's tickets");
+    }
+
+    /// Settling a rival's late run takes nothing from that rival: its games keep earning a lost
+    /// game's prize, as if the run had never settled.
+    function test_SettleRun_SettlingALateRunLeavesItsPlayersPrizeUnchanged() public {
+        (uint256 bobRunId, PlayedLevel[6] memory bobPlayed) = committedRunOf(bob);
+        settleRun(bobRunId, bobPlayed);
+        (uint256 runId, PlayedLevel[6] memory played) = lateRun();
+        uint256 prizeBefore = season.prizeOf(number, alice);
+        settleRun(runId, played);
+        assertEq(season.prizeOf(number, alice), prizeBefore);
+    }
+
+    // Tickets (README §8.4): min(claimBp, target) × 10,000 / target, or 0 out of lives.
+
+    /// Alice's run of the vectors' levels, with each Outcome's end reason and claim replaced.
+    function committedRunWith(uint8 endReason, uint16 claimBp)
+        private
+        returns (uint256 runId, PlayedLevel[6] memory played)
+    {
+        runId = startAndRevealAs(alice, number);
+        played = playedLevelsOf(runId);
+        for (uint256 i; i < 6; ++i) {
+            played[i].outcome.endReason = endReason;
+            played[i].outcome.claimBp = claimBp;
+        }
+        commitPlayed(alice, runId, played);
+    }
+
+    function test_SettleRun_RecordsTheTicketsOfTheVectorsResults() public {
+        (uint256 runId, PlayedLevel[6] memory played) = committedRun();
+        settleRun(runId, played);
+        // Cleared, out of lives, cleared, 7,907 of 8,000 bp, cleared, 7,357 of 7,500 bp.
+        assertEq(settlementOf(challenge, runId).tickets, 10_000 + 0 + 10_000 + 9_883 + 10_000 + 9_809);
+    }
+
+    function test_SettleRun_AGameAboveItsTargetEarnsAFullTicket() public {
+        (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(END_REASON_TIME_LIMIT, 10_000);
+        settleRun(runId, played);
+        assertEq(settlementOf(challenge, runId).tickets, 60_000);
+    }
+
+    function test_SettleRun_AGameThatRanOutOfLivesEarnsNoTicket() public {
+        (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(END_REASON_OUT_OF_LIVES, 10_000);
+        settleRun(runId, played);
+        assertEq(settlementOf(challenge, runId).tickets, 0);
+    }
+
+    function test_SettleRun_ACommittedGameKeepsTheTicketOfItsClaim() public {
+        (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(1, 3_000);
+        settleRun(runId, played);
+        // 3,000 bp of targets of 7,500 (four levels), 9,000 and 8,000 bp.
+        assertEq(settlementOf(challenge, runId).tickets, 4 * 4_000 + 3_333 + 3_750);
+    }
+
+    function testFuzz_SettleRun_TicketsFollowTheClaimTheTargetAndTheEndReason(uint8 endReason, uint16 claimBp) public {
+        endReason = uint8(bound(endReason, 1, 4));
+        claimBp = uint16(bound(claimBp, 0, 10_000));
+        (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(endReason, claimBp);
+        settleRun(runId, played);
+        assertEq(settlementOf(challenge, runId).tickets, ticketsOf(played));
+    }
+
+    function testFuzz_SettleLevel_TicketsFollowTheClaimTheTargetAndTheEndReason(uint8 endReason, uint16 claimBp)
+        public
+    {
+        endReason = uint8(bound(endReason, 1, 4));
+        claimBp = uint16(bound(claimBp, 0, 10_000));
+        (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(endReason, claimBp);
+        settleLevels(runId, played, 6);
+        assertEq(settlementOf(challenge, runId).tickets, ticketsOf(played));
+    }
+
+    // The order of settlements (README §8.4): the close reads only the sums.
+
+    /// A player's run of the vectors' levels, revealed and committed at once, so it is on time.
+    function committedRunOf(address player) private returns (uint256 runId, PlayedLevel[6] memory played) {
+        runId = startAndRevealAs(player, number);
+        played = playedLevelsOf(runId);
+        commitPlayed(player, runId, played);
+    }
+
+    function prizesAfterSettling(uint256[3] memory runIds, PlayedLevel[6][3] memory played, uint256[3] memory order)
+        private
+        returns (uint256 alicePrize, uint256 bobPrize)
+    {
+        for (uint256 k; k < 3; ++k) {
+            settleRun(runIds[order[k]], played[order[k]]);
+        }
+        closeSeason();
+        return (season.prizeOf(number, alice), season.prizeOf(number, bob));
+    }
+
+    function closeSeason() private {
+        vm.warp(settlementEndOf(season, number) + 1);
+        season.closeSeason();
+    }
+
+    function test_SettleRun_TheOrderOfSettlementsDoesNotChangeThePrizes() public {
+        uint256[3] memory runIds;
+        PlayedLevel[6][3] memory played;
+        (runIds[0], played[0]) = committedRunOf(alice);
+        (runIds[1], played[1]) = committedRunOf(bob);
+        (runIds[2], played[2]) = committedRunOf(alice);
+        startRunAs(bob, number);
+        uint256 snapshot = vm.snapshotState();
+        (uint256 aliceFirst, uint256 bobFirst) = prizesAfterSettling(runIds, played, [uint256(0), 1, 2]);
+        vm.revertToState(snapshot);
+        (uint256 aliceSecond, uint256 bobSecond) = prizesAfterSettling(runIds, played, [uint256(2), 1, 0]);
+        assertEq(aliceFirst, aliceSecond, "alice");
+        assertEq(bobFirst, bobSecond, "bob");
+    }
+
+    function test_SettleRun_SettlingAnOnTimeRunNeverLowersItsPlayersPrize() public {
+        (uint256 bobRunId, PlayedLevel[6] memory bobPlayed) = committedRunOf(bob);
+        settleRun(bobRunId, bobPlayed);
+        (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(END_REASON_TIME_LIMIT, 100);
+        uint256 prizeBefore = season.prizeOf(number, alice);
+        settleRun(runId, played);
+        assertGe(season.prizeOf(number, alice), prizeBefore);
     }
 }
 

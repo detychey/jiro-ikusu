@@ -1,14 +1,15 @@
-// Settlement from the dApp (plan M5.3): the player's best run in D10's order, settled with one
-// settleRun, or level by level when settleRun does not fit in one transaction, with retries and
-// decoded reverts; on zk, the operator settles, and the page shows the cutoff.
+// Settlement from the dApp (plan M5.3, M5.15): the player's scoring runs, cheapest first, each
+// settled with one settleRun, or level by level when settleRun does not fit in one transaction,
+// with retries and decoded reverts; on zk, the operator settles, and the page shows the cutoff.
+// Tickets and the order of settlement (README §8.4).
 
 import { Interface, makeError } from "ethers";
 import { describe, expect, it } from "vitest";
 import { CHALLENGE_ABI } from "../src/chain/bindings/Challenge";
 import type { Contracts } from "../src/chain/contracts";
 import type { Deployment } from "../src/chain/deployments";
-import { bestRun, operatorHandoff, settleOnchain, settlesInBrowser } from "../src/pages/settle";
-import { ranksAbove } from "../src/run/rank";
+import { operatorHandoff, scoringRuns, settleOnchain, settlesInBrowser } from "../src/pages/settle";
+import { cheaperFirst, ticketOf } from "../src/run/score";
 import { runFileOf } from "../src/run/runfile";
 import type { RunRecord } from "../src/run/store";
 import { closedRun, playedRun, shippedLevels } from "./challenge";
@@ -23,36 +24,66 @@ function committed(record: RunRecord, runId: string, committedAt = 1_100): RunRe
 }
 
 
-describe("the best run", () => {
-  it("ranks a qualifying run above a higher score that does not qualify", () => {
-    expect(ranksAbove({ qualified: true, score: 1, ticks: 9 }, { qualified: false, score: 9, ticks: 1 })).toBe(true);
+/** Level bytes v1 that carry only a target, at offset 470 (README §5). */
+function levelWithTarget(target: number): Uint8Array {
+  const level = new Uint8Array(472);
+  level[470] = target >> 8;
+  level[471] = target & 0xff;
+  return level;
+}
+
+describe("a game's ticket", () => {
+  it("is the claim over the target, rounded down", () => {
+    expect(ticketOf({ endReason: "Time limit", claimBp: 7_499 }, levelWithTarget(7_500))).toBe(9_998);
   });
 
-  it("ranks fewer ticks above more on the same score", () => {
-    expect(ranksAbove({ qualified: true, score: 5, ticks: 8 }, { qualified: true, score: 5, ticks: 9 })).toBe(true);
+  it("is capped at a full ticket above the target", () => {
+    expect(ticketOf({ endReason: "Committed", claimBp: 9_000 }, levelWithTarget(5_000))).toBe(10_000);
   });
 
-  it("does not rank a full tie above", () => {
-    expect(ranksAbove({ qualified: true, score: 5, ticks: 8 }, { qualified: true, score: 5, ticks: 8 })).toBe(false);
+  it("is 0 when the lives ran out", () => {
+    expect(ticketOf({ endReason: "Out of lives", claimBp: 9_000 }, levelWithTarget(5_000))).toBe(0);
   });
 
-  it("is the season's committed run with the highest score", async () => {
+  it("refuses bytes with no target", () => {
+    expect(() => ticketOf({ endReason: "Cleared", claimBp: 9_000 }, new Uint8Array(472))).toThrow("no target at offset 470");
+  });
+});
+
+describe("the order of settlement", () => {
+  it("settles the run of fewer ticks first", () => {
+    expect([{ ticks: 900, runId: 1n }, { ticks: 30, runId: 2n }].sort(cheaperFirst).map(({ runId }) => runId)).toEqual([2n, 1n]);
+  });
+
+  it("settles the run committed first on a tie", () => {
+    expect([{ ticks: 30, runId: 2n }, { ticks: 30, runId: 1n }].sort(cheaperFirst).map(({ runId }) => runId)).toEqual([1n, 2n]);
+  });
+});
+
+describe("the scoring runs", () => {
+  it("are the season's committed runs with a ticket above 0", async () => {
     const records = [committed(closedRun(core, LEVELS), "1"), committed(await playedRun(core, LEVELS), "2")];
-    expect(bestRun(core, LEVELS, records, 1n, 6)?.record.runId).toBe("2");
+    expect(scoringRuns(core, LEVELS, records, 1n).map(({ runId }) => runId)).toEqual([2n]);
   });
 
-  it("leaves out a run of another season", async () => {
-    const records = [committed(closedRun(core, LEVELS), "1"), { ...committed(await playedRun(core, LEVELS), "2"), season: "2" }];
-    expect(bestRun(core, LEVELS, records, 1n, 6)?.record.runId).toBe("1");
+  it("are all of them, cheapest first", async () => {
+    const played = await playedRun(core, LEVELS);
+    const records = [committed(played, "2"), committed(played, "1")];
+    expect(scoringRuns(core, LEVELS, records, 1n).map(({ runId }) => runId)).toEqual([1n, 2n]);
   });
 
-  it("leaves out a run that is not committed", async () => {
-    expect(bestRun(core, LEVELS, [closedRun(core, LEVELS)], 1n, 1)).toBeUndefined();
+  it("leave out a run of another season", async () => {
+    const records = [{ ...committed(await playedRun(core, LEVELS), "2"), season: "2" }];
+    expect(scoringRuns(core, LEVELS, records, 1n)).toEqual([]);
   });
 
-  it("leaves out a run committed after its deadline", async () => {
-    const records = [committed(closedRun(core, LEVELS), "1"), committed(await playedRun(core, LEVELS), "2", 1_000_000)];
-    expect(bestRun(core, LEVELS, records, 1n, 6)?.record.runId).toBe("1");
+  it("leave out a run that is not committed", async () => {
+    expect(scoringRuns(core, LEVELS, [await playedRun(core, LEVELS)], 1n)).toEqual([]);
+  });
+
+  it("leave out a run committed after its deadline", async () => {
+    const records = [committed(await playedRun(core, LEVELS), "2", 1_000_000)];
+    expect(scoringRuns(core, LEVELS, records, 1n)).toEqual([]);
   });
 });
 
@@ -174,6 +205,6 @@ describe("the zk backend", () => {
   });
 
   it("asks the player for nothing", () => {
-    expect(operatorHandoff("Arbitrum Sepolia", 1_800_000_000n)).toContain("the operator settles each player's best run from the chain's data, so you have nothing to send");
+    expect(operatorHandoff("Arbitrum Sepolia", 1_800_000_000n)).toContain("the operator settles every scoring run from the chain's data, so you have nothing to send");
   });
 });

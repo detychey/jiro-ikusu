@@ -943,7 +943,7 @@ ETH costs at Arbitrum One's base fee of 0.020036 gwei (block 520,514,288, 2026-1
 | One verified run, against its 0.00005 ETH fee | a bots' run's `settleRun` (29,858,349 gas, M4.16), with nothing to prove: 0.00060 ETH ($1.37), 12 times the fee | 804,194 gas (verification and settlement), 0.0000161 ETH, plus 0.0000184 ETH of proving: 0.0000345 ETH ($0.079), 69% of the fee |
 | Aggregation option (M4.8) | does not apply | about 278,653 gas per batch, plus about 8,400 per run, against 227,591 per run; the proving price per run does not fall ([Season aggregation](#season-aggregation)) |
 
-Verification is by exception (README §7.3): a season verifies each player's best run, not every run.
+Verification is by exception (README §7.3): a season verifies each player's best run, not every run. Under the v1 payout (M5.15), it verifies every scoring run, one with a ticket above 0.
 
 ### Aggregation on testnet
 

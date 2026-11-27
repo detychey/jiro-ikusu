@@ -1,5 +1,5 @@
-// The operator's settlement of a season (plan M5.5): which committed runs it settles, from chain
-// state faked here and run files the core replays.
+// The operator's settlement of a season (plan M5.5, M5.15): which committed runs it settles, from
+// chain state faked here and run files the core replays.
 
 import { describe, expect, it } from "vitest";
 import type { Contracts } from "../src/chain/contracts";
@@ -25,17 +25,8 @@ interface ChainRun {
   status?: bigint;
 }
 
-interface Recorded {
-  runId: bigint;
-  score: bigint;
-  ticks: bigint;
-  qualified: boolean;
-}
-
-const NONE: Recorded = { runId: 0n, score: 0n, ticks: 0n, qualified: false };
-
 /** Challenge and Season as the operator reads them, holding `runs` as run ids 1, 2, … */
-function chainOf(runs: ChainRun[], recorded: Record<string, Recorded> = {}): Pick<Contracts, "challenge" | "season"> {
+function chainOf(runs: ChainRun[]): Pick<Contracts, "challenge" | "season"> {
   const at = (runId: bigint) => runs[Number(runId) - 1] as ChainRun;
   return {
     challenge: {
@@ -46,10 +37,7 @@ function chainOf(runs: ChainRun[], recorded: Record<string, Recorded> = {}): Pic
       },
       settlements: async (runId: bigint) => ({ status: at(runId).status ?? 0n }),
     },
-    season: {
-      paramsOf: async () => ({ minClears: 1n, commitSlack: 120n }),
-      bestRunOf: async (_: bigint, player: string) => recorded[player] ?? NONE,
-    },
+    season: { paramsOf: async () => ({ commitSlack: 120n }) },
   } as unknown as Pick<Contracts, "challenge" | "season">;
 }
 
@@ -73,18 +61,25 @@ function readerOf(runs: ChainRun[]): CommittedReader {
   };
 }
 
-async function selected(runs: ChainRun[], recorded?: Record<string, Recorded>): Promise<bigint[]> {
-  return (await runsToSettle(chainOf(runs, recorded), core, SEASON, readerOf(runs))).runs.map(({ runId }) => runId);
+async function selected(runs: ChainRun[]): Promise<bigint[]> {
+  return (await runsToSettle(chainOf(runs), core, SEASON, readerOf(runs))).runs.map(({ runId }) => runId);
 }
 
 describe("the operator's settlement", () => {
-  it("settles each player's best on-time run", async () => {
-    const runs = [{ record: closedRun(core, LEVELS) }, { record: await playedRun(core, LEVELS) }, { record: closedRun(core, LEVELS), player: OTHER }];
-    expect(await selected(runs)).toEqual([2n, 3n]);
+  it("settles every on-time scoring run, of every player", async () => {
+    const played = await playedRun(core, LEVELS);
+    const runs = [{ record: played }, { record: played }, { record: played, player: OTHER }];
+    expect(await selected(runs)).toEqual([1n, 2n, 3n]);
+  });
+
+  it("leaves out a run whose tickets are all 0, which earns the same settled or not", async () => {
+    const runs = [{ record: closedRun(core, LEVELS) }, { record: await playedRun(core, LEVELS) }];
+    expect(await selected(runs)).toEqual([2n]);
   });
 
   it("leaves out a run committed after its deadline", async () => {
-    const runs = [{ record: closedRun(core, LEVELS) }, { record: await playedRun(core, LEVELS), committedAt: 2_000n }];
+    const played = await playedRun(core, LEVELS);
+    const runs = [{ record: played }, { record: played, committedAt: 2_000n }];
     expect(await selected(runs)).toEqual([1n]);
   });
 
@@ -94,18 +89,6 @@ describe("the operator's settlement", () => {
     expect(await selected(runs)).toEqual([]);
   });
 
-  it("leaves out a run that ranks no higher than the best Season holds", async () => {
-    const played = await playedRun(core, LEVELS);
-    const [best] = (await runsToSettle(chainOf([{ record: played }]), core, SEASON, readerOf([{ record: played }]))).runs;
-    const recorded = { [PLAYER]: { runId: 9n, score: BigInt(best?.score ?? 0), ticks: BigInt(best?.ticks ?? 0), qualified: best?.qualified ?? false } };
-    expect(await selected([{ record: played }], recorded)).toEqual([]);
-  });
-
-  it("settles a run that ranks above the best Season holds", async () => {
-    const recorded = { [PLAYER]: { runId: 9n, score: 0n, ticks: 6n, qualified: false } };
-    expect(await selected([{ record: await playedRun(core, LEVELS) }], recorded)).toEqual([1n]);
-  });
-
   it("reports a run whose journals the core rejects as one that never settles", async () => {
     const closed = closedRun(core, LEVELS);
     const swapped = { ...closed, journals: [closed.journals[1], closed.journals[0], ...closed.journals.slice(2)] as string[] };
@@ -113,8 +96,9 @@ describe("the operator's settlement", () => {
     expect([runs.length, unread.length, rejected.map(({ runId }) => runId)]).toEqual([0, 0, [1n]]);
   });
 
-  it("reports a run whose Outcomes Challenge refuses, and settles the player's best run it accepts", async () => {
-    const runs = [{ record: closedRun(core, LEVELS) }, { record: inTrainingMode(await playedRun(core, LEVELS), 0) }];
+  it("reports a run whose Outcomes Challenge refuses, and settles the scoring run it accepts", async () => {
+    const played = await playedRun(core, LEVELS);
+    const runs = [{ record: played }, { record: inTrainingMode(played, 0) }];
     const { runs: settled, rejected } = await runsToSettle(chainOf(runs), core, SEASON, readerOf(runs));
     expect([settled.map(({ runId }) => runId), rejected]).toEqual([[1n], [{ runId: 2n, reason: "Challenge refuses its Outcomes: level 0's journal is of mode 0, not a Challenge's" }]]);
   });
@@ -122,11 +106,12 @@ describe("the operator's settlement", () => {
   it("no longer settles a run settled since the selection", async () => {
     const runs: ChainRun[] = [{ record: await playedRun(core, LEVELS) }];
     const [run] = (await runsToSettle(chainOf(runs), core, SEASON, readerOf(runs))).runs;
-    expect(await stillToSettle(chainOf([{ ...runs[0], status: 1n } as ChainRun]), SEASON, run as NonNullable<typeof run>)).toBe(false);
+    expect(await stillToSettle(chainOf([{ ...runs[0], status: 1n } as ChainRun]), run as NonNullable<typeof run>)).toBe(false);
   });
 
   it("reports a run it cannot read, and still settles the others", async () => {
-    const runs = [{ record: closedRun(core, LEVELS) }, { record: closedRun(core, LEVELS), player: OTHER }];
+    const played = await playedRun(core, LEVELS);
+    const runs = [{ record: played }, { record: played, player: OTHER }];
     const read: CommittedReader = async (runId) => {
       if (runId === 1n) throw new Error("no RunCommitted log");
       return readerOf(runs)(runId);

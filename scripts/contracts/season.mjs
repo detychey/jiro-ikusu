@@ -1,6 +1,6 @@
-// Season operations on deployments/<network>.json (plan M4.14 step 4, M5.8, M5.5). The operator's
-// settlement of a season's best runs is web/scripts/settle.mjs, which replays them with the web
-// app's core.
+// Season operations on deployments/<network>.json (plan M4.14 step 4, M5.8, M5.5, M5.15). The
+// operator's settlement of a season's scoring runs is web/scripts/settle.mjs, which replays them
+// with the web app's core.
 //   - open: opens the season of a season file on the newest generation, as Season's operator,
 //     after checking:
 //       - the season file: its keys, and the rules version, level ids and weights of the
@@ -15,17 +15,19 @@
 //     It writes the season number `open` assigned into the record, under the season file's name,
 //     and the referee it opened with into the season file, whose `referee` is null until then.
 //   - status: every season of every generation, read at one block: its dates, its runs (bought,
-//     revealed, committed, settled, late), fees, pot and claims, and each player's best run; and
-//     each Season's balance, rollover, rake owed and isSolvent(); and, for each zk generation
-//     outside the local chains, the check of the RISC Zero emergency stop its ZkReferee calls. It
-//     exits 1 if a Season is not solvent, or if a season that is not closed sits on a stop that
-//     fails its check (plan M5.10). --season keeps one season.
+//     revealed, committed, settled, late), fees, pot and claims, its games and tickets, and each
+//     player's games, tickets and prize of the v1 payout (README §8.4); and each Season's balance,
+//     rake owed and isSolvent(); and, for each zk generation outside the local chains, the check
+//     of the RISC Zero emergency stop its ZkReferee calls. The Seasons of BEST_RUN_SEASONS, which
+//     pay D10's earlier best run, show their seasons without players, and their rollover. It exits
+//     1 if a Season is not solvent, or if a season that is not closed sits on a stop that fails its
+//     check (plan M5.10). --season keeps one season.
 //   - close: closeSeason on each Season whose next season to close has passed its end plus grace.
 //   - withdraw: withdrawRake on each Season that owes rake, which goes to its treasury.
 //   - claim: the signer's claim in a closed season.
 //   - bots: --runs bot runs of the signer in a season of the newest generation, while it accepts
 //     runs: each pays, reveals, plays the six drawn levels with the playtest bots of e2e.mjs and
-//     commits; the operator settles the signer's best run (README §7.5). jiro-tools must be built.
+//     commits; the operator settles its scoring runs (README §7.5). jiro-tools must be built.
 // close and withdraw send nothing while nothing is due, and anyone may send them (README §8.4).
 // Usage: [DEPLOYER_KEY=…] node season.mjs open --network <network> --season seasons/<label>.json [--rpc <url>]
 //        node season.mjs status --network <network> [--season <label>] [--rpc <url>]
@@ -58,12 +60,45 @@ const SEASON_KEYS = [
   "length",
   "grace",
   "commitSlack",
-  "minClears",
 ];
 const FROM_CALIBRATION = ["rulesVersion", "levelIds", "weightsBp"];
-const INTEGER_KEYS = ["rakeBp", "length", "grace", "commitSlack", "minClears"];
+const INTEGER_KEYS = ["rakeBp", "length", "grace", "commitSlack"];
 const abiOf = (name) => JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "abi", `${name}.json`), "utf8"));
 const SEASON_ABI = abiOf("Season");
+// The Seasons of Arbitrum Sepolia's generations 1 and 2, which pay D10's earlier best run (README
+// §8.4), and the part of their Season's and Challenge's ABIs that status, close, withdraw and claim
+// read.
+export const BEST_RUN_SEASONS = ["0x0e9BcC5A9DBD9CAD05C531fC12E925164cfaDf6d", "0x8E9a993c9fb052dCEe447b2e8952319b000Ef446"];
+const BEST_RUN_SEASON_ABI = [
+  "function currentSeason() view returns (uint256)",
+  "function lastClosedSeason() view returns (uint256)",
+  "function pendingRollover() view returns (uint256)",
+  "function rakeOwed() view returns (uint256)",
+  "function isSolvent() view returns (bool)",
+  "function treasury() view returns (address)",
+  "function endOf(uint256 season) view returns (uint256)",
+  "function settlementEndOf(uint256 season) view returns (uint256)",
+  "function seasons(uint256 season) view returns (uint256 start, bool closed, bytes32 refereeCodehash, uint256 fees, uint256 playersPot, uint256 totalClaimed, uint256 totalQualifiedPoints)",
+  "function closeSeason() returns (uint256 season)",
+  "function claim(uint256 season) returns (uint256 amount)",
+  "function withdrawRake() returns (uint256 amount)",
+  "event SeasonClosed(uint256 indexed season, uint256 rake, uint256 playersPot, bool rolledOver)",
+  "event Claimed(uint256 indexed season, address indexed player, uint256 amount)",
+  "event RakeWithdrawn(uint256 amount)",
+  "error SettlementOpen(uint256 season, uint256 settlementEnd)",
+  "error SeasonNotClosed(uint256 season)",
+  "error SeasonRolledOver(uint256 season)",
+  "error NotQualified(uint256 season, address player)",
+  "error AlreadyClaimed(uint256 season, address player)",
+  "error TransferFailed(address to, uint256 amount)",
+];
+const BEST_RUN_CHALLENGE_ABI = [
+  "function runCount() view returns (uint256)",
+  "function runs(uint256 runId) view returns (address player, uint64 revealedAt, uint64 committedAt, uint256 season, bytes32 runNonce, bytes32 commitment)",
+  "function settlements(uint256 runId) view returns (uint8 status, uint8 settledLevels, uint8 clears, uint32 score, uint32 ticks)",
+];
+const paysBestRun = (address) => BEST_RUN_SEASONS.includes(getAddress(address));
+const seasonAbiOf = (address) => (paysBestRun(address) ? BEST_RUN_SEASON_ABI : SEASON_ABI);
 const CHALLENGE_ABI = abiOf("Challenge");
 // The contracts of e2e.mjs's liveContext, as their committed ABIs: bots needs no build of the contracts.
 const LIVE_ARTIFACTS = Object.fromEntries(["Season", "Challenge", "ArbBlockhashEntropy", "ZkReferee", "MockArbSys"].map((name) => [name, { abi: abiOf(name) }]));
@@ -116,7 +151,6 @@ export function seasonParamsOf(season, referee) {
     length: BigInt(season.length),
     grace: BigInt(season.grace),
     commitSlack: BigInt(season.commitSlack),
-    minClears: season.minClears,
   };
 }
 
@@ -208,47 +242,42 @@ async function readRuns(challenge, blockTag) {
 }
 
 /**
- * Season `number` at `blockTag`: Season's state of it, its runs among `runs`, and the best run and
- * claim of each player who bought one. Their qualified best scores must sum to the season's
- * totalQualifiedPoints, since every best run is a run its player bought.
+ * Season `number` at `blockTag`: Season's state of it, its runs among `runs`, and the games,
+ * tickets, prize and claim of each player who bought one. Their games and tickets must sum to the
+ * season's, since every game is a run's and every ticket a run's of its player. A Season of
+ * BEST_RUN_SEASONS has no games, tickets or prizes, and lists no player.
  */
-async function readSeasonStatus(season, number, runs, blockTag) {
-  const [state, end, settlementEnd, params] = await Promise.all([
+async function readSeasonStatus(season, bestRun, number, runs, blockTag) {
+  const [state, end, settlementEnd] = await Promise.all([
     season.seasons(number, { blockTag }),
     season.endOf(number, { blockTag }),
     season.settlementEndOf(number, { blockTag }),
-    season.paramsOf(number, { blockTag }),
   ]);
   const seasonRuns = runs.filter((run) => run.season === number);
-  const players = await Promise.all(
-    [...new Set(seasonRuns.map((run) => run.player))].map(async (player) => {
-      const [best, claimed] = await Promise.all([season.bestRunOf(number, player, { blockTag }), season.claimed(number, player, { blockTag })]);
-      return {
-        player,
-        runs: seasonRuns.filter((run) => run.player === player).length,
-        best: best.runId === 0n ? null : { runId: best.runId, score: best.score, ticks: best.ticks, qualified: best.qualified },
-        claimed,
-      };
-    }),
-  );
-  const qualifiedPoints = players.reduce((sum, { best }) => sum + (best?.qualified ? best.score : 0n), 0n);
-  if (qualifiedPoints !== state.totalQualifiedPoints) {
-    throw new Error(`season ${number}: its players' qualified best scores sum to ${qualifiedPoints}, not to Season's totalQualifiedPoints, ${state.totalQualifiedPoints}`);
-  }
-  return {
+  const common = {
     number,
     start: state.start,
     end,
     settlementEnd,
     closed: state.closed,
-    rakeBp: params.rakeBp,
     fees: state.fees,
     playersPot: state.playersPot,
     totalClaimed: state.totalClaimed,
-    totalQualifiedPoints: state.totalQualifiedPoints,
     runs: countRuns(seasonRuns),
-    players,
   };
+  if (bestRun) return { ...common, paysBestRun: true, players: [] };
+  const players = await Promise.all(
+    [...new Set(seasonRuns.map((run) => run.player))].map(async (player) => {
+      const [tally, prize] = await Promise.all([season.tallyOf(number, player, { blockTag }), season.prizeOf(number, player, { blockTag })]);
+      return { player, runs: seasonRuns.filter((run) => run.player === player).length, games: tally.games, tickets: tally.tickets, prize, claimed: tally.claimed };
+    }),
+  );
+  for (const key of ["games", "tickets"]) {
+    const sum = players.reduce((total, player) => total + player[key], 0n);
+    if (sum !== state[key]) throw new Error(`season ${number}: its players' ${key} sum to ${sum}, not to Season's ${state[key]}`);
+  }
+  const { rakeBp } = await season.paramsOf(number, { blockTag });
+  return { ...common, paysBestRun: false, rakeBp, games: state.games, tickets: state.tickets, players };
 }
 
 /** The check of the RISC Zero emergency stop that a ZkReferee calls, its failure recorded, not thrown. */
@@ -270,13 +299,14 @@ export async function readStatus({ provider, record, label }) {
   const generations = [];
   for (const generation of record.generations) {
     if (label !== undefined && !(label in generation.seasons)) continue;
-    const season = new Contract(generation.Season, SEASON_ABI, provider);
-    const challenge = new Contract(generation.Challenge, CHALLENGE_ABI, provider);
+    const bestRun = paysBestRun(generation.Season);
+    const season = new Contract(generation.Season, seasonAbiOf(generation.Season), provider);
+    const challenge = new Contract(generation.Challenge, bestRun ? BEST_RUN_CHALLENGE_ABI : CHALLENGE_ABI, provider);
     const labelOf = new Map(Object.entries(generation.seasons).map(([name, number]) => [BigInt(number), name]));
     const [currentSeason, balance, pendingRollover, rakeOwed, solvent, runs] = await Promise.all([
       season.currentSeason({ blockTag }),
       provider.getBalance(generation.Season, blockTag),
-      season.pendingRollover({ blockTag }),
+      bestRun ? season.pendingRollover({ blockTag }) : null,
       season.rakeOwed({ blockTag }),
       season.isSolvent({ blockTag }),
       readRuns(challenge, blockTag),
@@ -286,7 +316,7 @@ export async function readStatus({ provider, record, label }) {
       if (label === undefined || labelOf.get(number) === label) numbers.push(number);
     }
     const seasons = await Promise.all(
-      numbers.map(async (number) => ({ label: labelOf.get(number) ?? null, ...(await readSeasonStatus(season, number, runs, blockTag)) })),
+      numbers.map(async (number) => ({ label: labelOf.get(number) ?? null, ...(await readSeasonStatus(season, bestRun, number, runs, blockTag)) })),
     );
     const riscZero =
       generation.backend === "zk" && !LOCAL_NETWORKS.includes(record.network)
@@ -299,25 +329,24 @@ export async function readStatus({ provider, record, label }) {
 }
 
 function phaseOf(season, now) {
-  if (season.closed) return season.totalQualifiedPoints === 0n ? "closed, its players' pot rolled over" : "closed";
+  if (season.closed) return "closed";
   if (now < season.end) return "accepting runs";
   if (now <= season.settlementEnd) return "settling";
   return "to close";
 }
 
-/** Each qualified player's share of a closed season's players' pot, rounded down (README §8.4). */
-function shareOf(season, best) {
-  return best?.qualified && season.totalQualifiedPoints > 0n ? (best.score * season.playersPot) / season.totalQualifiedPoints : 0n;
-}
+/** Tickets in basis points, as tickets: 49,692 bp is 4.9692. */
+const ticketsOf = (bp) => (Number(bp) / 10_000).toFixed(4);
 
 /** `readStatus`'s result as lines of text. */
 export function renderStatus({ block, generations }) {
   const now = BigInt(block.timestamp);
   const lines = [`block ${block.number}, ${isoOf(block.timestamp)}`];
   for (const generation of generations) {
+    const rollover = generation.pendingRollover === null ? "" : `rollover ${formatEther(generation.pendingRollover)} ETH, `;
     lines.push(
       `Season ${generation.Season}, generation of ${generation.deployedAt}: balance ${formatEther(generation.balance)} ETH, ` +
-        `rollover ${formatEther(generation.pendingRollover)} ETH, rake owed ${formatEther(generation.rakeOwed)} ETH, solvent: ${generation.solvent ? "yes" : "no"}`,
+        `${rollover}rake owed ${formatEther(generation.rakeOwed)} ETH, solvent: ${generation.solvent ? "yes" : "no"}`,
     );
     if (generation.riscZero) lines.push(`  RISC Zero verifier ${generation.riscZero.ok ? "PASS" : "FAIL"}: ${generation.riscZero.detail}`);
     for (const season of generation.seasons) {
@@ -327,18 +356,23 @@ export function renderStatus({ block, generations }) {
           `start ${isoOf(season.start)}, end ${isoOf(season.end)}, settlement end ${isoOf(season.settlementEnd)}`,
         `    runs: ${bought} bought, ${revealed} revealed, ${committed} committed, ${settled} settled, ${late} late; fees ${formatEther(season.fees)} ETH`,
       );
+      if (season.paysBestRun) {
+        if (season.closed) lines.push(`    players' pot ${formatEther(season.playersPot)} ETH, claimed ${formatEther(season.totalClaimed)} ETH; it pays D10's earlier best run`);
+        continue;
+      }
+      const average = season.games === 0n ? "none" : ticketsOf((season.tickets * 10_000n) / season.games);
+      lines.push(`    games ${season.games}, tickets ${ticketsOf(season.tickets)}, average ticket ${average}`);
       if (season.closed) {
         const rake = (season.fees * BigInt(season.rakeBp)) / 10_000n;
-        const dust = season.playersPot - season.players.reduce((sum, { best }) => sum + shareOf(season, best), 0n);
+        const dust = season.playersPot - season.players.reduce((sum, { prize }) => sum + prize, 0n);
         lines.push(
           `    rake ${formatEther(rake)} ETH; players' pot ${formatEther(season.playersPot)} ETH, claimed ${formatEther(season.totalClaimed)} ETH, ` +
             `rounding dust ${dust} wei`,
         );
       }
-      for (const { player, runs, best, claimed } of season.players) {
-        const bestRun = best === null ? "no run settled on time" : `best run ${best.runId}: score ${best.score}, ${best.ticks} ticks, ${best.qualified ? "qualified" : "not qualified"}`;
-        const claim = season.closed && best?.qualified && season.totalQualifiedPoints > 0n ? `; ${claimed ? "claimed" : "unclaimed"} ${formatEther(shareOf(season, best))} ETH` : "";
-        lines.push(`    ${player}: ${runs} run${runs === 1 ? "" : "s"}, ${bestRun}${claim}`);
+      for (const { player, runs, games, tickets, prize, claimed } of season.players) {
+        const claim = season.closed ? `${claimed ? "claimed" : "unclaimed"} ${formatEther(prize)} ETH` : `${formatEther(prize)} ETH if it closed now`;
+        lines.push(`    ${player}: ${runs} run${runs === 1 ? "" : "s"}, ${games} games, tickets ${ticketsOf(tickets)}; prize ${claim}`);
       }
     }
   }
@@ -372,7 +406,7 @@ export async function printStatus({ provider, record, label }) {
 export async function closeSeasons({ provider, signer, record }) {
   const closed = [];
   for (const generation of record.generations) {
-    const season = new Contract(generation.Season, SEASON_ABI, signer);
+    const season = new Contract(generation.Season, seasonAbiOf(generation.Season), signer);
     const labelOf = new Map(Object.entries(generation.seasons).map(([name, number]) => [BigInt(number), name]));
     for (;;) {
       const number = (await season.lastClosedSeason()) + 1n;
@@ -388,8 +422,8 @@ export async function closeSeasons({ provider, signer, record }) {
         break;
       }
       const receipt = await sendTransaction("Season.closeSeason", season.closeSeason(), season);
-      const { rake, playersPot, rolledOver } = eventOf(season, receipt, "SeasonClosed");
-      console.log(`${name} closed: rake ${formatEther(rake)} ETH, players' pot ${formatEther(playersPot)} ETH${rolledOver ? ", rolled over" : ""}`);
+      const { rake, playersPot } = eventOf(season, receipt, "SeasonClosed");
+      console.log(`${name} closed: rake ${formatEther(rake)} ETH, players' pot ${formatEther(playersPot)} ETH`);
       closed.push({ Season: generation.Season, number, receipt });
     }
   }
@@ -400,7 +434,7 @@ export async function closeSeasons({ provider, signer, record }) {
 export async function withdrawRakes({ signer, record }) {
   const withdrawn = [];
   for (const generation of record.generations) {
-    const season = new Contract(generation.Season, SEASON_ABI, signer);
+    const season = new Contract(generation.Season, seasonAbiOf(generation.Season), signer);
     if ((await season.rakeOwed()) === 0n) {
       console.log(`Season ${generation.Season}: no rake owed`);
       continue;
@@ -413,12 +447,12 @@ export async function withdrawRakes({ signer, record }) {
   return withdrawn;
 }
 
-/** `signer`'s claim in the closed season labeled `label`, on the newest generation that holds it. */
+/** `signer`'s prize in the closed season labeled `label`, on the newest generation that holds it. */
 export async function claimShare({ signer, record, label }) {
   const generation = record.generations.find((candidate) => label in candidate.seasons);
   if (!generation) throw new Error(`no generation of the ${record.network} record holds the season ${label}`);
   const number = generation.seasons[label];
-  const season = new Contract(generation.Season, SEASON_ABI, signer);
+  const season = new Contract(generation.Season, seasonAbiOf(generation.Season), signer);
   const receipt = await sendTransaction("Season.claim", season.claim(number), season);
   const { player, amount } = eventOf(season, receipt, "Claimed");
   console.log(`${label}, season ${number} of Season ${generation.Season}: ${player} claimed ${formatEther(amount)} ETH`);
@@ -443,8 +477,8 @@ export async function playBotRuns({ network, provider, player, recordFile, label
         break;
       }
       const run = await liveCommittedRun(context, "bot run", play);
-      const { score, ticks, clears } = totals(run.levels);
-      console.log(`${label}: bot run ${run.runId} of ${await player.getAddress()} committed, score ${score}, ${ticks} ticks, ${clears} cleared`);
+      const { score, ticks, clears, tickets } = totals(run.levels);
+      console.log(`${label}: bot run ${run.runId} of ${await player.getAddress()} committed, score ${score}, ${ticks} ticks, ${clears} cleared, tickets ${ticketsOf(tickets)}`);
       committed.push(run);
     }
     if (measurements.length > measured) console.log(measurements.slice(measured).join("\n"));

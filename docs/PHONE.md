@@ -59,7 +59,7 @@ Measurement comes before rule text: M3.12's device data feeds the hidden-page po
 
 ### 1.4 Why no store build
 
-- **What needs players is Challenge.** The pot is shared pro rata among a season's qualified players *(D10)*, and no store can list Challenge (§1.1).
+- **What needs players is Challenge.** The pot is shared among a season's paid games by the bot-neutral pot *(D10)*, and no store can list Challenge (§1.1).
 - **A store app would bring Training players with no path to paid runs.** Google Play counts even a link out to a cash-prize contest as a call to action [18]. A TWA shows its verified origin [16], and every page's nav links to Challenge (`web/index.html:29`). So a Training-only TWA needs its own Training-only build, on its own origin or path, with no Challenge or Season links; a `scope` setting is not enough. On iOS it would also have to clear guideline 4.2 [17].
 - **Not researched:** wallet dapp directories, and mini-app channels inside wallets and social apps. They are web apps inside wallets, the model of Phase 2.
 
@@ -323,7 +323,7 @@ No new dependency:
 - **No wallet on a phone.** The message explains how to open this page in a wallet's browser, with links: MetaMask's `https://link.metamask.io/dapp/<host><path>` [20], Coinbase Wallet's dapp link **[verify]**, and Copy link. Today's message points to desktop extensions. Whether `link.metamask.io` opens MetaMask from an installed iOS app, or an in-app sheet, is **[verify]**.
 - **Network.** The existing EIP-3326 and EIP-3085 switch to Arbitrum Sepolia, which already handles MetaMask mobile's nested error code.
 - **What M3.12 and M3.18 confirm in each wallet browser:** IndexedDB, Web Locks, the wake lock and service workers are present; storage survives an app kill and an app update; the wallet does not reload the tab when it returns from the background; the signing sheet is an overlay that keeps the page visible; EIP-6963 announcements arrive.
-- **After the commit,** nothing changes: the operator settles best runs from chain data ([README §7.5](../README.md#75-later-version-proving-service)), and claims run on the Season page in the same browser.
+- **After the commit,** nothing changes: the operator settles scoring runs from chain data ([README §7.5](../README.md#75-later-version-proving-service)), and claims run on the Season page in the same browser.
 
 ### 7.2 Later options (OD5)
 

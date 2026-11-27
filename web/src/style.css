@@ -132,7 +132,7 @@ button:is(#download, #bindings button, #resume, #stop, #run-file, #settle-file, 
 .controls table { border-collapse: collapse; }
 .wallet { max-width: 480px; }
 .wallet p { margin: 0; overflow-wrap: anywhere; }
-/* The season's leaderboard: 560 px and its padding at most, so that beside the 360-px side column the
+/* The season's players' table: 560 px and its padding at most, so that beside the 360-px side column the
    row ends at the 960-px content width; it scrolls sideways in its panel beyond. */
 main > .wallet { flex: 1 1 480px; min-width: 0; max-width: 560px; overflow-x: auto; }
 main > .wallet:has(> .outcome:empty) { display: none; }

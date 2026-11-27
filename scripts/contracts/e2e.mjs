@@ -9,7 +9,8 @@
 //      committed after its deadline, and marked late at settlement;
 //   4. copied journal: a run committed with the happy path's journals, whose settlement is rejected;
 //   5. wrong rulesVersion: a run whose journals name another rules version, rejected by the referee;
-//   6. season close: once end + grace has passed, closeSeason, the player's claim and withdrawRake.
+//   6. season close: once end + grace has passed, closeSeason, the player's claim of the v1
+//      payout (README §8.4) and withdrawRake.
 // Every settled Outcome is checked against the native replay (jiro-tools replay). Rejections are
 // eth_calls, so every transaction lands; the gas of each goes between `=== BEGIN e2e-gas ===` and
 // `=== END e2e-gas ===`, and into the job summary ($GITHUB_STEP_SUMMARY).
@@ -61,7 +62,7 @@ import {
   sendTransaction,
 } from "./deploy.mjs";
 import { isEntryPoint, prependGeneration, readDeploymentRecord } from "./deployments.mjs";
-import { CALIBRATION, assertEqual, eventOf, startAnvil } from "./localnet.mjs";
+import { CALIBRATION, assertEqual, eventOf, startAnvil, ticketOf } from "./localnet.mjs";
 import { isReady, preflight, renderRows } from "./preflight.mjs";
 import { encodeProof, fixtureOf, realProof, zkHost } from "./zk-host.mjs";
 
@@ -75,7 +76,6 @@ const SEASON = {
   length: 30n,
   grace: 120n,
   commitSlack: 30n,
-  minClears: 1,
 };
 const BACKEND_OF = { local: "mock", "nitro-devnode": "stylus" };
 const FUNDING = parseEther("1");
@@ -347,20 +347,22 @@ export function totals(levels) {
     score: levels.reduce((sum, { outcome }) => sum + outcome.levelScore, 0),
     ticks: levels.reduce((sum, { outcome }) => sum + outcome.ticksUsed, 0),
     clears: levels.filter(({ outcome }) => outcome.endReason === END_REASON_CLEARED).length,
+    tickets: levels.reduce((sum, { outcome, level }) => sum + ticketOf(outcome, level), 0),
   };
 }
 
 async function assertRunSettled(context, caseName, run, receipt) {
-  const { score, ticks, clears } = totals(run.levels);
+  const { score, ticks, clears, tickets } = totals(run.levels);
   const event = eventOf(context.challenge, receipt, "RunSettled");
   assertEqual(`${caseName}: RunSettled's player`, event.player, context.player.address);
   assertEqual(`${caseName}: RunSettled's score`, event.score, score);
   assertEqual(`${caseName}: RunSettled's ticks`, event.ticks, ticks);
   assertEqual(`${caseName}: RunSettled's clears`, event.clears, clears);
+  assertEqual(`${caseName}: RunSettled's tickets`, event.tickets, tickets);
   const settlement = await context.challenge.settlements(run.runId);
   assertEqual(`${caseName}: the settlement status`, settlement.status, SETTLEMENT_SETTLED);
   assertEqual(`${caseName}: the settled levels`, settlement.settledLevels, ALL_LEVELS_SETTLED);
-  console.log(`[e2e] ${caseName}: run ${run.runId} settled, score ${score}, ticks ${ticks}, clears ${clears}, as the native replay`);
+  console.log(`[e2e] ${caseName}: run ${run.runId} settled, score ${score}, ticks ${ticks}, clears ${clears}, tickets ${tickets}, as the native replay`);
 }
 
 async function setMockOutcomes(context, runs) {
@@ -408,10 +410,6 @@ async function runCases(context) {
     const summary = run.levels.map(({ policy, outcome }) => (outcome ? `${policy ?? "unplayed"} ${outcome.endReason}/${outcome.ticksUsed}` : "unscored")).join(", ");
     console.log(`[e2e] ${run.caseName}: run ${run.runId}, levels as policy endReason/ticksUsed: ${summary}`);
   }
-  if (totals(happy.levels).clears + totals(fallback.levels).clears === 0) {
-    throw new Error("the bots cleared no level of the two played runs, so the season would roll over: run the suite again");
-  }
-
   for (const run of [happy, fallback, copied, wrongRules]) {
     await record(run.caseName, "Challenge.commitRun", asPlayer.commitRun(run.runId, run.levels.map(({ journal }) => journal)), challenge);
   }
@@ -430,7 +428,7 @@ async function runCases(context) {
   const settleArgs = (run) => [run.runId, run.levels.map(({ level }) => level), run.levels.map(({ journal }) => journal), run.proof ?? "0x"];
 
   await assertRunSettled(context, happy.caseName, happy, await record(happy.caseName, "Challenge.settleRun", asSettler.settleRun(...settleArgs(happy)), challenge));
-  assertEqual("the player's best run after the happy path", (await season.bestRunOf(number, player.address)).runId, happy.runId);
+  assertEqual("the player's tickets after the happy path", (await season.tallyOf(number, player.address)).tickets, totals(happy.levels).tickets);
 
   const journalHashes = fallback.levels.map(({ journal }) => keccak256(journal));
   let lastLevel;
@@ -448,6 +446,8 @@ async function runCases(context) {
   const lateEvent = eventOf(challenge, lateSettled, "RunLate");
   assertEqual("late commit: RunLate's deadline", lateEvent.deadline, lateDeadline);
   assertEqual("late commit: the settlement status", (await challenge.settlements(late.runId)).status, SETTLEMENT_LATE);
+  const tickets = totals(happy.levels).tickets + totals(fallback.levels).tickets;
+  assertEqual("late commit: the player's tickets, none of the late run's", (await season.tallyOf(number, player.address)).tickets, tickets);
   console.log(`[e2e] late commit: run ${late.runId}, committed at ${lateEvent.committedAt} after its deadline ${lateDeadline}, is late`);
 
   const copiedRevert = await revertOf(asSettler.settleRun.staticCall(...settleArgs(copied)), [challenge.interface]);
@@ -475,9 +475,9 @@ async function runCases(context) {
   const rake = (fees * BigInt(SEASON.rakeBp)) / 10_000n;
   assertEqual("season close: the rake", closed.rake, rake);
   assertEqual("season close: the players' pot", closed.playersPot, fees - rake);
-  assertEqual("season close: rolled over", closed.rolledOver, false);
+  assertEqual("season close: the season's games, the late run's included", (await season.seasons(number)).games, 6n * BigInt(Object.keys(runs).length));
   const claimed = eventOf(season, await record("season close", "Season.claim", season.connect(player).claim(number), season), "Claimed");
-  // The player holds the only qualified best run, so its share is the whole pot.
+  // The player bought every run of the season, so the prize of their games is the whole pot.
   assertEqual("season close: the claim", claimed.amount, fees - rake);
   await record("season close", "Season.withdrawRake", season.connect(settler).withdrawRake(), season);
   assertEqual("season close: the treasury's balance", await context.provider.getBalance(context.treasury), rake);
@@ -728,8 +728,8 @@ export async function liveCommittedRun(context, caseName, play) {
 /**
  * Case happy-path: a bot run of the player, committed, its run file written to `runsDir`, then
  * proven and settled by the settler, the operator. `play` gives a revealed run's six scored levels,
- * and `prove` the proof of a run file. A run that clears no level is followed by another, up to
- * HAPPY_PATH_RUNS, so that M5.5 can rehearse a claim. `resume`, a run file, settles that
+ * and `prove` the proof of a run file. A run with no ticket, which the operator never settles
+ * (README §7.3), is followed by another, up to HAPPY_PATH_RUNS. `resume`, a run file, settles that
  * committed run instead.
  */
 export async function liveHappyPath(context, { play, prove, resume }) {
@@ -739,9 +739,9 @@ export async function liveHappyPath(context, { play, prove, resume }) {
     const commitment = keccak256(concat(run.levels.map(({ journal }) => keccak256(journal))));
     assertEqual(`run ${run.runId}'s commitment`, (await context.challenge.runs(run.runId)).commitment, commitment);
   } else {
-    for (let attempt = 1; !run || totals(run.levels).clears === 0; attempt++) {
-      if (attempt > HAPPY_PATH_RUNS) throw new Error(`the bots cleared no level in ${HAPPY_PATH_RUNS} runs`);
-      if (run) console.log(`[e2e] happy path: run ${run.runId} clears no level, so M5.5 could not rehearse a claim: playing another`);
+    for (let attempt = 1; !run || totals(run.levels).tickets === 0; attempt++) {
+      if (attempt > HAPPY_PATH_RUNS) throw new Error(`the bots scored no ticket in ${HAPPY_PATH_RUNS} runs`);
+      if (run) console.log(`[e2e] happy path: run ${run.runId} scores no ticket, so it would never settle: playing another`);
       run = await liveCommittedRun(context, "happy path", play);
       run.file = writeRunFile(context, run, context.runsDir);
       console.log(`[e2e] happy path: run ${run.runId} committed, its run file ${run.file}`);

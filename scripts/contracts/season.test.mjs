@@ -8,6 +8,7 @@ import { NETWORKS, REPO_ROOT, buildContracts, connect } from "./deploy.mjs";
 import { prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 import { checkHappyPath, deployLocalnet, startAnvil } from "./localnet.mjs";
 import {
+  BEST_RUN_SEASONS,
   checkLevels,
   checkStatus,
   claimShare,
@@ -36,20 +37,20 @@ function seasonFileWith(changes) {
 }
 
 test("seasons/testnet-0.json holds plan M4.14's provisional season, its referee the ZkReferee of the generation that opened it", () => {
-  const { network, referee, runFee, length, grace, commitSlack, minClears } = readSeasonFile(TESTNET_0);
+  const { network, referee, runFee, length, grace, commitSlack } = readSeasonFile(TESTNET_0);
   const { generations } = JSON.parse(readFileSync(join(REPO_ROOT, "deployments", "arbitrum-sepolia.json"), "utf8"));
   const deployedReferee = generations.find((generation) => "testnet-0" in generation.seasons).Referee;
   assert.deepEqual(
-    { network, referee, runFee, length, grace, commitSlack, minClears },
-    { network: "arbitrum-sepolia", referee: deployedReferee, runFee: "50000000000000", length: 86_400, grace: 86_400, commitSlack: 120, minClears: 1 },
+    { network, referee, runFee, length, grace, commitSlack },
+    { network: "arbitrum-sepolia", referee: deployedReferee, runFee: "50000000000000", length: 86_400, grace: 86_400, commitSlack: 120 },
   );
 });
 
 test("seasons/testnet-1.json holds plan M5.5's season of testers, its referee null until open", () => {
-  const { network, referee, runFee, rakeBp, length, grace, commitSlack, minClears } = readSeasonFile(join(REPO_ROOT, "seasons", "testnet-1.json"));
+  const { network, referee, runFee, rakeBp, length, grace, commitSlack } = readSeasonFile(join(REPO_ROOT, "seasons", "testnet-1.json"));
   assert.deepEqual(
-    { network, referee, runFee, rakeBp, length, grace, commitSlack, minClears },
-    { network: "arbitrum-sepolia", referee: null, runFee: "50000000000000", rakeBp: 1_000, length: 1_209_600, grace: 172_800, commitSlack: 120, minClears: 1 },
+    { network, referee, runFee, rakeBp, length, grace, commitSlack },
+    { network: "arbitrum-sepolia", referee: null, runFee: "50000000000000", rakeBp: 1_000, length: 1_209_600, grace: 172_800, commitSlack: 120 },
   );
 });
 
@@ -62,6 +63,15 @@ test("a season file with an unknown key is refused", () => {
   assert.throws(() => readSeasonFile(seasonFileWith({ season: 1 })), /unknown keys season/);
 });
 
+test("a season file with D10's earlier minClears is refused: generation 3 has none", () => {
+  assert.throws(() => readSeasonFile(seasonFileWith({ minClears: 1 })), /unknown keys minClears/);
+});
+
+test("the Seasons that pay the best run are those of Arbitrum Sepolia's generations 1 and 2", () => {
+  const { generations } = JSON.parse(readFileSync(join(REPO_ROOT, "deployments", "arbitrum-sepolia.json"), "utf8"));
+  assert.deepEqual(BEST_RUN_SEASONS, generations.slice(-2).map(({ Season }) => Season).reverse());
+});
+
 test("a season file whose runFee is a number is refused", () => {
   assert.throws(() => readSeasonFile(seasonFileWith({ runFee: 50_000_000_000_000 })), /not a decimal string of wei/);
 });
@@ -69,7 +79,7 @@ test("a season file whose runFee is a number is refused", () => {
 test("Season.open's parameters take the deployed referee and the fee in wei", () => {
   const referee = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
   const params = seasonParamsOf(readSeasonFile(TESTNET_0), referee);
-  assert.deepEqual([params.referee, params.runFee, params.length, params.minClears], [referee, 50_000_000_000_000n, 86_400n, 1]);
+  assert.deepEqual([params.referee, params.runFee, params.length, "minClears" in params], [referee, 50_000_000_000_000n, 86_400n, false]);
 });
 
 test("checkLevels refuses a level id that no level of levels/ has", () => {
@@ -156,7 +166,10 @@ describe("season operations on the local chain", () => {
   const keeper = () => provider.getSigner(KEEPER);
 
   // Six one-byte journals: commitRun never parses the journals, so these tests need no jiro-tools.
-  const placeholderLevels = () => Array.from({ length: 6 }, () => ({ journal: "0x00", outcome: { levelScore: 0, ticksUsed: 0, endReason: 1 } }));
+  // The level bytes carry only the target, 7,500 bp, at offset 470.
+  const placeholderLevel = `0x${"00".repeat(470)}1d4c`;
+  const placeholderLevels = () =>
+    Array.from({ length: 6 }, () => ({ level: placeholderLevel, journal: "0x00", outcome: { levelScore: 0, ticksUsed: 0, endReason: 1, claimBp: 0 } }));
   const playBots = async (runs) =>
     playBotRuns({ network: "local", provider, player: await provider.getSigner(BOT), recordFile: zkRecordFile, label: LABEL, runs, play: placeholderLevels });
 
@@ -176,18 +189,18 @@ describe("season operations on the local chain", () => {
     const [local] = generation.seasons;
     const state = await season.seasons(1);
     const [player, buyer] = await Promise.all([addressOf(PLAYER), addressOf(BUYER)]);
-    const best = await season.bestRunOf(1, player);
+    const [played, bought] = await Promise.all([season.tallyOf(1, player), season.tallyOf(1, buyer)]);
     assert.deepEqual(
-      [local.fees, local.closed, local.playersPot, local.totalClaimed, local.totalQualifiedPoints, local.end, local.settlementEnd],
-      [state.fees, state.closed, state.playersPot, state.totalClaimed, state.totalQualifiedPoints, await season.endOf(1), await season.settlementEndOf(1)],
+      [local.fees, local.closed, local.playersPot, local.totalClaimed, local.games, local.tickets, local.end, local.settlementEnd],
+      [state.fees, state.closed, state.playersPot, state.totalClaimed, state.games, state.tickets, await season.endOf(1), await season.settlementEndOf(1)],
     );
     assert.deepEqual(local.players, [
-      { player, runs: 1, best: { runId: best.runId, score: best.score, ticks: best.ticks, qualified: best.qualified }, claimed: false },
-      { player: buyer, runs: 1, best: null, claimed: false },
+      { player, runs: 1, games: 6n, tickets: played.tickets, prize: await season.prizeOf(1, player), claimed: false },
+      { player: buyer, runs: 1, games: 6n, tickets: bought.tickets, prize: await season.prizeOf(1, buyer), claimed: false },
     ]);
     assert.deepEqual(
       [generation.balance, generation.pendingRollover, generation.rakeOwed, generation.solvent],
-      [await provider.getBalance(generation.Season), await season.pendingRollover(), await season.rakeOwed(), await season.isSolvent()],
+      [await provider.getBalance(generation.Season), null, await season.rakeOwed(), await season.isSolvent()],
     );
   });
 
@@ -207,19 +220,29 @@ describe("season operations on the local chain", () => {
     await assert.rejects(claimShare({ signer: await provider.getSigner(PLAYER), record, label: LABEL }), /Season\.claim reverts with SeasonNotClosed\(1\)/);
   });
 
-  test("claim pays the only qualified player the whole players' pot", async () => {
+  test("claim pays the player the prize of their games", async () => {
     await closeAfterSettlement();
+    const prize = await season.prizeOf(1, await addressOf(PLAYER));
     const { amount } = await claimShare({ signer: await provider.getSigner(PLAYER), record, label: LABEL });
-    assert.equal(amount, (await season.seasons(1)).playersPot);
+    assert.equal(amount, prize);
   });
 
-  test("status shows the closed season claimed, with no rounding dust", async () => {
+  test("a player whose run never settled claims a lost game's prize, below the settled player's", async () => {
+    await closeAfterSettlement();
+    const { amount } = await claimShare({ signer: await provider.getSigner(BUYER), record, label: LABEL });
+    const settled = await season.prizeOf(1, await addressOf(PLAYER));
+    assert.ok(amount > 0n && amount < settled, `${amount} is not between 0 and ${settled}`);
+  });
+
+  test("status shows the closed season claimed, with at most one wei of dust per player", async () => {
     await closeAfterSettlement();
     await claimShare({ signer: await provider.getSigner(PLAYER), record, label: LABEL });
+    await claimShare({ signer: await provider.getSigner(BUYER), record, label: LABEL });
     const status = await readStatus({ provider, record });
     const [local] = status.generations[0].seasons;
-    assert.deepEqual([local.closed, local.totalClaimed, local.players[0].claimed], [true, local.playersPot, true]);
-    assert.match(renderStatus(status).join("\n"), /local, season 1: closed;[^]*claimed [0-9.]+ ETH, rounding dust 0 wei/);
+    assert.deepEqual([local.closed, local.players.every(({ claimed }) => claimed)], [true, true]);
+    assert.ok(local.playersPot - local.totalClaimed <= 2n, `dust ${local.playersPot - local.totalClaimed} wei`);
+    assert.match(renderStatus(status).join("\n"), /local, season 1: closed;[^]*claimed [0-9.]+ ETH, rounding dust [0-2] wei/);
   });
 
   test("withdraw sends the season's rake to the treasury", async () => {

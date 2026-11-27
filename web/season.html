@@ -34,7 +34,7 @@
     </header>
     <section class="intro" aria-labelledby="page-title">
       <h1 id="page-title">Jiro-ikusu season</h1>
-      <p>A Challenge season: its parameters and pot, its leaderboard, read from the chain's events, its close and its claims, and the settlement of your best run. <a href="challenge.html">Challenge</a> · <a href="replay.html">Replay viewer</a> · <a href="index.html">Training</a></p>
+      <p>A Challenge season: its parameters and pot, its players' tickets and prizes, read from the chain, its close and its claims, and the settlement of your scoring runs. <a href="challenge.html">Challenge</a> · <a href="replay.html">Replay viewer</a> · <a href="index.html">Training</a></p>
     </section>
     <main>
       <aside class="side">
@@ -45,21 +45,21 @@
           <p id="season-error" class="error" role="alert"></p>
         </section>
         <section class="wallet" aria-label="Wallet">
-          <p id="wallet-status">Connect a wallet to settle your best run, close the season or claim your share.</p>
+          <p id="wallet-status">Connect a wallet to settle your scoring runs, close the season or claim your prize.</p>
           <button id="connect" type="button">Connect wallet</button>
           <button id="claim" type="button" hidden></button>
           <p id="wallet-error" class="error" role="alert"></p>
         </section>
         <section id="settle-section" class="wallet" aria-label="Settlement" hidden>
           <p id="settle-status" role="status"></p>
-          <button id="settle" type="button" hidden>Settle this run</button>
-          <button id="settle-file" type="button" hidden>Download the run file</button>
+          <button id="settle" type="button" hidden>Settle the runs</button>
+          <button id="settle-file" type="button" hidden>Download the run files</button>
           <p id="settle-error" class="error" role="alert"></p>
           <p>A question, or a run that did not settle: <a href="https://github.com/detychey/jiro-ikusu/issues">open an issue on GitHub</a>, with its run file attached.</p>
         </section>
       </aside>
-      <section class="wallet" aria-label="Leaderboard">
-        <table id="leaderboard" class="outcome"></table>
+      <section class="wallet" aria-label="Players">
+        <table id="players" class="outcome"></table>
       </section>
     </main>
     <footer id="footer"></footer>

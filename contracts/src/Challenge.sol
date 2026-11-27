@@ -24,13 +24,14 @@ enum SettlementStatus {
 }
 
 /// @notice A run's settlement (README §7.2). `settledLevels` has bit i set once level i is
-/// settled; score, ticks and clears sum the settled levels' Outcomes.
+/// settled; score, ticks, clears and tickets sum the settled levels' Outcomes and tickets.
 struct Settlement {
     SettlementStatus status;
     uint8 settledLevels;
     uint8 clears;
     uint32 score;
     uint32 ticks;
+    uint32 tickets;
 }
 
 /// @notice A submitted level's id, and its slot and weight in the run's season.
@@ -50,6 +51,9 @@ contract Challenge {
     uint8 private constant LEVELS_PER_RUN = 6;
     uint8 private constant MODE_CHALLENGE = 1;
     uint8 private constant END_REASON_CLEARED = 2;
+    uint8 private constant END_REASON_OUT_OF_LIVES = 3;
+    /// @notice The level's target claim, a big-endian u16 at offset 470 of the level bytes (README §5).
+    uint256 private constant TARGET_OFFSET = 470;
     uint8 private constant ALL_LEVELS_SETTLED = 0x3f;
 
     IEntropySource public immutable entropy;
@@ -63,7 +67,9 @@ contract Challenge {
     event RunRevealed(uint256 indexed runId, bytes32 runNonce, uint64 revealedAt);
     event RunCommitted(uint256 indexed runId, bytes32 commitment, uint64 committedAt);
     event LevelSettled(uint256 indexed runId, uint8 levelIndex);
-    event RunSettled(uint256 indexed runId, address indexed player, uint32 score, uint32 ticks, uint8 clears);
+    event RunSettled(
+        uint256 indexed runId, address indexed player, uint32 score, uint32 ticks, uint8 clears, uint32 tickets
+    );
     event RunLate(uint256 indexed runId, uint256 deadline, uint64 committedAt);
 
     error ZeroAddress();
@@ -106,7 +112,7 @@ contract Challenge {
         run.season = season;
         bytes32 entropyId = entropyIdOf(runId);
         emit RunStarted(runId, msg.sender, season, entropyId);
-        seasons.payFee{value: msg.value}(season);
+        seasons.payFee{value: msg.value}(season, msg.sender);
         entropy.commit(entropyId);
     }
 
@@ -162,10 +168,10 @@ contract Challenge {
         (IReferee referee, uint16 rulesVersion) = seasons.refereeOf(run.season);
         Outcome[6] memory outcomes = referee.verifyRun(levels, journals, weightsBp, proof);
 
-        Settlement memory settlement = Settlement(SettlementStatus.Unsettled, ALL_LEVELS_SETTLED, 0, 0, 0);
+        Settlement memory settlement = Settlement(SettlementStatus.Unsettled, ALL_LEVELS_SETTLED, 0, 0, 0, 0);
         for (uint8 i; i < LEVELS_PER_RUN; ++i) {
             checkOutcome(run, rulesVersion, i, journalHashes[i], seasonLevels[i], outcomes[i]);
-            addLevel(settlement, outcomes[i]);
+            addLevel(settlement, outcomes[i], levels[i]);
         }
         finishRun(runId, run, settlement);
     }
@@ -192,7 +198,7 @@ contract Challenge {
         Outcome memory outcome = verifyLevel(run, i, journalHashes[i], level, journal, proof);
 
         settlement.settledLevels |= uint8(1 << i);
-        addLevel(settlement, outcome);
+        addLevel(settlement, outcome, level);
         emit LevelSettled(runId, i);
         if (settlement.settledLevels == ALL_LEVELS_SETTLED) {
             finishRun(runId, run, settlement);
@@ -259,14 +265,27 @@ contract Challenge {
         // forge-lint: disable-end(require-revert-in-loop)
     }
 
-    function addLevel(Settlement memory settlement, Outcome memory outcome) private pure {
+    function addLevel(Settlement memory settlement, Outcome memory outcome, bytes calldata level) private pure {
         settlement.score += outcome.levelScore;
         settlement.ticks += outcome.ticksUsed;
         if (outcome.endReason == END_REASON_CLEARED) ++settlement.clears;
+        settlement.tickets += ticketOf(outcome, level);
+    }
+
+    /// @notice A game's ticket (README §8.4, D10), in basis points: min(claimBp, target) × 10,000
+    /// / target, rounded down, or 0 when the lives ran out. The referee has validated the level,
+    /// so its target is 1 to 10,000.
+    function ticketOf(Outcome memory outcome, bytes calldata level) private pure returns (uint32) {
+        if (outcome.endReason == END_REASON_OUT_OF_LIVES) return 0;
+        uint256 target = uint16(bytes2(level[TARGET_OFFSET:TARGET_OFFSET + 2]));
+        uint256 claimBp = outcome.claimBp < target ? outcome.claimBp : target;
+        // forge-lint: disable-next-line(unsafe-typecast)
+        return uint32(claimBp * 10_000 / target);
     }
 
     /// @notice A missed deadline is a result, not a revert: the run is marked late for good and
-    /// earns nothing. Otherwise `Season` ranks it.
+    /// adds no ticket, while its games still count in the season's (README §8.4). Otherwise
+    /// `Season` adds its tickets.
     function finishRun(uint256 runId, Run storage run, Settlement memory settlement) private {
         uint256 deadline = deadlineOf(run, settlement.ticks);
         if (run.committedAt > deadline) {
@@ -277,8 +296,8 @@ contract Challenge {
         }
         settlement.status = SettlementStatus.Settled;
         settlements[runId] = settlement;
-        emit RunSettled(runId, run.player, settlement.score, settlement.ticks, settlement.clears);
-        seasons.recordRun(run.season, run.player, runId, settlement.score, settlement.ticks, settlement.clears);
+        emit RunSettled(runId, run.player, settlement.score, settlement.ticks, settlement.clears, settlement.tickets);
+        seasons.addTickets(run.season, run.player, runId, settlement.tickets);
     }
 
     /// @notice On time if committedAt ≤ revealedAt + ceil(ticks / 15) + commitSlack (README §7.2).

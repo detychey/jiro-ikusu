@@ -7,7 +7,7 @@ import type { AcceptingSeason } from "../src/chain/contracts";
 import type { SeasonParams } from "../src/chain/bindings/Season";
 import { hex } from "../src/core";
 import { buyRun, type RunEnv, SeasonChanged } from "../src/run/flow";
-import { checkSeason, seasonEntries } from "../src/run/season";
+import { averageTicket, checkSeason, seasonEntries } from "../src/run/season";
 import { freshStore, runEnv, shippedLevels } from "./challenge";
 import { loadEngine, repo } from "./drive";
 
@@ -101,28 +101,30 @@ describe("the season view", () => {
     rakeBp: 1_000n,
     grace: 172_800n,
     commitSlack: 120n,
-    minClears: 1n,
     fees: 150_000_000_000_000n,
-    rollover: 0n,
+    games: 18n,
+    tickets: 149_076n,
   };
   const formatEth = (wei: bigint) => `${wei} wei`;
+  const entry = (label: string) => seasonEntries(facts, formatEth).find(([shown]) => shown === label);
 
   it("shows the price", () => {
-    expect(seasonEntries(facts, formatEth)).toContainEqual(["Run fee", "50000000000000 wei"]);
+    expect(entry("Run fee")).toEqual(["Run fee", "50000000000000 wei"]);
   });
 
-  it("shows the players' pot: the fees less the rake, plus the rollover", () => {
-    expect(seasonEntries({ ...facts, rollover: 7n }, formatEth)).toContainEqual([
-      "Players' pot",
-      "135000000000007 wei: 150000000000000 wei of fees less the 10 % rake, with 7 wei rolled over",
-    ]);
+  it("shows the players' pot: the fees less the rake, with no rollover", () => {
+    expect(entry("Players' pot")).toEqual(["Players' pot", "135000000000000 wei: 150000000000000 wei of fees less the 10 % rake"]);
   });
 
-  it("shows the commit slack and the qualification", () => {
-    const entries = seasonEntries(facts, formatEth);
-    expect([entries.find(([label]) => label === "Commit slack"), entries.find(([label]) => label === "Qualifies with")]).toEqual([
-      ["Commit slack", "120 s"],
-      ["Qualifies with", "1 cleared level"],
-    ]);
+  it("shows the games and the average ticket", () => {
+    expect(entry("Games")).toEqual(["Games", "18, average ticket 0.8282"]);
+  });
+
+  it("shows no average ticket before the first run", () => {
+    expect(averageTicket({ games: 0n, tickets: 0n })).toBe("none");
+  });
+
+  it("shows the commit slack", () => {
+    expect(entry("Commit slack")).toEqual(["Commit slack", "120 s"]);
   });
 });
