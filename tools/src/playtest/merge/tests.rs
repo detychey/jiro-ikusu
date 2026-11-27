@@ -152,17 +152,18 @@ fn a_ratio_over_zero_is_infinite() {
     assert_eq!(ratio(&[5], &[0], &[0]), i64::MAX);
 }
 
-/// The ceilings of the 16 levels, which the M4.13 design panel's judges computed on their own.
+/// The ceilings of the 16 levels, which the M4.13 design panel's judges computed on their own,
+/// with both bodies left open on the twin-boss levels 10, 13, 15 and 16 (plan M5.19).
 #[test]
-fn the_ceiling_leaves_the_boss_body_open() {
+fn the_ceiling_leaves_the_boss_bodies_open() {
     let ceilings: Vec<u16> = load_levels(&levels_dir())
         .expect("levels")
         .iter()
         .map(|level| ceiling_bp(level).expect("ceiling"))
         .collect();
     let expected = [
-        9925, 9925, 9809, 9952, 9920, 9888, 9925, 9892, 9890, 9884, 9847, 9842, 9925, 9809, 9854,
-        9809,
+        9925, 9925, 9809, 9952, 9920, 9888, 9925, 9892, 9890, 9813, 9847, 9842, 9848, 9809, 9776,
+        9696,
     ];
     assert_eq!(ceilings, expected);
 }

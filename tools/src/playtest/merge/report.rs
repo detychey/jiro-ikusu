@@ -69,12 +69,16 @@ pub(super) fn ratio(numerator: &[i64], denominator: &[i64], runs: &[usize]) -> i
     }
 }
 
-/// The highest claim any play reaches on `level`: the boss's B × B body covers only open cells
+/// The highest claim any play reaches on `level`: each boss's B × B body covers only open cells
 /// (R4.6-1), which no capture claims (R4.8-4).
 pub(super) fn ceiling_bp(level: &LevelFile) -> Result<u16, String> {
     let game = Game::new(&level.level, &[0; 32], 0)
         .map_err(|error| format!("level {:02}: rule {}", level.index, error.code()))?;
-    let body = u16::from(level.level.boss_size).pow(2);
+    let body = level
+        .level
+        .bosses()
+        .map(|boss| u16::from(boss.size).pow(2))
+        .sum::<u16>();
     let claim = claim_bp(game.claimable.get() - body, game.claimable);
     Ok(u16::try_from(claim).expect("a claim is at most 10,000 bp"))
 }
