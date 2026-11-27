@@ -15,6 +15,7 @@ export const ENTITY_COLORS = {
   player: "#ffffff",
   invulnerablePlayer: "#9a9a9a",
   boss: "#ff3cf0",
+  secondBoss: "#ffe03c",
   minion: "#3cff78",
 } as const;
 
@@ -32,12 +33,15 @@ export function cellRect(x: number, y: number, width: number, height: number, co
   return { color, x: x * CELL_PX, y: y * CELL_PX, width: width * CELL_PX, height: height * CELL_PX };
 }
 
-/** The entities to draw over the grid, back to front: boss, minions, player. */
+/** The color of boss 0, then of boss 1, which has its own so that the player can tell them apart. */
+export const BOSS_COLORS = [ENTITY_COLORS.boss, ENTITY_COLORS.secondBoss] as const;
+
+/** The entities to draw over the grid, back to front: bosses, minions, player. */
 export function entityRects(snapshot: Snapshot): Rect[] {
   const cell = (x: number, y: number, cells: number, color: string) => cellRect(x, y, cells, cells, color);
-  const { boss, player } = snapshot;
+  const { bosses, player } = snapshot;
   return [
-    cell(boss.x, boss.y, boss.size, ENTITY_COLORS.boss),
+    ...bosses.map((boss, i) => cell(boss.x, boss.y, boss.size, BOSS_COLORS[i] ?? ENTITY_COLORS.boss)),
     ...snapshot.minions
       .filter((minion) => minion.state === "live")
       .map((minion) => cell(minion.x, minion.y, 1, ENTITY_COLORS.minion)),

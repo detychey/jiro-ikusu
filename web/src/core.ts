@@ -3,7 +3,7 @@
 // of the interface never goes unnoticed.
 
 import { MAX_JOURNAL_LEN } from "./journal";
-import { EDIT_FIELDS, editedLevel, editFields, FIELD_CELLS, type Level, LEVEL_LEN, MINION_SLOTS } from "./level";
+import { EDIT_FIELDS, editedLevel, editFields, FIELD_CELLS, type Level, LEVEL_V2_LEN, MINION_SLOTS } from "./level";
 
 export const MISUSE = 255;
 export const HASH_LEN = 32;
@@ -34,6 +34,7 @@ interface Exports {
   edit_cells_ptr(): number;
   edit_fields_ptr(): number;
   level_out_ptr(): number;
+  level_out_len(): number;
   load_level(len: number): number;
   start(mode: number, levelIndex: number): number;
   tick(rawMask: number): number;
@@ -46,9 +47,9 @@ interface Exports {
   player_cutting(): number;
   lives(): number;
   invulnerable(): number;
-  boss_x(): number;
-  boss_y(): number;
-  boss_size(): number;
+  boss_x(boss: number): number;
+  boss_y(boss: number): number;
+  boss_size(boss: number): number;
   minion_state(slot: number): number;
   minion_x(slot: number): number;
   minion_y(slot: number): number;
@@ -74,11 +75,18 @@ export interface Minion {
   heading: number;
 }
 
+export interface Boss {
+  x: number;
+  y: number;
+  size: number;
+}
+
 export interface Snapshot {
   player: { x: number; y: number; cutting: boolean };
   lives: number;
   invulnerable: number;
-  boss: { x: number; y: number; size: number };
+  /** Boss 0, then boss 1 on a level with two (README §4.6). */
+  bosses: Boss[];
   minions: Minion[];
   claimBp: number;
   targetBp: number;
@@ -129,7 +137,7 @@ export class Core {
   /** Checks `level` (README §5); returns 0 for a valid level, otherwise its error code. */
   validateLevel(level: Uint8Array): number {
     // The length is checked first, so bytes past one more than a level cannot change the code.
-    const checked = level.subarray(0, LEVEL_LEN + 1);
+    const checked = level.subarray(0, LEVEL_V2_LEN + 1);
     this.input(checked);
     return this.wasm.validate_level(checked.length);
   }
@@ -166,10 +174,10 @@ export class Core {
   }
 
   /** The editor's model of level bytes, decoded by the core's codec (README §5), or the code of
-   *  the first rule the decoder checks that they break (20 to 34). */
+   *  the first rule the decoder checks that they break (20 to 34, 40 to 43). */
   decodeLevel(bytes: Uint8Array): Level | { code: number } {
     // The length is checked first, so bytes past one more than a level cannot change the code.
-    const checked = bytes.subarray(0, LEVEL_LEN + 1);
+    const checked = bytes.subarray(0, LEVEL_V2_LEN + 1);
     this.input(checked);
     const code = this.wasm.decode_level(checked.length);
     if (code === MISUSE) throw new CoreError("decode_level", code);
@@ -192,7 +200,7 @@ export class Core {
     const fields = this.editFields();
     values.forEach((value, i) => fields.setUint32(4 * i, value, true));
     this.check("encode_level", this.wasm.encode_level());
-    return this.view(this.wasm.level_out_ptr(), LEVEL_LEN).slice();
+    return this.view(this.wasm.level_out_ptr(), this.wasm.level_out_len()).slice();
   }
 
   /** The editor's fields in wasm memory: EDIT_FIELDS u32 values, little-endian like all of it. */
@@ -253,7 +261,9 @@ export class Core {
       player: { x: w.player_x(), y: w.player_y(), cutting: w.player_cutting() === 1 },
       lives: w.lives(),
       invulnerable: w.invulnerable(),
-      boss: { x: w.boss_x(), y: w.boss_y(), size: w.boss_size() },
+      bosses: [0, 1]
+        .map((boss) => ({ x: w.boss_x(boss), y: w.boss_y(boss), size: w.boss_size(boss) }))
+        .filter((boss) => boss.size > 0),
       minions,
       claimBp: w.claim_bp(),
       targetBp: w.target_bp(),
@@ -278,7 +288,7 @@ export class Core {
     if (!Number.isInteger(weightBp) || weightBp < 0 || weightBp > 0xffff) throw new CoreError("replay", MISUSE);
     // Bytes past one more than the longest valid level or journal cannot change replay's result,
     // so longer inputs are cut to fit the input buffer.
-    const [levelPart, journalPart] = [level.subarray(0, LEVEL_LEN + 1), journal.subarray(0, MAX_JOURNAL_LEN + 1)];
+    const [levelPart, journalPart] = [level.subarray(0, LEVEL_V2_LEN + 1), journal.subarray(0, MAX_JOURNAL_LEN + 1)];
     this.input(levelPart, journalPart);
     const code = this.wasm.replay(levelPart.length, journalPart.length, weightBp);
     if (code === MISUSE) throw new CoreError("replay", code);
