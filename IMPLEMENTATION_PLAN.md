@@ -2433,13 +2433,15 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
   - **Hashes only.** `ZkReferee` receives the six levels and journals only to hash them: the proof's public values already carry each `levelId` and `journalHash` ([`referee/zk/README.md`](referee/zk/README.md#public-values)), and `Challenge` rebuilds the commitment from the journal hashes. A zk settlement could send six level ids, six journal hashes and the proof, about 400 bytes besides the proof, instead of 1 to 49 KB.
   - **Aggregation.** One Groth16 proof per batch through RISC Zero's set verifier: about 278,653 gas per batch plus about 8,400 per run, against 227,591 per run proof ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#season-aggregation)).
   - **The owner's proposal** (2026-11-27): the journals that `commitRun` already publishes in calldata (P5) are a public queue of runs waiting for a proof; once the economics make sense, any third party collects them, proves a batch, settles it, and collects a fee. The verification review sketched a related escrow, `ProofBounty`, with the payee in the zk public values ([`docs/verification-review/notes/escrow/spec.md`](docs/verification-review/notes/escrow/spec.md)); it is funded by bounties that players or sponsors post per run, where the owner's proposal pays from the protocol.
+  - **Two complementary rails** (owner, 2026-11-27): the onchain bounty pays any prover from the protocol, with no trust, for best runs at the season's close; [x402](https://docs.x402.org/introduction), HTTP 402 payments in a token such as USDC (EIP-3009), is the offchain rail for "buy this proof now", paid by whoever wants it: the operator buying proofs on demand instead of renting a card, a player who wants their run settled at once, or the operator's own GPU selling proofs later.
 - **Deliverables:** a decision PR; any prototype stays on an unmerged branch:
   - **hashes-only zk settlement:** the entry point, its interface beside the Stylus referee's, which needs the bytes, and the gas before and after on the committed fixtures;
   - **the aggregated batch:** the set verifier and its emergency stop, the batch step on the GPU and its time, and the gas per batch and per run;
   - **the prover fee:** who funds it (the rake, the pot, the player or a sponsor), its amount, which runs earn it (only each player's best run at close, so that provers cannot farm fees on runs a later best replaces), when it is paid, whether the payee is bound into the proven claim (a guest change, so a new image id) against copied submissions, the operator as the prover of last resort, and the grace third-party provers need;
+  - **the x402 proof endpoint:** its request (a committed run's id, so that every job was paid for by a run fee), how a proof of 35 s to several minutes is delivered when x402 defines no asynchronous job and its facilitator calls time out after 90 s by default (payment on fetch once the proof is ready, or upfront for a job id), the token and price, the facilitator on Arbitrum (x402.org's public one serves only Base Sepolia among EVM testnets; self-facilitation is documented), and how `settle.mjs` buys proofs through it;
   - **optionally,** delta-encoded journal ticks, a journal format v2, to cut `commitRun`'s calldata, with its saving;
   - the README §7 and §8 text, the contract changes and the new generation it implies, and the follow-up implementation items.
-- **Done when:** the PR presents the gas per settled run before and after, measured with `forge test --gas-report`, the fee's rules and economics, and the README text, and the owner merges it.
+- **Done when:** the PR presents the gas per settled run before and after, measured with `forge test --gas-report`, the fee's rules and economics, the x402 endpoint's flow, and the README text, and the owner merges it.
 - **Verify with:** `forge test --gas-report` on the prototype branch; `zk-host` for the batch step.
 - **Skills:** `onchain-referee`, `security`, `gas`, `concepts`. **README:** §7.2, §7.3, §7.5, §8. **Needs user:** approve the design by merging (round G4).
 
@@ -2651,7 +2653,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Fund your browser wallet from an Arbitrum Sepolia faucet, play at least one run in the browser, keep the tester key funded, and name your run's id.
   - At mid-season and after the end, settle on a rented GPU as the runbook says: `settle.mjs --export`, `prove-runs.sh` on the GPU, then `settle.mjs` with the proofs, until nothing is left to settle, before end plus grace.
   - After the close, check the report.
-- [ ] **G4** (M5.13 ready, after testnet-1): approve the settlement-cost design, hashes-only settlement, aggregation and the prover fee, by merging M5.13.
+- [ ] **G4** (M5.13 ready, after testnet-1): approve the settlement-cost design, hashes-only settlement, aggregation, the prover fee and the x402 proof endpoint, by merging M5.13.
 
 ### Round H: phone version
 
