@@ -52,7 +52,7 @@ On the copies, 01 to 04, 07, 08 and 10 clear in 98.9 % or more of the mix's game
 
 ## 3. Ticks and proving cycles per run
 
-Ticks are the edge report's, over 16,000 games per policy. Proving cycles are measured: runs 0 to 99 of seed 1 (run k has the run nonce keccak256("jiro.playtest." ‖ 1 as 8 bytes ‖ k as 4 bytes), the playtest's), each played by each policy on the levels its draw names, under Challenge headers, then executed as one `verifyRun` by `zk-host execute-run`: 400 runs. Proving cycles are the segments' padded sizes at 2^20; GPU time and cost follow M5.9's model, 7.3 s + 2.15 s a segment on a rented RTX 4090 at 0.89 USD an hour, without a session's set-up.
+Ticks are the edge report's, over 16,000 games per policy. Proving cycles are measured: runs 0 to 99 of seed 1 (run k has the run nonce keccak256("jiro.playtest." ‖ 1 as 8 bytes ‖ k as 4 bytes), the playtest's), each played by each policy on the levels its draw names, under Challenge headers, then executed as one `verifyRun` by `zk-host execute-run`: 400 runs, each with its ticks and cycles in [`paid-levels-2026-11-27/runs.txt`](paid-levels-2026-11-27/runs.txt). Proving cycles are the segments' padded sizes at 2^20; GPU time and cost follow M5.9's model, 7.3 s + 2.15 s a segment on a rented RTX 4090 at 0.89 USD an hour, without a session's set-up.
 
 | Runs | Ticks a run | Proving cycles, mean | Median | p90 | Max | Segments, mean | GPU s, mean | USD, mean |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
