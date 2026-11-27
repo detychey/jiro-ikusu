@@ -54,7 +54,7 @@ Planned on 2026-10-28 for a version after v1, and not scheduled. A third-party s
 
 ## Slow cuts
 
-Deferred on 2026-11-10 by the owner, to a later stage, and not scheduled. Testnet-1 keeps the current rules, and its data decides (owner, 2026-11-10): its report measures how players use the fast cut (plan M5.6).
+Superseded on 2026-11-27: the owner chose the fast cut always on while cutting, from rules version 3 (plan M5.12), and will revisit cutting later. The analysis below dates from 2026-11-10, when the question was deferred to testnet-1's data.
 
 ### The problem
 
@@ -90,3 +90,11 @@ Both options change the core's behavior, so each pays the same fixed cost ([`CLA
 - **The client:** the HUD shows any new charge, and Training's bests restart, since they are kept per rules version.
 
 Each rules version pays this once. The cheapest moment is before a season opens on the new rules, with any other core change in the same version. Testnet-1's journals record every A press, so its report shows how testers actually use the fast cut before this is decided.
+
+## The commit (X)
+
+Kept on 2026-11-27, to be revisited (owner: "I don't see the use case for X right now, I have never used it myself, particularly if bots rely on it more than human we should cut it"). X ends the level and keeps its claim ([README §4.4](README.md#44-tick-order)), so a player can bank a claim rather than lose the level to its last life, which scores zero.
+
+- **Bots rely on it.** The reference mix's committer banks with X once a lost life leaves its last one: on 7 % to 49 % of levels in [`reports/playtest-449f231636aa.md`](reports/playtest-449f231636aa.md), more on the harder levels, where bold, the mix's other policy, dies up to 30 % of the time and committer never does. The owner's play test ([`reports/playtest-human-1.md`](reports/playtest-human-1.md)) does not mention it.
+- **What decides:** testnet-1's report measures how often people and bots end a level with X (plan M5.6).
+- **What removing it costs:** a rules version, with the reference mix and calibration redone without the committer. A level without X ends only by a clear, the lives running out or the time limit, so more levels run to their limit and proofs take more cycles.
