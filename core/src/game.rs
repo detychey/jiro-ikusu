@@ -4,7 +4,7 @@ use core::num::NonZeroU16;
 
 use crate::Error;
 use crate::boss::Boss;
-use crate::consts::CAPTURE_STACK;
+use crate::consts::{CAPTURE_STACK, WORK_BUDGET};
 use crate::grid::{Grid, claim_bp};
 use crate::hits::{minion_hits, resolve};
 use crate::level::{Level, validate};
@@ -21,6 +21,7 @@ pub enum EndReason {
     Cleared = 2,
     OutOfLives = 3,
     TimeLimit = 4,
+    WorkBudget = 5,
 }
 
 #[derive(Clone, Debug)]
@@ -38,6 +39,8 @@ pub struct Game {
     pub events_applied: u16,
     /// The cells captured so far in the level.
     pub captured: u16,
+    /// The level's work so far [R4.11-1].
+    pub work: u32,
     /// The cells `EMPTY` at level start [R4.1-8].
     pub claimable: NonZeroU16,
     pub target_bp: u16,
@@ -64,6 +67,7 @@ impl Game {
             ticks_used: 0,
             events_applied: 0,
             captured: 0,
+            work: 0,
             claimable: start.claimable,
             target_bp: level.target_bp,
             time_limit: level.time_limit,
@@ -91,17 +95,18 @@ impl Game {
 
     /// The steps of R4.4-5, stopping at the first that ends the level [R4.4-4].
     fn tick(&mut self, tick: u16, mask: InputMask) -> Result<Option<EndReason>, Error> {
-        self.input(tick, mask);
+        self.input(mask);
         if mask.contains(InputMask::X) {
             self.player.abandon_cut(&mut self.grid);
             return Ok(Some(EndReason::Committed));
         }
         let moves = self
             .player
-            .step(&mut self.grid, &self.boss, mask, tick, &mut self.stack)
+            .step(&mut self.grid, &self.boss, mask, &mut self.stack)
             .ok_or(Error::Invariant)?;
-        if let Some(size) = moves.captured {
-            self.captured = self.captured.saturating_add(size);
+        if let Some(done) = moves.captured {
+            self.captured = self.captured.saturating_add(done.size);
+            self.work = self.work.saturating_add(done.work());
             self.minions.after_capture(&self.grid);
             if self.claim_bp()? >= self.target_bp {
                 return Ok(Some(EndReason::Cleared));
@@ -109,20 +114,30 @@ impl Game {
         }
         let boss_hit = self.boss.step(&self.grid, tick);
         let minions = self.minions.step(&self.grid, tick);
-        let hit = moves.hit || boss_hit || minion_hits(&moves, &minions);
-        if resolve(&mut self.player, &mut self.grid, hit, mask) && self.player.lives == 0 {
+        self.work = self.work.saturating_add(minions.work);
+        let hit = moves.hit || boss_hit || minion_hits(&moves, &minions.moved);
+        if resolve(&mut self.player, &mut self.grid, hit) && self.player.lives == 0 {
             return Ok(Some(EndReason::OutOfLives));
         }
-        let last_tick = self.time_limit.checked_sub(1) == Some(tick);
-        Ok(last_tick.then_some(EndReason::TimeLimit))
+        Ok(self.time_and_work(tick))
+    }
+
+    /// Step 7: the time limit, then the work budget [R4.4-12, R4.11-4].
+    fn time_and_work(&self, tick: u16) -> Option<EndReason> {
+        if self.time_limit.checked_sub(1) == Some(tick) {
+            Some(EndReason::TimeLimit)
+        } else if self.work >= WORK_BUDGET {
+            Some(EndReason::WorkBudget)
+        } else {
+            None
+        }
     }
 
     /// Step 1: the mask of this tick's event, if any, replaces the mask in force [R4.4-6].
-    fn input(&mut self, tick: u16, mask: InputMask) {
+    fn input(&mut self, mask: InputMask) {
         if mask != self.mask {
             self.events_applied = self.events_applied.saturating_add(1);
         }
-        self.player.input(self.mask, mask, tick);
         self.mask = mask;
     }
 }

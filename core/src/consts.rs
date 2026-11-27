@@ -13,7 +13,7 @@ pub const MAX_EVENTS: u16 = 2_700;
 /// Ticks per second (README §2, §6.1).
 pub const TICK_HZ: u8 = 15;
 /// The rules version journals are played under (README §6.3, PIN-13).
-pub const RULES_VERSION: u16 = 2;
+pub const RULES_VERSION: u16 = 3;
 /// Levels in a run; `levelIndex` stays below it (README §6.3).
 pub const RUN_LEVELS: usize = 6;
 /// Levels in a season, the deck the draw picks from (README §8.2).
@@ -45,3 +45,8 @@ pub const BP: u16 = 10_000;
 pub const PLAYER_START: Pos = Pos { x: 30, y: 59 };
 /// The protected ticks after a life is lost (R4.9-17, PIN-02).
 pub const INVULNERABLE_TICKS: u8 = 30;
+/// The work at which a level ends (R4.11-4).
+pub const WORK_BUDGET: u32 = 300_000;
+/// The work a capture adds besides its `BOSS_ZONE` cells: the share of the pass over every
+/// cell (R4.11-2).
+pub const CAPTURE_PASS_WORK: u32 = 150;

@@ -155,11 +155,11 @@ fn every_bot_journal_decodes_and_replays_to_its_sample() {
 fn each_policy_plays_run_0_of_l01_as_pinned() {
     let level = l01();
     let cases = [
-        (Policy::EdgeNibbler, EndReason::Cleared, 7654, 2340),
-        (Policy::Greedy, EndReason::Cleared, 7514, 266),
-        (Policy::Bold, EndReason::Cleared, 8041, 409),
-        (Policy::Committer, EndReason::Cleared, 8041, 409),
-        (Policy::RandomWalk, EndReason::OutOfLives, 0, 1072),
+        (Policy::EdgeNibbler, EndReason::Cleared, 7761, 1203),
+        (Policy::Greedy, EndReason::Cleared, 8299, 315),
+        (Policy::Bold, EndReason::Cleared, 7630, 365),
+        (Policy::Committer, EndReason::Cleared, 7630, 365),
+        (Policy::RandomWalk, EndReason::Cleared, 8275, 79),
     ];
     for (policy, end, effective_bp, ticks_used) in cases {
         let (_, played) =
@@ -261,6 +261,7 @@ fn stats_count_the_ends_and_take_quartiles_of_unsorted_runs() {
         sample(EndReason::Cleared, 9_000),
         sample(EndReason::Committed, 3_000),
         sample(EndReason::TimeLimit, 6_000),
+        sample(EndReason::WorkBudget, 7_000),
         sample(EndReason::Cleared, 8_000),
         sample(EndReason::Committed, 1_000),
         sample(EndReason::OutOfLives, 0),
@@ -268,11 +269,17 @@ fn stats_count_the_ends_and_take_quartiles_of_unsorted_runs() {
     let stats = Stats::of(samples.iter());
     assert_eq!(
         (
-            [stats.cleared, stats.died, stats.committed, stats.timed_out],
+            [
+                stats.cleared,
+                stats.died,
+                stats.committed,
+                stats.timed_out,
+                stats.work_budget
+            ],
             stats.effective_bp,
             stats.per_mille(stats.cleared)
         ),
-        ([2, 2, 2, 1], [0, 3_000, 6_000], 285)
+        ([2, 2, 2, 1, 1], [0, 3_000, 7_000], 250)
     );
 }
 

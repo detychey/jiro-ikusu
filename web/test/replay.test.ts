@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import calibration from "../../seasons/calibration-1.json";
+import calibration from "../../seasons/calibration-2.json";
 import { Core, CoreError, END_REASONS, fromHex, HASH_LEN, hex, type Outcome } from "../src/core";
 import { describeError } from "../src/errors";
 import { firstMismatch, heldControls, journalRecording, type Recording, ReplayView } from "../src/pages/replay";
@@ -162,8 +162,9 @@ describe("replay viewer", () => {
 
   it.each([
     [0, "none"],
-    [0b1010_001, "up a x"],
-  ])("names the controls the mask %i holds", (mask, names) => {
+    [0b1010_001, "up x"],
+    [0b0110_000, "none"],
+  ])("names the controls the mask %i holds, not the ignored bits 4 and 5", (mask, names) => {
     expect(heldControls(mask)).toBe(names);
   });
 });

@@ -1,18 +1,21 @@
-//! Long game vectors: the synthetic worst case for gas and cycles, a full journal, and random
-//! games.
+//! Long game vectors: the synthetic worst case for gas and cycles, a full journal, the work
+//! budget, and random games.
 
 use jiro_core::consts::MAX_EVENTS;
 use jiro_core::game::{EndReason, Game};
 use jiro_core::journal::Header;
 use jiro_core::level::{Level, Rect};
-use jiro_core::types::InputMask;
+use jiro_core::types::{Cell, Dir, InputMask};
 
-use super::game::{GameCase, check, game_case};
+use super::game::{GameCase, calm, check, game_case, recorded};
 use super::level::{open_field, with_minions, with_obstacles};
-use super::play::{CaptureBot, Run, every_tick, first_run, random_play, record};
+use super::play::{
+    CaptureBot, Rng, Run, every_tick, first_run, header, in_boss, neighbor, random_play, record,
+    reverse, walk_rail,
+};
 
 pub fn cases() -> Result<Vec<GameCase>, String> {
-    let mut cases = vec![worst_case()?, full_journal()?];
+    let mut cases = vec![worst_case()?, full_journal()?, work_budget()?];
     cases.extend(random_games()?);
     Ok(cases)
 }
@@ -110,6 +113,53 @@ fn full_journal() -> Result<GameCase, String> {
     ))
 }
 
+/// R4.11: one-cell captures beside the open field, a capture every three ticks, until the work
+/// budget ends the level with its claim kept, long before the time limit.
+fn work_budget() -> Result<GameCase, String> {
+    let name = "work-budget";
+    let level = calm((25, 10));
+    let level_header = header(&level, super::journal::header().run_nonce);
+    let (mut walk, mut rng) = (Dir::Left, Rng::new(1));
+    let run = record(&level, &level_header, move |game| {
+        nibble(game, &mut walk, &mut rng)
+    })?;
+    let last = run.last();
+    check(
+        name,
+        run.captures() >= 80
+            && last.player.lives == level.lives
+            && last.ticks_used < level.time_limit / 2,
+        "makes 80 captures without losing a life and stops by half the time limit",
+    )?;
+    recorded(
+        name,
+        &[
+            "§4.11", "R4.11-1", "R4.11-2", "R4.11-4", "R4.10-5", "R4.4-12", "R4.8-2", "R4.8-3",
+        ],
+        &level,
+        level_header,
+        run,
+        EndReason::WorkBudget,
+    )
+}
+
+/// Steps into an open cell beside the rail and straight back, which captures it, else walks
+/// along the rail.
+fn nibble(game: &Game, walk: &mut Dir, rng: &mut Rng) -> InputMask {
+    let player = game.player;
+    if player.cutting
+        && let Some(entered) = player.direction
+    {
+        return reverse(entered).mask();
+    }
+    let open = Dir::PRIORITY.into_iter().find(|&dir| {
+        neighbor(player.pos, dir)
+            .is_some_and(|cell| game.grid.at(cell) == Some(Cell::Empty) && !in_boss(game, cell))
+    });
+    open.unwrap_or_else(|| walk_rail(walk, rng, game, Dir::PRIORITY))
+        .mask()
+}
+
 /// Random games, at least 500 ticks long: four with direction and X bits only, then four with
 /// all bits, on levels with and without minions and obstacles.
 fn random_games() -> Result<Vec<GameCase>, String> {
@@ -141,7 +191,7 @@ fn random_games() -> Result<Vec<GameCase>, String> {
                 |run| run.last().ticks_used >= 500,
             )?;
             let covers: &[&str] = if all_bits {
-                &["§4", "R4.4-3", "R4.5-6", "R4.5-7"]
+                &["§4", "R4.4-3", "R4.5-6", "§6.1"]
             } else {
                 &["§4", "R4.4-3", "R4.5-1"]
             };

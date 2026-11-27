@@ -1,4 +1,4 @@
-//! State hash v1 (README §6.4): keccak256 of a fixed-order, fixed-width serialization of the
+//! State hash v2 (README §6.4): keccak256 of a fixed-order, fixed-width serialization of the
 //! whole state, for traces and diagnosis. Stepping never computes it.
 
 use crate::game::Game;
@@ -6,8 +6,8 @@ use crate::keccak::keccak256;
 use crate::minion::{Minion, State};
 use crate::types::{CellIndex, Dir};
 
-pub const STATE_HASH_VERSION: u8 = 1;
-pub const PREIMAGE_LEN: usize = 948;
+pub const STATE_HASH_VERSION: u8 = 2;
+pub const PREIMAGE_LEN: usize = 949;
 
 /// The state-hash preimage after the tick just processed, field by field in the order of the
 /// README §6.4 table.
@@ -19,8 +19,8 @@ pub fn preimage(game: &Game) -> [u8; PREIMAGE_LEN] {
         ..
     } = game;
     let [tick_high, tick_low] = game.ticks_used.saturating_sub(1).to_be_bytes();
-    let [press_high, press_low] = player.press_tick.to_be_bytes();
     let [captured_high, captured_low] = game.captured.to_be_bytes();
+    let [work_0, work_1, work_2, work_3] = game.work.to_be_bytes();
     let [claimable_high, claimable_low] = game.claimable.get().to_be_bytes();
     let [event_high, event_low] = game.events_applied.to_be_bytes();
     let head = [STATE_HASH_VERSION, tick_high, tick_low, game.mask.bits()];
@@ -31,11 +31,8 @@ pub fn preimage(game: &Game) -> [u8; PREIMAGE_LEN] {
         player.cut_start.x,
         player.cut_start.y,
         player.lives,
-        player.shield,
         player.invulnerable,
         player.direction.map_or(0, direction_code),
-        press_high,
-        press_low,
         boss.pos.x,
         boss.pos.y,
         boss.size,
@@ -50,6 +47,10 @@ pub fn preimage(game: &Game) -> [u8; PREIMAGE_LEN] {
     let counters = [
         captured_high,
         captured_low,
+        work_0,
+        work_1,
+        work_2,
+        work_3,
         claimable_high,
         claimable_low,
         event_high,

@@ -3,7 +3,7 @@ import { CONTROL_BITS } from "../src/input";
 import { loadTouchSetting, PAGE_RELEASES, POINTER_RELEASES, saveTouchSetting, stickBits, TOUCH_DEFAULTS, type TouchSetting } from "../src/touch";
 import { centerOf, fingers } from "./fingers";
 
-const { up: UP, down: DOWN, left: LEFT, right: RIGHT, a: A, b: B, x: X } = CONTROL_BITS;
+const { up: UP, down: DOWN, left: LEFT, right: RIGHT, x: X } = CONTROL_BITS;
 const STICK = 1;
 const BUTTON = 2;
 const CENTER = centerOf("stick");
@@ -107,29 +107,29 @@ describe("the stick's directions", () => {
 });
 
 describe("the buttons", () => {
-  it("one finger steers while another holds A", () => {
-    const hand = fingers();
+  it("one finger steers while another holds X", () => {
+    const hand = fingers({ ...TOUCH_DEFAULTS, xHold: 0 });
     hand.down(STICK, CENTER);
     hand.move(STICK, fromCenter(30, 0));
-    hand.down(BUTTON, centerOf("a"));
-    expect(hand.controls.sample()).toBe(RIGHT | A);
+    hand.down(BUTTON, centerOf("x"));
+    expect(hand.controls.sample()).toBe(RIGHT | X);
   });
 
-  it("a finger slides from A to B, and holds B alone from the next sample", () => {
-    const hand = fingers();
-    hand.down(BUTTON, centerOf("a"));
-    const a = hand.controls.sample();
-    hand.move(BUTTON, centerOf("b"));
-    expect([a, hand.controls.sample()]).toEqual([A, B]);
+  it("a finger slides off X, and holds nothing from the next sample", () => {
+    const hand = fingers({ ...TOUCH_DEFAULTS, xHold: 0 });
+    hand.down(BUTTON, centerOf("x"));
+    const x = hand.controls.sample();
+    hand.move(BUTTON, { x: 400, y: 400 });
+    expect([x, hand.controls.sample()]).toEqual([X, 0]);
   });
 
   it("a finger that went down elsewhere on the page holds nothing it moves over", () => {
-    const hand = fingers();
-    hand.move(BUTTON, centerOf("a"));
+    const hand = fingers({ ...TOUCH_DEFAULTS, xHold: 0 });
+    hand.move(BUTTON, centerOf("x"));
     expect(hand.controls.sample()).toBe(0);
   });
 
-  it.each([["a", 4, A], ["b", 4, B], ["x", 4, 0], ["x", 0, X]] as const)("a tap on %s shorter than a tick, at xHold %i, gives mask %i in the next sample only", (pad, xHold, bit) => {
+  it.each([["x", 4, 0], ["x", 0, X]] as const)("a tap on %s shorter than a tick, at xHold %i, gives mask %i in the next sample only", (pad, xHold, bit) => {
     const hand = fingers({ ...TOUCH_DEFAULTS, xHold });
     hand.down(BUTTON, centerOf(pad));
     hand.up(BUTTON);
@@ -144,9 +144,9 @@ describe("the buttons", () => {
     expect([hand.controls.sample(), hand.controls.sample()]).toEqual([UP, 0]);
   });
 
-  it("a press on A cancelled within a tick counts nothing", () => {
-    const hand = fingers();
-    hand.down(BUTTON, centerOf("a"));
+  it("a press on X cancelled within a tick counts nothing", () => {
+    const hand = fingers({ ...TOUCH_DEFAULTS, xHold: 0 });
+    hand.down(BUTTON, centerOf("x"));
     hand.send("pointercancel", BUTTON);
     expect(hand.controls.sample()).toBe(0);
   });
@@ -188,11 +188,11 @@ describe("X's hold", () => {
 
 describe("releases", () => {
   it.each(POINTER_RELEASES)("%s releases the pointer's button by the next sample", (type) => {
-    const hand = fingers();
-    hand.down(BUTTON, centerOf("b"));
+    const hand = fingers({ ...TOUCH_DEFAULTS, xHold: 0 });
+    hand.down(BUTTON, centerOf("x"));
     const held = hand.controls.sample();
     hand.send(type, BUTTON);
-    expect([held, hand.controls.sample()]).toEqual([B, 0]);
+    expect([held, hand.controls.sample()]).toEqual([X, 0]);
   });
 
   it.each(POINTER_RELEASES)("%s stands the stick still by the next sample", (type) => {
@@ -204,34 +204,33 @@ describe("releases", () => {
     expect([held, hand.controls.sample()]).toEqual([LEFT, 0]);
   });
 
-  /** A finger on the stick, one on A and one on X, held through a sample. */
-  function threeFingers() {
+  /** A finger on the stick and one on X, held through a sample. */
+  function twoFingers() {
     const hand = fingers();
     hand.down(STICK, CENTER);
     hand.move(STICK, fromCenter(30, 0));
-    hand.down(BUTTON, centerOf("a"));
-    hand.down(3, centerOf("x"));
+    hand.down(BUTTON, centerOf("x"));
     hand.controls.sample();
     return hand;
   }
 
   it.each(PAGE_RELEASES)("%s on the page releases every control by the next sample", (type) => {
-    const hand = threeFingers();
+    const hand = twoFingers();
     hand.page.dispatchEvent(new Event(type));
     expect([hand.controls.sample(), hand.controls.xHeld]).toEqual([0, 0]);
   });
 
   it("the page turning hidden releases every control by the next sample", () => {
-    const hand = threeFingers();
+    const hand = twoFingers();
     hand.doc.visibilityState = "hidden";
     hand.doc.dispatchEvent(new Event("visibilitychange"));
     expect([hand.controls.sample(), hand.controls.xHeld]).toEqual([0, 0]);
   });
 
   it("the page turning visible releases nothing", () => {
-    const hand = threeFingers();
+    const hand = twoFingers();
     hand.doc.dispatchEvent(new Event("visibilitychange"));
-    expect(hand.controls.sample()).toBe(RIGHT | A);
+    expect([hand.controls.sample(), hand.controls.xHeld]).toEqual([RIGHT, 2]);
   });
 });
 

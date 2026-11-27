@@ -3,7 +3,7 @@
     "source": "zk-prove.yml run 45840073851, job prove (level), on a 4-CPU runner",
     "mode": "level",
     "vectors": [
-      "vectors/game/commit-at-tick-0.json"
+      "contracts/test/fixtures/rules-v2/commit-at-tick-0.json"
     ],
     "imageId": "0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8",
     "seal": "0xe71e66201467d89c81623f4f2dc703ce424f3356fb51bc48003112f289904744d93d3cf31a23f6c9794d382df5909d0b8339aee47e15bc0e8f92e52abae848e0bd8451dd01bff87b3b13d1903a0fe7b70c314f44e40fc90f3bcc3e5ef9d910fd59e5d65e164ae2823c7b9e9b79ca9237f8ee9963c33bde222ec1037393572546194d6f2b0afe0799ff008463e78779034a3fc9700a59e321d5f821ed80cf9e13b059af7318722d11e9bc6d8108a5fb6db9a692f0055a34cbfdef543c6f9d07f29907a47f2456e1c9e99b74baad7b8d82e7f621a562cb1ed29c99edab800561a06c30fdd51025ad80a6e77dbe4b833a59cd9cda830d540c1315bfd28824da193f01b0cd7e",
@@ -13,12 +13,12 @@
     "source": "zk-prove.yml run 45840073851, job prove (run), on a 4-CPU runner",
     "mode": "run",
     "vectors": [
-      "vectors/game/commit-at-tick-0.json",
-      "vectors/game/commit-during-cut.json",
-      "vectors/game/fast-cut.json",
-      "vectors/game/event-at-last-tick.json",
-      "vectors/game/slow-shield.json",
-      "vectors/game/last-life-on-last-tick.json"
+      "contracts/test/fixtures/rules-v2/commit-at-tick-0.json",
+      "contracts/test/fixtures/rules-v2/commit-during-cut.json",
+      "contracts/test/fixtures/rules-v2/fast-cut.json",
+      "contracts/test/fixtures/rules-v2/event-at-last-tick.json",
+      "contracts/test/fixtures/rules-v2/slow-shield.json",
+      "contracts/test/fixtures/rules-v2/last-life-on-last-tick.json"
     ],
     "imageId": "0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8",
     "seal": "0xe71e6620158cbb70f8a29b47268e0c44922f284ff2c929c3d7f5e11fc46da6027e13d10f2f970e8027cf884c09ecc5192ccb891e88171abc18fcb1e006c8a5cade86907a274e7d0ce0566facc40a3332fa610315185281093bd1bad6df2947463f43d584264605c1b8bffc0051175d72d92b54f210b3a32f6c7548214edb0dd9e0ca28301c6359f8b7e4df7fb65259cb878bb66ffdd424f3ec68cd7b0d668a701630088505c375988930f7996c580b1beaafcb0ed40a1225b29fa84c416c384b8f4160ef15614676032cb08ec70ff89919a49a1a6fd2c8dc216ad7dbd184039e22fa6b2b0d41db871c7915997d95e63c6dba77e7425c1c92350219dbc3b67a3b1304e7cb",
@@ -28,7 +28,7 @@
     "source": "zk-prove.yml run 45840748127, job prove (level), on a 4-CPU runner, segment_po2 20",
     "mode": "level",
     "vectors": [
-      "vectors/game/worst-case.json"
+      "contracts/test/fixtures/rules-v2/worst-case.json"
     ],
     "imageId": "0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8",
     "seal": "0xe71e662010d64d4116b56efe19607dfd287eb4bb380aadf2f682ef46b8353f89d1cd6aa20ae47608c134ab467b67ad557b3d1f9d66b43b3c891f4664d5ee7ec9e7105bf212e18246542c77d7b171e0181925507a4e01ca640d1de14058229bce63f6c3080eae1a4d2a14f37cf859d856b38c019364e1b42d815577e86a75672a971327862ca225ab1db15a4e832556449867a6f147cc5213e4843a3ec8883c1350e968540b00ef7c66d505cba32ee5f1cf0bd4a6fcaf9442924ffcedab41b68d4ef9706e1d4b8746a7aa3e15f841849f521d613942f0ff60bf70a41e2cdd7f73010174e70117f27a952dc16f8e762f1848acd4643d97517d79ef45f7f5359034e18519a2",

@@ -4,7 +4,7 @@ boss_period=1
 minion_period=1
 respawn_delay=45
 time_limit=2700
-lives=3
+lives=2
 target_bp=9000
 
 ############################################################

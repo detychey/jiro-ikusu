@@ -362,7 +362,7 @@ jobs:
               - 'vectors/derivations.json'
               - 'vectors/game/**'
               - 'vectors/levels/**'
-              - 'seasons/calibration-1.json'
+              - 'seasons/calibration-*.json'
               - 'web/src/chain/**'
               - 'web/scripts/chain-smoke.mjs'
               - 'web/package-lock.json'

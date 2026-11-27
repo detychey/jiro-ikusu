@@ -3,7 +3,7 @@
 
 import { load, save, type Storage } from "./storage";
 
-export const CONTROLS = ["up", "down", "left", "right", "a", "b", "x"] as const;
+export const CONTROLS = ["up", "down", "left", "right", "x"] as const;
 export type Control = (typeof CONTROLS)[number];
 export type Bindings = Record<Control, string>;
 
@@ -13,8 +13,6 @@ export const CONTROL_BITS: Record<Control, number> = {
   down: 1 << 1,
   left: 1 << 2,
   right: 1 << 3,
-  a: 1 << 4,
-  b: 1 << 5,
   x: 1 << 6,
 };
 
@@ -23,15 +21,13 @@ export function controlsOf(mask: number): Control[] {
   return CONTROLS.filter((control) => (mask & CONTROL_BITS[control]) !== 0);
 }
 
-/** KeyboardEvent.code of each control on a QWERTY keyboard: the arrows, and the keys A, B and X.
+/** KeyboardEvent.code of each control on a QWERTY keyboard: the arrows, and the key X.
  *  A code names a key by its place on a QWERTY keyboard, whatever the layout prints on it. */
 export const DEFAULT_BINDINGS: Bindings = {
   up: "ArrowUp",
   down: "ArrowDown",
   left: "ArrowLeft",
   right: "ArrowRight",
-  a: "KeyA",
-  b: "KeyB",
   x: "KeyX",
 };
 
@@ -54,13 +50,13 @@ export async function keyboardLayout(): Promise<KeyboardLayout | undefined> {
   }
 }
 
-/** The default bindings under `layout`: the arrows, and the keys that print A, B and X. A letter
- *  the layout doesn't print, or an unknown layout, keeps its QWERTY place. */
+/** The default bindings under `layout`: the arrows, and the key that prints X. A letter the
+ *  layout doesn't print, or an unknown layout, keeps its QWERTY place. */
 export function defaultBindings(layout: KeyboardLayout | undefined): Bindings {
   const letterKeys = [...(layout ?? [])].filter(([code]) => /^Key[A-Z]$/.test(code));
   const keyPrinting = (letter: string) => letterKeys.find(([, printed]) => printed.toLowerCase() === letter)?.[0];
   const bindings = { ...DEFAULT_BINDINGS };
-  for (const control of ["a", "b", "x"] as const) bindings[control] = keyPrinting(control) ?? DEFAULT_BINDINGS[control];
+  bindings.x = keyPrinting("x") ?? DEFAULT_BINDINGS.x;
   return isBindings(bindings) ? bindings : { ...DEFAULT_BINDINGS };
 }
 

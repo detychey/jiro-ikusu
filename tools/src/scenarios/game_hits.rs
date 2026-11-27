@@ -8,11 +8,11 @@ use jiro_core::types::{Dir, InputMask, Pos};
 
 use super::game::{GameCase, calm, check, minion_pos, recorded};
 use super::level::{open_field, with_minions};
-use super::play::{Run, at, first_run, header, in_boss, mask, neighbor, record, script};
+use super::play::{Run, at, first_run, header, in_boss, neighbor, record, script};
 
 pub fn cases() -> Result<Vec<GameCase>, String> {
     let mut cases = boss_body_steps()?;
-    cases.extend(minion_meetings()?);
+    cases.push(minion_meetings()?);
     cases.extend(several_hits()?);
     cases.extend(same_tick_ends()?);
     cases.push(respawn_after_bottom_captured()?);
@@ -61,11 +61,19 @@ fn boss_body_steps() -> Result<Vec<GameCase>, String> {
             toward_column(player, boss.x + 4).unwrap_or(InputMask::UP)
         }),
     )?;
+    // The fast cut climbs from row 58 two rows a tick, so it stops on even rows: from below, the
+    // body's bottom row must be odd, and from the right, even.
+    let right_level = calm((25, 41));
+    let right_header = header(&right_level, super::journal::header().run_nonce);
     let right = record(
-        &level,
-        &level_header,
+        &right_level,
+        &right_header,
         until_hit(|game| {
             let (boss, player) = (game.boss.pos, game.player.pos);
+            // Tick 0 moves the boss, so the corner's column is known from tick 1.
+            if game.ticks_used == 0 {
+                return InputMask::NONE;
+            }
             toward_column(player, boss.x + 5).unwrap_or(if player.y > boss.y + 4 {
                 InputMask::UP
             } else {
@@ -104,8 +112,8 @@ fn boss_body_steps() -> Result<Vec<GameCase>, String> {
         recorded(
             "step-onto-boss-from-right",
             &covers,
-            &level,
-            level_header,
+            &right_level,
+            right_header,
             right,
             EndReason::Committed,
         )?,
@@ -123,8 +131,8 @@ fn toward_column(player: Pos, column: u8) -> Option<InputMask> {
     }
 }
 
-/// COV-04 and COV-06: the swap on the rail, and a minion's hit absorbed by the shield.
-fn minion_meetings() -> Result<Vec<GameCase>, String> {
+/// COV-04: the swap on the rail.
+fn minion_meetings() -> Result<GameCase, String> {
     let level = with_border_minion(calm((25, 10)));
     let level_header = header(&level, super::journal::header().run_nonce);
     let swap = record(
@@ -148,45 +156,21 @@ fn minion_meetings() -> Result<Vec<GameCase>, String> {
         }),
         "swaps cells with the minion on the rail",
     )?;
-
-    let shield = record(
+    recorded(
+        "swap-collision",
+        &[
+            "§4.9", "R4.9-4", "R4.9-6", "R4.9-7", "R4.9-8", "R4.9-10", "R4.7-1", "R4.7-10",
+            "R4.4-10", "PIN-15", "COV-04",
+        ],
         &level,
-        &level_header,
-        script(&[(InputMask::B, 12)], InputMask::X),
-    )?;
-    check(
-        "shield-absorbs-a-hit",
-        shield.ticks().any(|(before, _, after)| {
-            (before.player.shield, after.player.shield) == (1, 0)
-                && after.player.lives == before.player.lives
-        }) && shield.states[1].player.press_tick == 0,
-        "spends the shield charge on a minion's hit, with B held from tick 0",
-    )?;
-    Ok(vec![
-        recorded(
-            "swap-collision",
-            &[
-                "§4.9", "R4.9-4", "R4.9-6", "R4.9-7", "R4.9-8", "R4.9-10", "R4.7-1", "R4.7-10",
-                "R4.4-10", "PIN-15", "COV-04",
-            ],
-            &level,
-            level_header,
-            swap,
-            EndReason::Committed,
-        )?,
-        recorded(
-            "shield-absorbs-a-hit",
-            &["§4.9", "R4.9-9", "R4.9-13", "R4.9-15", "PIN-03", "COV-06"],
-            &level,
-            level_header,
-            shield,
-            EndReason::Committed,
-        )?,
-    ])
+        level_header,
+        swap,
+        EndReason::Committed,
+    )
 }
 
-/// COV-09: a step onto the boss's body and a minion's share on the same tick, plain, with B
-/// held and a charge left, and while invulnerable. The boss's body must rest on the bottom row
+/// COV-09: a step onto the boss's body and a minion's share on the same tick, plain and while
+/// invulnerable. The boss's body must rest on the bottom row
 /// over (30, 58) after tick 0, which the run nonce decides.
 fn several_hits() -> Result<Vec<GameCase>, String> {
     let level = with_border_minion(Level {
@@ -198,29 +182,21 @@ fn several_hits() -> Result<Vec<GameCase>, String> {
             && before.player.pos == PLAYER_START
             && minion_pos(after, 0) == Some(PLAYER_START)
     };
-    let variants: [(&str, InputMask, Option<u8>, &[&str]); 3] = [
+    let variants: [(&str, Option<u8>, &[&str]); 2] = [
         (
             "several-hits-one-life",
-            InputMask::UP,
             None,
             &["R4.9-5", "R4.9-16", "R4.9-17"],
         ),
         (
-            "several-hits-with-shield",
-            mask(&[InputMask::UP, InputMask::B]),
-            None,
-            &["R4.9-5", "R4.9-15"],
-        ),
-        (
             "several-hits-while-invulnerable",
-            InputMask::UP,
             Some(35),
             &["R4.9-5", "R4.9-14", "PIN-02"],
         ),
     ];
     variants
         .into_iter()
-        .map(|(name, press, first_hit_at, tags)| {
+        .map(|(name, first_hit_at, tags)| {
             let (level_header, run) = first_run(
                 name,
                 &level,
@@ -236,7 +212,7 @@ fn several_hits() -> Result<Vec<GameCase>, String> {
                             InputMask::X
                         } else if minion_x == Some(press_at) {
                             pressed += 1;
-                            press
+                            InputMask::UP
                         } else {
                             InputMask::NONE
                         }
@@ -245,19 +221,11 @@ fn several_hits() -> Result<Vec<GameCase>, String> {
                 |run| {
                     run.ticks().any(|(before, ran, after)| {
                         let lives = after.player.lives.cmp(&before.player.lives);
-                        let shield = after.player.shield.cmp(&before.player.shield);
-                        ran == press
+                        ran == InputMask::UP
                             && both_hits(before, after)
                             && match first_hit_at {
-                                Some(_) => {
-                                    before.player.invulnerable > 0
-                                        && lives.is_eq()
-                                        && shield.is_eq()
-                                }
-                                None if press.contains(InputMask::B) => {
-                                    lives.is_eq() && shield.is_lt()
-                                }
-                                None => lives.is_lt() && shield.is_eq(),
+                                Some(_) => before.player.invulnerable > 0 && lives.is_eq(),
+                                None => lives.is_lt(),
                             }
                     })
                 },
@@ -291,7 +259,7 @@ fn same_tick_ends() -> Result<Vec<GameCase>, String> {
     let mut presses = [InputMask::UP, InputMask::RIGHT, InputMask::DOWN].into_iter();
     let mut started = false;
     let clear = record(&level, &level_header, move |game| {
-        started |= minion_pos(game, 0) == Some(at(34, 59));
+        started |= minion_pos(game, 0) == Some(at(35, 59));
         if started {
             presses.next().unwrap_or(game.mask)
         } else {
@@ -425,11 +393,16 @@ fn minion_stranded_respawns() -> Result<GameCase, String> {
             && minion_pos(&run.states[respawn_tick + 1], 0) == Some(at(0, 0)),
         "respawns at (0, 0) at step 5 of tick t + R − 1",
     )?;
+    check(
+        name,
+        run.states[respawn_tick + 1].work - run.states[respawn_tick].work == 2,
+        "adds 2 to the work: its spawn cell, then (0, 0)",
+    )?;
     recorded(
         name,
         &[
             "§4.7", "R4.7-7", "R4.7-8", "R4.7-9", "R4.7-11", "R4.4-10", "PIN-16", "PIN-17",
-            "R4.3-5",
+            "R4.3-5", "R4.11-3",
         ],
         &level,
         level_header,

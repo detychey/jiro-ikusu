@@ -60,15 +60,12 @@
         <div id="stick" class="stick"><div id="stick-ring"></div><div id="stick-knob"></div></div>
         <div class="pads">
           <div id="pad-x" class="pad"><div><span>COMMIT</span><span>X</span><span id="x-hold"></span></div></div>
-          <div id="pad-a" class="pad"><div><span>CUT</span><span>A</span></div></div>
-          <div id="pad-b" class="pad"><div><span>SHIELD</span><span>B</span></div></div>
         </div>
       </div>
       <aside class="side">
         <dl id="hud" class="hud">
           <dt>Claim</dt><dd id="hud-claim">–</dd>
           <dt>Lives</dt><dd id="hud-lives">–</dd>
-          <dt>Shield</dt><dd id="hud-shield">–</dd>
           <dt>Time</dt><dd id="hud-time">–</dd>
         </dl>
         <form id="setup" class="setup">
@@ -79,10 +76,10 @@
         </form>
         <details class="controls">
           <summary>Controls</summary>
-          <p class="keys-help">Move with the arrow keys. Hold A to cut fast, B to slow down behind the shield, X to bank the level.</p>
+          <p class="keys-help">Move with the arrow keys; a cut runs two cells a tick. Hold X to bank the level.</p>
           <p id="layout-note" class="keys-help"></p>
           <div class="touch-help">
-            <p>Steer with the stick: put your thumb down anywhere in its square and drag. Hold CUT (A) to cut fast and SHIELD (B) to slow down behind the shield. Hold COMMIT (X) until its bar fills to bank the level. A keyboard still plays.</p>
+            <p>Steer with the stick: put your thumb down anywhere in its square and drag; a cut runs two cells a tick. Hold COMMIT (X) until its bar fills to bank the level. A keyboard still plays.</p>
             <fieldset>
               <legend>Touch controls</legend>
               <label><input id="touch-on" type="radio" name="touch" value="on" /> On</label>

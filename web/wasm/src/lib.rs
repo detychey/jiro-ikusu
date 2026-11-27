@@ -571,12 +571,6 @@ pub extern "C" fn lives() -> u32 {
     with_game(|game| u32::from(game.player.lives))
 }
 
-/// Shield charges left (D6).
-#[unsafe(no_mangle)]
-pub extern "C" fn shield() -> u32 {
-    with_game(|game| u32::from(game.player.shield))
-}
-
 /// Protected ticks left (README §4.3).
 #[unsafe(no_mangle)]
 pub extern "C" fn invulnerable() -> u32 {

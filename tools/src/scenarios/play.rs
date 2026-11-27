@@ -113,11 +113,6 @@ pub fn first_run(
     Err(format!("{name}: no run nonce among 200 gives the scenario"))
 }
 
-pub fn mask(parts: &[InputMask]) -> InputMask {
-    InputMask::new(parts.iter().fold(0, |bits, part| bits | part.bits()))
-        .expect("scenario masks leave bit 7 clear")
-}
-
 /// Holds each mask of `steps` for its number of ticks, then `then` for the rest of the level.
 pub fn script(steps: &[(InputMask, u16)], then: InputMask) -> impl FnMut(&Game) -> InputMask {
     let mut schedule: Vec<InputMask> = steps
@@ -128,16 +123,18 @@ pub fn script(steps: &[(InputMask, u16)], then: InputMask) -> impl FnMut(&Game) 
     move |_| schedule.pop().unwrap_or(then)
 }
 
-/// Changes the mask on every tick: when `policy` repeats the mask in force, A is toggled.
+/// Changes the mask on every tick: when `policy` repeats the mask in force, the ignored bit 4 is
+/// toggled, or, if that leaves no bit set, the ignored bit 5 is set.
 pub fn every_tick(mut policy: impl FnMut(&Game) -> InputMask) -> impl FnMut(&Game) -> InputMask {
     move |game| {
         let wanted = policy(game);
         if wanted != game.mask {
             return wanted;
         }
-        let toggled = InputMask::new(wanted.bits() ^ InputMask::A.bits()).expect("bit 7 clear");
+        let toggled =
+            InputMask::new(wanted.bits() ^ InputMask::IGNORED_A.bits()).expect("bit 7 clear");
         if toggled == InputMask::NONE {
-            InputMask::B
+            InputMask::IGNORED_B
         } else {
             toggled
         }

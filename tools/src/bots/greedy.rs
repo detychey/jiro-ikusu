@@ -1,5 +1,5 @@
 //! Greedy: from the rail, the largest rectangle it can cut out while the boss and the minions stay
-//! clear of it, cut with A held. With no such rectangle in reach, it walks along the rail. Its
+//! clear of it, cut at the fast cut's two cells a tick. With no such rectangle in reach, it walks along the rail. Its
 //! `Caution` sets how far it keeps the boss.
 
 use jiro_core::boss::Boss;
@@ -8,7 +8,7 @@ use jiro_core::grid::Grid;
 use jiro_core::minion::State;
 use jiro_core::types::{Cell, CellIndex, Dir, InputMask, Pos};
 
-use crate::scenarios::play::{Plan, Rng, distance, mask, reverse, walk_rail};
+use crate::scenarios::play::{Plan, Rng, distance, reverse, walk_rail};
 
 #[cfg(test)]
 mod tests;
@@ -71,8 +71,8 @@ enum Leg {
 }
 
 impl Cut {
-    /// The mask that carries the cut on: the leg's direction, with A while at least two cells of
-    /// the leg are left, so that the double step of a fast cut never overshoots a corner.
+    /// The mask that carries the cut on: the leg's direction. The fast cut's double step can
+    /// overshoot a leg of odd length by one cell, and the next leg then starts from there.
     fn mask(&mut self, game: &Game) -> InputMask {
         let plan = self.plan;
         let travelled = |dir: Dir| distance(plan.start, game.player.pos, dir);
@@ -82,16 +82,12 @@ impl Cut {
         if self.leg == Leg::Side && travelled(plan.side) >= i16::from(plan.width) {
             self.leg = Leg::Back;
         }
-        let (dir, left) = match self.leg {
-            Leg::Out => (plan.out, i16::from(plan.depth) - travelled(plan.out)),
-            Leg::Side => (plan.side, i16::from(plan.width) - travelled(plan.side)),
-            Leg::Back => (reverse(plan.out), travelled(plan.out)),
-        };
-        if left >= 2 {
-            mask(&[dir.mask(), InputMask::A])
-        } else {
-            dir.mask()
+        match self.leg {
+            Leg::Out => plan.out,
+            Leg::Side => plan.side,
+            Leg::Back => reverse(plan.out),
         }
+        .mask()
     }
 }
 

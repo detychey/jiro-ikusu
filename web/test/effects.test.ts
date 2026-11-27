@@ -33,7 +33,6 @@ function recordingBrush(): { brush: Brush; drawn: Drawn[] } {
 const snapshot = (ticksUsed: number, claimBp: number): Snapshot => ({
   player: { x: 30, y: 59, cutting: false },
   lives: 3,
-  shield: 1,
   invulnerable: 0,
   boss: { x: 20, y: 20, size: 5 },
   minions: [],

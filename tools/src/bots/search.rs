@@ -22,7 +22,7 @@ use jiro_core::hash::state_hash;
 use jiro_core::types::{Cell, CellIndex, Dir, InputMask};
 
 use super::greedy::LEGS;
-use crate::scenarios::play::{distance, in_boss, mask, neighbor, reverse};
+use crate::scenarios::play::{distance, in_boss, neighbor, reverse};
 
 #[cfg(test)]
 mod tests;
@@ -422,11 +422,10 @@ impl Stage {
     }
 }
 
-/// A leg of a cut from `start` in `dir`, with A held so that the cut runs two cells a tick. Each
-/// length of `LEGS` within the open run ahead turns into the next stage; a length that a double
-/// step would overshoot takes its last cell without A (PIN-04 keeps A safe on the closing
-/// sub-step). When claimed ground ends the run, the leg also runs on until the cut closes, and
-/// `found` records the capture.
+/// A leg of a cut from `start` in `dir`, which the fast cut runs two cells a tick. Each length of
+/// `LEGS` within the open run ahead that the leg stops on turns into the next stage; the double
+/// step passes the others. When claimed ground ends the run, the leg also runs on until the cut
+/// closes, and `found` records the capture.
 fn leg(
     budget: &mut Budget,
     start: &Line,
@@ -451,16 +450,6 @@ fn leg(
                     for turn in dirs {
                         leg(budget, &line, turn, out, next, found)?;
                     }
-                } else if length == done + 1 && line.game.player.cutting {
-                    let mut last = budget.fork(&line)?;
-                    if budget.advance(&mut last, dir.mask())?
-                        && last.game.end.is_none()
-                        && distance(from, last.game.player.pos, dir) == length
-                    {
-                        for turn in dirs {
-                            leg(budget, &last, turn, out, next, found)?;
-                        }
-                    }
                 }
             }
         }
@@ -468,7 +457,7 @@ fn leg(
             return Some(());
         }
         let captured = line.game.captured;
-        if !budget.advance(&mut line, mask(&[dir.mask(), InputMask::A]))? {
+        if !budget.advance(&mut line, dir.mask())? {
             return Some(());
         }
         if line.game.captured > captured || line.game.end.is_some() {

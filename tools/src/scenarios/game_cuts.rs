@@ -7,7 +7,7 @@ use jiro_core::types::{Cell, InputMask};
 
 use super::game::{GameCase, calm, check, recorded};
 use super::level::{open_field, with_obstacles};
-use super::play::{CaptureBot, Run, at, first_run, header, mask, record, script};
+use super::play::{CaptureBot, Run, at, first_run, header, record, script};
 
 pub fn cases() -> Result<Vec<GameCase>, String> {
     let mut cases = capture_shapes()?;
@@ -42,7 +42,9 @@ fn capture_shapes() -> Result<Vec<GameCase>, String> {
         InputMask::LEFT,
         InputMask::RIGHT,
     );
-    let rectangle = [(up, 5), (right, 6), (down, 5)];
+    // The fast cut runs two cells a tick after the first: 5 cells up take 3 ticks, and so do 6
+    // across and the 5 back down, the last of which closes the cut.
+    let rectangle = [(up, 3), (right, 3), (down, 3)];
     let shapes = [
         Shape {
             name: "capture-edge-rectangle",
@@ -54,7 +56,7 @@ fn capture_shapes() -> Result<Vec<GameCase>, String> {
         Shape {
             name: "capture-l-shape",
             level: calm((25, 10)),
-            steps: &[(up, 5), (left, 30)],
+            steps: &[(up, 3), (left, 30)],
             size: 30 * 5,
             tags: &["R4.5-5"],
         },
@@ -150,8 +152,8 @@ fn boss_corridors() -> Result<Vec<GameCase>, String> {
         .collect()
 }
 
-/// The fast cut, a fast cut closing on its first sub-step, the slow shield, and a player
-/// stranded off the rail by their own capture.
+/// The fast cut, a fast cut closing on its first sub-step, and a player stranded off the rail by
+/// their own capture.
 fn cut_moves() -> Result<Vec<GameCase>, String> {
     let (up, down, left, right) = (
         InputMask::UP,
@@ -161,40 +163,31 @@ fn cut_moves() -> Result<Vec<GameCase>, String> {
     );
     let calm = calm((25, 10));
 
-    let (fast_header, fast) = scripted(&calm, &[(up, 1), (mask(&[up, InputMask::A]), 5)])?;
+    let (fast_header, fast) = scripted(&calm, &[(up, 6)])?;
     check(
         "fast-cut",
         fast.ticks()
-            .skip(1)
-            .take(5)
-            .all(|(before, _, after)| before.player.pos.y - after.player.pos.y == 2),
-        "takes two sub-steps per tick while cutting with A held",
+            .next()
+            .is_some_and(|(before, _, after)| before.player.pos.y - after.player.pos.y == 1)
+            && fast
+                .ticks()
+                .skip(1)
+                .take(5)
+                .all(|(before, _, after)| before.player.pos.y - after.player.pos.y == 2),
+        "takes one sub-step on the tick the cut starts, then two per tick while cutting",
     )?;
 
-    let blocked = with_obstacles(calm, [(30, 50)]);
-    let (close_header, close) = scripted(&blocked, &[(up, 8), (mask(&[up, InputMask::A]), 1)])?;
-    let closing = close.ticks().nth(8).ok_or("fast-cut-close: too short")?;
+    let blocked = with_obstacles(calm, [(30, 51)]);
+    let (close_header, close) = scripted(&blocked, &[(up, 5)])?;
+    let closing = close.ticks().nth(4).ok_or("fast-cut-close: too short")?;
     let (before, _, after) = closing;
     check(
         "fast-cut-close-first-sub-step",
-        after.player.pos == at(30, 50)
+        after.player.pos == at(30, 51)
             && !after.player.cutting
             && after.captured > before.captured
-            && after.grid.at(at(30, 49)) == Some(Cell::Empty),
+            && after.grid.at(at(30, 50)) == Some(Cell::Empty),
         "closes on the first sub-step and takes no second one",
-    )?;
-
-    let (slow_header, slow) = scripted(&calm, &[(mask(&[up, InputMask::B]), 10)])?;
-    check(
-        "slow-shield",
-        slow.ticks()
-            .take(10)
-            .enumerate()
-            .all(|(tick, (before, _, after))| {
-                (before.player.pos != after.player.pos) == (tick % 2 == 0)
-            })
-            && slow.states[1].player.press_tick == 0,
-        "moves only on even ticks with B held from tick 0",
     )?;
 
     let pocket: Vec<(u8, u8)> = (10..=14)
@@ -218,7 +211,7 @@ fn cut_moves() -> Result<Vec<GameCase>, String> {
         (up, 59),
         (right, 10),
         (down, 3),
-        (right, 4),
+        (right, 3),
         (down, 2),
     ];
     let (stranded_header, stranded) = scripted(&stranding, &walk)?;
@@ -248,14 +241,6 @@ fn cut_moves() -> Result<Vec<GameCase>, String> {
             &blocked,
             close_header,
             close,
-            EndReason::Committed,
-        )?,
-        recorded(
-            "slow-shield",
-            &["§4.5", "R4.5-7", "PIN-03", "R4.3-5"],
-            &calm,
-            slow_header,
-            slow,
             EndReason::Committed,
         )?,
         recorded(

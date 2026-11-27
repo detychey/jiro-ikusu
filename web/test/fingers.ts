@@ -4,12 +4,10 @@
 
 import { type Boxes, listenTouch, type Pad, type Point, TOUCH_DEFAULTS, TouchControls, type TouchParams } from "../src/touch";
 
-/** The pads in client px: the stick's 144-px pad, then X over A and B, 72 px each. */
+/** The pads in client px: the stick's 144-px pad, then X, 56 px. */
 export const BOXES: Boxes = {
   stick: { left: 0, top: 0, right: 144, bottom: 144 },
   x: { left: 160, top: 0, right: 216, bottom: 56 },
-  a: { left: 152, top: 80, right: 224, bottom: 152 },
-  b: { left: 232, top: 80, right: 304, bottom: 152 },
 };
 
 export function centerOf(pad: Pad): Point {

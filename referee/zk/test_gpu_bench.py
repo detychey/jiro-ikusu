@@ -299,7 +299,7 @@ class SummaryTest(BenchDirectory):
     def test_a_curve_prices_nothing_beyond_the_measured_range(self):
         self.write_curve()
         self.summarize()
-        row = next(line for line in (self.out / "summary.md").read_text().splitlines() if line.startswith("| cost-maximising"))
+        row = next(line for line in (self.out / "summary.md").read_text().splitlines() if line.startswith("| cap:"))
         self.assertEqual(row.split(" | ")[3], "—")
 
     def test_two_rounds_are_too_few_for_a7(self):

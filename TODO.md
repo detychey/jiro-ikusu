@@ -54,7 +54,7 @@ Planned on 2026-10-28 for a version after v1, and not scheduled. A third-party s
 
 ## Slow cuts
 
-Superseded on 2026-11-27: the owner chose the fast cut always on while cutting, from rules version 3 (plan M5.12), and will revisit cutting later. The analysis below dates from 2026-11-10, when the question was deferred to testnet-1's data.
+Superseded on 2026-11-27: the owner chose the fast cut always on while cutting, from rules version 3 (plan M5.12), and will revisit cutting later. The same rules version removed the shield (B). The analysis below dates from 2026-11-10, when the question was deferred to testnet-1's data.
 
 ### The problem
 

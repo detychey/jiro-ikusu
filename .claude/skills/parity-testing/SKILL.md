@@ -18,10 +18,9 @@ Each vector maps (level bytes, run nonce, journal bytes) to a per-tick trace of 
 - the player stepping onto a cell of the boss's body other than its top-left, such as the bottom-right cell, from the right and from below [COV-03];
 - the swap collision [COV-04];
 - a fast cut closing on its first sub-step [COV-05];
-- the shield [COV-06];
 - respawn after the bottom border was captured [COV-07];
 - a player stranded off the rail by their own capture [COV-08];
-- several hits in one tick, with and without a shield charge or invulnerability [COV-09];
+- several hits in one tick, with and without invulnerability [COV-09];
 - end conditions that meet on the same tick, such as clearing the level and losing the last life [COV-10];
 - the Commit key [COV-11];
 - the time limit, including events at tick T − 1 and T [COV-12];

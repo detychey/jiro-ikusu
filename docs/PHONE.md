@@ -88,15 +88,14 @@ Measurement comes before rule text: M3.12's device data feeds the hidden-page po
 
 ## 3. Touch controls
 
-Touch produces controls, never keys, and the journal records controls *(D8)*. So a touch scheme is rules-neutral as long as each tick's sample is the same seven bits.
+Touch produces controls, never keys, and the journal records controls *(D8)*. So a touch scheme is rules-neutral as long as each tick's sample is the same bits.
 
 ### 3.1 Mapping
 
 | Control | Touch | Mask bit | Rules served |
 |---|---|---|---|
 | Directions | A floating stick in the left zone; its origin is where the thumb lands, as Apple's guidelines advise [24]. Past the dead zone, the angle sets a direction (§3.2). | 0-3 | [R4.5-1] direction resolution; [PIN-05]. Lifting the finger stands the player still. |
-| A, fast cut | Held while a pointer is on A | 4 | [R4.5-6]: a fast cut needs A held |
-| B, shield | Held while a pointer is on B | 5 | [R4.5-7], [PIN-03]: `press_tick` is the tick B enters the mask, and B wins over A. [R4.9-15]: the shield absorbs a hit only if B is held when it resolves. |
+| A and B | None since rules version 3 | none | [R4.5-6]: the fast cut is always on while cutting, and the shield is removed *(D6)*. The rules ignore bits 4 and 5, and clients never set them ([§6.1](../README.md#61-input-mask)). |
 | X, commit | Enters the mask once a pointer has been down on X through `xHold` earlier samples (§3.3) | 6 | [R4.4-7], [R4.10-2]: X ends the level and discards an open cut. [PIN-07]: X at tick 0 scores claim 0. |
 | Y | None | none | *(D8)*: not journaled |
 | Bit 7 | Never set | none | [§6.1](../README.md#61-input-mask); decode code 10 |
@@ -114,7 +113,7 @@ A one-tick X is enough to end a level, so a stray tap on a touch X commits. A gu
 
 - **Commit is an emergency action.** "Running out of lives scores zero, which makes Commit meaningful" *(D5)*. A hold of `xHold` ticks delays it by `xHold` × 66.667 ms; at 8 ticks, a minion of period 1 moves 8 cells in that time ([`levels/README.md`](../levels/README.md): levels 08, 10-12 and 14-16).
 - **Ranking.** Touch and keyboard players rank in one table, where ties go to fewer ticks *(D10)*. A hold adds `xHold` ticks to every level committed by X.
-- **So the hold is measured, not assumed.** M3.14's playtest counts accidental commits at `xHold` = 0, 2, 4 and 8, with X placed apart from A and B, and keeps the shortest hold that meets A7. Alternatives, if no hold works: X out of thumb reach with no hold, or a two-tap arm (a tap arms X, a second tap within a few ticks commits).
+- **So the hold is measured, not assumed.** M3.14's playtest counts accidental commits at `xHold` = 0, 2, 4 and 8, with X placed apart from the stick, and keeps the shortest hold that meets A7. Alternatives, if no hold works: X out of thumb reach with no hold, or a two-tap arm (a tap arms X, a second tap within a few ticks commits).
 - **The keyboard X stays a single press,** and a gamepad's X needs no hold (M3.23).
 - **Challenge's Stop** (end the run and commit it now) is page UI, not a mask bit: it needs a hold of 15 ticks (1 s).
 
@@ -123,9 +122,9 @@ The README states only that X may need a short hold, set in this file (M3.13); t
 ### 3.4 Sampling, releases and parameters
 
 - **One input path.** `HeldKeys` and a new `TouchControls` implement one input source (`sample()`, `clear()`). The tick samples the OR of every source once (`web/src/session.ts`, `web/src/run/play.ts`). Keyboard and gamepad stay active beside touch.
-- **Taps shorter than a tick** count once, by the rule `HeldKeys` already applies to keys (`web/src/input.ts`: "a tap shorter than a tick still counts once"). That covers A, B and a stick flick. X needs its full hold.
+- **Taps shorter than a tick** count once, by the rule `HeldKeys` already applies to keys (`web/src/input.ts`: "a tap shorter than a tick still counts once"). That covers a stick flick. X needs its full hold.
 - **Releases.** Every touch control is released on `pointerup`, `pointercancel` and `lostpointercapture`, and on `visibilitychange` to hidden, `blur` and `pagehide`. A released control is out of the next sample.
-- **Multi-touch.** One finger steers while another holds A or B. A pointer holds the button under it and can slide between A and B.
+- **Multi-touch.** One finger steers while another holds X. A pointer holds the button under it, and releases it when it slides off.
 - **Where they show.** On `(pointer: coarse)`: on Training from M3.13, and on Challenge only from M3.18, which waits for testnet-1's report or puts them behind a flag that stays off during testnet-1 (OD7), so that no testnet-1 run is played by touch. The Controls panel turns them on, off or mirrored for left-handed play, stored per browser like the key bindings, and on coarse pointers it explains them in place of the keys, keeping the bindings table for a keyboard.
 
 | Parameter | Default |
@@ -134,14 +133,13 @@ The README states only that X may need a short hold, set in this file (M3.13); t
 | Follow radius | 48 CSS px |
 | Diagonal band | 20°, centered on each diagonal |
 | Stick zone | 144 × 144 CSS px at least |
-| A and B | 72 × 72 CSS px when the button zone is at least 152 px wide, else 64 × 64 |
-| X | 56 × 56 CSS px, at least 24 px from A and B |
+| X | 56 × 56 CSS px |
 | Gaps between controls | 8 px at least |
 | Edge clearance | 16 px from the screen's side edges **[estimate]**, against edge back-swipes, which a page cannot turn off on Android [35]; resized from M3.12's measurement of the back-gesture zone (§14). Controls stay inside the bottom safe area. |
 | `xHold` | 4, provisional until M3.14's playtest (A7), which chooses it from 0, 2, 4 and 8 ticks (OD3) |
 | Stop hold | 15 ticks |
 
-Every length is a multiple of 4 px ([STYLE_GUIDE.md §8](STYLE_GUIDE.md#8-interface)), and 64 px clears Apple's 44-pt minimum [24]. The defaults are tuned in M3.14's playtest. **The look** goes into the style guide as a new §8 component, "Touch controls", which cites this table for its sizes: cabinet buttons on a 4-px shelf, each named by its action, CUT, SHIELD and COMMIT, over its letter, A, B or X, both in Jiro Pixel 12 at 12 px (COMMIT is 47 px wide, inside X's 56), which the guide's §4 adds to the face's uses; Apple's guidelines advise against controller letters as a button's only art [24]. The stick is a 2-px `--claim` ring with a `--player` knob, and X's hold shows in whole ticks. Nothing blinks, and `prefers-reduced-motion` removes the press translate.
+Every length is a multiple of 4 px ([STYLE_GUIDE.md §8](STYLE_GUIDE.md#8-interface)), and 64 px clears Apple's 44-pt minimum [24]. The defaults are tuned in M3.14's playtest. **The look** goes into the style guide as a new §8 component, "Touch controls", which cites this table for its sizes: a cabinet button on a 4-px shelf, named by its action, COMMIT, over its letter, X, both in Jiro Pixel 12 at 12 px (COMMIT is 47 px wide, inside X's 56), which the guide's §4 adds to the face's uses; Apple's guidelines advise against controller letters as a button's only art [24]. The stick is a 2-px `--claim` ring with a `--player` knob, and X's hold shows in whole ticks. Nothing blinks, and `prefers-reduced-motion` removes the press translate.
 
 ## 4. Layout and field scale
 
@@ -158,23 +156,23 @@ Every length is a multiple of 4 px ([STYLE_GUIDE.md §8](STYLE_GUIDE.md#8-interf
 
 The values of the HUD stay at 24 px, the style guide's minimum for essential values in Jiro Pixel 12 (its §4); its labels are the 12-px labels of its §8.
 
-- **Compact HUD.** One row of four cells, each a label (12/16) over a value (24/24): claim, with the target in its label ("CLAIM · 75.00 %" over "74.92 %"), lives, shield and time. The cells are as wide as their content and 8 px apart. With the site's font, the claim label is 112 px wide, the lives and shield labels 39 and 49, and the time value ("180 s") 60, so the row takes at most 283 px, inside the 288 px of a 320-px screen; the guide's 16-px HUD column gap would need 307. In Challenge, a second row: the run squares with "Level n of 6", the deadline margin, and Stop at its end, a 40-px secondary button behind its hold (§3.3), about 255 px in all **[estimate]**. Each row is 40 px, plus 8 px of padding.
-- **Portrait,** top to bottom: the HUD, the field, the controls zone (176 px tall: the stick zone on the left, X above A and B on the right). W_avail = W − left and right insets − 32. H_avail = H − top inset − max(bottom inset, 16) − HUD (48, or 96 in Challenge) − 176 − 24, the 24 being three 8-px gaps.
-- **Portrait at 320 px:** 288 px of width fit the 144-px stick zone, an 8-px gap and two 64-px buttons with an 8-px gap between them. X sits above B, at least 24 px clear.
-- **Landscape:** two side zones of 160 px (16 px of edge clearance and a 144-px control area), 16 px between each zone and the field. The HUD splits over the zones' tops: claim and time on the left; lives, shield, the run and Stop on the right. A and B are 64 px. W_avail = W − insets − 352; H_avail = H − insets − 16.
+- **Compact HUD.** One row of three cells, each a label (12/16) over a value (24/24): claim, with the target in its label ("CLAIM · 75.00 %" over "74.92 %"), lives and time. The cells are as wide as their content and 8 px apart. With the site's font, the claim label is 112 px wide, the lives label 39, and the time value ("180 s") 60, so the row takes at most 227 px, inside the 288 px of a 320-px screen. Until rules version 3 it also showed the shield. In Challenge, a second row: the run squares with "Level n of 6", the deadline margin, and Stop at its end, a 40-px secondary button behind its hold (§3.3), about 255 px in all **[estimate]**. Each row is 40 px, plus 8 px of padding.
+- **Portrait,** top to bottom: the HUD, the field, the controls zone (176 px tall: the stick zone on the left, X on the right). W_avail = W − left and right insets − 32. H_avail = H − top inset − max(bottom inset, 16) − HUD (48, or 96 in Challenge) − 176 − 24, the 24 being three 8-px gaps.
+- **Portrait at 320 px:** 288 px of width fit the 144-px stick zone, an 8-px gap and X's 56 px.
+- **Landscape:** two side zones of 160 px (16 px of edge clearance and a 144-px control area), 16 px between each zone and the field. The HUD splits over the zones' tops: claim and time on the left; lives, the run and Stop on the right. W_avail = W − insets − 352; H_avail = H − insets − 16.
 
 ```text
 portrait, 360 x 640                       landscape, 640 x 360
 +------------------------------------+    +------------+--------------+------------+
-| CLAIM·75.00 %  LIVES  SHIELD  TIME |    | CLAIM·75 % |              | LIVES  SHLD|
-| 74.92 %        3      1      161 s |    | 74.92 %    |              | 3      1   |
+| CLAIM·75.00 %  LIVES  TIME         |    | CLAIM·75 % |              | LIVES      |
+| 74.92 %        3      161 s        |    | 74.92 %    |              | 3          |
 +------------------------------------+    | TIME 161 s |   field      |       [X]  |
 |                                    |    |            |   240        |            |
-|            field 300               |    |   ( o )    |              |  [A]  [B]  |
+|            field 300               |    |   ( o )    |              |            |
 |                                    |    |            |              |            |
 +------------------------------------+    +------------+--------------+------------+
 |   ( o )  stick zone      [X]       |
-|                       [A]  [B]     |
+|                                    |
 +------------------------------------+
 ```
 

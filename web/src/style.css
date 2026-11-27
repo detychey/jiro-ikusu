@@ -247,7 +247,7 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 #field[data-end-reason="Out of lives"] ~ .end #end-title { text-shadow: 0 calc(1em / 12) 0 var(--danger); }
 
 /* The touch controls (docs/PHONE.md §3.4), on coarse pointers only, after the field until M3.14's
-   play view: the stick's pad, then X over A and B, mirrored for the left hand. A drag on them never
+   play view: the stick's pad, then X, mirrored for the left hand. A drag on them never
    scrolls or selects. */
 .touch, .touch-help { display: none; }
 @media (pointer: coarse) {
@@ -271,8 +271,7 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
 .stick > div { position: absolute; top: 50%; left: 50%; box-sizing: border-box; transform: translate(-50%, -50%); }
 #stick-ring { border: 2px solid var(--claim); }
 #stick-knob { background: var(--player); }
-.pads { display: grid; grid: ". x" 56px "a b" 64px / 64px 64px; gap: 24px 8px; }
-.touch.mirrored .pads { grid-template-areas: "x ." "b a"; }
+.pads { display: grid; grid: "x" 56px / 56px; }
 /* A pad takes the pointers and stays in place; its face, a cabinet button, drops on a press. */
 .pad { display: grid; }
 .pad > div {
@@ -288,18 +287,11 @@ canvas { display: block; background: var(--field); image-rendering: pixelated; s
   font-synthesis: none;
   letter-spacing: 0;
 }
-/* Centered labels start on a whole pixel: COMMIT (47 px) and B (7 px) take even widths. */
+/* Centered labels start on a whole pixel: COMMIT (47 px) takes an even width. */
 #pad-x span:first-child { width: 48px; }
-#pad-b span:last-child { width: 8px; }
-#pad-a { grid-area: a; }
-#pad-b { grid-area: b; }
-#pad-x { grid-area: x; justify-self: center; width: 56px; }
+#pad-x { grid-area: x; width: 56px; }
 /* X's hold, filled one tick at a time. */
 #x-hold { position: absolute; bottom: 0; left: 0; width: 0; height: var(--cell); background: var(--player); }
-/* A and B are 72 px once the button zone, the bar less the stick's 144 px and a gap, is 152 px wide. */
-@media (width >= 336px) {
-  .pads { grid-template-rows: 56px 72px; grid-template-columns: 72px 72px; }
-}
 
 /* page.ts's fitField shows the field at scale 1 below these sizes, too small to hold the end of a
    level, which then follows the field as a panel, aligned left as panels are. */

@@ -552,6 +552,7 @@ pub(crate) struct Stats {
     died: u32,
     committed: u32,
     timed_out: u32,
+    work_budget: u32,
     /// The first quartile, median and third quartile of the effective claim.
     pub(crate) effective_bp: [u16; 3],
     median_ticks: u16,
@@ -571,6 +572,7 @@ impl Stats {
             died: count(EndReason::OutOfLives),
             committed: count(EndReason::Committed),
             timed_out: count(EndReason::TimeLimit),
+            work_budget: count(EndReason::WorkBudget),
             effective_bp: [1, 2, 3].map(|k| quartile(&effective, k)),
             median_ticks: quartile(&ticks, 2),
         }
@@ -588,6 +590,7 @@ impl Stats {
             "deathRatePerMille": self.per_mille(self.died),
             "commitRatePerMille": self.per_mille(self.committed),
             "timeLimitRatePerMille": self.per_mille(self.timed_out),
+            "workBudgetRatePerMille": self.per_mille(self.work_budget),
             "effectiveClaimQuartilesBp": self.effective_bp,
             "medianTicksUsed": self.median_ticks,
         })
@@ -597,12 +600,13 @@ impl Stats {
         let pct = |count| percent(self.per_mille(count));
         let [q1, median, q3] = self.effective_bp;
         format!(
-            "| {name} | {} | {} | {} | {} | {} | {q1} / {median} / {q3} | {} |\n",
+            "| {name} | {} | {} | {} | {} | {} | {} | {q1} / {median} / {q3} | {} |\n",
             self.runs,
             pct(self.cleared),
             pct(self.died),
             pct(self.committed),
             pct(self.timed_out),
+            pct(self.work_budget),
             self.median_ticks
         )
     }
@@ -684,7 +688,7 @@ impl Report<'_> {
         let mut levels = Vec::new();
         for (i, level) in self.levels.iter().enumerate() {
             markdown.push_str(&format!(
-                "\n## {:02} {}\n\n`{}`\n\n| Policy | Runs | Clear | Death | Commit | Time limit | Effective claim Q1 / median / Q3 (bp) | Median ticks |\n|---|---|---|---|---|---|---|---|\n",
+                "\n## {:02} {}\n\n`{}`\n\n| Policy | Runs | Clear | Death | Commit | Time limit | Work budget | Effective claim Q1 / median / Q3 (bp) | Median ticks |\n|---|---|---|---|---|---|---|---|---|\n",
                 level.index,
                 level.name,
                 hex(&level_id(&level.bytes)),

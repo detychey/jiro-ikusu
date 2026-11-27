@@ -132,7 +132,7 @@ jobs:
           status=0
           cargo run -p jiro-tools --release --locked -- playtest --levels levels --check levels/targets.json || status=1
           cargo run -p jiro-tools --locked -- level build levels/src levels || status=1
-          cargo run -p jiro-tools --release --locked -- calibrate --check --out seasons/calibration-1.json || status=1
+          cargo run -p jiro-tools --release --locked -- calibrate --check --out seasons/calibration-2.json || status=1
           bash scripts/check-drift.sh seasons/ levels/ vectors/ reports/ || status=1
           echo "=== END calibrate ==="
           exit "$status"

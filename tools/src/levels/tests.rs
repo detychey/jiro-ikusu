@@ -127,14 +127,10 @@ fn no_level_hits_the_player_on_its_first_tick() {
         let level = decode(&build(&text).expect("build")).expect("decode");
         for bits in 0..=0x7f {
             let mut game = Game::new(&level, &[0; 32], 0).expect("valid level");
-            let start = (game.player.lives, game.player.shield);
+            let start = game.player.lives;
             game.step(InputMask::new(bits).expect("mask"))
                 .expect("tick 0");
-            assert_eq!(
-                (game.player.lives, game.player.shield),
-                start,
-                "{file}, input {bits:#04x}"
-            );
+            assert_eq!(game.player.lives, start, "{file}, input {bits:#04x}");
         }
     }
 }

@@ -220,7 +220,7 @@ fn minion_moves_on_ticks_that_are_multiples_of_the_period() {
     let mut minions = Minions::start(&level, &grid);
     let moved: Vec<bool> = (0..6)
         .map(|tick| {
-            let step = minions.step(&grid, tick)[0].unwrap();
+            let step = minions.step(&grid, tick).moved[0].unwrap();
             step.from != step.to
         })
         .collect();
@@ -273,7 +273,7 @@ fn minion_respawns_at_its_spawn_after_r_ticks_counting_the_tick_of_destruction()
     });
     let destruction_tick = 10;
     let steps: Vec<_> = (destruction_tick..destruction_tick + 3)
-        .map(|tick| minions.step(&grid, tick)[0])
+        .map(|tick| minions.step(&grid, tick).moved[0])
         .collect();
     let respawned = steps[2].unwrap();
     assert_eq!(

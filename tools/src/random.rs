@@ -42,7 +42,8 @@ impl Rng {
 }
 
 /// Random masks: a new mask on about one tick in `hold`, with each direction bit set at
-/// random, A and B (with `all_bits`) set one time in three, and X one time in `commit_odds`.
+/// random, the ignored bits 4 and 5 (with `all_bits`) set one time in three, and X one time in
+/// `commit_odds`.
 pub fn random_play(
     seed: u64,
     hold: u64,
@@ -57,10 +58,10 @@ pub fn random_play(
         let mut bits = (rng.next_u64() & 0x0f) as u8;
         if all_bits {
             if rng.one_in(3) {
-                bits |= InputMask::A.bits();
+                bits |= InputMask::IGNORED_A.bits();
             }
             if rng.one_in(3) {
-                bits |= InputMask::B.bits();
+                bits |= InputMask::IGNORED_B.bits();
             }
         }
         if rng.one_in(commit_odds) {

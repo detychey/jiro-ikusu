@@ -25,9 +25,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PROOF_OF_RECORD = REPO_ROOT / "seasons/testnet-0/runs/run-1.proof.json"
-# zk-host built on risc0-zkvm 3.1.0 at the fixed path, and the selector of the 3.1 Groth16 verifier
-# (plan M5.10). Run 1's public values did not change: they are those of its 3.0 proof of record.
-IMAGE_ID = "0xc9634ada0eab5e9a7bb0a9ddce14df5634f7dddd2caac79416ae3cd8eda915a8"
+# zk-host of rules version 3 (plan M5.12), built on risc0-zkvm 3.1.0 at the fixed path, and the
+# selector of the 3.1 Groth16 verifier (plan M5.10). Run 1's public values are those of its 3.0
+# proof of record; run 1 is a run of rules version 2, which this image no longer proves, so the
+# next benchmark replaces the run1 input (plan M5.17).
+IMAGE_ID = "0x7e1988ace7094a3f7a5b7bf04a8196bc15e4763b3122e7fd5d6a9fdad44588f0"
 SELECTOR = "0xe71e6620"
 SEASON = REPO_ROOT / "seasons/testnet-1.json"
 RUN_1_SCORE = 20310
@@ -37,7 +39,7 @@ MIN_PO2, MAX_PO2 = 16, 21
 WARM_ROLES = ("ladder", "sweep")
 MIN_REPEATS = 3
 
-SMALL_VECTORS = ("commit-at-tick-0", "commit-during-cut", "fast-cut", "event-at-last-tick", "slow-shield", "last-life-on-last-tick")
+SMALL_VECTORS = ("commit-at-tick-0", "commit-during-cut", "fast-cut", "event-at-last-tick", "fast-cut-close-first-sub-step", "last-life-on-last-tick")
 # The ladder: committed run-mode inputs of 7 to about 177 segments of 2^20 cycles, smallest first.
 INPUTS = {
     "small": [f"vectors/game/{name}.json" for name in SMALL_VECTORS],
@@ -70,8 +72,8 @@ PLAYER_RUNS = (
     ("greedy bot, max", 79e6),
     ("edge-nibbler, mean", 69.7e6),
     ("edge-nibbler, max", 102e6),
-    ("proposed cap", 150e6),
-    ("cost-maximising legal run (estimate)", 2.9e9),
+    # The work budget's bound on any legal run (README §4.11, reports/cycle-cap-2026-11-27.md).
+    ("cap: the work budget's bound", 370e6),
 )
 # settleRun through ZkReferee (docs/DEPLOYMENT.md): testnet-0's run 1, with 7,300 bytes of calldata,
 # measured; and about 1,000,000 for a whole bot run's longer journals, estimated in its Funding.

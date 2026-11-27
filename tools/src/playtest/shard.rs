@@ -28,7 +28,7 @@ use crate::json::{hex, parse_hex};
 #[cfg(test)]
 pub(super) mod tests;
 
-pub(super) const CALIBRATION: &str = "seasons/calibration-1.json";
+pub(super) const CALIBRATION: &str = "seasons/calibration-2.json";
 
 /// The shard `i/n` of `--shard`: 1 ≤ i ≤ n.
 pub(super) fn index_of(text: &str) -> Result<(u32, u32), String> {
@@ -114,6 +114,7 @@ impl Played {
             EndReason::Cleared,
             EndReason::OutOfLives,
             EndReason::TimeLimit,
+            EndReason::WorkBudget,
         ]
         .into_iter()
         .find(|end| *end as u8 == code)

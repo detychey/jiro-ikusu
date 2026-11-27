@@ -469,7 +469,7 @@ fn event_area_is_8100_bytes() {
 #[test]
 fn worked_example_decodes_and_reencodes() {
     let bytes = hex_bytes(
-        "0x01000200277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000",
+        "0x01000300277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd04e24fd698778a8dbcf62ab0c9ed0228d67be3ddd3aeb682f4a67a53410dacc9000000",
     );
     let journal = decode(&bytes).unwrap();
     let expected = Header {

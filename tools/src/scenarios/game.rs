@@ -106,7 +106,7 @@ pub fn minion_pos(game: &Game, slot: usize) -> Option<Pos> {
 pub fn cases() -> Result<Vec<GameCase>, String> {
     let open_field_header = journal::header();
     let open_field_empty = GameCase {
-        tick_0_hash: Some("0xc9775c491d677d941c3ac733e1b47b51a64024cb4da22f9c05ceea58d93c76d1"),
+        tick_0_hash: Some("0xda8d937602aeedbccd99b0f28519c8763d400688e9331c0065191673cb756e79"),
         ..game_case(
             "open-field-empty",
             &["§6.4", "R4.4-1", "R4.10-4", "PIN-08"],

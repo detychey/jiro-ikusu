@@ -4,6 +4,7 @@
 //! the arranged pieces move.
 
 use jiro_core::boss::deflection_draw;
+use jiro_core::consts::WORK_BUDGET;
 use jiro_core::game::{EndReason, Game};
 use jiro_core::level::{Level, Rect};
 use jiro_core::minion::{Minion, State};
@@ -51,10 +52,6 @@ fn game() -> Game {
 
 fn at(x: u8, y: u8) -> Pos {
     Pos { x, y }
-}
-
-fn mask(parts: &[InputMask]) -> InputMask {
-    InputMask::new(parts.iter().fold(0, |bits, part| bits | part.bits())).unwrap()
 }
 
 fn paint(game: &mut Game, cells: &[(u8, u8)], cell: Cell) {
@@ -149,7 +146,7 @@ fn minion_swapping_cells_at_a_fast_cut_close_hits() {
     let mut game = game();
     cutting(&mut game, at(31, 58), at(30, 59), &[(30, 58), (31, 58)]);
     minion(&mut game, 0, at(31, 59), Dir::Up, 1);
-    let lives = lives_after(&mut game, &[mask(&[InputMask::DOWN, InputMask::A])]);
+    let lives = lives_after(&mut game, &[InputMask::DOWN]);
     assert_eq!((lives, game.captured), (2, 2));
 }
 
@@ -165,7 +162,7 @@ fn minion_stopping_on_the_cell_a_fast_cut_passed_through_hits() {
         &[(30, 58), (30, 57), (31, 57)],
     );
     minion(&mut game, 0, at(32, 58), Dir::Up, 1);
-    let lives = lives_after(&mut game, &[mask(&[InputMask::DOWN, InputMask::A])]);
+    let lives = lives_after(&mut game, &[InputMask::DOWN]);
     assert_eq!((lives, game.captured), (2, 4));
 }
 
@@ -200,32 +197,15 @@ fn three_hits_in_one_tick_cost_one_life() {
     assert_eq!(lives_after(&mut game, &[InputMask::UP]), 2);
 }
 
-/// [R4.9-15] With B held and a charge left, a hit spends the charge and nothing else.
-#[test]
-fn hit_with_b_held_and_a_charge_left_spends_only_the_charge() {
-    let mut game = game();
-    minion(&mut game, 0, at(31, 59), Dir::Left, 1);
-    game.step(InputMask::B).unwrap();
-    let player = game.player;
-    assert_eq!(
-        (player.lives, player.shield, player.invulnerable),
-        (3, 0, 0)
-    );
-}
-
-/// [R4.9-14] An invulnerable player ignores a hit, even with B held and a charge left: the
-/// charge stays, and invulnerability counts down.
+/// [R4.9-14] An invulnerable player ignores a hit, and invulnerability counts down.
 #[test]
 fn hit_while_invulnerable_does_nothing() {
     let mut game = game();
     game.player.invulnerable = 5;
     minion(&mut game, 0, at(31, 59), Dir::Left, 1);
-    game.step(InputMask::B).unwrap();
+    game.step(InputMask::NONE).unwrap();
     let player = game.player;
-    assert_eq!(
-        (player.lives, player.shield, player.invulnerable),
-        (3, 1, 4)
-    );
+    assert_eq!((player.lives, player.invulnerable), (3, 4));
 }
 
 /// A minion that never moves shares the player's cell on every tick from tick 1 on, so tick 1
@@ -355,7 +335,7 @@ fn minion_on_the_cell_a_fast_cut_closes_onto_hits() {
         &[(30, 58), (30, 57), (31, 57)],
     );
     minion(&mut game, 0, at(31, 59), Dir::Up, 255);
-    let lives = lives_after(&mut game, &[mask(&[InputMask::DOWN, InputMask::A])]);
+    let lives = lives_after(&mut game, &[InputMask::DOWN]);
     assert_eq!((lives, game.captured), (2, 4));
 }
 
@@ -383,19 +363,94 @@ fn captured_cells_add_up_across_captures() {
     assert_eq!(game.captured, 102);
 }
 
-/// [R4.5-7] [R4.4-6] B pressed at the odd tick 3 sets press_tick to 3 at step 1: the player
-/// moves on ticks 3 and 5, not 4.
+/// The player cutting at (31, 58) from (30, 59): a step down closes a cut of 2 cells, whose
+/// fill marks the other 3,362 interior cells `BOSS_ZONE`.
+fn closing_a_two_cell_cut(game: &mut Game) {
+    cutting(game, at(31, 58), at(30, 59), &[(30, 58), (31, 58)]);
+}
+
+/// [R4.11-1] [R4.11-2] A capture adds 150 and its `BOSS_ZONE` cells to the level's work.
 #[test]
-fn b_pressed_at_a_tick_sets_the_slow_shield_phase() {
+fn capture_adds_its_work() {
     let mut game = game();
+    game.work = 1_000;
+    closing_a_two_cell_cut(&mut game);
+    game.step(InputMask::DOWN).unwrap();
+    assert_eq!(game.work, 1_000 + 150 + 3_362);
+}
+
+/// [R4.11-3] A respawn on its spawn cell, a rail cell, tests 1 cell.
+#[test]
+fn respawn_on_its_spawn_cell_adds_1() {
+    let mut game = game();
+    game.minions.period = 1;
+    game.minions.slots[0] = Some(Minion {
+        spawn: at(10, 59),
+        state: State::Destroyed { countdown: 1 },
+    });
     game.step(InputMask::NONE).unwrap();
+    assert_eq!(game.work, 1);
+}
+
+/// [R4.11-3] A respawn whose spawn (5, 5) is off the rail tests it, then the row-major search up
+/// to (0, 9), the first rail cell once rows 1 to 9 are claimed: cell 540, the 541st tested.
+#[test]
+fn respawn_off_its_spawn_cell_adds_the_cells_searched() {
+    let mut game = game();
+    let claimed: Vec<(u8, u8)> = (1..10).flat_map(|y| (1..59).map(move |x| (x, y))).collect();
+    paint(&mut game, &claimed, Cell::Claimed);
+    game.minions.period = 1;
+    game.minions.slots[0] = Some(Minion {
+        spawn: at(5, 5),
+        state: State::Destroyed { countdown: 1 },
+    });
     game.step(InputMask::NONE).unwrap();
-    let held = mask(&[InputMask::UP, InputMask::B]);
-    let positions: Vec<Pos> = (3..=5)
-        .map(|_| {
-            game.step(held).unwrap();
-            game.player.pos
-        })
-        .collect();
-    assert_eq!(positions, [at(30, 58), at(30, 58), at(30, 57)]);
+    let respawned = game.minions.slots[0].map(|minion| minion.state);
+    assert!(matches!(respawned, Some(State::Live { pos, .. }) if pos == at(0, 9)));
+    assert_eq!(game.work, 1 + 541);
+}
+
+/// [R4.11-4] [R4.4-12] [R4.10-5] Work that reaches the budget ends the level at step 7, claim
+/// kept.
+#[test]
+fn work_reaching_the_budget_ends_the_level() {
+    let mut game = game();
+    game.work = WORK_BUDGET - 1;
+    closing_a_two_cell_cut(&mut game);
+    let end = game.step(InputMask::DOWN).unwrap();
+    assert_eq!((end, game.captured), (Some(EndReason::WorkBudget), 2));
+}
+
+/// [R4.11-4] Work below the budget keeps the level running.
+#[test]
+fn work_below_the_budget_keeps_the_level_running() {
+    let mut game = game();
+    game.work = WORK_BUDGET - 150 - 3_362 - 1;
+    closing_a_two_cell_cut(&mut game);
+    assert_eq!(game.step(InputMask::DOWN).unwrap(), None);
+}
+
+/// [R4.11-4] A clear at step 3 wins over the work budget.
+#[test]
+fn clear_wins_over_the_work_budget() {
+    let mut level = level(&[]);
+    level.target_bp = 1;
+    let mut game = game_on(&level);
+    game.work = WORK_BUDGET - 1;
+    closing_a_two_cell_cut(&mut game);
+    let end = game.step(InputMask::DOWN).unwrap();
+    assert_eq!(end, Some(EndReason::Cleared));
+}
+
+/// [R4.11-4] [R4.10-4] On the last tick, the time limit wins over the work budget.
+#[test]
+fn time_limit_wins_over_the_work_budget() {
+    let mut level = level(&[]);
+    level.time_limit = 2;
+    let mut game = game_on(&level);
+    game.work = WORK_BUDGET;
+    assert_eq!(
+        game.step(InputMask::NONE).unwrap(),
+        Some(EndReason::TimeLimit)
+    );
 }

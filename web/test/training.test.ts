@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import calibration from "../../seasons/calibration-1.json";
+import calibration from "../../seasons/calibration-2.json";
 import { fromHex, hex } from "../src/core";
 import { DEFAULT_BINDINGS } from "../src/input";
 import { attemptScore, beats, bestKey, loadBests, mergeBests, saveBests, scoreLine } from "../src/pages/training";

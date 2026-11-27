@@ -2,12 +2,12 @@
 // on the tick clock by key or touch, draws the field and the HUD, and ends on the outcome,
 // the state hash, the score and the journal download. The 16 levels are scored as a season
 // scores them (README §8.4): the core replays the attempt's journal with the level's weight from
-// seasons/calibration-1.json, and each level's best score stays in localStorage. Other levels
+// seasons/calibration-2.json, and each level's best score stays in localStorage. Other levels
 // play unscored. Once the engine and the levels have loaded, the page makes no network call. The
 // canvas exposes the state hash, the ticks used and the end reason in data attributes, for the
 // smoke test.
 
-import calibration from "../../../seasons/calibration-1.json";
+import calibration from "../../../seasons/calibration-2.json";
 import { type Core, CoreError, type EndReason, fromHex, hex } from "../core";
 import { CaptureEffects } from "../effects";
 import {
@@ -92,8 +92,6 @@ const CONTROL_NAMES: Record<Control, string> = {
   down: "Down",
   left: "Left",
   right: "Right",
-  a: "A (fast cut)",
-  b: "B (shield)",
   x: "X (commit)",
 };
 

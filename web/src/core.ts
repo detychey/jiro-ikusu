@@ -13,7 +13,7 @@ export const OUTCOME_LEN = 110;
 export const RUN_LEVELS = 6;
 
 /** README §4.10 and the Outcome's endReason (§7.3). */
-export const END_REASONS = ["Committed", "Cleared", "Out of lives", "Time limit"] as const;
+export const END_REASONS = ["Committed", "Cleared", "Out of lives", "Time limit", "Work budget"] as const;
 export type EndReason = (typeof END_REASONS)[number];
 
 interface Exports {
@@ -45,7 +45,6 @@ interface Exports {
   player_y(): number;
   player_cutting(): number;
   lives(): number;
-  shield(): number;
   invulnerable(): number;
   boss_x(): number;
   boss_y(): number;
@@ -78,7 +77,6 @@ export interface Minion {
 export interface Snapshot {
   player: { x: number; y: number; cutting: boolean };
   lives: number;
-  shield: number;
   invulnerable: number;
   boss: { x: number; y: number; size: number };
   minions: Minion[];
@@ -254,7 +252,6 @@ export class Core {
     return {
       player: { x: w.player_x(), y: w.player_y(), cutting: w.player_cutting() === 1 },
       lives: w.lives(),
-      shield: w.shield(),
       invulnerable: w.invulnerable(),
       boss: { x: w.boss_x(), y: w.boss_y(), size: w.boss_size() },
       minions,

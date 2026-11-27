@@ -86,8 +86,10 @@ impl InputMask {
     pub const DOWN: Self = Self(1 << 1);
     pub const LEFT: Self = Self(1 << 2);
     pub const RIGHT: Self = Self(1 << 3);
-    pub const A: Self = Self(1 << 4);
-    pub const B: Self = Self(1 << 5);
+    /// Bit 4, A (the fast cut) until rules version 3: the rules ignore it.
+    pub const IGNORED_A: Self = Self(1 << 4);
+    /// Bit 5, B (the slow shield) until rules version 3: the rules ignore it.
+    pub const IGNORED_B: Self = Self(1 << 5);
     pub const X: Self = Self(1 << 6);
     const RESERVED: u8 = 1 << 7;
 

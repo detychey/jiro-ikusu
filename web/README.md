@@ -58,7 +58,7 @@ minions, and the editor's level. A level from any source, a file or the editor i
 scored when it is one of the 16 levels, and plays unscored otherwise.
 
 An attempt on one of the 16 levels scores as a season scores it (README §8.4): the core replays
-the attempt's journal with the level's weight from `seasons/calibration-1.json` and gives its
+the attempt's journal with the level's weight from `seasons/calibration-2.json` and gives its
 `level_score`. The page refuses to start when its 16 levels are not that file's, under the
 engine's rules version. Each level's best score stays in localStorage, under the rules version,
 the level id and the weight it was made with, so a best counts only under the scoring it was
@@ -297,12 +297,12 @@ node web/scripts/challenge-e2e.mjs --rpc http://127.0.0.1:8545 --players 2 --set
 
 ## Controls
 
-The defaults are the arrow keys for the four directions, and the keys A, B and X for the game's
-buttons of the same names: A cuts fast, B slows the player behind the shield, X banks the level (README §2).
-Where the browser reports the keyboard layout (the Keyboard API, in Chromium browsers), the
-defaults are the keys that print A, B and X, so A is the key marked A on an AZERTY keyboard, and
-the panel names each key as the keyboard prints it. Elsewhere the defaults are the QWERTY places
-of those letters: the panel marks the names as QWERTY and says so, and names a key the player
+The defaults are the arrow keys for the four directions, and the key X for the game's button of
+the same name, which banks the level (README §2). Since rules version 3 there is no A or B: the
+fast cut is always on while cutting, and the shield is removed. Where the browser reports the
+keyboard layout (the Keyboard API, in Chromium browsers), the default for X is the key that prints
+X, and the panel names each key as the keyboard prints it. Elsewhere the default is the QWERTY place
+of that letter: the panel marks the names as QWERTY and says so, and names a key the player
 presses as it printed. The Controls panel rebinds each control to any key and refuses a key
 already bound to another control. Bindings are stored in the browser's localStorage when it is available. The journal
 records controls, not keys, so a binding never changes a game's outcome (D8).
@@ -317,9 +317,8 @@ once: `session.ts` and `run/play.ts` take one source.
 On touchscreens, `(pointer: coarse)`, Training shows the touch controls of `docs/PHONE.md` §3 in a
 bar after the field until M3.14's play view; Challenge gets them in M3.18 (OD7). `src/touch.ts`
 holds `TouchControls`, the touch input source: the floating stick, with the dead zone, the
-conditional diagonal band and the follow radius; A and B, held under a pointer, which may slide
-between them; and X, which enters the mask once a pointer has been down on it through `xHold`
-earlier samples, all set by `docs/PHONE.md` §3.4. Taps shorter than a tick count once, as keys do,
+conditional diagonal band and the follow radius; and X, which enters the mask once a pointer has
+been down on it through `xHold` earlier samples, all set by `docs/PHONE.md` §3.4. Taps shorter than a tick count once, as keys do,
 but X needs its full hold and a cancelled pointer counts nothing. A press drops a pad's face, never
 the pad, whose box takes the pointers. The layer is `aria-hidden`, out of the tab order, with
 `touch-action: none`. The Controls panel turns it on, off or mirrored, stored per browser, and on
@@ -335,7 +334,7 @@ the phone projects only.
 | `src/core.ts` | Typed loader of the `jiro-wasm` exports |
 | `src/loop.ts` | The 15 Hz tick clock: tick k is due at t0 + k × 1000 / 15 ms; late ticks run as soon as possible, none is skipped or run twice |
 | `src/input.ts` | Controls, bindings, the held keys, and the input source that ORs several |
-| `src/touch.ts` | The touch controls: the stick, A, B and X, their releases, the setting, and the page's wiring |
+| `src/touch.ts` | The touch controls: the stick and X, their releases, the setting, and the page's wiring |
 | `src/storage.ts` | Values kept in localStorage as JSON, with a fallback when storage is missing or refuses |
 | `src/session.ts` | One level in play, in Training or Challenge mode: core, clock and input source on the single input path |
 | `src/shipped.ts` | The levels the site ships: the 16 of `levels/*.bin`, by name in index order, with their calibration weights, and Training's two test levels |
