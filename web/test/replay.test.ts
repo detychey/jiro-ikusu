@@ -174,22 +174,30 @@ describe("a journal alone", () => {
 
   it("finds one of the 16 levels by the id it names, with the weight Training scores it with", () => {
     const vector = JSON.parse(readFileSync(new URL("vectors/levels/05-synthetic.json", repo), "utf8")) as Vector;
-    const found = journalRecording(core, fromHex(vector.journal), scored);
+    const found = journalRecording(core, fromHex(vector.journal), scored, []);
     expect(found && { level: hex(found.level), weightBp: found.weightBp }).toEqual({ level: vector.level, weightBp: vector.weightBp });
   });
 
   it("finds Training's test level, scored at its claim", () => {
-    const found = journalRecording(core, openFieldJournal, scored);
+    const found = journalRecording(core, openFieldJournal, scored, []);
     expect(found && { level: hex(found.level), weightBp: found.weightBp }).toEqual({ level: hex(openField), weightBp: 10_000 });
+  });
+
+  it("finds a paid level by the id it names, scored at its claim", () => {
+    const paid = new Uint8Array(readFileSync(new URL("levels/paid/05-comb.bin", repo)));
+    const journal = openFieldJournal.slice();
+    journal.set(core.levelId(paid), 36);
+    const found = journalRecording(core, journal, scored, [paid]);
+    expect(found && { level: hex(found.level), weightBp: found.weightBp }).toEqual({ level: hex(paid), weightBp: 10_000 });
   });
 
   it("finds no level for an id the site does not ship", () => {
     const journal = openFieldJournal.slice();
     journal[36] = (journal[36] ?? 0) ^ 0xff;
-    expect(journalRecording(core, journal, scored)).toBeUndefined();
+    expect(journalRecording(core, journal, scored, [])).toBeUndefined();
   });
 
   it("refuses bytes that end before the header names the level", () => {
-    expect(() => journalRecording(core, openFieldJournal.subarray(0, 40), scored)).toThrow("the journal ends before its header names its level");
+    expect(() => journalRecording(core, openFieldJournal.subarray(0, 40), scored, [])).toThrow("the journal ends before its header names its level");
   });
 });

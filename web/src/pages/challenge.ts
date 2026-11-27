@@ -31,7 +31,7 @@ import type { Margin } from "../run/play";
 import { replayRunFile, runFileOf } from "../run/runfile";
 import { checkSeason, seasonEntries } from "../run/season";
 import { openRunStore, type RunRecord, type RunStore, withRunLock } from "../run/store";
-import { shippedLevels } from "../shipped";
+import { paidLevels } from "../shipped";
 import { browserStorage } from "../storage";
 
 const WALLET_ERROR = "wallet-error";
@@ -89,7 +89,7 @@ function marginText({ onTime, commitBound }: Margin): string {
   return `Deadline: ${onTime} s of slack left, if the run were committed now (commitRun refuses it in ${commitBound} s).`;
 }
 
-/** The engine, the 16 shipped levels and the run store, loaded once. */
+/** The engine, the 16 paid levels and the run store, loaded once. */
 interface Engine {
   core: Core;
   names: string[];
@@ -100,7 +100,7 @@ interface Engine {
 
 async function loadEngine(): Promise<Engine> {
   const core = await loadCore();
-  const shipped = await shippedLevels();
+  const shipped = await paidLevels();
   const levels = shipped.map(([, level]) => level);
   return {
     core,

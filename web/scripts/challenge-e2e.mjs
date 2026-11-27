@@ -31,7 +31,8 @@ import { settleScoringRuns } from "./settle.mjs";
 const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const WASM = join(REPO_ROOT, "target", "wasm32-unknown-unknown", "release", "jiro_wasm.wasm");
-const LEVELS_DIR = join(REPO_ROOT, "levels");
+// The paid levels that Challenge plays, which the local season of localnet.mjs --up draws (README §8.2, D17).
+const LEVELS_DIR = join(REPO_ROOT, "levels", "paid");
 /** The page's frames: shorter than a tick, so that no tick runs before its keys are down. */
 const FRAME_MS = 10;
 /** Arbitrum's block time (README §7.2). */

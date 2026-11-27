@@ -36,6 +36,31 @@ writes: the runs on which `jiro-tools calibrate` sets the season weights (plan M
 | 15 | swarm | `0x58c4cb97b4f836054f3ab701f3689d1893466c6ba607d1b688485d70f6c81056` | 7 | (20, 20)-(32, 32) | 1 | 3 | 1 | 45 | 2700 | 3 | 7500 bp | 13 % | 13.4 % |
 | 16 | doom | `0x707a28d515655c5c992335ef52552acff01bdf75110c141319c540234487acd8` | 8 | (20, 20)-(31, 31) | 1 | 3 | 1 | 45 | 2700 | 3 | 7500 bp | 11 % | 11.2 % |
 
+## Paid copies
+
+Challenge seasons draw from the paid copies, which the same build writes to `levels/paid/`:
+each level with 3 more lives and a target of 5000 bp, all else the same (README
+§8.2, D17). Training plays the levels above.
+
+| # | Name | Paid `level_id` | Lives | Target |
+|---|---|---|---|---|
+| 01 | open | `0x127654524bc975e3e69dae2059a65e743a3c770da7fc3fb06bb9efc3b9ae4853` | 8 | 5000 bp |
+| 02 | sentry | `0x6bbe6d7340a1282c2668c3db0ef2924e3fda4340bd390cb77bfb1be63a07d787` | 7 | 5000 bp |
+| 03 | heavy | `0x7cfae2f6c047a4c8146917cb8e1869f7bc7f79dabb2ad53aacb47cb358557bd7` | 8 | 5000 bp |
+| 04 | pair | `0x25206809c98b246417ef696e9dddbf27e5832e52597cf4110b569d04eeec8ea4` | 7 | 5000 bp |
+| 05 | comb | `0xfa9f6c1f4ea81de0e6c876cea44e815137ea0ec87a9bfd8716aa3abf0be1195d` | 7 | 5000 bp |
+| 06 | serpent | `0x6290613e5346625718dba796ed852780c01a56c06551f0ef29575f84bc6b72c4` | 6 | 5000 bp |
+| 07 | rush | `0xbb57b240e4e092391695130514336778cfc00b3d5f4029fd9ed146d5eb65e71b` | 8 | 5000 bp |
+| 08 | storm | `0x84fbb4eb75451ae376845d15ef36df963ad122e0aad780247274c90a201dcd70` | 8 | 5000 bp |
+| 09 | cross | `0x49ede82266259648585f5a36bb697bcc401f4f6c933e0774870637efc754f406` | 6 | 5000 bp |
+| 10 | maze | `0x455adbf817c04586cb41eba36c983eeb19048eeedac89c0d3e38d50277d7a1c7` | 5 | 5000 bp |
+| 11 | labyrinth | `0xac911f6646b9d4fb03ad40d13dea9892046fb9eec877057aafc0125783e30b31` | 5 | 5000 bp |
+| 12 | ring | `0xed3da7e1a46c316fb1137a5da1a47736a1fc4436c42009aabc0cb904c1bd2685` | 6 | 5000 bp |
+| 13 | trio | `0x3c75f2cf69db1590f3ad02b00fd49131a93e2932aaf83b11fe8a5137098d0f1d` | 6 | 5000 bp |
+| 14 | titan | `0xbaa21b078c0d5b7c3faba490e70189e28a30e2e05d68fb33da0df72c8f1f9fbd` | 7 | 5000 bp |
+| 15 | swarm | `0x31cd26ab6813ee786a69939bb50e6c5d07fe906fb9df0ae71c2b62bc86c20768` | 6 | 5000 bp |
+| 16 | doom | `0x689fc7afa3b79a385b58a113dd5dac91326f14405ee7a9100c1607435f6e0c4a` | 6 | 5000 bp |
+
 ## 01-open
 
 `levels/src/01-open.txt`

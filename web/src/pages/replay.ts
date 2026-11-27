@@ -18,7 +18,7 @@ import { type JournalEvent, journalEvents, journalLevelId } from "../journal";
 import { createLoop, type Loop } from "../loop";
 import { element, fitField, loadCore, messageOf, percent } from "../page";
 import { Renderer } from "../render";
-import { shippedLevels, TEST_LEVELS, type TrainingLevel, trainingLevels } from "../shipped";
+import { paidLevels, shippedLevels, TEST_LEVELS, type TrainingLevel, trainingLevels } from "../shipped";
 
 /** README §8.4: level_score = claim_bp × weight_bp / 10,000, so this weight scores the claim. */
 const CLAIM_WEIGHT_BP = 10_000;
@@ -131,17 +131,18 @@ export function heldControls(mask: number): string {
 
 /**
  * The recording of `journal` alone, from the level id its header names (README §6.3): one of the
- * 16 levels, with the weight Training scores it with (`scored`), or one of Training's test levels,
- * scored at its claim. Undefined for any other level.
+ * 16 levels, with the weight Training scores it with (`scored`), or one of their paid copies
+ * (`paid`) or of Training's test levels, scored at its claim, as a season of the v1 payout weighs
+ * every level (README §8.4, D18). Undefined for any other level.
  */
-export function journalRecording(core: Core, journal: Uint8Array, scored: TrainingLevel[]): Recording | undefined {
+export function journalRecording(core: Core, journal: Uint8Array, scored: TrainingLevel[], paid: Uint8Array[]): Recording | undefined {
   const named = journalLevelId(journal);
   if (named === undefined) throw new Error("the journal ends before its header names its level");
   const levelId = hex(named);
   const shipped = scored.find((candidate) => candidate.levelId === levelId);
   if (shipped !== undefined) return { level: shipped.level, journal, weightBp: shipped.weightBp };
-  const test = TEST_LEVELS.map(([, input]) => fromHex(input)).find((level) => hex(core.levelId(level)) === levelId);
-  return test === undefined ? undefined : { level: test, journal, weightBp: CLAIM_WEIGHT_BP };
+  const atClaim = [...paid, ...TEST_LEVELS.map(([, input]) => fromHex(input))].find((level) => hex(core.levelId(level)) === levelId);
+  return atClaim === undefined ? undefined : { level: atClaim, journal, weightBp: CLAIM_WEIGHT_BP };
 }
 
 /** The recording of a game vector (README §6.6), from its JSON text. */
@@ -188,6 +189,8 @@ export function mount(): void {
   let core: Core;
   /** The 16 levels with their weights, loaded with the first journal that needs them. */
   let scored: TrainingLevel[] | undefined;
+  /** Their 16 paid copies, loaded with the first journal that needs them. */
+  let paid: Uint8Array[] | undefined;
   let view: ReplayView | undefined;
   let expected: Uint8Array | undefined;
   let loop: Loop<true> | undefined;
@@ -235,7 +238,7 @@ export function mount(): void {
     if (kept !== undefined) return kept;
     const deployment = bundledDeployment(networkOfPage(window.location.search));
     const provider = readOnlyProvider(deployment.network);
-    const levels = (await shippedLevels()).map(([, level]) => level);
+    const levels = (await paidLevels()).map(([, level]) => level);
     const run = await committedRun(connectContracts(deployment, provider), provider, core, levels, BigInt(runId));
     committedRuns.set(runId, run);
     return run;
@@ -280,7 +283,8 @@ export function mount(): void {
     const weightBp = weightField.value === "" ? undefined : weight(weightField.valueAsNumber, "Weight");
     if (given(levelPart)) return [{ level: await bytesOf(levelPart), journal, weightBp: weightBp ?? CLAIM_WEIGHT_BP }, undefined];
     scored ??= trainingLevels(core, calibration, await shippedLevels());
-    const found = journalRecording(core, journal, scored);
+    paid ??= (await paidLevels()).map(([, level]) => level);
+    const found = journalRecording(core, journal, scored, paid);
     if (found === undefined) throw new Error("the site ships no level with the id this journal names: give its level as a file or as hex");
     return [weightBp === undefined ? found : { ...found, weightBp }, undefined];
   }

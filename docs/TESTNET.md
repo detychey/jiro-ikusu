@@ -5,8 +5,8 @@ Testnet season 1 runs for 14 days on Arbitrum Sepolia, with test ETH only. You p
 ## 1. Before you play
 
 - **A desktop browser with a keyboard,** and a browser wallet such as MetaMask. The Challenge page adds Arbitrum Sepolia to the wallet and switches to it.
-- **Test ETH on Arbitrum Sepolia,** from one of the faucets on [Arbitrum's list](https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info#faucet-list), which the Challenge page also links. A run costs 0.00005 ETH, plus a little gas for its three transactions: 0.001 ETH covers about ten runs.
-- **Practice first** in Training, on the [home page](https://jiro-ikusu.win): it is free, needs no wallet, and plays the same 16 levels.
+- **Test ETH on Arbitrum Sepolia,** from one of the faucets on [Arbitrum's list](https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info#faucet-list), which the Challenge page also links. A run costs 0.000176 ETH, about 0.30 USD at the season's opening price of 1,700 USD an ETH, plus a little gas for its three transactions: 0.002 ETH covers about ten runs.
+- **Practice first** in Training, on the [home page](https://jiro-ikusu.win): it is free, needs no wallet, and plays the 16 levels. Challenge plays their paid copies, which are easier: 3 more lives and a target of 50 % (§3).
 
 ## 2. Controls
 
@@ -19,15 +19,15 @@ X is the key that prints that letter on your keyboard layout, where the browser 
 
 ## 3. Rules that matter for a run
 
-- **You capture the field** by cutting from the border and back. A level is cleared at its target claim, 75 % by default. A level lasts at most 3 minutes.
+- **You capture the field** by cutting from the border and back. A Challenge level is cleared at its target claim, 50 % of the field, and gives you 3 more lives than the same level in Training, whose targets are 75 % to 90 %. A level lasts at most 3 minutes.
 - **Running out of lives scores 0 for the level.** X banks the claim you have: commit when the rest of the level is not worth the risk.
-- **A run is six levels,** drawn from the 16 by the chain after you pay, and played back to back. Each level is one paid game.
+- **A run is six levels,** drawn from the 16 paid levels by the chain after you pay, and played back to back. Each level is one paid game.
 - **Every game earns a ticket:** your claim over the level's target, capped at 1, or 0 when you ran out of lives. A cleared level is a full ticket.
-- **Every game of every run counts.** At the end of the season, the pot, the fees less the rake, is shared among all the season's games: the higher a game's ticket, the larger its prize, and no game earns more than its fee (README §8.4). A run you bought but never played or committed counts with tickets of 0. There is no ranking and no best run.
+- **Every game of every run counts.** At the end of the season, the pot, the fees less the 20 % rake, is shared among all the season's games: the higher a game's ticket, the larger its prize, and no game earns more than its fee (README §8.4). While the season's average ticket is at least 0.8, a game's prize is its share of the pot by its ticket; below 0.8, a perfect game gets its fee back, about 0.05 USD of test ETH, and a game of ticket 0 still gets part of its fee back. A run you bought but never played or committed counts with tickets of 0. There is no ranking and no best run.
 
 ## 4. A Challenge run, step by step
 
-1. **Buy.** On the [Challenge page](https://jiro-ikusu.win/challenge.html), connect your wallet and buy a run: confirm `startRun` and its 0.00005 ETH fee.
+1. **Buy.** On the [Challenge page](https://jiro-ikusu.win/challenge.html), connect your wallet and buy a run: confirm `startRun` and its 0.000176 ETH fee.
 2. **Reveal.** The page waits 10 to 20 s for the run's entropy block, then asks you to confirm `revealRun`. Confirm it within about a minute: a reveal that comes too late forfeits the run. Keep the page open from the purchase until level 1 starts.
 3. **Play** the six levels. The clock runs from the reveal: the run must commit within its playing time plus 120 s, which covers the level transitions, a reload and the transactions.
 4. **Commit.** After level 6, confirm `commitRun` at once. The page shows how many seconds were left before the deadline.

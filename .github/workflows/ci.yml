@@ -169,7 +169,7 @@ jobs:
         run: |
           cargo run -p jiro-tools --locked -- level build levels/src levels
           bash scripts/check-drift.sh levels/
-          cargo run -q -p jiro-tools --locked -- level validate levels/src/*.txt levels/*.bin
+          cargo run -q -p jiro-tools --locked -- level validate levels/src/*.txt levels/*.bin levels/paid/*.bin
           for bin in levels/*.bin; do
             cargo run -q -p jiro-tools --locked -- level render "$bin" |
               diff - "levels/src/$(basename "$bin" .bin).txt"
@@ -362,7 +362,8 @@ jobs:
               - 'vectors/derivations.json'
               - 'vectors/game/**'
               - 'vectors/levels/**'
-              - 'seasons/calibration-*.json'
+              - 'levels/**'
+              - 'seasons/*.json'
               - 'web/src/chain/**'
               - 'web/scripts/chain-smoke.mjs'
               - 'web/package-lock.json'

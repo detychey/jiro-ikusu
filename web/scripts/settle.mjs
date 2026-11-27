@@ -28,12 +28,12 @@ import { ZK_HOST, proofFileOf, realProof, zkHost } from "../../scripts/contracts
 const WEB_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const WASM = join(process.env.CARGO_TARGET_DIR ?? join(REPO_ROOT, "target"), "wasm32-unknown-unknown", "release", "jiro_wasm.wasm");
-const LEVELS_DIR = join(REPO_ROOT, "levels");
+const LEVELS_DIR = join(REPO_ROOT, "levels", "paid");
 const USAGE = "usage: [DEPLOYER_KEY=…] node web/scripts/settle.mjs --network <network> --season <label> [--rpc <url>] [--dry-run | --export] [--segment-po2 <n>]";
 
 const messageOf = (error) => (error instanceof Error ? error.message : String(error));
 
-/** The 16 shipped levels, in index order, as the season's draw slots name them. */
+/** The 16 paid levels, in index order, as the season's draw slots name them (README §8.2, D17). */
 function shippedLevels() {
   return readdirSync(LEVELS_DIR)
     .filter((name) => name.endsWith(".bin"))

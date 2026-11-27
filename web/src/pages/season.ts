@@ -15,7 +15,7 @@ import { connect, formatEth, injectedWallet, onNetwork, signerOf, switchNetwork,
 import { element, loadCore, messageOf, pending } from "../page";
 import { projectedPlayersPot, type SeasonFacts, seasonEntries } from "../run/season";
 import { openRunStore } from "../run/store";
-import { shippedLevels } from "../shipped";
+import { paidLevels } from "../shipped";
 import { formatTickets, showSettlement } from "./settle";
 
 export interface SeasonView {
@@ -182,7 +182,7 @@ export function mount(): void {
     tick();
     if (view === undefined || number === undefined) throw new Error("the season did not load");
     const core = await loadCore();
-    const levels = (await shippedLevels()).map(([, level]) => level);
+    const levels = (await paidLevels()).map(([, level]) => level);
     const store = await openRunStore(window.indexedDB);
     await showSettlement({
       core,

@@ -18,8 +18,9 @@ const FRAME_MS = 10;
 
 export class Reload extends Error {}
 
+/** The 16 paid levels that Challenge plays, in index order (README §8.2, D17). */
 export function shippedLevels(): Uint8Array[] {
-  const directory = new URL("levels/", repo);
+  const directory = new URL("levels/paid/", repo);
   return readdirSync(directory)
     .filter((name) => name.endsWith(".bin"))
     .sort()

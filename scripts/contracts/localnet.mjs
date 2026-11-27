@@ -1,11 +1,16 @@
 // The local chain for the dApp work (plan M4.11, M5): anvil, with the full set of deploy.mjs on the
-// mock backend, MockReferee returning the rules version of seasons/calibration-2.json, and a season
-// opened with that file's 16 level ids and weights. Anvil has no ArbSys precompile, so MockArbSys
-// stands in for it, and MockArbSys.setBlockNumber advances the reveal.
-//   --up     leaves anvil running in the background and writes deployments/local.json. With
-//            --backend zk, the record names the zk backend, which the web app settles through the
-//            operator (plan M5.3), and MockReferee stands in for ZkReferee: it ignores the proof.
-//   --check  runs a Challenge run's happy path on a fresh anvil, then stops it: start, reveal,
+// mock backend, MockReferee returning the season's rules version, and a season opened with 16
+// level ids and weights. Anvil has no ArbSys precompile, so MockArbSys stands in for it, and
+// MockArbSys.setBlockNumber advances the reveal.
+//   --up     leaves anvil running in the background and writes deployments/local.json. Its season
+//            takes the rules version, the paid levels and the equal weights of
+//            seasons/testnet-1.json, which the web app's Challenge plays (README §8.2, D17, D18).
+//            With --backend zk, the record names the zk backend, which the web app settles
+//            through the operator (plan M5.3), and MockReferee stands in for ZkReferee: it
+//            ignores the proof.
+//   --check  opens its season with the rules version, the 16 level ids and the weights of
+//            seasons/calibration-2.json, those of the gate set's vectors, and runs a Challenge
+//            run's happy path on a fresh anvil, then stops it: start, reveal,
 //            commit with six gate-set vectors' journals, settleRun against MockReferee, with each
 //            result checked against the vectors; then, past the season's end plus grace, the
 //            close and the player's claim of the v1 payout (README §8.4). It writes its record to
@@ -25,6 +30,7 @@ const CHAIN_ID = NETWORKS[NETWORK].chainId;
 const SEASON_LABEL = "local";
 const LOCAL_BACKENDS = ["mock", "zk"];
 export const CALIBRATION = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "calibration-2.json"), "utf8"));
+export const PAID_SEASON = JSON.parse(readFileSync(join(REPO_ROOT, "seasons", "testnet-1.json"), "utf8"));
 // README §8.4's proposals and D12's fee; the rake is the contract tests' RAKE_BP.
 const LOCAL_SEASON = {
   runFee: 50_000_000_000_000n,
@@ -90,24 +96,20 @@ export async function startAnvil(port, detached, { chainId = CHAIN_ID, forkUrl }
   throw new Error(`anvil did not answer on ${rpc}; its log, ${logFile}:\n${readFileSync(logFile, "utf8")}`);
 }
 
-/** Opens the local season and returns the number `open` assigned, from its SeasonOpened event. */
-async function openLocalSeason(season, referee) {
-  const receipt = await sendTransaction(
-    "Season.open",
-    season.open({
-      referee,
-      rulesVersion: CALIBRATION.rulesVersion,
-      levelIds: CALIBRATION.levelIds,
-      weightsBp: CALIBRATION.weightsBp,
-      ...LOCAL_SEASON,
-    }),
-    season,
-  );
+/**
+ * Opens the local season with the rules version, level ids and weights of `scoring`, and returns
+ * the number `open` assigned, from its SeasonOpened event.
+ */
+async function openLocalSeason(season, referee, { rulesVersion, levelIds, weightsBp }) {
+  const receipt = await sendTransaction("Season.open", season.open({ referee, rulesVersion, levelIds, weightsBp, ...LOCAL_SEASON }), season);
   return Number(eventOf(season, receipt, "SeasonOpened").season);
 }
 
-/** Deploys the full set, opens the local season and returns the generation that records both. */
-export async function deployLocalnet(artifacts, provider, rpc) {
+/**
+ * Deploys the full set, opens the local season with the scoring of `scoring`, a calibration or a
+ * season file, and returns the generation that records both.
+ */
+export async function deployLocalnet(artifacts, provider, rpc, scoring = CALIBRATION) {
   const deployer = await provider.getSigner(0);
   const treasury = await (await provider.getSigner(1)).getAddress();
   const generation = await deployContracts({
@@ -118,10 +120,10 @@ export async function deployLocalnet(artifacts, provider, rpc) {
     deployer,
     backend: "mock",
     treasury,
-    rulesVersion: CALIBRATION.rulesVersion,
+    rulesVersion: scoring.rulesVersion,
   });
   const season = new Contract(generation.Season, artifacts.Season.abi, deployer);
-  generation.seasons[SEASON_LABEL] = await openLocalSeason(season, generation.Referee);
+  generation.seasons[SEASON_LABEL] = await openLocalSeason(season, generation.Referee, scoring);
   return generation;
 }
 
@@ -261,7 +263,7 @@ async function up(port, backend) {
   const { anvil, rpc, logFile } = await startAnvil(port, true);
   try {
     const provider = await connect(NETWORK, rpc);
-    const generation = { ...(await deployLocalnet(artifacts, provider, rpc)), backend };
+    const generation = { ...(await deployLocalnet(artifacts, provider, rpc, PAID_SEASON)), backend };
     // A fresh anvil is a new chain: the previous record's addresses belong to one that no longer
     // exists. It is dropped only now, so a run that cannot start or deploy keeps a live chain's record.
     rmSync(file, { force: true });

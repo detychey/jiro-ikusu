@@ -82,6 +82,9 @@ const FUNDING = parseEther("1");
 // The reference mix of levels/targets.json first; a level keeps the first journal that clears.
 const POLICIES = ["bold", "committer", "greedy", "edge-nibbler"];
 const CALIBRATION_FILE = join(REPO_ROOT, "seasons", "calibration-2.json");
+// The level directories a season may draw from, in index order: the 16 levels and their paid
+// copies (README §8.2, D17).
+export const LEVEL_DIRS = ["levels", join("levels", "paid")];
 const OUTCOME_FIELDS = ["journalHash", "levelId", "runNonce", "levelIndex", "drawSlot", "mode", "rulesVersion", "endReason", "claimBp", "ticksUsed", "levelScore"];
 const READ_WINDOW = 256n;
 const TICKS_PER_SECOND = 15n;
@@ -216,7 +219,7 @@ function writeRunFile(context, run, dir) {
     runId: String(run.runId),
     runNonce: run.runNonce,
     levels: run.levels.map(({ level }) => level),
-    drawSlots: run.levels.map(({ level }) => CALIBRATION.levelIds.indexOf(keccak256(level))),
+    drawSlots: run.levels.map(({ level }) => context.levelIds.indexOf(keccak256(level))),
     journals: run.levels.map(({ journal }) => hexlify(journal)),
   };
   writeFileSync(file, `${JSON.stringify(runFile, null, 2)}\n`);
@@ -248,16 +251,28 @@ function assertNoProof(run, prove, expectedCode) {
   console.log(`[e2e] ${run.caseName}: run ${run.runId} has no proof, the prover refuses it with replay's code ${refusal}`);
 }
 
-/** The levels of levels/, by level id; every level of the calibration season must be there. */
-function readLevels() {
+/** The ids of the levels of `dir`, in index order. */
+function levelIdsOf(dir) {
+  return readdirSync(join(REPO_ROOT, dir))
+    .filter((file) => file.endsWith(".bin"))
+    .sort()
+    .map((name) => keccak256(readFileSync(join(REPO_ROOT, dir, name))));
+}
+
+/**
+ * The season's levels, those of `levelIds`, by level id, and the directory of LEVEL_DIRS that
+ * holds them in slot order, where the playtest bots play them; undefined when none does.
+ */
+function seasonLevels(levelIds) {
   const levels = new Map();
-  for (const name of readdirSync(join(REPO_ROOT, "levels")).filter((file) => file.endsWith(".bin"))) {
-    const bytes = readFileSync(join(REPO_ROOT, "levels", name));
-    levels.set(keccak256(bytes), hexlify(bytes));
+  for (const dir of LEVEL_DIRS) {
+    for (const name of readdirSync(join(REPO_ROOT, dir)).filter((file) => file.endsWith(".bin"))) {
+      const bytes = readFileSync(join(REPO_ROOT, dir, name));
+      levels.set(keccak256(bytes), hexlify(bytes));
+    }
   }
-  const missing = CALIBRATION.levelIds.filter((levelId) => !levels.has(levelId));
-  if (missing.length > 0) throw new Error(`levels/ misses the calibration levels ${missing.join(", ")}`);
-  return levels;
+  const levelsDir = LEVEL_DIRS.find((dir) => JSON.stringify(levelIdsOf(dir)) === JSON.stringify([...levelIds]));
+  return { levels, levelsDir, levelIds: [...levelIds] };
 }
 
 /** The native replay's Outcome, or `{ error }` with the code replay rejects the journal with. */
@@ -284,12 +299,13 @@ function replay(workDir, level, journal, weightBp) {
 
 /** The level that run `runNonce` draws at `levelIndex`, played by `policy`, with its season weight. */
 function playtest(context, runNonce, levelIndex, policy) {
+  if (context.levelsDir === undefined) throw new Error(`no directory of ${LEVEL_DIRS.join(", ")} holds season ${context.number}'s 16 levels in slot order`);
   const out = join(context.workDir, "played.bin");
-  const result = jiroTools(["playtest", "--levels", "levels", "--policy", policy, "--nonce", runNonce, "--level-index", String(levelIndex), "--out", out]);
+  const result = jiroTools(["playtest", "--levels", context.levelsDir, "--policy", policy, "--nonce", runNonce, "--level-index", String(levelIndex), "--out", out]);
   if (result.status !== 0) throw new Error(`jiro-tools playtest failed:\n${result.stderr}`);
   const journal = readFileSync(out);
   const levelId = hexlify(journal.subarray(LEVEL_ID_OFFSET, LEVEL_ID_OFFSET + 32));
-  const weightBp = CALIBRATION.weightsBp[CALIBRATION.levelIds.indexOf(levelId)];
+  const weightBp = context.weightsBp[context.levelIds.indexOf(levelId)];
   return { level: context.levels.get(levelId), journal, weightBp };
 }
 
@@ -574,7 +590,8 @@ async function runSuite(network, rpc, zk) {
       entropy: new Contract(generation.ArbBlockhashEntropy, artifacts.ArbBlockhashEntropy.abi, provider),
       referee: new Contract(generation.Referee, (zk ? artifacts.ZkReferee : artifacts.MockReferee).abi, deployer),
       clock: chainClockOf(network, provider, deployer, arbSys),
-      levels: readLevels(),
+      ...seasonLevels(CALIBRATION.levelIds),
+      weightsBp: CALIBRATION.weightsBp,
       workDir: recordDir,
     };
     await runCases(context);
@@ -604,7 +621,7 @@ export async function liveContext({ network, provider, player, settler, artifact
   if (number === undefined) throw new Error(`${recordFile}'s newest generation has no season ${seasonLabel}: open it with season.mjs open`);
   if (generation.backend !== "zk") throw new Error(`the live cases settle with zk proofs, and the newest generation's backend is ${generation.backend}`);
   const season = new Contract(generation.Season, artifacts.Season.abi, provider);
-  const { runFee, commitSlack } = await season.paramsOf(number);
+  const { runFee, commitSlack, levelIds, weightsBp } = await season.paramsOf(number);
   return {
     network,
     backend: generation.backend,
@@ -621,7 +638,8 @@ export async function liveContext({ network, provider, player, settler, artifact
     entropy: new Contract(generation.ArbBlockhashEntropy, artifacts.ArbBlockhashEntropy.abi, provider),
     referee: new Contract(generation.Referee, artifacts.ZkReferee.abi, provider),
     clock: clockOf(network, provider, settler, new Contract(generation.ArbSys, artifacts.MockArbSys.abi, settler)),
-    levels: readLevels(),
+    ...seasonLevels(levelIds),
+    weightsBp: weightsBp.map(Number),
     workDir: mkdtempSync(join(tmpdir(), "jiro-e2e-live-")),
     runsDir,
   };
@@ -685,7 +703,7 @@ export function botRun(context, runNonce, short) {
 
 /** A run file's six levels, at their season weights, scored by the native replay. */
 export function levelsOfRunFile(context, file) {
-  return file.levels.map((level, index) => scored(context, { level, journal: file.journals[index], weightBp: CALIBRATION.weightsBp[file.drawSlots[index]] }));
+  return file.levels.map((level, index) => scored(context, { level, journal: file.journals[index], weightBp: context.weightsBp[file.drawSlots[index]] }));
 }
 
 /** The run of a run file committed earlier. */
