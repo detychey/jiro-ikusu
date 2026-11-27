@@ -1,11 +1,13 @@
-//! Level bytes v1 (README §5): 472 big-endian bytes, the range rules checked while decoding,
-//! then the validity of the level itself.
+//! Level bytes (README §5): v1, 472 big-endian bytes for a level with one boss, and v2, the same
+//! fields and then a second boss's 6 bytes; the range rules checked while decoding, then the
+//! validity of the level itself.
 
 use core::num::NonZeroU16;
+use core::ops::Deref;
 
 use crate::consts::{
-    BP, CAPTURE_STACK, CELLS, LEVEL_LEN, LEVEL_VERSION, MAX_BOSS_SIZE, MAX_TICKS, MIN_BOSS_SIZE,
-    MIN_OPEN_AREA, MINION_SLOTS, OBSTACLE_BYTES, PLAYER_START, W,
+    BP, CAPTURE_STACK, CELLS, LEVEL_LEN, LEVEL_V2_LEN, LEVEL_VERSION, MAX_BOSS_SIZE, MAX_TICKS,
+    MIN_BOSS_SIZE, MIN_OPEN_AREA, MINION_SLOTS, OBSTACLE_BYTES, PLAYER_START, W,
 };
 use crate::error::Error;
 use crate::grid::Grid;
@@ -21,7 +23,46 @@ pub struct Rect {
     pub y1: u8,
 }
 
-/// The fields of level bytes v1, in byte order.
+/// The version byte of level bytes v1.
+const LEVEL_V1: u8 = 1;
+
+/// A boss's fields in the level bytes: body size B, spawn rectangle and move period.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BossRecord {
+    pub size: u8,
+    pub spawn: Rect,
+    pub period: u8,
+}
+
+impl BossRecord {
+    /// The cells some start of the B × B body covers: the spawn rectangle grown by B − 1 to the
+    /// right and down.
+    fn footprint(&self) -> Option<Rect> {
+        let reach = self.size.checked_sub(1)?;
+        Some(Rect {
+            x1: self.spawn.x1.checked_add(reach)?,
+            y1: self.spawn.y1.checked_add(reach)?,
+            ..self.spawn
+        })
+    }
+
+    /// Whether some start in the spawn rectangle puts the body on `pos`.
+    fn covers(&self, pos: Pos) -> bool {
+        self.footprint().is_some_and(|area| area.contains(pos))
+    }
+}
+
+impl Rect {
+    fn contains(&self, pos: Pos) -> bool {
+        (self.x0..=self.x1).contains(&pos.x) && (self.y0..=self.y1).contains(&pos.y)
+    }
+
+    fn overlaps(&self, other: &Self) -> bool {
+        self.x0 <= other.x1 && other.x0 <= self.x1 && self.y0 <= other.y1 && other.y0 <= self.y1
+    }
+}
+
+/// The fields of the level bytes, in byte order: v1's, then v2's second boss, `None` in v1.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Level {
     /// Cell i = y × 60 + x is bit 7 − i % 8 of byte i / 8; a set bit is an obstacle.
@@ -36,9 +77,25 @@ pub struct Level {
     pub time_limit: u16,
     pub lives: u8,
     pub target_bp: u16,
+    /// The second boss of level bytes v2.
+    pub second_boss: Option<BossRecord>,
 }
 
 impl Level {
+    /// Boss 0's record: the boss of level bytes v1.
+    pub fn first_boss(&self) -> BossRecord {
+        BossRecord {
+            size: self.boss_size,
+            spawn: self.spawn,
+            period: self.boss_period,
+        }
+    }
+
+    /// Every boss's record, boss 0 first.
+    pub fn bosses(&self) -> impl Iterator<Item = BossRecord> {
+        core::iter::once(self.first_boss()).chain(self.second_boss)
+    }
+
     /// The obstacle bit of every cell, in row-major order.
     pub fn obstacle_bits(&self) -> impl Iterator<Item = bool> + '_ {
         self.obstacles
@@ -75,10 +132,34 @@ pub struct LevelStart {
     pub claimable: NonZeroU16,
 }
 
-/// Reads level bytes, checking the rules of README §5's table in order (20 to 34) and
-/// returning the first broken rule's error.
+/// Level bytes: v1 for a level with one boss, v2 for a level with two.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LevelBytes {
+    buffer: [u8; LEVEL_V2_LEN],
+    twin: bool,
+}
+
+impl Deref for LevelBytes {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        let (v1, _) = self.buffer.split_at(LEVEL_LEN);
+        if self.twin { &self.buffer } else { v1 }
+    }
+}
+
+/// Reads level bytes v1 or v2, checking the rules of README §5's table in order (20 to 34, then
+/// 40 to 43) and returning the first broken rule's error.
 pub fn decode(bytes: &[u8]) -> Result<Level, Error> {
-    let bytes: &[u8; LEVEL_LEN] = bytes.try_into().map_err(|_| Error::LevelLength)?;
+    let (bytes, second) = match bytes.split_first_chunk::<LEVEL_LEN>() {
+        Some((v1, [])) => (v1, None),
+        Some((v1, rest)) => {
+            let second: &[u8; LEVEL_V2_LEN - LEVEL_LEN] =
+                rest.try_into().map_err(|_| Error::LevelLength)?;
+            (v1, Some(second))
+        }
+        None => return Err(Error::LevelLength),
+    };
     let &[
         version,
         obstacles @ ..,
@@ -104,7 +185,12 @@ pub fn decode(bytes: &[u8]) -> Result<Level, Error> {
         target_high,
         target_low,
     ] = bytes;
-    if version != LEVEL_VERSION {
+    let expected_version = if second.is_some() {
+        LEVEL_VERSION
+    } else {
+        LEVEL_V1
+    };
+    if version != expected_version {
         return Err(Error::LevelVersion);
     }
     let level = Level {
@@ -123,13 +209,18 @@ pub fn decode(bytes: &[u8]) -> Result<Level, Error> {
         time_limit: u16::from_be_bytes([time_high, time_low]),
         lives,
         target_bp: u16::from_be_bytes([target_high, target_low]),
+        second_boss: second.map(|&[size, x0, y0, x1, y1, period]| BossRecord {
+            size,
+            spawn: Rect { x0, y0, x1, y1 },
+            period,
+        }),
     };
     check_ranges(&level)?;
     Ok(level)
 }
 
-/// The level bytes of `level`, without checking it.
-pub fn encode(level: &Level) -> [u8; LEVEL_LEN] {
+/// The level bytes of `level`, without checking it: v1 with one boss, v2 with two.
+pub fn encode(level: &Level) -> LevelBytes {
     let mut bytes = [0; LEVEL_LEN];
     let [
         version,
@@ -157,7 +248,11 @@ pub fn encode(level: &Level) -> [u8; LEVEL_LEN] {
         target_low,
     ] = &mut bytes;
     let [m0, m1, m2] = level.minion_spawns;
-    *version = LEVEL_VERSION;
+    *version = if level.second_boss.is_some() {
+        LEVEL_VERSION
+    } else {
+        LEVEL_V1
+    };
     *obstacles = level.obstacles;
     [*boss_size, *x0, *y0, *x1, *y1, *boss_period, *minion_count] = [
         level.boss_size,
@@ -174,7 +269,21 @@ pub fn encode(level: &Level) -> [u8; LEVEL_LEN] {
     [*time_high, *time_low] = level.time_limit.to_be_bytes();
     *lives = level.lives;
     [*target_high, *target_low] = level.target_bp.to_be_bytes();
-    bytes
+    let second = level.second_boss.map(|boss| {
+        let Rect { x0, y0, x1, y1 } = boss.spawn;
+        [boss.size, x0, y0, x1, y1, boss.period]
+    });
+    let mut buffer = [0; LEVEL_V2_LEN];
+    for (slot, byte) in buffer
+        .iter_mut()
+        .zip(bytes.into_iter().chain(second.into_iter().flatten()))
+    {
+        *slot = byte;
+    }
+    LevelBytes {
+        buffer,
+        twin: level.second_boss.is_some(),
+    }
 }
 
 /// keccak256 of the level bytes (README §5).
@@ -182,8 +291,8 @@ pub fn level_id(bytes: &[u8]) -> [u8; 32] {
     keccak256(&[bytes])
 }
 
-/// Checks the validity of a level that `decode` accepted, in README §5's order (35 to 39),
-/// and returns its level-start state. The region search runs on `stack`.
+/// Checks the validity of a level that `decode` accepted, in README §5's order (35 to 39, then
+/// 44 and 45), and returns its level-start state. The region search runs on `stack`.
 pub fn validate(level: &Level, stack: &mut [u16; CAPTURE_STACK]) -> Result<LevelStart, Error> {
     let mut grid = Grid::level_start(level);
     let open = grid.count(Cell::Empty);
@@ -200,10 +309,7 @@ pub fn validate(level: &Level, stack: &mut [u16; CAPTURE_STACK]) -> Result<Level
     let claimable = NonZeroU16::new(open)
         .filter(|open| open.get() >= MIN_OPEN_AREA)
         .ok_or(Error::OpenAreaSmall)?;
-    let body_area_open = CellIndex::all()
-        .filter(|cell| spawn_covers(level, cell.pos()))
-        .all(|cell| grid.get(cell) == Cell::Empty);
-    if !body_area_open {
+    if !body_area_open(&grid, &level.first_boss()) {
         return Err(Error::BossSpawn);
     }
     if level.minions().any(|spawn| !grid.is_rail(spawn)) {
@@ -211,6 +317,19 @@ pub fn validate(level: &Level, stack: &mut [u16; CAPTURE_STACK]) -> Result<Level
     }
     if !grid.is_rail(PLAYER_START) {
         return Err(Error::PlayerStartRail);
+    }
+    if let Some(second) = level.second_boss {
+        if !body_area_open(&grid, &second) {
+            return Err(Error::SecondBossSpawn);
+        }
+        let disjoint = level
+            .first_boss()
+            .footprint()
+            .zip(second.footprint())
+            .is_some_and(|(first, second)| !first.overlaps(&second));
+        if !disjoint {
+            return Err(Error::BossSpawnsOverlap);
+        }
     }
     Ok(LevelStart { grid, claimable })
 }
@@ -222,24 +341,15 @@ fn check_ranges(level: &Level) -> Result<(), Error> {
     if border_obstacle {
         return Err(Error::BorderObstacle);
     }
-    if !(MIN_BOSS_SIZE..=MAX_BOSS_SIZE).contains(&level.boss_size) {
-        return Err(Error::BossSize);
-    }
-    let Rect { x0, y0, x1, y1 } = level.spawn;
-    if x0 > x1 || y0 > y1 {
-        return Err(Error::SpawnOrder);
-    }
-    let body_inside = |start: u8| {
-        start
-            .checked_add(level.boss_size)
-            .is_some_and(|end| end < W)
-    };
-    if x0 < 1 || y0 < 1 || !body_inside(x1) || !body_inside(y1) {
-        return Err(Error::SpawnBounds);
-    }
-    if level.boss_period == 0 {
-        return Err(Error::BossPeriod);
-    }
+    check_boss(
+        &level.first_boss(),
+        [
+            Error::BossSize,
+            Error::SpawnOrder,
+            Error::SpawnBounds,
+            Error::BossPeriod,
+        ],
+    )?;
     if usize::from(level.minion_count) > MINION_SLOTS {
         return Err(Error::MinionCount);
     }
@@ -268,18 +378,44 @@ fn check_ranges(level: &Level) -> Result<(), Error> {
     if !(1..=BP).contains(&level.target_bp) {
         return Err(Error::Target);
     }
+    match level.second_boss {
+        Some(second) => check_boss(
+            &second,
+            [
+                Error::SecondBossSize,
+                Error::SecondSpawnOrder,
+                Error::SecondSpawnBounds,
+                Error::SecondBossPeriod,
+            ],
+        ),
+        None => Ok(()),
+    }
+}
+
+/// The range rules of a boss's fields, in byte order, each with its error in `errors`: the body
+/// size B, the spawn rectangle's order, its bounds, and the move period.
+fn check_boss(boss: &BossRecord, errors: [Error; 4]) -> Result<(), Error> {
+    let [size, order, bounds, period] = errors;
+    if !(MIN_BOSS_SIZE..=MAX_BOSS_SIZE).contains(&boss.size) {
+        return Err(size);
+    }
+    let Rect { x0, y0, x1, y1 } = boss.spawn;
+    if x0 > x1 || y0 > y1 {
+        return Err(order);
+    }
+    let body_inside = |start: u8| start.checked_add(boss.size).is_some_and(|end| end < W);
+    if x0 < 1 || y0 < 1 || !body_inside(x1) || !body_inside(y1) {
+        return Err(bounds);
+    }
+    if boss.period == 0 {
+        return Err(period);
+    }
     Ok(())
 }
 
-/// Whether some start in the spawn rectangle puts the B × B body on `pos`: x0 ≤ x < x1 + B,
-/// and the same for y.
-fn spawn_covers(level: &Level, pos: Pos) -> bool {
-    let Rect { x0, y0, x1, y1 } = level.spawn;
-    let covers = |start: u8, end: u8, at: u8| {
-        at >= start
-            && end
-                .checked_add(level.boss_size)
-                .is_none_or(|limit| at < limit)
-    };
-    covers(x0, x1, pos.x) && covers(y0, y1, pos.y)
+/// Whether the body covers only open cells from every start in the boss's spawn rectangle.
+fn body_area_open(grid: &Grid, boss: &BossRecord) -> bool {
+    CellIndex::all()
+        .filter(|cell| boss.covers(cell.pos()))
+        .all(|cell| grid.get(cell) == Cell::Empty)
 }

@@ -1,5 +1,5 @@
 // The error codes of the core (core/src/error.rs): journals and replay, 1 to 15 (README §6.3),
-// and levels, 20 to 39 (README §5), each under the core's name with what it means.
+// and levels, 20 to 45 (README §5), each under the core's name with what it means.
 
 export const ERRORS: Readonly<Record<number, readonly [name: string, meaning: string]>> = {
   1: ["Truncated", "the journal ends inside its 71-byte header or its events"],
@@ -17,8 +17,8 @@ export const ERRORS: Readonly<Record<number, readonly [name: string, meaning: st
   13: ["EventPastTimeLimit", "an event is at or after the level's time limit"],
   14: ["EventAfterEnd", "an event follows the tick on which the level ended"],
   15: ["Invariant", "an internal invariant broke: the core has a bug"],
-  20: ["LevelLength", "the level is not exactly 472 bytes"],
-  21: ["LevelVersion", "the level's version is not 1"],
+  20: ["LevelLength", "the level is not exactly 472 or 478 bytes"],
+  21: ["LevelVersion", "the level's version is not 1 for 472 bytes or 2 for 478"],
   22: ["BorderObstacle", "an obstacle is on the border"],
   23: ["BossSize", "the boss body size is not 2 to 8"],
   24: ["SpawnOrder", "the boss spawn rectangle has x0 above x1 or y0 above y1"],
@@ -37,6 +37,12 @@ export const ERRORS: Readonly<Record<number, readonly [name: string, meaning: st
   37: ["BossSpawn", "from some cell of the spawn rectangle, the boss body covers a cell that is not open"],
   38: ["MinionSpawnRail", "a minion spawn is not a rail cell"],
   39: ["PlayerStartRail", "the player start (30, 59) is not a rail cell"],
+  40: ["SecondBossSize", "the second boss body size is not 2 to 8"],
+  41: ["SecondSpawnOrder", "the second boss spawn rectangle has x0 above x1 or y0 above y1"],
+  42: ["SecondSpawnBounds", "the second boss spawn rectangle lets its body reach the border"],
+  43: ["SecondBossPeriod", "the second boss move period is 0"],
+  44: ["SecondBossSpawn", "from some cell of the second spawn rectangle, the second boss body covers a cell that is not open"],
+  45: ["BossSpawnsOverlap", "the two bosses' bodies can overlap at some pair of start cells"],
 };
 
 /** A core error code as `error <code> (<Name>): <meaning>`. */

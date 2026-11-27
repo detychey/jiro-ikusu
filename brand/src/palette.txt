@@ -3,6 +3,7 @@
 r trail #ff2a2a The trail (TRAIL, README §4.1): the cut and the wordmark's hyphen, nothing else.
 p player #ffffff The player: every glyph's one-cell line, tile rims, text in art; the UI's --focus.
 b boss #ff3cf0 The boss, solid in art.
+- second-boss #ffe03c The second boss of a level with two (README §4.6), in the game only (render.ts): never in brand art or the UI.
 m minion #3cff78 Minions, in the game only: never in brand art or the UI.
 - invulnerable-player #9a9a9a The invulnerable player, in the game only (render.ts): never in brand art or the UI.
 - claim-deep #14206e The halo next to white in hero art, the wordmark's shelf, the UI's button shelf. Computed, never painted by hand.

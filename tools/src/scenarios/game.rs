@@ -12,7 +12,7 @@ use jiro_core::minion::State;
 use jiro_core::types::{Cell, InputMask, Pos};
 
 use super::play::{Run, header, record, script};
-use super::{game_cuts, game_hits, game_long, journal, level};
+use super::{game_cuts, game_hits, game_long, game_twins, journal, level};
 
 pub struct GameCase {
     pub name: String,
@@ -106,7 +106,7 @@ pub fn minion_pos(game: &Game, slot: usize) -> Option<Pos> {
 pub fn cases() -> Result<Vec<GameCase>, String> {
     let open_field_header = journal::header();
     let open_field_empty = GameCase {
-        tick_0_hash: Some("0xda8d937602aeedbccd99b0f28519c8763d400688e9331c0065191673cb756e79"),
+        tick_0_hash: Some("0xb5535231486623b9396b6d436769db5fc7ba3518b3b37de5e3a9ddf08343d4ab"),
         ..game_case(
             "open-field-empty",
             &["§6.4", "R4.4-1", "R4.10-4", "PIN-08"],
@@ -122,6 +122,7 @@ pub fn cases() -> Result<Vec<GameCase>, String> {
     cases.extend(game_cuts::cases()?);
     cases.extend(game_hits::cases()?);
     cases.extend(game_long::cases()?);
+    cases.extend(game_twins::cases()?);
     Ok(cases)
 }
 

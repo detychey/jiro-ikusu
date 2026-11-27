@@ -1,7 +1,7 @@
 //! The player (README §4.5): direction, rail movement, cuts and the fast cut, at step 3 of the
 //! tick (R4.4-8).
 
-use crate::boss::Boss;
+use crate::boss::Bosses;
 use crate::capture::{Capture, capture};
 use crate::consts::{CAPTURE_STACK, PLAYER_START};
 use crate::grid::Grid;
@@ -27,7 +27,7 @@ pub struct Moves {
     pub from: Pos,
     /// P1 … Pn, the cells actually entered, n = 0, 1 or 2 (PIN-15).
     pub entered: [Option<Pos>; 2],
-    /// The player tried to step onto the boss's body (R4.9-3).
+    /// The player tried to step onto a boss's body (R4.9-3).
     pub hit: bool,
     /// The capture, if a cut closed this tick (R4.5-5).
     pub captured: Option<Capture>,
@@ -64,7 +64,7 @@ impl Player {
     pub fn step(
         &mut self,
         grid: &mut Grid,
-        boss: &Boss,
+        bosses: &Bosses,
         mask: InputMask,
         stack: &mut [u16; CAPTURE_STACK],
     ) -> Option<Moves> {
@@ -79,7 +79,7 @@ impl Player {
             return Some(moves);
         };
         for entered in moves.entered.iter_mut().take(self.sub_steps().into()) {
-            match self.sub_step(grid, boss, direction, stack)? {
+            match self.sub_step(grid, bosses, direction, stack)? {
                 SubStep::Cut(pos) => *entered = Some(pos),
                 SubStep::Entered(pos) => {
                     *entered = Some(pos);
@@ -130,7 +130,7 @@ impl Player {
     fn sub_step(
         &mut self,
         grid: &mut Grid,
-        boss: &Boss,
+        bosses: &Bosses,
         direction: Dir,
         stack: &mut [u16; CAPTURE_STACK],
     ) -> Option<SubStep> {
@@ -138,7 +138,7 @@ impl Player {
         let Some(target) = self.pos.offset(dx, dy) else {
             return Some(SubStep::Ignored);
         };
-        if boss.body().any(|cell| cell == target) {
+        if bosses.covers(target) {
             return Some(SubStep::Hit);
         }
         let Some(index) = CellIndex::new(target) else {
@@ -154,8 +154,7 @@ impl Player {
             (true, Cell::Claimed) => {
                 self.pos = target;
                 self.cutting = false;
-                let body = boss.body().filter_map(CellIndex::new);
-                SubStep::Closed(target, capture(grid, body, stack)?)
+                SubStep::Closed(target, capture(grid, bosses, stack)?)
             }
             (false, Cell::Empty) => {
                 grid.set(index, Cell::Trail);
@@ -181,6 +180,7 @@ mod tests {
     use std::vec::Vec;
 
     use super::*;
+    use crate::boss::Boss;
     use crate::level::{Level, Rect};
 
     fn level(obstacles: &[(u8, u8)]) -> Level {
@@ -201,6 +201,7 @@ mod tests {
             time_limit: 2_700,
             lives: 3,
             target_bp: 7_500,
+            second_boss: None,
         };
         for &(x, y) in obstacles {
             let cell = usize::from(y) * 60 + usize::from(x);
@@ -213,14 +214,17 @@ mod tests {
         Grid::level_start(&level(obstacles))
     }
 
-    fn boss_at(x: u8, y: u8) -> Boss {
-        Boss {
-            pos: Pos { x, y },
-            size: 5,
-            vx: 1,
-            vy: 1,
-            period: 2,
-            deflection_key: 0,
+    fn boss_at(x: u8, y: u8) -> Bosses {
+        Bosses {
+            first: Boss {
+                pos: Pos { x, y },
+                size: 5,
+                vx: 1,
+                vy: 1,
+                period: 2,
+                deflection_key: 0,
+            },
+            second: None,
         }
     }
 

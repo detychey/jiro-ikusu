@@ -25,12 +25,12 @@
 use core::cell::UnsafeCell;
 
 use jiro_core::Error;
-use jiro_core::consts::{CAPTURE_STACK, CELLS, LEVEL_LEN, MAX_TICKS, RULES_VERSION, RUN_LEVELS};
+use jiro_core::boss::Boss;
+use jiro_core::consts::{CAPTURE_STACK, CELLS, LEVEL_V2_LEN, MAX_TICKS, RULES_VERSION, RUN_LEVELS};
 use jiro_core::game::Game;
-use jiro_core::grid;
 use jiro_core::hash::{self, PREIMAGE_LEN, heading_code, preimage};
 use jiro_core::journal::{self, Header, Mode};
-use jiro_core::level::{self, Level, Rect};
+use jiro_core::level::{self, BossRecord, Level, LevelBytes, Rect};
 use jiro_core::minion::State;
 use jiro_core::recorder::Recorder;
 use jiro_core::replay::{Outcome, replay_observed};
@@ -53,13 +53,14 @@ const TRACE_CAPACITY: usize = MAX_TICKS as usize * HASH_LEN;
 const OUTCOME_LEN: usize = 110;
 /// The editor's fields of a level besides its obstacles, as u32 values in this order: boss size,
 /// spawn x0, y0, x1 and y1, boss period, minion count, the x and y of each minion slot, minion
-/// period, respawn delay, time limit, lives and target.
-const EDIT_FIELDS: usize = 18;
+/// period, respawn delay, time limit, lives and target, then the second boss's size, spawn x0,
+/// y0, x1 and y1 and period, all six 0 for a level with one boss.
+const EDIT_FIELDS: usize = 24;
 
 struct Engine {
     input: [u8; INPUT_CAPACITY],
     /// The level that `load_level` accepted, and its bytes, which give its id.
-    level: Option<(Level, [u8; LEVEL_LEN])>,
+    level: Option<(Level, LevelBytes)>,
     play: Play,
     grid: [u8; CELLS],
     /// The cells changed since the last `dirty_cells` call, for redrawing (not consensus).
@@ -74,8 +75,9 @@ struct Engine {
     edit_cells: [u8; CELLS],
     /// The editor's other fields, in the order of `EDIT_FIELDS`.
     edit_fields: [u32; EDIT_FIELDS],
-    /// The level bytes that the last `encode_level` call wrote.
-    level_out: [u8; LEVEL_LEN],
+    /// The level bytes that the last `encode_level` call wrote, `level_out_len` of them.
+    level_out: [u8; LEVEL_V2_LEN],
+    level_out_len: u32,
     preimage: [u8; PREIMAGE_LEN],
     trace: [u8; TRACE_CAPACITY],
     trace_ticks: u16,
@@ -124,7 +126,8 @@ static ENGINE: Static = Static(UnsafeCell::new(Engine {
     draw_slots: [0; RUN_LEVELS],
     edit_cells: [0; CELLS],
     edit_fields: [0; EDIT_FIELDS],
-    level_out: [0; LEVEL_LEN],
+    level_out: [0; LEVEL_V2_LEN],
+    level_out_len: 0,
     preimage: [0; PREIMAGE_LEN],
     trace: [0; TRACE_CAPACITY],
     trace_ticks: 0,
@@ -283,8 +286,8 @@ pub extern "C" fn digest_ptr() -> *const u8 {
 
 /// Decodes the level bytes in the first `len` bytes of the input buffer with the core's codec
 /// (README §5) into the editor's buffers, `edit_cells_ptr` and `edit_fields_ptr`. Returns 0, or
-/// the code of the first rule the decoder checks that the bytes break (20 to 34), leaving the
-/// buffers as they were.
+/// the code of the first rule the decoder checks that the bytes break (20 to 34, 40 to 43),
+/// leaving the buffers as they were.
 #[unsafe(no_mangle)]
 pub extern "C" fn decode_level(len: u32) -> u32 {
     let Engine {
@@ -308,8 +311,8 @@ pub extern "C" fn decode_level(len: u32) -> u32 {
     }
 }
 
-/// Encodes the editor's buffers with the core's codec (README §5) into the 472 bytes at
-/// `level_out_ptr`, valid or not. Returns 0, or `MISUSE` when a cell is neither 0 nor 1, or a
+/// Encodes the editor's buffers with the core's codec (README §5) into the `level_out_len` bytes
+/// at `level_out_ptr`, 472 for one boss and 478 for two, valid or not. Returns 0, or `MISUSE` when a cell is neither 0 nor 1, or a
 /// field does not fit its width in the level bytes.
 #[unsafe(no_mangle)]
 pub extern "C" fn encode_level() -> u32 {
@@ -317,11 +320,16 @@ pub extern "C" fn encode_level() -> u32 {
         edit_cells,
         edit_fields,
         level_out,
+        level_out_len,
         ..
     } = engine();
     match edited_level(edit_cells, edit_fields) {
         Some(edited) => {
-            *level_out = level::encode(&edited);
+            let bytes = level::encode(&edited);
+            for (slot, byte) in level_out.iter_mut().zip(bytes.iter()) {
+                *slot = *byte;
+            }
+            *level_out_len = u32::try_from(bytes.len()).unwrap_or(0);
             0
         }
         None => MISUSE,
@@ -346,8 +354,15 @@ pub extern "C" fn level_out_ptr() -> *const u8 {
     engine().level_out.as_ptr()
 }
 
+/// The length of the level bytes at `level_out_ptr`.
+#[unsafe(no_mangle)]
+pub extern "C" fn level_out_len() -> u32 {
+    engine().level_out_len
+}
+
 fn edit_fields_of(level: &Level) -> [u32; EDIT_FIELDS] {
     let [m0, m1, m2] = level.minion_spawns;
+    let second = level.second_boss.unwrap_or(NO_SECOND_BOSS);
     let Rect { x0, y0, x1, y1 } = level.spawn;
     [
         u32::from(level.boss_size),
@@ -368,10 +383,29 @@ fn edit_fields_of(level: &Level) -> [u32; EDIT_FIELDS] {
         u32::from(level.time_limit),
         u32::from(level.lives),
         u32::from(level.target_bp),
+        u32::from(second.size),
+        u32::from(second.spawn.x0),
+        u32::from(second.spawn.y0),
+        u32::from(second.spawn.x1),
+        u32::from(second.spawn.y1),
+        u32::from(second.period),
     ]
 }
 
-/// The level of the editor's buffers, or `None` when a value does not fit.
+/// The editor's second boss fields of a level with one boss: all zero.
+const NO_SECOND_BOSS: BossRecord = BossRecord {
+    size: 0,
+    spawn: Rect {
+        x0: 0,
+        y0: 0,
+        x1: 0,
+        y1: 0,
+    },
+    period: 0,
+};
+
+/// The level of the editor's buffers, or `None` when a value does not fit. Six zero second boss
+/// fields mean a level with one boss.
 fn edited_level(cells: &[u8; CELLS], fields: &[u32; EDIT_FIELDS]) -> Option<Level> {
     let mut obstacles = [false; CELLS];
     for (obstacle, &cell) in obstacles.iter_mut().zip(cells) {
@@ -400,6 +434,12 @@ fn edited_level(cells: &[u8; CELLS], fields: &[u32; EDIT_FIELDS]) -> Option<Leve
         time_limit,
         lives,
         target_bp,
+        second_size,
+        second_x0,
+        second_y0,
+        second_x1,
+        second_y1,
+        second_period,
     ] = *fields;
     let byte = |value: u32| u8::try_from(value).ok();
     let word = |value: u32| u16::try_from(value).ok();
@@ -426,6 +466,17 @@ fn edited_level(cells: &[u8; CELLS], fields: &[u32; EDIT_FIELDS]) -> Option<Leve
         time_limit: word(time_limit)?,
         lives: byte(lives)?,
         target_bp: word(target_bp)?,
+        second_boss: Some(BossRecord {
+            size: byte(second_size)?,
+            spawn: Rect {
+                x0: byte(second_x0)?,
+                y0: byte(second_y0)?,
+                x1: byte(second_x1)?,
+                y1: byte(second_y1)?,
+            },
+            period: byte(second_period)?,
+        })
+        .filter(|second| *second != NO_SECOND_BOSS),
     })
 }
 
@@ -440,12 +491,10 @@ pub extern "C" fn load_level(len: u32) -> u32 {
     let Some(bytes) = self::input(input, len) else {
         return MISUSE;
     };
-    let Ok(level_bytes) = <[u8; LEVEL_LEN]>::try_from(bytes) else {
-        return code(Err(Error::LevelLength));
-    };
     match checked_level(bytes) {
         Ok(checked) => {
-            *level = Some((checked, level_bytes));
+            // Level bytes are canonical, so a valid level encodes back to its own bytes.
+            *level = Some((checked, level::encode(&checked)));
             *play = Play::Idle;
             0
         }
@@ -577,21 +626,32 @@ pub extern "C" fn invulnerable() -> u32 {
     with_game(|game| u32::from(game.player.invulnerable))
 }
 
-/// The top-left cell of the boss's body.
+fn with_boss(boss: u32, read: impl FnOnce(&Boss) -> u8) -> u32 {
+    with_game(|game| {
+        let found = match boss {
+            0 => Some(&game.bosses.first),
+            1 => game.bosses.second.as_ref(),
+            _ => None,
+        };
+        found.map_or(0, |boss| u32::from(read(boss)))
+    })
+}
+
+/// The top-left cell of boss `boss` (0 or 1); 0 for a boss the level does not have.
 #[unsafe(no_mangle)]
-pub extern "C" fn boss_x() -> u32 {
-    with_game(|game| u32::from(game.boss.pos.x))
+pub extern "C" fn boss_x(boss: u32) -> u32 {
+    with_boss(boss, |boss| boss.pos.x)
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn boss_y() -> u32 {
-    with_game(|game| u32::from(game.boss.pos.y))
+pub extern "C" fn boss_y(boss: u32) -> u32 {
+    with_boss(boss, |boss| boss.pos.y)
 }
 
-/// B, the side of the boss's body in cells.
+/// B, the side of boss `boss`'s body in cells; 0 for a boss the level does not have.
 #[unsafe(no_mangle)]
-pub extern "C" fn boss_size() -> u32 {
-    with_game(|game| u32::from(game.boss.size))
+pub extern "C" fn boss_size(boss: u32) -> u32 {
+    with_boss(boss, |boss| boss.size)
 }
 
 fn with_minion(slot: u32, read: impl FnOnce(&State) -> u32) -> u32 {
@@ -639,10 +699,11 @@ pub extern "C" fn minion_heading(slot: u32) -> u32 {
     })
 }
 
-/// The claim in basis points (README §4.1).
+/// The claim in basis points (README §4.1), raised to the target once the bosses are separated
+/// (README §4.8).
 #[unsafe(no_mangle)]
 pub extern "C" fn claim_bp() -> u32 {
-    with_game(|game| grid::claim_bp(game.captured, game.claimable))
+    with_game(|game| game.claim_bp().map_or(0, u32::from))
 }
 
 /// The level's target in basis points.

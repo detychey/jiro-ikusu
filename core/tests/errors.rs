@@ -2,7 +2,7 @@
 
 use jiro_core::Error;
 
-const ERRORS: [Error; 35] = [
+const ERRORS: [Error; 41] = [
     Error::Truncated,
     Error::TrailingBytes,
     Error::Version,
@@ -38,6 +38,12 @@ const ERRORS: [Error; 35] = [
     Error::BossSpawn,
     Error::MinionSpawnRail,
     Error::PlayerStartRail,
+    Error::SecondBossSize,
+    Error::SecondSpawnOrder,
+    Error::SecondSpawnBounds,
+    Error::SecondBossPeriod,
+    Error::SecondBossSpawn,
+    Error::BossSpawnsOverlap,
 ];
 
 /// The codes of README §6.3 and §5. The match is exhaustive, so a new error fails to compile
@@ -79,6 +85,12 @@ fn readme_code(error: Error) -> u8 {
         Error::BossSpawn => 37,
         Error::MinionSpawnRail => 38,
         Error::PlayerStartRail => 39,
+        Error::SecondBossSize => 40,
+        Error::SecondSpawnOrder => 41,
+        Error::SecondSpawnBounds => 42,
+        Error::SecondBossPeriod => 43,
+        Error::SecondBossSpawn => 44,
+        Error::BossSpawnsOverlap => 45,
     }
 }
 

@@ -63,7 +63,7 @@ fn a_cut_never_returns_to_an_earlier_leg() {
 #[test]
 fn greedy_cuts_the_largest_safe_rectangle() {
     let mut game = open_field();
-    game.boss.pos = at(1, 1);
+    game.bosses.first.pos = at(1, 1);
     let plan = best_cut(&game, Caution::CAREFUL).expect("a cut");
     assert_eq!(
         (plan.out, plan.side, plan.depth, plan.width),
@@ -86,13 +86,42 @@ fn bold_cuts_deeper_than_greedy_beside_the_same_boss() {
 #[test]
 fn greedy_keeps_the_boss_beyond_the_cells_it_can_move() {
     let mut game = open_field();
-    game.boss.pos = at(1, 1);
+    game.bosses.first.pos = at(1, 1);
     let plan = best_cut(&game, Caution::CAREFUL).expect("a cut");
     let rectangle = Area::spanned(plan.start, plan.out, plan.side, plan.depth, plan.width)
         .expect("inside the grid");
     let ticks = (2 * i16::from(plan.depth) + i16::from(plan.width)) / 2 + 1;
-    let margin = ticks / i16::from(game.boss.period) + 2;
-    assert!(Area::of_boss(&game.boss).gap(rectangle) >= margin);
+    let margin = ticks / i16::from(game.bosses.first.period) + 2;
+    assert!(Area::of_boss(&game.bosses.first).gap(rectangle) >= margin);
+}
+
+/// With a second boss in the bottom-right corner, Greedy's cut keeps both bosses beyond the cells
+/// they can move, each by its own move period.
+#[test]
+fn greedy_keeps_both_bosses_beyond_the_cells_they_can_move() {
+    let mut game = open_field();
+    game.bosses.first.pos = at(1, 1);
+    game.bosses.second = Some(Boss {
+        pos: at(50, 50),
+        period: 1,
+        ..game.bosses.first
+    });
+    let plan = best_cut(&game, Caution::CAREFUL).expect("a cut");
+    let rectangle = Area::spanned(plan.start, plan.out, plan.side, plan.depth, plan.width)
+        .expect("inside the grid");
+    let ticks = (2 * i16::from(plan.depth) + i16::from(plan.width)) / 2 + 1;
+    let clear = game
+        .bosses
+        .iter()
+        .all(|boss| Area::of_boss(boss).gap(rectangle) >= ticks / i16::from(boss.period) + 2);
+    let alone = best_cut(&open_field_with_boss_at(at(1, 1)), Caution::CAREFUL).expect("a cut");
+    assert!(clear && (plan.depth, plan.width) != (alone.depth, alone.width));
+}
+
+fn open_field_with_boss_at(pos: Pos) -> Game {
+    let mut game = open_field();
+    game.bosses.first.pos = pos;
+    game
 }
 
 /// (caution, ticks of the cut, boss period, margin in cells), computed by hand.
@@ -116,7 +145,7 @@ fn a_caution_keeps_its_share_of_the_boss_reach_and_its_cells() {
 #[test]
 fn greedy_cuts_only_a_one_cell_strip_beside_a_minion() {
     let mut game = open_field();
-    game.boss.pos = at(1, 1);
+    game.bosses.first.pos = at(1, 1);
     game.minions.slots[0] = Some(Minion {
         spawn: at(31, 59),
         state: State::Live {

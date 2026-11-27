@@ -3,7 +3,7 @@
 use core::num::NonZeroU16;
 
 use crate::Error;
-use crate::boss::Boss;
+use crate::boss::Bosses;
 use crate::consts::{CAPTURE_STACK, WORK_BUDGET};
 use crate::grid::{Grid, claim_bp};
 use crate::hits::{minion_hits, resolve};
@@ -28,7 +28,7 @@ pub enum EndReason {
 pub struct Game {
     pub grid: Grid,
     pub player: Player,
-    pub boss: Boss,
+    pub bosses: Bosses,
     pub minions: Minions,
     /// The mask in force, from the last journal event (R4.4-6).
     pub mask: InputMask,
@@ -45,24 +45,26 @@ pub struct Game {
     pub claimable: NonZeroU16,
     pub target_bp: u16,
     pub time_limit: u16,
+    /// A capture separated the two bosses, which clears the level [R4.8-6].
+    pub separated: bool,
     pub end: Option<EndReason>,
     stack: [u16; CAPTURE_STACK],
 }
 
 impl Game {
-    /// The level before tick 0, with the boss start and deflection key of the level seed of
+    /// The level before tick 0, with the boss starts and deflection keys of the level seed of
     /// `run_nonce` and `level_index` (README §6.4). Rejects a level that fails validity (35 to
-    /// 39).
+    /// 39, 44 and 45).
     pub fn new(level: &Level, run_nonce: &[u8; 32], level_index: u8) -> Result<Self, Error> {
         let mut stack = [0; CAPTURE_STACK];
         let start = validate(level, &mut stack)?;
-        let boss =
-            Boss::start(level, &level_seed(run_nonce, level_index)).ok_or(Error::SpawnOrder)?;
+        let bosses =
+            Bosses::start(level, &level_seed(run_nonce, level_index)).ok_or(Error::SpawnOrder)?;
         Ok(Self {
             minions: Minions::start(level, &start.grid),
             grid: start.grid,
             player: Player::start(level.lives),
-            boss,
+            bosses,
             mask: InputMask::NONE,
             ticks_used: 0,
             events_applied: 0,
@@ -71,14 +73,22 @@ impl Game {
             claimable: start.claimable,
             target_bp: level.target_bp,
             time_limit: level.time_limit,
+            separated: false,
             end: None,
             stack,
         })
     }
 
-    /// The claim in basis points: captured × 10,000 / claimable, rounded down [R4.1-8].
+    /// The claim in basis points: captured × 10,000 / claimable, rounded down [R4.1-8], raised
+    /// to the target once the bosses are separated [R4.8-6].
     pub fn claim_bp(&self) -> Result<u16, Error> {
-        u16::try_from(claim_bp(self.captured, self.claimable)).map_err(|_| Error::Invariant)
+        let claim =
+            u16::try_from(claim_bp(self.captured, self.claimable)).map_err(|_| Error::Invariant)?;
+        Ok(if self.separated {
+            claim.max(self.target_bp)
+        } else {
+            claim
+        })
     }
 
     /// Processes the next tick with `mask` in force, steps 1 to 7, and returns how the level
@@ -102,17 +112,18 @@ impl Game {
         }
         let moves = self
             .player
-            .step(&mut self.grid, &self.boss, mask, &mut self.stack)
+            .step(&mut self.grid, &self.bosses, mask, &mut self.stack)
             .ok_or(Error::Invariant)?;
         if let Some(done) = moves.captured {
             self.captured = self.captured.saturating_add(done.size);
             self.work = self.work.saturating_add(done.work());
+            self.separated = done.separated;
             self.minions.after_capture(&self.grid);
             if self.claim_bp()? >= self.target_bp {
                 return Ok(Some(EndReason::Cleared));
             }
         }
-        let boss_hit = self.boss.step(&self.grid, tick);
+        let boss_hit = self.bosses.step(&self.grid, tick);
         let minions = self.minions.step(&self.grid, tick);
         self.work = self.work.saturating_add(minions.work);
         let hit = moves.hit || boss_hit || minion_hits(&moves, &minions.moved);

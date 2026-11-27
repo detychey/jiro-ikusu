@@ -277,7 +277,7 @@ fn every_game_vector_round_trips() {
     }
 }
 
-/// Every journal rejection code of README §6.3 (1-11) and level code of §5 (20-39) has a vector.
+/// Every journal rejection code of README §6.3 (1-11) and level code of §5 (20-45) has a vector.
 #[test]
 fn every_decoder_and_validity_code_has_a_vector() {
     let mut codes: Vec<u8> = format_vectors()
@@ -286,6 +286,6 @@ fn every_decoder_and_validity_code_has_a_vector() {
         .collect();
     codes.sort_unstable();
     codes.dedup();
-    let expected: Vec<u8> = (1..=11).chain(20..=39).collect();
+    let expected: Vec<u8> = (1..=11).chain(20..=45).collect();
     assert_eq!(codes, expected);
 }

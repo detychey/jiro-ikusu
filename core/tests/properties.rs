@@ -66,7 +66,7 @@ fn claim_bp_never_decreases_within_a_level() {
 #[cfg_attr(debug_assertions, ignore)]
 fn no_cell_of_the_boss_body_is_ever_claimed_or_trail() {
     observe_every_case(|index, game| {
-        for pos in game.boss.body() {
+        for pos in game.bosses.first.body() {
             let cell = game.grid.at(pos).expect("the body is inside the grid");
             assert!(
                 cell != Cell::Claimed && cell != Cell::Trail,

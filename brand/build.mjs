@@ -535,7 +535,7 @@ function checkPalette(palette) {
     if (!expected) errors.push(`${where}: ${token} is not in brand/src/palette.txt`);
     else if (value.toLowerCase() !== expected) errors.push(`${where} is ${value}, brand/src/palette.txt has ${token} ${expected}`);
   };
-  // render.ts writes each color as a quoted 6-digit hex, and editor.ts its spawn area as the boss's
+  // render.ts writes each color as a quoted 6-digit hex, and editor.ts each spawn area as its boss's
   // 6 digits and 2 of alpha; any other value is reported, never skipped.
   const compareLiteral = (where, literal, token, digitCount = 6) => {
     const digits = /^(["'])#([0-9a-fA-F]+)\1$/.exec(literal)?.[2];
@@ -560,6 +560,9 @@ function checkPalette(palette) {
   const editorTs = readFileSync(join(ROOT, "web/src/pages/editor.ts"), "utf8");
   const spawnArea = /SPAWN_AREA_COLOR = ([^;\n]*)/.exec(editorTs)?.[1] ?? fail("web/src/pages/editor.ts", "SPAWN_AREA_COLOR not found");
   compareLiteral("web/src/pages/editor.ts SPAWN_AREA_COLOR", spawnArea.trim(), "boss", 8);
+  const secondSpawnArea =
+    /SECOND_SPAWN_AREA_COLOR = ([^;\n]*)/.exec(editorTs)?.[1] ?? fail("web/src/pages/editor.ts", "SECOND_SPAWN_AREA_COLOR not found");
+  compareLiteral("web/src/pages/editor.ts SECOND_SPAWN_AREA_COLOR", secondSpawnArea.trim(), "second-boss", 8);
   // Every :root block counts, a later one or one inside a media query included.
   const styleCss = readFileSync(join(ROOT, "web/src/style.css"), "utf8");
   const roots = [...styleCss.matchAll(/:root\b[^{}]*\{([^}]*)\}/g)].map(([, body]) => body);

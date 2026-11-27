@@ -8,7 +8,6 @@ import {
   LEVEL,
   hex,
   index,
-  spawnRect,
   encodeLevel,
   startGrid,
   openArea,
@@ -23,11 +22,13 @@ import {
   deflectionDraw,
   moveBoss,
   playBoss,
+  playTwinBosses,
   statePreimage,
   encodeJournal,
   openField,
   blockedStart,
   wideSpawn,
+  twinField,
   exampleRunNonce,
   exampleEntropy,
 } from "./lib.mjs";
@@ -69,6 +70,12 @@ const preimage = statePreimage({
   claimable: openArea(grid).size,
   nextEvent: 0,
 });
+const twinBytes = encodeLevel(twinField);
+const twinStarts = [0, 1].map((b) => bossStart(twinBytes, seed, b));
+const twinKeys = [0, 1].map((b) => deflectionKey(seed, b));
+const twinRecords = [{ size: twinField.bossSize, period: twinField.bossPeriod }, twinField.secondBoss];
+const twinBosses = twinStarts.map(({ x, y, vx, vy }, b) => ({ x, y, vx, vy, size: twinRecords[b].size, period: twinRecords[b].period }));
+const twinBounces = playTwinBosses(startGrid(twinBytes), twinBosses, twinKeys, twinField.timeLimit);
 const journal = encodeJournal({ mode: 0, runNonce, levelId, levelIndex: 0, events: [] });
 const deadlineExample = { revealedAt: 1_000_000, ticksUsed: [1, 2700, 1800, 900, 15, 16], commitSlack: 120 };
 const number = (value) => value.toLocaleString("en-US");
@@ -104,6 +111,12 @@ const lines = [
   `open-field-empty first deflection: ${describeDeflection(deflections[0])}`,
   `open-field-empty second deflection: ${describeDeflection(deflections[1])}`,
   `open-field-empty boss after tick ${openField.timeLimit - 1}: ${describeBoss(bossAtEnd)}, after ${deflections.length} deflections`,
+  `twin-field level bytes 472-477: ${hex(twinBytes.subarray(472))}`,
+  `twin-field level_id: ${keccak256(twinBytes)}`,
+  `twin-field validity: ${validateLevel(twinBytes)}`,
+  `second boss start (levelIndex 0): ${describeStart(twinStarts[1])}`,
+  `second deflection key (levelIndex 0): ${hex32(twinKeys[1])}`,
+  `twin-field bosses after tick ${twinField.timeLimit - 1}, standing still: boss 0 ${describeBoss(twinBosses[0])}; boss 1 ${describeBoss(twinBosses[1])}; ${twinBounces} bounces off the other boss`,
   `run nonce entropy: ${hex(exampleEntropy)}`,
   `run nonce (runId 1): ${hex(runNonceOf(exampleEntropy, 1))}`,
   `deadline (revealedAt ${number(deadlineExample.revealedAt)}, ticks used ${deadlineExample.ticksUsed.map(number).join(" + ")}, commitSlack ${deadlineExample.commitSlack}): ${number(deadline(deadlineExample.revealedAt, deadlineExample.ticksUsed, deadlineExample.commitSlack))}`,

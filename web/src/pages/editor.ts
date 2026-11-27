@@ -1,6 +1,6 @@
 // The level editor (plan M2.5): README §5's levels, painted and edited field by field. The
-// editor has no format of its own: the core's codec turns its model into level bytes v1 and
-// back, and the core validates the bytes and gives their level id after every change.
+// editor has no format of its own: the core's codec turns its model into level bytes v1 or v2
+// and back, and the core validates the bytes and gives their level id after every change.
 
 import openField from "../../../vectors/format/level-open-field.json";
 import { type Core, fromHex, hex } from "../core";
@@ -8,6 +8,7 @@ import { describeError } from "../errors";
 import {
   type Cell,
   FIELD_CELLS,
+  hasSecondBoss,
   isBorder,
   isObstacle,
   type Level,
@@ -17,7 +18,7 @@ import {
   toggleMinion,
 } from "../level";
 import { element, fitField, loadCore, messageOf } from "../page";
-import { cellRect, ENTITY_COLORS, type Rect, Renderer } from "../render";
+import { BOSS_COLORS, cellRect, ENTITY_COLORS, type Rect, Renderer } from "../render";
 
 /** What the core says about level bytes: valid, or the first rule they break (README §5). */
 export function levelStatus(core: Core, bytes: Uint8Array): string {
@@ -34,7 +35,10 @@ export function startCells(level: Level): Uint8Array {
   });
 }
 
+/** The color of each boss's spawn area: its own color at 33 %. */
 const SPAWN_AREA_COLOR = "#ff3cf055";
+const SECOND_SPAWN_AREA_COLOR = "#ffe03c55";
+const SPAWN_AREA_COLORS = [SPAWN_AREA_COLOR, SECOND_SPAWN_AREA_COLOR] as const;
 
 /** The cells of the line from `from` to `to`, both included (Bresenham's algorithm): one cell
  *  per step, diagonals included, so that a stroke leaves no gap however far apart its pointer
@@ -60,13 +64,16 @@ export function lineCells(from: Cell, to: Cell): Cell[] {
   }
 }
 
-/** The cells the boss body may cover from its spawn rectangle, the body at its first spawn cell,
- *  the minion spawns and the player start. */
+/** For each boss, the cells its body may cover from its spawn rectangle and the body at its first
+ *  spawn cell; then the minion spawns and the player start. */
 function overlay(level: Level): Rect[] {
-  const { bossSize, spawn } = level;
+  const first = { size: level.bossSize, spawn: level.spawn };
+  const bosses = hasSecondBoss(level) ? [first, level.secondBoss] : [first];
   return [
-    cellRect(spawn.x0, spawn.y0, spawn.x1 - spawn.x0 + bossSize, spawn.y1 - spawn.y0 + bossSize, SPAWN_AREA_COLOR),
-    cellRect(spawn.x0, spawn.y0, bossSize, bossSize, ENTITY_COLORS.boss),
+    ...bosses.flatMap(({ size, spawn }, i) => [
+      cellRect(spawn.x0, spawn.y0, spawn.x1 - spawn.x0 + size, spawn.y1 - spawn.y0 + size, SPAWN_AREA_COLORS[i] ?? ""),
+      cellRect(spawn.x0, spawn.y0, size, size, BOSS_COLORS[i] ?? ENTITY_COLORS.boss),
+    ]),
     ...level.minionSpawns.slice(0, level.minionCount).map(({ x, y }) => cellRect(x, y, 1, 1, ENTITY_COLORS.minion)),
     cellRect(PLAYER_START.x, PLAYER_START.y, 1, 1, ENTITY_COLORS.player),
   ];
@@ -92,6 +99,12 @@ const NUMBER_FIELDS: NumberField[] = [
   { id: "spawn-x1", name: "Spawn x1", max: U8, get: (l) => l.spawn.x1, set: (l, v) => void (l.spawn.x1 = v) },
   { id: "spawn-y1", name: "Spawn y1", max: U8, get: (l) => l.spawn.y1, set: (l, v) => void (l.spawn.y1 = v) },
   { id: "boss-period", name: "Boss move period", max: U8, get: (l) => l.bossPeriod, set: (l, v) => void (l.bossPeriod = v) },
+  { id: "second-boss-size", name: "Second boss body size B", max: U8, get: (l) => l.secondBoss.size, set: (l, v) => void (l.secondBoss.size = v) },
+  { id: "second-spawn-x0", name: "Second boss spawn x0", max: U8, get: (l) => l.secondBoss.spawn.x0, set: (l, v) => void (l.secondBoss.spawn.x0 = v) },
+  { id: "second-spawn-y0", name: "Second boss spawn y0", max: U8, get: (l) => l.secondBoss.spawn.y0, set: (l, v) => void (l.secondBoss.spawn.y0 = v) },
+  { id: "second-spawn-x1", name: "Second boss spawn x1", max: U8, get: (l) => l.secondBoss.spawn.x1, set: (l, v) => void (l.secondBoss.spawn.x1 = v) },
+  { id: "second-spawn-y1", name: "Second boss spawn y1", max: U8, get: (l) => l.secondBoss.spawn.y1, set: (l, v) => void (l.secondBoss.spawn.y1 = v) },
+  { id: "second-boss-period", name: "Second boss move period", max: U8, get: (l) => l.secondBoss.period, set: (l, v) => void (l.secondBoss.period = v) },
   { id: "minion-period", name: "Minion move period", max: U8, get: (l) => l.minionPeriod, set: (l, v) => void (l.minionPeriod = v) },
   { id: "respawn-delay", name: "Respawn delay R", max: U16, get: (l) => l.respawnDelay, set: (l, v) => void (l.respawnDelay = v) },
   { id: "time-limit", name: "Time limit T", max: U16, get: (l) => l.timeLimit, set: (l, v) => void (l.timeLimit = v) },

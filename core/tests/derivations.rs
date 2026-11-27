@@ -4,7 +4,10 @@
 use jiro_core::journal::{journal_hash, run_commitment};
 use jiro_core::keccak::keccak256;
 use jiro_core::level::{Rect, level_id};
-use jiro_core::seed::{BossStart, boss_start, deflection_key, draw, level_seed};
+use jiro_core::seed::{
+    BossStart, FIRST_BOSS_SEED, SECOND_BOSS_SEED, SeedBytes, boss_start, deflection_key, draw,
+    level_seed,
+};
 use jiro_core::types::Pos;
 use serde_json::Value;
 
@@ -46,8 +49,14 @@ fn level_seeds_and_deflection_keys_match_the_fixture() {
         let seed = level_seed(&bytes32(&entry["runNonce"]), number(&entry["levelIndex"]));
         assert_eq!(seed, bytes32(&entry["seed"]), "{entry}");
         assert_eq!(
-            deflection_key(&seed),
-            number::<u32>(&entry["deflectionKey"]),
+            (
+                deflection_key(&seed, &FIRST_BOSS_SEED),
+                deflection_key(&seed, &SECOND_BOSS_SEED)
+            ),
+            (
+                number::<u32>(&entry["deflectionKey"]),
+                number::<u32>(&entry["secondDeflectionKey"])
+            ),
             "{entry}"
         );
     }
@@ -69,7 +78,16 @@ fn level_ids_match_the_fixture() {
 #[test]
 fn boss_starts_match_the_fixture() {
     let fixture = fixture();
-    for entry in entries(&fixture, "bossStarts") {
+    for (key, bytes) in [
+        ("bossStarts", FIRST_BOSS_SEED),
+        ("secondBossStarts", SECOND_BOSS_SEED),
+    ] {
+        boss_starts_match(entries(&fixture, key), &bytes);
+    }
+}
+
+fn boss_starts_match(entries: &[Value], seed_bytes: &SeedBytes) {
+    for entry in entries {
         let spawn = &entry["spawn"];
         let rect = Rect {
             x0: number(&spawn["x0"]),
@@ -87,7 +105,7 @@ fn boss_starts_match_the_fixture() {
             vy: signed(&start["vy"]),
         });
         assert_eq!(
-            boss_start(&rect, &bytes32(&entry["seed"])),
+            boss_start(&rect, &bytes32(&entry["seed"]), seed_bytes),
             expected,
             "{entry}"
         );
@@ -161,10 +179,10 @@ fn seed_and_boss_start_worked_examples_match() {
     assert_eq!(
         (
             seed[..4].to_vec(),
-            boss_start(&open_field, &seed),
-            boss_start(&open_field, &level_seed(&run_nonce, 2)),
-            boss_start(&wide, &seed),
-            deflection_key(&seed),
+            boss_start(&open_field, &seed, &FIRST_BOSS_SEED),
+            boss_start(&open_field, &level_seed(&run_nonce, 2), &FIRST_BOSS_SEED),
+            boss_start(&wide, &seed, &FIRST_BOSS_SEED),
+            deflection_key(&seed, &FIRST_BOSS_SEED),
         ),
         (
             vec![0x37, 0x47, 0xfc, 0xd2],

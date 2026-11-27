@@ -6,7 +6,7 @@ use jiro_core::game::{EndReason, Game};
 use jiro_core::hash::{preimage, state_hash};
 use jiro_core::journal::{Event, Header, Mode, encode};
 use jiro_core::keccak::keccak256;
-use jiro_core::level::{Level, Rect, encode as encode_level, level_id};
+use jiro_core::level::{BossRecord, Level, Rect, encode as encode_level, level_id};
 use jiro_core::minion::{Minion, State};
 use jiro_core::player::Player;
 use jiro_core::recorder::Recorder;
@@ -33,6 +33,7 @@ fn open_field() -> Level {
         time_limit: 2_700,
         lives: 3,
         target_bp: 7_500,
+        second_boss: None,
     }
 }
 
@@ -147,7 +148,7 @@ fn open_field_empty_outcome() {
         level_index: 0,
         draw_slot: draw(&example_nonce())[0],
         mode: Mode::Training,
-        rules_version: 3,
+        rules_version: 4,
         end_reason: EndReason::TimeLimit,
         claim_bp: 0,
         ticks_used: 2_700,
@@ -193,15 +194,28 @@ fn open_field_empty_tick_0_hashes_to_the_worked_example() {
     let hashes = trace(&level, &journal(&header(&level, 0), &[]));
     assert_eq!(
         hex(&hashes[0]),
-        "0xda8d937602aeedbccd99b0f28519c8763d400688e9331c0065191673cb756e79"
+        "0xb5535231486623b9396b6d436769db5fc7ba3518b3b37de5e3a9ddf08343d4ab"
     );
 }
 
 /// [R4.3-1] [R4.3-2] [R4.3-3] [R4.3-4] README §6.4: every field of the preimage, in the order and
-/// encoding of the table, for a state with a distinct value in each field.
+/// encoding of the table, for a state with a distinct value in each field, on a level with two
+/// bosses.
 #[test]
 fn preimage_follows_the_readme_layout() {
-    let level = open_field();
+    let level = Level {
+        second_boss: Some(BossRecord {
+            size: 4,
+            spawn: Rect {
+                x0: 40,
+                y0: 40,
+                x1: 50,
+                y1: 50,
+            },
+            period: 6,
+        }),
+        ..open_field()
+    };
     let mut game = Game::new(&level, &example_nonce(), 0).unwrap();
     game.ticks_used = 0x0103;
     game.mask = InputMask::new(0x11).unwrap();
@@ -215,7 +229,13 @@ fn preimage_follows_the_readme_layout() {
         invulnerable: 7,
         direction: Some(Dir::Left),
     };
-    (game.boss.pos, game.boss.vx, game.boss.vy) = (Pos { x: 40, y: 10 }, 1, -1);
+    (
+        game.bosses.first.pos,
+        game.bosses.first.vx,
+        game.bosses.first.vy,
+    ) = (Pos { x: 40, y: 10 }, 1, -1);
+    let second = game.bosses.second.as_mut().unwrap();
+    (second.pos, second.vx, second.vy) = (Pos { x: 45, y: 46 }, -1, 1);
     game.minions.period = 3;
     game.minions.slots = [
         Some(Minion {
@@ -233,9 +253,10 @@ fn preimage_follows_the_readme_layout() {
     ];
     (game.captured, game.work, game.events_applied) = (0x0506, 0x090a_0b0c, 0x0708);
     let preimage = preimage(&game);
-    let tail: [u8; 45] = [
+    let tail: [u8; 51] = [
         30, 58, 1, 30, 59, 2, 7, 3, // player
-        40, 10, 5, 0x01, 0xff, 2, // boss
+        40, 10, 5, 0x01, 0xff, 2, // boss 0
+        45, 46, 4, 0xff, 0x01, 6, // boss 1
         1, 0, 5, 1, 3, 0, 0, // live minion: x 0, y 5, heading E, period 3
         2, 0, 0, 0, 3, 1, 4, // destroyed minion, countdown 0x0104
         0, 0, 0, 0, 0, 0, 0, // unused slot
@@ -248,7 +269,7 @@ fn preimage_follows_the_readme_layout() {
         preimage[4 + 877],
         &preimage[904..],
     );
-    assert_eq!(fields, (&[2, 0x01, 0x02, 0x11][..], 0x55, 0x08, &tail[..]));
+    assert_eq!(fields, (&[3, 0x01, 0x02, 0x11][..], 0x55, 0x08, &tail[..]));
 }
 
 /// README §6.2: the Recorder's journal replays to the per-tick trace of the live run.
@@ -309,7 +330,7 @@ fn commit_tick_records_its_mask_and_event_index() {
         game.step(mask).unwrap();
     }
     let preimage = preimage(&game);
-    assert_eq!((preimage[3], &preimage[947..]), (0x40, &[0, 2][..]));
+    assert_eq!((preimage[3], &preimage[953..]), (0x40, &[0, 2][..]));
 }
 
 /// README §6.4: the direction codes (1 up, 2 down, 3 left, 4 right) and the heading codes
@@ -335,7 +356,7 @@ fn preimage_encodes_each_direction_and_heading() {
         });
         let preimage = preimage(&game);
         assert_eq!(
-            (preimage[911], preimage[921]),
+            (preimage[911], preimage[927]),
             (direction_code, heading_code),
             "{dir:?}"
         );

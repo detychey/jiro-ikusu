@@ -1,9 +1,9 @@
-//! Level vectors: valid levels, one invalid level per range and validity rule of README §5,
-//! and the README §5 worked examples.
+//! Level vectors: valid levels v1 and v2, one invalid level per range and validity rule of README
+//! §5, and the README §5 worked examples.
 
 use jiro_core::Error;
-use jiro_core::consts::LEVEL_LEN;
-use jiro_core::level::{Level, Rect, encode, level_id};
+use jiro_core::consts::{LEVEL_LEN, LEVEL_V2_LEN};
+use jiro_core::level::{BossRecord, Level, Rect, encode, level_id};
 use jiro_core::types::Pos;
 
 use super::{Case, case};
@@ -32,7 +32,35 @@ pub fn open_field() -> Level {
         time_limit: 2_700,
         lives: 3,
         target_bp: 7_500,
+        second_boss: None,
     }
+}
+
+/// The open-field level with a second boss of B = 4 and move period 3, whose start bodies lie
+/// below and to the right of the first boss's.
+pub fn twin_field() -> Level {
+    Level {
+        second_boss: Some(BossRecord {
+            size: 4,
+            spawn: Rect {
+                x0: 40,
+                y0: 40,
+                x1: 50,
+                y1: 50,
+            },
+            period: 3,
+        }),
+        ..open_field()
+    }
+}
+
+/// `twin_field` with the second boss's record changed by `change`.
+fn twin_with(change: impl FnOnce(&mut BossRecord)) -> Level {
+    let mut level = twin_field();
+    if let Some(second) = &mut level.second_boss {
+        change(second);
+    }
+    level
 }
 
 pub fn open_field_id() -> [u8; 32] {
@@ -89,6 +117,11 @@ pub fn cases() -> Result<Vec<Case>, String> {
     short.truncate(LEVEL_LEN - 1);
     let mut version = open_field_bytes.clone();
     version[0] = 2;
+    let twin_bytes = bytes(&twin_field());
+    let mut twin_short = twin_bytes.clone();
+    twin_short.truncate(LEVEL_V2_LEN - 1);
+    let mut twin_version = twin_bytes.clone();
+    twin_version[0] = 1;
     let mut unused_slot = with_minions(field(), &[(0, 0)]);
     unused_slot.minion_spawns[2] = Pos { x: 1, y: 1 };
     Ok(vec![
@@ -145,8 +178,23 @@ pub fn cases() -> Result<Vec<Case>, String> {
             Ok(()),
         ),
         case("open-area-1682", bytes(&rows_blocked(29)), Ok(())),
+        case("twin-bosses", twin_bytes, Ok(())),
+        case(
+            "twin-bosses-bodies-touch",
+            bytes(&twin_with(|second| {
+                second.spawn = Rect {
+                    x0: 39,
+                    y0: 20,
+                    x1: 50,
+                    y1: 50,
+                };
+            })),
+            Ok(()),
+        ),
         case("length-471", short, Err(Error::LevelLength)),
+        case("twin-length-477", twin_short, Err(Error::LevelLength)),
         case("unknown-version", version, Err(Error::LevelVersion)),
+        case("twin-version-1", twin_version, Err(Error::LevelVersion)),
         case(
             "border-obstacle",
             bytes(&with_obstacles(field(), [(0, 30)])),
@@ -299,6 +347,34 @@ pub fn cases() -> Result<Vec<Case>, String> {
             Err(Error::Target),
         ),
         case(
+            "second-boss-size-9",
+            bytes(&twin_with(|second| second.size = 9)),
+            Err(Error::SecondBossSize),
+        ),
+        case(
+            "second-spawn-y0-above-y1",
+            bytes(&twin_with(|second| second.spawn.y0 = 51)),
+            Err(Error::SecondSpawnOrder),
+        ),
+        case(
+            "second-spawn-y1-60-minus-b",
+            bytes(&twin_with(|second| second.spawn.y1 = 56)),
+            Err(Error::SecondSpawnBounds),
+        ),
+        case(
+            "second-boss-period-0",
+            bytes(&twin_with(|second| second.period = 0)),
+            Err(Error::SecondBossPeriod),
+        ),
+        case(
+            "target-before-second-boss",
+            bytes(&Level {
+                target_bp: 0,
+                ..twin_with(|second| second.size = 1)
+            }),
+            Err(Error::Target),
+        ),
+        case(
             "open-area-split",
             bytes(&with_obstacles(field(), (1..59).map(|y| (30, y)))),
             Err(Error::OpenAreaSplit),
@@ -321,6 +397,31 @@ pub fn cases() -> Result<Vec<Case>, String> {
         case(
             "blocked-start",
             bytes(&blocked_start),
+            Err(Error::PlayerStartRail),
+        ),
+        case(
+            "second-boss-spawn-on-obstacle",
+            bytes(&with_obstacles(twin_field(), [(53, 53)])),
+            Err(Error::SecondBossSpawn),
+        ),
+        case(
+            "boss-spawns-overlap",
+            bytes(&twin_with(|second| {
+                second.spawn = Rect {
+                    x0: 38,
+                    y0: 38,
+                    x1: 50,
+                    y1: 50,
+                };
+            })),
+            Err(Error::BossSpawnsOverlap),
+        ),
+        case(
+            "player-start-before-second-boss",
+            bytes(&with_obstacles(
+                twin_with(|second| (second.spawn.x0, second.spawn.y0) = (30, 30)),
+                [(29, 58), (30, 58), (31, 58)],
+            )),
             Err(Error::PlayerStartRail),
         ),
     ])

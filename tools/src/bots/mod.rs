@@ -4,6 +4,7 @@
 
 mod greedy;
 pub mod search;
+mod splitter;
 
 use jiro_core::game::Game;
 use jiro_core::types::InputMask;
@@ -11,6 +12,7 @@ use jiro_core::types::InputMask;
 use crate::scenarios::play::{CaptureBot, random_play};
 use greedy::{Caution, Greedy};
 use search::Search;
+use splitter::Splitter;
 
 #[cfg(test)]
 mod tests;
@@ -34,11 +36,15 @@ pub enum Policy {
     RandomWalk,
     /// Searches the level's future with the core, within its compute budget (plan M4.13).
     Search,
+    /// On a level with two bosses, a straight cut that separates them whenever one is out of
+    /// their reach, and Bold's cuts otherwise (plan M5.18): the split-seeking test policy.
+    Splitter,
 }
 
 impl Policy {
     /// The scripted policies: calibrate plays every one, and a reference mix draws from them.
-    /// `Search` is not one, so the reference report and the calibration never play it.
+    /// `Search` and `Splitter`, a test policy for twin-boss levels, are not, so the reference
+    /// report and the calibration never play them.
     pub const ALL: [Self; 5] = [
         Self::EdgeNibbler,
         Self::Greedy,
@@ -55,11 +61,12 @@ impl Policy {
             Self::Committer => "committer",
             Self::RandomWalk => "random-walk",
             Self::Search => "search",
+            Self::Splitter => "splitter",
         }
     }
 
     pub fn parse(name: &str) -> Result<Self, String> {
-        let policies = Self::ALL.into_iter().chain([Self::Search]);
+        let policies = Self::ALL.into_iter().chain([Self::Search, Self::Splitter]);
         policies
             .clone()
             .find(|policy| policy.name() == name)
@@ -99,6 +106,10 @@ impl Policy {
             Self::RandomWalk => Box::new(random_play(seed, 8, u64::MAX, false)),
             Self::Search => {
                 let mut bot = Search::new(search::UNITS_PER_TICK);
+                Box::new(move |game| bot.mask(game))
+            }
+            Self::Splitter => {
+                let mut bot = Splitter::new(seed);
                 Box::new(move |game| bot.mask(game))
             }
         }

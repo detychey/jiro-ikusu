@@ -1,6 +1,6 @@
-//! Greedy: from the rail, the largest rectangle it can cut out while the boss and the minions stay
-//! clear of it, cut at the fast cut's two cells a tick. With no such rectangle in reach, it walks along the rail. Its
-//! `Caution` sets how far it keeps the boss.
+//! Greedy: from the rail, the largest rectangle it can cut out while the bosses and the minions
+//! stay clear of it, cut at the fast cut's two cells a tick. With no such rectangle in reach, it
+//! walks along the rail. Its `Caution` sets how far it keeps each boss.
 
 use jiro_core::boss::Boss;
 use jiro_core::game::Game;
@@ -38,7 +38,7 @@ impl Caution {
     };
 
     /// The margin, in cells, for a cut of `ticks` ticks from a boss that moves every `period`.
-    fn margin(self, ticks: i16, period: u8) -> i16 {
+    pub(super) fn margin(self, ticks: i16, period: u8) -> i16 {
         ticks * self.reach_pct / (100 * i16::from(period)) + self.cells
     }
 }
@@ -122,12 +122,16 @@ impl Greedy {
 }
 
 /// The largest safe rectangle the player can cut from its rail cell: open cells only, on a
-/// straight run of claimed cells that closes the cut, as far from the boss as `caution` asks for
+/// straight run of claimed cells that closes the cut, as far from each boss as `caution` asks for
 /// the time the cut takes, and away from the minions.
 fn best_cut(game: &Game, caution: Caution) -> Option<Plan> {
     let open = OpenCells::new(&game.grid);
     let start = game.player.pos;
-    let boss = Area::of_boss(&game.boss);
+    let bosses: Vec<(Area, u8)> = game
+        .bosses
+        .iter()
+        .map(|boss| (Area::of_boss(boss), boss.period))
+        .collect();
     let minions: Vec<Area> = game
         .minions
         .slots
@@ -154,12 +158,12 @@ fn best_cut(game: &Game, caution: Caution) -> Option<Plan> {
                         continue;
                     }
                     let ticks = (2 * i16::from(depth) + i16::from(width)) / 2 + 1;
-                    let margin = caution.margin(ticks, game.boss.period);
-                    let safe = boss.gap(rectangle) >= margin
-                        && (depth == 1
-                            || minions
-                                .iter()
-                                .all(|minion| minion.gap(rectangle) >= MINION_MARGIN));
+                    let safe = bosses.iter().all(|&(boss, period)| {
+                        boss.gap(rectangle) >= caution.margin(ticks, period)
+                    }) && (depth == 1
+                        || minions
+                            .iter()
+                            .all(|minion| minion.gap(rectangle) >= MINION_MARGIN));
                     if safe && best.is_none_or(|(area, _)| cells > area) {
                         let plan = Plan {
                             out,
@@ -179,7 +183,7 @@ fn best_cut(game: &Game, caution: Caution) -> Option<Plan> {
 
 /// An inclusive rectangle of cells.
 #[derive(Clone, Copy)]
-struct Area {
+pub(super) struct Area {
     x0: i16,
     y0: i16,
     x1: i16,
@@ -197,7 +201,7 @@ impl Area {
         }
     }
 
-    fn of_boss(boss: &Boss) -> Self {
+    pub(super) fn of_boss(boss: &Boss) -> Self {
         let size = i16::from(boss.size) - 1;
         let corner = Self::cell(boss.pos);
         Self {
@@ -209,7 +213,7 @@ impl Area {
 
     /// The cells `start` + i × `out` + j × `side`, for i in 1..=`depth` (0 when `depth` is 0)
     /// and j in 0..=`width`, or `None` if one is outside the grid.
-    fn spanned(start: Pos, out: Dir, side: Dir, depth: u8, width: u8) -> Option<Self> {
+    pub(super) fn spanned(start: Pos, out: Dir, side: Dir, depth: u8, width: u8) -> Option<Self> {
         let (ox, oy) = out.offset();
         let (sx, sy) = side.offset();
         let near = i16::from(depth.min(1));
@@ -234,7 +238,7 @@ impl Area {
 
     /// The Chebyshev distance between the nearest cells of the two areas: 0 when they overlap,
     /// 1 when they touch.
-    fn gap(self, other: Self) -> i16 {
+    pub(super) fn gap(self, other: Self) -> i16 {
         let axis = |a0: i16, a1: i16, b0: i16, b1: i16| (b0 - a1).max(a0 - b1).max(0);
         axis(self.x0, self.x1, other.x0, other.x1).max(axis(self.y0, self.y1, other.y0, other.y1))
     }
