@@ -2137,6 +2137,7 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | M5.10 | RISC Zero 3.1.0: the patched verifier, generation 2 on Arbitrum Sepolia | M4.14, M5.8 | M | Approve deploying generation 2 (round F4) |
 | M5.11 | Proving-cycle cap: design | M5.9 | S | Approve the cap's mechanism and value by merging (round F5) |
 | M5.12 | Rules version 3: the cycle cap and the fast cut always on; generation 3 | M5.11 | L | Approve deploying generation 3 (round F6) |
+| M5.13 | Settlement cost: hashes-only settlement, proof aggregation and a prover bounty; design | M5.6 | M | Approve the design by merging (round G4) |
 
 Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4.11) with MockReferee, `e2e.yml` on nitro-devnode with the real referee, or Arbitrum Sepolia.
 
@@ -2425,6 +2426,23 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Verify with:** M5.10's commands, plus `jiro-tools playtest --check levels/targets.json` and `calibrate --check`.
 - **Skills:** `deterministic-core`, `journal-codec`, `parity-testing`, `onchain-referee`. **README:** §2, §4, §6.1, §6.3, §13 D8. **Needs user:** approve deploying generation 3 (round F6). The item may split the deployment into its own item if it outgrows L (§1).
 
+#### M5.13 Settlement cost: hashes-only settlement, proof aggregation and a prover bounty; design
+
+- **Goal:** before mainnet, a settled best run costs a fraction of today's gas, and any third party can prove and settle best runs for a fee, so that settlement no longer depends on the operator.
+- **Why:** filed on 2026-11-27, scheduled after testnet-1 (owner, 2026-11-27). M5.9's benchmark made proving cheap, 0.01 to 0.08 USD a run on a rented GPU, so settlement gas now weighs as much: 530,256 gas for testnet-0's run 1 and about 1,000,000 for a whole bot run's longer journals ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#proving-on-a-gpu)). Two savings are known:
+  - **Hashes only.** `ZkReferee` receives the six levels and journals only to hash them: the proof's public values already carry each `levelId` and `journalHash` ([`referee/zk/README.md`](referee/zk/README.md#public-values)), and `Challenge` rebuilds the commitment from the journal hashes. A zk settlement could send six level ids, six journal hashes and the proof, about 400 bytes besides the proof, instead of 1 to 49 KB.
+  - **Aggregation.** One Groth16 proof per batch through RISC Zero's set verifier: about 278,653 gas per batch plus about 8,400 per run, against 227,591 per run proof ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#season-aggregation)).
+  - **The owner's proposal** (2026-11-27): the journals that `commitRun` already publishes in calldata (P5) are a public queue of runs waiting for a proof; once the economics make sense, any third party collects them, proves a batch, settles it, and collects a fee. The verification review sketched a related escrow, `ProofBounty`, with the payee in the zk public values ([`docs/verification-review/notes/escrow/spec.md`](docs/verification-review/notes/escrow/spec.md)); it is funded by bounties that players or sponsors post per run, where the owner's proposal pays from the protocol.
+- **Deliverables:** a decision PR; any prototype stays on an unmerged branch:
+  - **hashes-only zk settlement:** the entry point, its interface beside the Stylus referee's, which needs the bytes, and the gas before and after on the committed fixtures;
+  - **the aggregated batch:** the set verifier and its emergency stop, the batch step on the GPU and its time, and the gas per batch and per run;
+  - **the prover fee:** who funds it (the rake, the pot, the player or a sponsor), its amount, which runs earn it (only each player's best run at close, so that provers cannot farm fees on runs a later best replaces), when it is paid, whether the payee is bound into the proven claim (a guest change, so a new image id) against copied submissions, the operator as the prover of last resort, and the grace third-party provers need;
+  - **optionally,** delta-encoded journal ticks, a journal format v2, to cut `commitRun`'s calldata, with its saving;
+  - the README §7 and §8 text, the contract changes and the new generation it implies, and the follow-up implementation items.
+- **Done when:** the PR presents the gas per settled run before and after, measured with `forge test --gas-report`, the fee's rules and economics, and the README text, and the owner merges it.
+- **Verify with:** `forge test --gas-report` on the prototype branch; `zk-host` for the batch step.
+- **Skills:** `onchain-referee`, `security`, `gas`, `concepts`. **README:** §7.2, §7.3, §7.5, §8. **Needs user:** approve the design by merging (round G4).
+
 ## 11. Decision schedule
 
 Each decision, or each part of one, is closed by the owner or by exactly one item, before its first use. Where the owner answered on 2026-10-28, the items named pin the details and propose what the answer left open. A decision item is approved by merging it.
@@ -2627,12 +2645,13 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Add the prover credential as an Actions secret, if a prover network proves. `TESTER_KEY` already is one (round F2). Not needed: no prover network proves.
   - Approve the season-ops schedule. Answered: approved, with the daily bot run.
   - Testers report through GitHub issues. Only if the repository is still private (F3), name a form or a mailbox instead.
-- [ ] **G2b, critical** (M5.9 ready): rent a GPU machine, x86-64 Linux with an NVIDIA card of at least 16 GB and the CUDA toolkit (a RunPod community RTX 4090 pod, about 0.34 USD an hour, is suggested), install rzup's `risc0-groth16` 0.2.0 component, clone the repository at `/home/runner/work/jiro-ikusu/jiro-ikusu`, run `bash referee/zk/gpu-measure.sh --out /workspace/gpu-bench` (about 67 min of proving after the build, estimate), and attach the archive it names to M5.9's PR (`referee/zk/README.md`, Proving on a GPU).
+- [x] **G2b, critical** (M5.9 ready): done on 2026-11-26, on RunPod's secure cloud after two community machines failed. Rent a GPU machine, x86-64 Linux with an NVIDIA card of at least 16 GB and the CUDA toolkit (a RunPod community RTX 4090 pod, about 0.34 USD an hour, is suggested), install rzup's `risc0-groth16` 0.2.0 component, clone the repository at `/home/runner/work/jiro-ikusu/jiro-ikusu`, run `bash referee/zk/gpu-measure.sh --out /workspace/gpu-bench` (about 67 min of proving after the build, estimate), and attach the archive it names to M5.9's PR (`referee/zk/README.md`, Proving on a GPU).
 - [ ] **G3, critical** (M5.6 open):
   - Recruit testers once the repository is public (F3), and approve opening the season.
   - Fund your browser wallet from an Arbitrum Sepolia faucet, play at least one run in the browser, keep the tester key funded, and name your run's id.
   - At mid-season and after the end, settle on a rented GPU as the runbook says: `settle.mjs --export`, `prove-runs.sh` on the GPU, then `settle.mjs` with the proofs, until nothing is left to settle, before end plus grace.
   - After the close, check the report.
+- [ ] **G4** (M5.13 ready, after testnet-1): approve the settlement-cost design, hashes-only settlement, aggregation and the prover fee, by merging M5.13.
 
 ### Round H: phone version
 
@@ -2746,5 +2765,5 @@ Each question has a default in this plan, and the item that settles it unless th
   - an Arbitrum One deployment in native ETH, with seasons of likely 14 days, whose first season takes its weights from bot data (M0.7);
   - weights for later seasons from the previous season's public journals plus bot data (README §8.4), through a `calibrate --from-season <season>` mode;
   - fresh entropy per level (README §7.4);
-  - season proof aggregation, if M4.9 did not adopt it for testnet and zk becomes the mainnet path;
+  - season proof aggregation, hashes-only settlement and a prover fee, designed in M5.13;
   - a reactivation policy for the Stylus referee.
