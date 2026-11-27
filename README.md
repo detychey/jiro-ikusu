@@ -35,7 +35,7 @@ Every game must be replayable, bit for bit, by a smart contract:
 There are three modes ([§8](#8-game-modes-and-economy)):
 
 - **Training:** free, all 16 levels, in the browser.
-- **Challenge:** 0.00005 ETH for 6 random levels, with a seasonal ranking and rewards, played in the browser.
+- **Challenge:** a fee in ETH, about 0.30 USD, for 6 random levels, each game earning a share of the season's pot, played in the browser.
 - **Superchallenge:** player-minted maps with bounties, deferred ([`TODO.md`](TODO.md)).
 
 ## 2. Platform
@@ -472,7 +472,7 @@ The draft also asks for a C++ PRNG that matches "the state-transition hashing lo
 
 The preimage is 948 bytes in all. The deflection key ([§4.6](#46-boss)) is not in it: like the boss start, it is a function of the level seed, and a deflection leaves nothing behind but the boss's velocity.
 
-**Worked examples.** The examples use `runNonce` = keccak256(`"jiro.example.9"`), chosen so that the draw of [§8.2](#82-challenge-000005-eth-per-run) both keeps a card in place and revisits a swapped position. For the open-field level ([§5](#5-levels)) at `levelIndex` 0, the seed, the boss start, and the state after tick 0 of `open-field-empty` are:
+**Worked examples.** The examples use `runNonce` = keccak256(`"jiro.example.9"`), chosen so that the draw of [§8.2](#82-challenge-paid-runs) both keeps a card in place and revisits a swapped position. For the open-field level ([§5](#5-levels)) at `levelIndex` 0, the seed, the boss start, and the state after tick 0 of `open-field-empty` are:
 
 ```text
 runNonce: 0x277b9e3cebd776c6d46a8b4eb9b83ac165961f4b46a79baef5df1514bb5219cd
@@ -538,7 +538,7 @@ The flow is the same keyless one as ethblockdigger's `Vault`. It is split betwee
 2. **Reveal.** Once that block exists, usually 10 to 20 seconds later, the player calls `revealRun(runId)`. It derives the run nonce from the block's hash ([§6.4](#64-seeds-and-commitments)) and records `revealedAt = block.timestamp`. The hash did not exist when the player paid, so nobody can preview the levels and pay only for easy ones.
    - **Only the player reveals and commits:** the reveal starts the deadline clock, and the single commit fixes the run's journals.
    - **A lapsed reveal forfeits the run.** The hash stays readable for 256 blocks, about a minute at 0.25 s per block. After that, the run can never be revealed, and its fee stays in the pot. There is no re-anchor, which would move the run to a fresh entropy block and so give a free re-roll.
-3. **Play and commit.** The player plays the six drawn levels ([§8.2](#82-challenge-000005-eth-per-run)), then calls `commitRun(runId, bytes[6] journals)` once, after the reveal, with the journals in `levelIndex` order. The contract computes the run commitment from them ([§6.4](#64-seeds-and-commitments)), and records it with `committedAt = block.timestamp`. It never parses the journals: they are in the call to publish them *(P5)*. Anyone can replay a committed run from the call's data, read from the transaction, or from its trace if a smart-account wallet made the call. The commitment proves that this data is what was committed.
+3. **Play and commit.** The player plays the six drawn levels ([§8.2](#82-challenge-paid-runs)), then calls `commitRun(runId, bytes[6] journals)` once, after the reveal, with the journals in `levelIndex` order. The contract computes the run commitment from them ([§6.4](#64-seeds-and-commitments)), and records it with `committedAt = block.timestamp`. It never parses the journals: they are in the call to publish them *(P5)*. Anyone can replay a committed run from the call's data, read from the transaction, or from its trace if a smart-account wallet made the call. The commitment proves that this data is what was committed.
    - **Deadline.** A run is on time if
 
      ```text
@@ -553,7 +553,7 @@ The flow is the same keyless one as ethblockdigger's `Vault`. It is split betwee
    - **Checked at settlement.** The ticks used are known only once the journals are replayed, so the deadline is checked at settlement. At commit, the only time check is a bound: `commitRun` reverts if `block.timestamp > revealedAt + 1,080 + commitSlack`, when no run can be on time any more.
    - **Why the actual duration.** A fixed window, like ethblockdigger's 450 s, would give even an unmodified client every early-ending level's unused minutes for free. The player could replay a level whose seed they already know and commit the best attempt, or practice the next level before playing it for real.
      - With a deadline that follows the journals' own length, that time has to appear in the journals as ticks used. A player can still put it there, by idling instead of ending a level early, or with a client that writes the X later than it was pressed. The contract cannot tell idle ticks from play.
-     - So the deadline bounds a run's wall time by the drawn levels' time limits plus `commitSlack`, at most 1,080 s plus `commitSlack`, and padding costs only the fewer-ticks tiebreak.
+     - So the deadline bounds a run's wall time by the drawn levels' time limits plus `commitSlack`, at most 1,080 s plus `commitSlack`, and padding costs no money: no payout depends on ticks ([§8.4](#84-season-scoring)).
      - Fresh entropy per level ([§7.4](#74-bots)) would remove practice on later levels.
    - **Real-time play.** Inputs must therefore be produced within that time, which stops slow-motion play and long offline search after the reveal. Inputs prepared before the run are covered by D14 ([§7.4](#74-bots)).
    - **Closing a level early.** The client closes a level that has not ended but will not be played on: an unplayed or abandoned level, or one interrupted by a page reload. It appends one event, with mask `0x40` (X alone), at tick c = max(n, e + 1). Here n is the number of the level's ticks the client knows were processed, and e is the tick of the journal's last event, or −1 if there is none. An unplayed level therefore gets an X at tick 0 ([§4.10](#410-end-of-level)).
@@ -570,9 +570,10 @@ The flow is the same keyless one as ethblockdigger's `Vault`. It is split betwee
    Settlement then records the run:
    - its score, the sum of the six `levelScore` values, a `uint32`, at most 393,210;
    - its ticks, the sum of the six `ticksUsed` values, a `uint32`, at most 16,200;
-   - its clears, the number of levels whose `endReason` is Cleared, a `uint8`.
+   - its clears, the number of levels whose `endReason` is Cleared, a `uint8`;
+   - its six tickets *(D10)*, each computed from its Outcome's `endReason` and `claimBp` and the target in the submitted level's bytes ([§8.4](#84-season-scoring)).
 
-   If the deadline is missed, the run is marked late for good, and earns nothing; this is a result, not a revert. Otherwise `Season` ranks the run ([§8.4](#84-season-scoring)). A settled or late run cannot be settled again.
+   If the deadline is missed, the run is marked late for good, and its tickets count as 0; this is a result, not a revert. Otherwise its tickets are added to its player's and to its season's ([§8.4](#84-season-scoring)). A settled or late run cannot be settled again. The v1 payout is implemented by M5.15, from generation 3 of the contracts; generations 1 and 2 rank each player's best run instead ([§8.4](#84-season-scoring)).
 
    **Fallback: `settleLevel(runId, uint8 i, bytes32[6] journalHashes, bytes level, bytes journal, bytes proof)`**, for a run that does not fit in one transaction.
    - On every call, `keccak256(journalHashes[0] ‖ … ‖ journalHashes[5])` must equal the commitment, and `keccak256(journal)` must equal `journalHashes[i]`. The checks above then run for level i alone, through `verify`.
@@ -606,7 +607,7 @@ So the verifier runs the Rust core itself, in one of two ways:
 **Agreed approach *(D2)*:**
 
 1. **Measure first.** In M1, try two or three zkVMs hands-on, pick the one with the best tooling, and run the golden vectors in its executor. Executors run a guest without proving it, which yields cycle counts per level, and cycles set the proving cost. In M4, measure Stylus gas per level on a local Arbitrum node, which the public chains' pause shouldn't affect.
-2. **Verify by exception.** Playing a run costs one commit transaction, whose calldata publishes the six journals *(P5)*, so anyone can replay them offchain for free. A run is verified onchain only when money depends on it, typically each player's best run of the season. Verifying every six-level run would cost on the order of its 0.00005 ETH entry fee: about 69% of it on zk, and more on Stylus, as measured in M4.9 ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#costs-side-by-side)). The payout curve *(D10)* sets how many runs need verifying.
+2. **Verify by exception.** Playing a run costs one commit transaction, whose calldata publishes the six journals *(P5)*, so anyone can replay them offchain for free. A run is verified onchain only when money depends on it. Under the v1 payout *(D10)*, that is every **scoring run**, one with at least one ticket above 0 ([§8.4](#84-season-scoring)): a run whose six tickets are 0 earns the same settled or not, so it is never settled. M4.9 measured a verified run at about 69% of the then 0.00005 ETH fee, on zk at a prover network's price, and more on Stylus ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#costs-side-by-side)). On a rented GPU, at the references of [§8.4](#84-season-scoring), it costs about 0.03 to 0.11 USD, 9% to 37% of a 0.30 USD run fee, and the operator's spending on each run is capped *(D20)*.
 3. **One verifier interface,** `IReferee` (below), backed either by the Stylus referee or by a proof verifier. The money contracts don't change when the backend does.
 4. **Stylus first, zk as the fallback.** If activations reopen, the Stylus referee needs no prover infrastructure. If they don't, each verified run gets a zk proof. Aggregating a season's proofs would keep verification gas nearly constant, but not the proving price, so testnet seasons verify each run's proof on its own, and aggregation is reconsidered before mainnet *(D2)*.
 
@@ -659,18 +660,22 @@ The game is deterministic and the simulation is tiny. Once the run nonce is reve
 
 **Copied and precomputed inputs** *(D14)*. If the seed chose only the boss's start cell and direction, a level would be one of at most 4 × 3,249 games: 900 on the open-field level. Committed journals are public, and so are the 16 levels. A bot could then reuse another run's events on a matching game, under its own header, or precompute strong inputs for every game before the season, and commit as soon as it reveals. Binding journals to their run stops the reuse of journal bytes, not of their events. So under D14, the level seed keeps driving the boss through the level, and no two runs share a game: it keys the boss's deflections ([§4.6](#46-boss), R4.6-6 to R4.6-12). Two runs with the same boss start and direction part after a median of 12 boss moves.
 
-The levers are economic and social:
+Nothing tells a bot from a person: after the reveal the seed fixes every boss move, and minions follow fixed rules, so no level is harder for a capable bot than for a person. M4.13's search bot cleared every level of its 200 runs ([`docs/ECONOMY.md`](docs/ECONOMY.md#5-bot-advantage-m413)), and the reward research of 2026-11-25 saw it clear 12 games of 12 with one life fewer than the levels give. Its journals look like a good player's: a per-wallet ceiling on tickets would flag 97% to 100% of the skilled scripted players (the same research, on scripted proxies, not people). Wallets are free, so no detection by wallet can be enforced. The levers are therefore economic and social:
 
 - an entry fee per run;
-- qualification thresholds;
+- a payout in which no game earns more than its fee, the bot-neutral pot *(D10, [§8.4](#84-season-scoring))*: a bot that plays every game perfectly gets back at most its fee, and loses its gas, about 3% of the fee at the references of [§8.4](#84-season-scoring);
+- forgiving paid levels *(D17)*, on which people reach nearly what a bot reaches;
+- a review of the paid levels between seasons, by a person, from the replays of every committed journal *(D21)*;
 - public journals that anyone can replay and inspect;
 - fresh entropy per level, the designed upgrade, so a bot cannot plan beyond the level it is playing.
 
-**This is the main product risk of the paid modes.**
+**The house bot** *(D22)*. The operator's own bot plays only in unpaid seasons, from a published address. Testnet seasons, whose fees are test ETH, count as unpaid: the tester key's daily bot run plays in them ([`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md)). In a season paid in ETH, a perfect bot of the house would get its fee back below an average ticket of 1 − r while the rake of its games returned to the treasury: about 0.001 to 0.004 USD a game taken from people at the references of [§8.4](#84-season-scoring) (estimate). Its absence is a promise, not a mechanism: a published address only shows the bot the house admits to.
+
+**Bots remain the main product risk of the paid modes.** Under the bot-neutral pot they cannot profit, but they can still grief: a bot that accepts no profit moves part of people's prizes to the treasury, at the cost of its gas ([§8.4](#84-season-scoring)).
 
 ### 7.5 Later version: proving service
 
-Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadmap)). In v1, whoever settles a run produces its proof. On Stylus there is no proof. On zk, the operator rebuilds each committed run's file from chain data (owner, 2026-11-08, "Rebuild from chain (Recommended)"): the six journals of its `commitRun` calldata *(P5)*, the run nonce of its reveal, and its drawn levels, whose ids its season holds. With the season's weights, it replays the runs offline with the core, then proves and settles each player's best run, on its own machines or through a hosted prover network on its own capped account ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M4.8, M5.5). Players do nothing after committing, and any player can still prove and settle their own run until the season's end plus grace ([§7.2](#72-run-flow)). In the later version, a third-party proving service replaces the operator's proving. The player, or the dApp, sends the run file (run id, run nonce, level bytes, journals) to the service's API, and the service returns the proof and settles the run. Prover marketplaces such as Succinct's prover network and RISC Zero's Boundless already sell proofs this way. The browser never proves anything: proving needs gigabytes of memory, and ideally a GPU.
+Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadmap)). In v1, whoever settles a run produces its proof. On Stylus there is no proof. On zk, the operator rebuilds each committed run's file from chain data (owner, 2026-11-08, "Rebuild from chain (Recommended)"): the six journals of its `commitRun` calldata *(P5)*, the run nonce of its reveal, and its drawn levels, whose ids its season holds. With the season's weights, it replays the runs offline with the core, then proves and settles every scoring run ([§7.3](#73-verification-cost)), on its own machines or through a hosted prover network on its own capped account ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M4.8, M5.5). Players do nothing after committing, and any player can still prove and settle their own run until the season's end plus grace ([§7.2](#72-run-flow)). In the later version, a third-party proving service replaces the operator's proving. The player, or the dApp, sends the run file (run id, run nonce, level bytes, journals) to the service's API, and the service returns the proof and settles the run. Prover marketplaces such as Succinct's prover network and RISC Zero's Boundless already sell proofs this way. The browser never proves anything: proving needs gigabytes of memory, and ideally a GPU.
 
 **The service is an untrusted prover, not an oracle.** An oracle's answer is believed; a proof is checked by the contract. So:
 
@@ -680,22 +685,23 @@ Planned on 2026-10-28 for a version after v1, and not scheduled ([§9](#9-roadma
 - **Someone pays for proving:** the player up front, the payout (through that signed claim), or the protocol (from the rake). Verify by exception still applies: only runs that money depends on need a proof ([§7.3](#73-verification-cost)).
 - **The commit never waits for the service.** The dApp commits the run itself, as in v1 ([§7.2](#72-run-flow)), and the service only receives the run after the commit. Proving can happen any time before the season's end plus its settlement grace: days after the commit, for a run played early in the season.
 - **Proving stays permissionless.** If the service refuses, the player, a second provider or the operator can produce the same proof.
-- **Effect on the backend.** v1 can already use zk without running prover infrastructure, through the operator's hosted-prover account. The service takes the operator out of the loop: players no longer depend on the operator to prove and settle their best run, and proving is paid per run *(D2)*. The deciding number is the proving price per verified run, which M1 and M4 measure, against the payout it unlocks, which the testnet season shows (M5).
+- **Effect on the backend.** v1 can already use zk without running prover infrastructure, through the operator's hosted-prover account. The service takes the operator out of the loop: players no longer depend on the operator to prove and settle their scoring runs, and proving is paid per run *(D2)*. The deciding number is the proving price per verified run, which M1 and M4 measure, against the payout it unlocks, which the testnet season shows (M5).
 
 **Unchanged:** determinism, the journal format, the one core, and the bot risk ([§7.4](#74-bots)). A proof shows that a score is reachable, not that a human played.
 
 ## 8. Game modes and economy
 
-Amounts are in native ETH *(D12)*, and the contracts hold them in wei: 0.00005 ETH = `50_000_000_000_000` wei. Each season commits its fee when it opens ([§8.4](#84-season-scoring)), so the fee can follow the ETH price from one season to the next.
+Amounts are in native ETH *(D12)*, and the contracts hold them in wei: 0.000176 ETH = `176_000_000_000_000` wei. Each season commits its fee when it opens ([§8.4](#84-season-scoring)), so the fee follows the ETH price from one season to the next: about 0.30 USD a run, 0.05 USD a game.
 
 ### 8.1 Training: free
 
 All 16 levels, in the browser. Scores stay local, in the browser, and no wallet is needed. Training uses the current season's rules and scoring, so practice carries over.
 
-### 8.2 Challenge: 0.00005 ETH per run
+### 8.2 Challenge: paid runs
 
-Challenge runs are played in the browser, which holds the wallet.
+Challenge runs are played in the browser, which holds the wallet. A run is six games, one per drawn level, and its fee is the season's `runFee`: about 0.30 USD of ETH at the open, so a game costs about 0.05 USD *(D12)*.
 
+- **Paid levels** *(D17)*. A Challenge season draws from 16 paid levels: copies of the 16 levels, each with 3 more lives and a target of 5,000 bp, tuned toward a measured people's average ticket of 0.80 to 0.85 ([§8.4](#84-season-scoring)). The 16 levels stay as they are for Training and records. M5.16 builds the copies and measures them on rules version 3.
 - **Draw.** Six different levels out of the 16, drawn from the run nonce after payment by a forward partial Fisher–Yates shuffle. Only the core computes it:
   1. The deck is [0, 1, …, 15].
   2. For i = 0 to 5: j = i + (h mod (16 − i)), where h is `keccak256("jiro.draw" ‖ runNonce ‖ i)` read as a 256-bit big-endian unsigned integer, with `i` packed as one byte, so i ≤ j ≤ 15. Swap deck[i] and deck[j].
@@ -709,11 +715,10 @@ Challenge runs are played in the browser, which holds the wallet.
   ```
 
 - **Draw check** *(P17)*. The contracts never compute the draw. The core returns each level's draw slot in its Outcome ([§7.3](#73-verification-cost)), and settlement checks that the season's level in that slot is the level that was played ([§7.2](#72-run-flow)). A Solidity copy of the draw would be a second implementation of a core procedure.
-- **Score.** The run score is the sum of the six level scores ([§8.4](#84-season-scoring)).
-- **Ranking** *(D10)*. Players are ranked by their best settled run of the season. Qualifying runs, those that cleared at least the season's `minClears` levels (1 by default), rank first. Among them, the higher score ranks first, and ties go to fewer ticks. Ranking by cumulative score would let spending buy rank, although best runs only limit a wallet's rank, not a player's (Sybils, below).
-- **Rewards** *(D10)*. The players' pot is the season's run fees, minus a rake capped at 20 %, plus any rollover from earlier seasons that had no qualified points. It is shared pro-rata by best-run score among the qualified players, those with a qualifying settled run ([§8.4](#84-season-scoring)). ethblockdigger's `Season` has the same rake cap, rollover and pro-rata claims; it chose pro-rata because top-heavy payouts invite collusion when there are few players.
-- **Sybils.** Fees are paid at run start, so every point costs money. But best runs are kept per wallet, and wallets are free. A player who plays each run from a new wallet has every run counted, as cumulative scoring would, and out-earns a one-wallet player of the same skill and spend. In a large season without rollover, a new wallet's run pays off once its score exceeds about the season's qualified points per paid run divided by (1 − rake): 1.25 times at a 20 % rake. This is an accepted residual, which `docs/ECONOMY.md` tracks; paying on every qualifying run instead would need every rewarded run verified.
-- **Several runs at once.** A player may buy several runs, reveal them all, and play only the one with the best draw. Each attempt is paid, and only the best run counts, so this is a paid re-roll, accepted like any other extra run.
+- **Score.** The run score is the sum of the six level scores ([§8.4](#84-season-scoring)). It is a record; no money depends on it.
+- **Payout** *(D10)*. Every paid game earns a **ticket**, the share of its level's target it reached, capped at 1, and 0 when the lives ran out. At the close, the season's pot, its fees minus a rake of 20 % *(D19)*, is shared among all its paid games by the bot-neutral pot ([§8.4](#84-season-scoring)): the higher a game's ticket, the larger its prize, and no game earns more than its fee. Every game of every run counts. There is no ranking, no best run and no qualification.
+- **Sybils.** Fees are paid at run start, so every game costs money. A game's prize depends only on its own ticket and the season's average ticket, so a run earns the same from any wallet, and splitting runs over many wallets earns nothing more. The payout needs no wallet told apart from another.
+- **Several runs at once.** A player may buy several runs, reveal them all, and play only the one with the best draw. Each attempt is paid, and the games of the runs left unplayed count with a ticket of 0, which earns less than its fee. This is a paid re-roll, accepted like any other extra run; on paid levels that people mostly clear *(D17)*, a better draw is worth little.
 
 ### 8.3 Superchallenge: deferred
 
@@ -721,12 +726,75 @@ Player-minted maps with bounties are deferred. The draft's design, its problems 
 
 ### 8.4 Season scoring
 
-The draft adjusts the per-level scoring formula, which is based on completion, each season from what players actually achieved. To keep that fair:
+A season fixes its parameters when it opens, and shares its pot among its paid games when it closes. To keep that fair:
 
-- **Fixed for the season.** The season's parameters are published, versioned and committed onchain when the season opens, and never changed mid-season. Scores are only comparable within a season.
-- **Computed, never claimed.** The core computes level scores; the client never claims one. `level_score = claim_bp × weight_bp / 10_000`, rounded down, and 0 when the lives ran out ([§4.10](#410-end-of-level)). `weight_bp` is the level's weight in basis points, a season parameter. A run's score is the sum of its six level scores, and ties go to the run that used fewer ticks.
-- **Purpose: normalize difficulty,** so that the random six-level draw doesn't decide the ranking. For example, set the weights so that the median effective claim ([§5](#5-levels)) observed on each level is worth the same number of points. The input is the previous season's public journals; the first mainnet season uses playtest-bot data.
-- **Testnet seasons** are named `testnet-N`. They take their weights from playtest-bot data, and their journals never feed mainnet weights. `jiro-tools calibrate` writes those weights to `seasons/calibration-1.json` from the reference mix of [§5](#5-levels): each level's weight is P × 10,000 / max(m, floor), rounded down, where m is the mix's median effective claim on the level and the floor is the one of `levels/targets.json`, so that a median run scores P points on every level, or P − 1 by rounding. P is the largest multiple of 1,000 points that keeps every weight within a `uint16`. A season file takes the rules version, the level ids and the weights of a calibration file, names it in its `calibration` key, and owns every other parameter. Its `referee` is null until `season.mjs open` writes the referee the season opened with; the season number `open` assigns is recorded in `deployments/<network>.json`. `seasons/testnet-0.json` is the 1-day rehearsal season that the first Arbitrum Sepolia deployment opens ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). `seasons/testnet-1.json` is the 14-day season of testers; [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) derives its slack and grace and gives its schedule.
+- **Fixed for the season.** The season's parameters are published, versioned and committed onchain when the season opens, and never changed mid-season. Scores and tickets are only comparable within a season.
+- **Computed, never claimed.** The core computes level scores, and `Challenge` computes tickets from the core's Outcomes; the client never claims either. `level_score = claim_bp × weight_bp / 10_000`, rounded down, and 0 when the lives ran out ([§4.10](#410-end-of-level)). `weight_bp` is the level's weight in basis points, a season parameter. A run's score is the sum of its six level scores: a record, on which no money depends.
+- **Tickets** *(D10)*. A game's ticket is w = min(claim, target) / target, or 0 when the lives ran out (`endReason` 3): the share of the level's target that the game reached, capped at 1. A game that ends by Commit, by clearing or at the time limit keeps the ticket of its claim. Onchain, a ticket is in basis points: `ticket_bp = min(claimBp, target) × 10_000 / target`, rounded down, where `target` is the `u16` at offset 470 of the level bytes ([§5](#5-levels)), which settlement submits and checks against the level id. A cleared game's ticket is 10,000. The weight does not enter the ticket.
+- **Weights** *(D18)*. Under the v1 payout, every weight is 10,000 bp, so a level score equals its claim. Weights were meant to normalize difficulty, so that the random draw would not decide a ranking that no longer exists. Paying more for a win on a hard level would pay bots most, since a bot wins hard levels as surely as easy ones: on the 16 levels, tickets weighted by the weights of `calibration-1.json` would raise the reference mix's bot edge ρ (below) from 1.405 to 1.615 (scripted proxies, rules version 2).
+- **Level review between seasons** *(D21)*. Between two seasons, a person reviews the paid levels from the replays of every committed journal of the season, unsettled runs included, which costs nothing: per level, the share of people's games that ran out of lives and the people's average ticket. A level that people fail is replaced at the next open by another level, never removed, so a season always draws from 16 levels; at most one new level comes each season. No rule acts by itself and nothing changes during a season: bots raise every level's statistics alike, and an automatic rule can be steered by throwing games on purpose ([`docs/ECONOMY.md`](docs/ECONOMY.md)). [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) gives the review's steps.
+- **Testnet seasons** are named `testnet-N`, and their journals never feed mainnet weights. Before the v1 payout they took their weights from playtest-bot data: `jiro-tools calibrate` writes those weights to `seasons/calibration-1.json` from the reference mix of [§5](#5-levels): each level's weight is P × 10,000 / max(m, floor), rounded down, where m is the mix's median effective claim on the level and the floor is the one of `levels/targets.json`, so that a median run scores P points on every level, or P − 1 by rounding. P is the largest multiple of 1,000 points that keeps every weight within a `uint16`. A season file takes the rules version, the level ids and the weights of a calibration file, names it in its `calibration` key, and owns every other parameter. Its `referee` is null until `season.mjs open` writes the referee the season opened with; the season number `open` assigns is recorded in `deployments/<network>.json`. `seasons/testnet-0.json` is the 1-day rehearsal season that the first Arbitrum Sepolia deployment opens ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)). `seasons/testnet-1.json` is the 14-day season of testers; [`docs/SEASON_RUNBOOK.md`](docs/SEASON_RUNBOOK.md) derives its slack and grace and gives its schedule. Under the v1 payout, a season takes equal weights *(D18)* and the paid levels *(D17)*: M5.16 rewrites `testnet-1.json` for both, on rules version 3.
+
+**The v1 payout: the bot-neutral pot** *(D10)*. Chosen by the owner on 2026-11-27, it replaces the best run per player and its qualification. M5.15 implements it in `Season` and `Challenge`, from generation 3 of the contracts; generations 1 and 2 pay each qualified player's best run pro rata by score, as D10 first decided, and no season of testers opens on them. Let f be the fee per game, `runFee` / 6, and r the rake, `rakeBp` / 10,000. A season's games G are its paid games, 6 per run bought, whatever happens to the run afterwards. Its tickets W are the sum of the tickets of its on-time settled runs: a run that is unsettled, lapsed or late counts in G with tickets of 0. The season's average ticket is w̄ = W / G. At the close, each paid game earns
+
+```text
+prize = f × [(1 − r) + s × (w − w̄)],  where s = (1 − r) / w̄ if w̄ ≥ 1 − r, and s = r / (1 − w̄) otherwise
+```
+
+s is the smaller of (1 − r) / w̄ and r / (1 − w̄); the two are equal at w̄ = 1 − r, and the cases avoid dividing by zero.
+
+- **At w̄ ≥ 1 − r,** 0.8 at a 20 % rake, the prize is (1 − r) × f × w / w̄: the plain pot, shared by tickets.
+- **Below 1 − r,** the prize runs in a straight line from L = f × (1 − r − w̄) / (1 − w̄) for a lost game, of ticket 0, to f for a perfect game, of ticket 1. A perfect game gets its fee back, and what the plain pot would have paid it above that is shared equally by every game.
+- **Always,** the prizes add up to the pot, (1 − r) × f × G, so the average prize is (1 − r) × f. No game earns more than its fee, none earns less than 0, and with r above 0 a higher ticket always earns more.
+
+Worked examples, at r = 20 % and f = 0.05 USD. The plain pot is D10's earlier pro-rata share, applied to tickets:
+
+| A season's tickets | w̄ | s | Prize per game, bot-neutral pot | Prize per game, plain pot |
+|---|---|---|---|---|
+| 1, 1, 1, 1, 0.5 | 0.9 | 0.889 | 0.889 f four times, 0.444 f | the same |
+| 1, 1, 0, 0, 0 | 0.4 | 0.333 | f twice, 0.667 f three times | 2 f twice, 0 three times |
+| 1, then nine games of 0 | 0.1 | 0.222 | f, then 0.778 f nine times | 8 f, then 0 nine times |
+| all 0 | 0 | 0.2 | 0.8 f each | nothing to share: the pot would roll over |
+
+**Per player.** A player's prize is the sum of the prizes of their games. With g the player's paid games and W_p the sum of their tickets:
+
+```text
+w̄ ≥ 1 − r:  prize_p = playersPot × W_p / W
+w̄ < 1 − r:  prize_p = f × [g × (1 − r − w̄) + r × W_p] / (1 − w̄)
+```
+
+In integers, with tickets in basis points (W and W_p sums of `ticket_bp`), R = `rakeBp` and `fees` the season's run fees: the first case holds when W ≥ (10,000 − R) × G, and pays `playersPot × W_p / W`; the second pays
+
+```text
+fees × [10_000 × g × ((10_000 − R) × G − W) + R × G × W_p] / (10_000 × G × (10_000 × G − W))
+```
+
+each rounded down once. Before rounding, the second case adds up to `fees × (10_000 − R) / 10_000` over all players, at most `playersPot`, so the rounding dust left in `Season` is at most one wei per player. M5.15 may reorder the arithmetic to avoid overflow, never to round up. Settling an on-time run never lowers its player's prize, and the order of settlements does not matter: the close reads only the sums.
+
+**Why this payout.** No onchain check tells a bot from a person ([§7.4](#74-bots)), so a bot earns at least what the best person earns. The payout therefore keeps a perfect game from earning more than its fee, rather than trying to keep bots out.
+
+- **The bot edge.** ρ is a perfect bot's average ticket divided by people's. People's tickets are almost all 0 or 1, so ρ ≈ 1 / (1 − d), where d is the share of people's games that run out of lives. Under the plain pot, a perfect game earns (1 − r) / w̄ fees, so the harder the levels, the more a bot earns: it profits once ρ exceeds (1 + c / f) / (1 − r), where c is its gas per game, about 1.29 at a 20 % rake (estimate, at the references below). Under the bot-neutral pot it gets back at most its fee and loses c, at any difficulty and any share of bots. ρ becomes a design target instead of a bot limit: skill pays most near w̄ = 1 − r, where s reaches 1, and the paid levels are tuned toward a people's average ticket of 0.80 to 0.85 *(D17)*.
+- **What the research measured,** on scripted players standing in for people, not on people, under rules version 2 (the reward research of 2026-11-25; M5.16 measures the paid levels again on rules version 3). On the 16 levels, ρ is 1.405 for the reference mix, and 2.089 with 40 % novices. On the paid copies it is 1.007, 1.105 with 20 % novices and 1.223 with 40 %. Under the plain pot on the 16 levels, bots join until people get back 0.73, 0.61 or 0.49 of their fees, with 0, 20 % or 40 % novices; under the bot-neutral pot, people get back 0.80 on every level set and population tried, and no bot joins.
+- **The price.** No one profits on average, person or bot: the average prize is (1 − r) × f. Below w̄ = 1 − r, a game never played still gets back L. A bot that accepts no profit can grief: with 10 % or 30 % of the games played by such bots, people get back 0.778 or 0.714 of their fees instead of 0.80 (proxies).
+
+**The house condition** *(D20)*. The pot pays out exactly (1 − r) of the fees at any win rate and any share of bots, so prizes never cost the house. Only its own spending can: proving and settling runs, and the gas to open and close seasons. The house cannot lose on play while its spending on each run stays at or below that run's rake, r × `runFee`: 0.06 USD on a 0.30 USD run at 20 %.
+
+- **The cost cap.** The operator spends at most 80 % of a run's rake on proving and settling it, retries and fees included: 0.048 USD on a 0.30 USD run at 20 %, counted in ETH at the open's price. A costlier run settles when someone posts a bounty for it. M5.13 designs the bounty, and the cap and the bounty are enforced from M5.13, before mainnet. The house then keeps at least a fifth of the rake, before fixed costs.
+- **On testnet-1,** the operator settles every scoring run, whatever it costs.
+- **No gas refund** *(D23)*. Settlement gas is not refunded from the pot in v1: a refund would cost people about 6 points of their return, from 80 % to 74 % (estimate).
+
+**Costs at the references:** ETH at 1,700 USD and an Arbitrum base fee of 0.02 gwei, before the L1 data fee. The gas is measured on Arbitrum Sepolia ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)), and the GPU time by M5.9 ([`docs/VERIFICATION.md`](docs/VERIFICATION.md#proving-on-a-gpu)); the dollar figures are estimates at the references.
+
+| Cost | Gas or time | USD |
+|---|---|---|
+| A run fee of 0.000176 ETH | | 0.30, so f is 0.05 |
+| The player's `startRun`, `revealRun` and a typical `commitRun` | 131,898 + 63,284 + 96,523 = 291,705 gas | 0.0099 a run: c is 3.3 % of f |
+| A `commitRun` of six full journals | 864,001 gas; 1,940,060 under EIP-7623's calldata floor | 0.029; 0.066 |
+| Proving a run on a rented RTX 4090 at 0.89 USD an hour | 7.3 s + 2.15 s per segment of 2^20 cycles: 35 s for testnet-0's run 1, 5.3 min at 150 million proving cycles | 0.01 to 0.08 |
+| `settleRun`, verification included | 530,256 gas for testnet-0's run 1; about 1,000,000 for a whole bot run | 0.018 to 0.034 |
+| The house's cost of a scoring run, proving and settling | | about 0.03 to 0.11, against a cap of 0.048 |
+
+At these references, the cap holds the scripted players' cheaper runs but not all of them: their average runs cost the house about 0.03 to 0.07 USD (estimate, from cycles fitted on their ticks; [`docs/ECONOMY.md`](docs/ECONOMY.md#2-costs) derives them). A proving session's 2,099 s of set-up adds about 0.017 USD a run when it proves 30. The costliest legal run of rules version 2, about 2.9 billion proving cycles, would cost about 1.5 USD (an extrapolation): M5.11 designs a cap on proving cycles.
 
 **Season parameters.** `Season.open`, which only the operator may call, commits them, and nothing changes them afterwards. The operator is an address set in `Season`'s constructor. Each `Season` contract numbers its seasons from 1 (`uint256`), in the order `open` runs; season-file names such as `testnet-N` are labels, not these numbers. The season files under `seasons/` own the values; the proposals below are defaults.
 
@@ -734,29 +802,28 @@ The draft adjusts the per-level scoring formula, which is based on completion, e
 |---|---|---|
 | `referee` | `IReferee` | the referee every run of the season settles through ([§7.3](#73-verification-cost)). `open` reverts unless `referee.rulesVersion()` equals `rulesVersion`, and records the referee's codehash, so players can check it against the reproducible build. |
 | `rulesVersion` | `uint16` | the `RULES_VERSION` the season accepts ([§6.3](#63-journal-bytes-v1)) |
-| `levelIds` | `bytes32[16]` | the 16 level ids, in draw-slot order ([§8.2](#82-challenge-000005-eth-per-run)): non-zero and all different. Each must be a valid level ([§5](#5-levels)). `open` cannot check that, so the operator checks it with the level tool before opening: a run that draws an invalid level could never settle. |
-| `weightsBp` | `uint16[16]` | each slot's weight, at least 1 |
-| `runFee` | `uint256` | the run fee in wei, above 0. 0.00005 ETH is `50_000_000_000_000` *(D12)*. No upper bound: the exact-fee rule shows a wrong fee to every player before they pay. |
-| `rakeBp` | `uint16` | at most 2,000 (20 %) |
+| `levelIds` | `bytes32[16]` | the 16 level ids, in draw-slot order ([§8.2](#82-challenge-paid-runs)): non-zero and all different. Each must be a valid level ([§5](#5-levels)). `open` cannot check that, so the operator checks it with the level tool before opening: a run that draws an invalid level could never settle. |
+| `weightsBp` | `uint16[16]` | each slot's weight, at least 1. 10,000 in every slot under the v1 payout *(D18)*. |
+| `runFee` | `uint256` | the run fee in wei, above 0. Proposed: about 0.30 USD of ETH at the open's price *(D12)*: 0.000176 ETH, `176_000_000_000_000` wei, at 1,700 USD. No upper bound: the exact-fee rule shows a wrong fee to every player before they pay. |
+| `rakeBp` | `uint16` | at most 2,000 (20 %). Proposed: 2,000 *(D19)*. |
 | `length` | `uint64` | seconds, from 1 s to 90 days (7,776,000 s). 14 days on testnet, apart from the 1-day `testnet-0` rehearsal *(D12)*. |
 | `grace` | `uint64` | the settlement period after the end, in seconds, from 1 s to 30 days (2,592,000 s). Proposed: 48 h. A grace shorter than the reveal window plus 1,080 s plus `commitSlack` strands runs bought just before the end; only test seasons on a local node use one. |
 | `commitSlack` | `uint64` | seconds, from 1 to 3,600. Proposed: 120 s, which is 60 s of transaction latency plus 6 × 10 s of level transitions. |
-| `minClears` | `uint8` | the levels a run must clear to qualify, from 1 to 6. 1 by default *(D10)*. |
 
-The upper bounds catch a typo in a season that nothing can pause or edit.
+The upper bounds catch a typo in a season that nothing can pause or edit. Generations 1 and 2 of the contracts also take `minClears`, D10's qualification before the v1 payout; generation 3 has none.
 
 **Sequencing.**
 - **Open.** `open(params)` takes the parameters above and returns the new season's number. A season starts when `open` runs, at `start = block.timestamp`, and ends at `end = start + length`. `open(s + 1)` requires `block.timestamp ≥ end(s)`, so a season overlaps only the grace periods of earlier seasons.
-- **Runs.** Season s accepts runs while `start ≤ block.timestamp < end`. A run belongs to the season of its `startRun`: its fee joins that season's pot, and it settles through that season's referee, until `end + grace` inclusive ([§7.2](#72-run-flow)). A new rules version or a new backend therefore means a new season, and the runs of the previous season keep settling under their own rules.
-- **Best runs** *(D10)*. For each player address, `Season` keeps the best settled, on-time run. It compares qualification first (a qualifying run beats one that doesn't), then the higher score, then fewer ticks; on a full tie, the run settled first stays. Anyone may settle any committed run, and the journals are public, so this order matters: settling another of a player's runs can never lower that player's payout. `Season` keeps `totalQualifiedPoints`, a `uint256`, the sum of the qualified players' best scores.
+- **Runs.** Season s accepts runs while `start ≤ block.timestamp < end`. A run belongs to the season of its `startRun`: its fee joins that season's pot, and it settles through that season's referee, until `end + grace` inclusive ([§7.2](#72-run-flow)). `startRun` adds the run's 6 games to its player's games and to the season's. A new rules version or a new backend therefore means a new season, and the runs of the previous season keep settling under their own rules.
+- **Tickets** *(D10)*. Settling an on-time run adds its six tickets to its player's tickets and to the season's; a late run adds none. Anyone may settle any committed run, in any order: the close reads only the sums, and settling a run never lowers its player's prize.
 - **Close.** `closeSeason()` is callable by anyone once `block.timestamp > end + grace`, so it never overlaps settlement. Seasons close in order. Closing computes:
-  - `rake = fees × rakeBp / 10_000`, rounded down, over the season's own run fees only, credited to the treasury;
-  - `playersPot = fees − rake + rollover`, where `rollover` is the players' pot of earlier seasons that had no qualified points.
+  - `rake = fees × rakeBp / 10_000`, rounded down, over the season's own run fees, credited to the treasury;
+  - `playersPot = fees − rake`, with no rollover: a season whose tickets are all 0 pays each game (1 − r) × f back, and no outside money, such as a sponsor's or an earlier season's, joins the pot, since any money above the fees would pay a perfect game more than its fee.
 
-  If `totalQualifiedPoints` is 0, the whole `playersPot` rolls over to the next season to close, and is never raked again. Qualified players need the close before they can claim, which gives them a reason to call it, and the operator's scheduled season workflow calls it too.
-- **Claims.** `claim(s)` pays a qualified caller `bestScore × playersPot / totalQualifiedPoints`, rounded down, once. It reverts for a season that rolled over, whose `totalQualifiedPoints` is 0. The rounding dust stays in the contract. Shares don't expire in v1.
+  Players need the close before they can claim, which gives them a reason to call it, and the operator's scheduled season workflow calls it too.
+- **Claims.** `claim(s)` pays the caller the prize of its games, `prize_p` above, rounded down, once. A player with no paid game in the season has nothing to claim. The rounding dust stays in the contract. Shares don't expire in v1.
 - **Treasury.** `Season`'s constructor takes an immutable treasury address. `withdrawRake()`, which anyone may call, zeroes the rake credited so far, then sends it to the treasury. A treasury that rejects ETH therefore never blocks a close or a claim.
-- **Custody.** `Season` holds all the ETH: `startRun` forwards each fee to it. Only `claim` and `withdrawRake` send ETH out of `Season`, both after their state changes (checks-effects-interactions). The solvency invariant: the balance covers the fees of the seasons not yet closed, the rollover, the rake not yet withdrawn, and the unclaimed players' pots of closed seasons.
+- **Custody.** `Season` holds all the ETH: `startRun` forwards each fee to it. Only `claim` and `withdrawRake` send ETH out of `Season`, both after their state changes (checks-effects-interactions). The solvency invariant: the balance covers the fees of the seasons not yet closed, the rake not yet withdrawn, and the unclaimed players' pots of closed seasons. Generations 1 and 2 also hold a rollover, D10's players' pot of a season with no qualified points.
 
 ## 9. Roadmap
 
@@ -783,7 +850,7 @@ This roadmap puts the core and its test vectors first: they are the contract eve
 |---|---|---|
 | Pay-then-reveal entropy | `contracts/src/ArbBlockhashEntropy.sol`, `contracts/src/interfaces/IEntropySource.sol` | Run nonces and map seeds |
 | `Vault`: USDC ledger, solvency invariant, the start → reveal → commit → settle flow | `contracts/src/Vault.sol` | Challenge runs, paid in native ETH instead of USDC. ethblockdigger ties runs to the map owner and pays out the map's backing; Jiro runs are bought by any player and record a score. |
-| `Season`: rake capped at 20%, empty-season rollover, pro-rata claims | `contracts/src/Season.sol` | Challenge seasons. Its points still come from an oracle-posted Merkle root. ethblockdigger plans to accrue points onchain instead; Jiro needs that from the start (best settled score per player). |
+| `Season`: rake capped at 20%, empty-season rollover, pro-rata claims | `contracts/src/Season.sol` | Challenge seasons. Its points still come from an oracle-posted Merkle root. ethblockdigger plans to accrue points onchain instead; Jiro needs that from the start (each player's tickets, [§8.4](#84-season-scoring)). |
 | `MapNFT` with an onchain-rendered `tokenURI` | `contracts/src/MapNFT.sol`, `referee/map-renderer` | Superchallenge maps, if that mode comes back ([`TODO.md`](TODO.md)) |
 | Referee crate: `no_std` Rust core, Stylus `verify(bytes)`, pinned wasm build | `referee/core`, `referee/stylus`, `referee/build-wasm.sh` | Template for the Jiro core and referee |
 | Determinism rules, strict input-log codec, conformance fixtures | `docs/DETERMINISM.md`, `src/sim/logCodec.ts`, `referee/core/src/codec.rs`, `src/sim/fixtures/replay` | Journal v1 and `vectors/` |
@@ -794,7 +861,7 @@ This roadmap puts the core and its test vectors first: they are the contract eve
 
 Before reusing, note:
 
-- **Prices and currency differ.** ethblockdigger charges 0.02 USDC per run, against the draft's $0.10 Challenge run and $0.01 Superchallenge run. Jiro charges 0.00005 ETH per Challenge run in native ETH *(D12)*, so `Vault`'s SafeERC20 transfers become a `msg.value` check at run start and pull-based payouts.
+- **Prices and currency differ.** ethblockdigger charges 0.02 USDC per run, against the draft's $0.10 Challenge run and $0.01 Superchallenge run. Jiro charges a run fee in native ETH, about 0.30 USD, set at each season's open *(D12)*, so `Vault`'s SafeERC20 transfers become a `msg.value` check at run start and pull-based payouts.
 - **Not audited, not live.** ethblockdigger's testnet deployment is superseded and waiting for a full redeploy, which needs Stylus activations ([§7.3](#73-verification-cost)). Its own docs require a professional audit before mainnet.
 - **Known residuals come along.** For example, a player can compute their run nonce up to 256 Arbitrum blocks before the reveal starts the commit deadline: about a minute at 0.25 s per block (ethblockdigger `TOKENOMICS.md` §6.2).
 - **Chain coupling.** `ArbBlockhashEntropy` relies on Arbitrum's ArbSys precompile; `block.prevrandao` is a constant on Arbitrum. Moving off Arbitrum needs a new entropy source.
@@ -861,13 +928,20 @@ Treat their advice as input, not as rules for this project. For example, `ship` 
 | D7 | Minion patrol rule, and minions stranded by a capture | **Decided:** approved in M1.14 on 2026-10-29, under the owner's standing instruction of that day to proceed, and built in M1.15 (`RULES_VERSION` 2). The right-hand rule, with an orientation step that faces open field on the right or behind the right ([§4.7](#47-minions)). The patrol then traces the field's boundary and covers the rail (PIN-14). M1.7 measured the earlier orientation step, which trapped a minion on about 1.2 % of boards (131 of 10,000; 1,213 of 100,000); this rule traps none on the same boards. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([§4.7](#47-minions), PIN-17). |
 | D8 | Key mapping | **Decided:** Key0–3 = A, B, X, Y. Y stays unused: a pause button would give human players free thinking time in paid modes. Players can rebind the keyboard keys ([§2](#2-platform)). |
 | D9 | Boss size | **Decided:** a square body of B × B cells, closer to *Volfied*, with B set per level ([§4.6](#46-boss)): B = 2 to 8, default 5. |
-| D10 | Challenge ranking and payout | **Decided:** best settled run per season; pro-rata payout among qualified players (owner, 2026-10-28). Decided in M0.7: ties go to fewer ticks, and a qualifying run is a settled run that cleared at least `minClears` levels, a season parameter that defaults to 1. Qualifying runs rank first, so settling another of a player's runs never lowers that player's payout ([§8.4](#84-season-scoring)). |
+| D10 | Challenge payout | **Decided** (owner, 2026-11-27, "Let's follow all your recommendations for the 9 items"; [plan](IMPLEMENTATION_PLAN.md) M5.14): the v1 payout. Every paid game earns a ticket, w = min(claim, target) / target, or 0 when the lives ran out, and the season's pot is shared among all its paid games by the bot-neutral pot: prize = f × [(1 − r) + s × (w − w̄)], with s = min((1 − r) / w̄, r / (1 − w̄)) ([§8.4](#84-season-scoring)). No game earns more than its fee, so a bot gains nothing by playing perfectly. Every scoring run is settled ([§7.3](#73-verification-cost)), and nothing rolls over. M5.15 implements it, from generation 3. **Replaced:** the best settled run per season, paid pro rata by score among qualified players (owner, 2026-10-28), with ties to fewer ticks and qualification by `minClears` (M0.7). Under it, harder levels paid a bot more, and one wallet per run made every run count anyway. |
 | D11 | Superchallenge design | **Deferred** with the mode, see [`TODO.md`](TODO.md) |
-| D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)); 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
+| D12 | Chain, currency, season length | **Decided:** native ETH on Arbitrum One (Arbitrum Sepolia for testnet), reusing what is reusable from ethblockdigger's contracts; a Challenge run costs 0.00005 ETH ([§8](#8-game-modes-and-economy)), **replaced** (owner, 2026-11-27) by a fee in ETH of about 0.30 USD a run, 0.05 USD a game, set at each open from the ETH price; 14-day seasons on testnet (apart from a 1-day rehearsal season), likely on mainnet too. |
 | D13 | Names | **Decided:** Jiro-ikusu (ジロイクス, see [`name.md`](name.md)). Keep *Volfied* and *Qix*, which are Taito titles, out of product and contract names: the draft's `VolfiedVerifier` becomes `Referee`. Crates: `jiro-core`, `jiro-shell`, `jiro-tools`, `jiro-wasm`, `jiro-referee-stylus`. Contracts: `IReferee`, `Referee`, `ZkReferee`, `Challenge`, `Season`. |
 | D14 | Seed space | **Decided** (owner, 2026-10-29): the level seed keeps driving the boss through the level, so that no two runs share a game and inputs can be neither copied from another run nor precomputed ([§7.4](#74-bots)). [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) M1.18 wrote the rule, seeded deflections ([§4.6](#46-boss), R4.6-6 to R4.6-12; [§6.4](#64-seeds-and-commitments)): a stateless draw from level seed bytes 5 to 8 and the tick turns the boss a quarter turn on 1 move in 32. |
 | D15 | Device scope | **Withdrawn** (owner, 2026-11-10): the game plays in the browser, and a phone version comes later *(D1)*. |
 | D16 | Phone version: platform, order and scope | **Decided** (owner, 2026-11-11, when scheduling M3): on phones, the game is the same web client on the same wasm core, touch-first and installable for Training. Challenge is played in a wallet app's own browser; a connector for other browsers comes only if Challenge outside wallet browsers is wanted later. The service worker, for offline Training, comes last and is optional. No store build exists while paid runs exist, and there is no native client. [`docs/PHONE.md`](docs/PHONE.md) specifies it, and records the owner's answers to its decisions. |
+| D17 | Paid levels | **Decided** (owner, 2026-11-27): Challenge seasons draw from copies of the 16 levels with 3 more lives and a target of 5,000 bp, tuned toward a measured people's average ticket of 0.80 to 0.85; the 16 levels stay as they are for Training and records ([§8.2](#82-challenge-paid-runs)). On them the bot edge ρ of the scripted players is 1.007 to 1.223, against 1.405 to 2.089 on the 16 levels (rules version 2; M5.16 builds the copies and measures them on rules version 3). |
+| D18 | Weights | **Decided** (owner, 2026-11-27): equal, 10,000 bp in every slot. Tickets ignore weights, and weights that normalize difficulty would pay bots most ([§8.4](#84-season-scoring)). |
+| D19 | Rake | **Decided** (owner, 2026-11-27): 20 %, `rakeBp` 2,000, the cap of [§8.4](#84-season-scoring). |
+| D20 | Who pays for proving and settling | **Decided** (owner, 2026-11-27): the operator spends at most 80 % of each run's rake on proving and settling it, retries and fees included; a costlier run is proven when someone posts a bounty, which M5.13 designs and enforces before mainnet. On testnet-1 the operator settles every scoring run whatever it costs. The house's spending on a run stays at or below that run's rake, so the house cannot lose on play ([§8.4](#84-season-scoring)). |
+| D21 | Retiring levels | **Decided** (owner, 2026-11-27): between seasons, a person decides from the replays of every committed journal; a level is replaced, never removed, and at most one new level comes each season ([§8.4](#84-season-scoring)). No automatic rule: bots move every level's statistics alike, and throwing games steers any rule that acts alone. |
+| D22 | House bot | **Decided** (owner, 2026-11-27): only in unpaid seasons, from a published address ([§7.4](#74-bots)). |
+| D23 | Gas refund from the pot | **Decided** (owner, 2026-11-27): none in v1; settlement gas is the settler's, and the operator's comes out of the rake *(D20)*. A refund would cost people about 6 points of their return (estimate). |
 
 M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) §11):
 
@@ -875,7 +949,7 @@ M0.7 also closed five contract decisions of the plan ([`IMPLEMENTATION_PLAN.md`]
 - **P5,** the journals published in the commit's calldata ([§7.2](#72-run-flow));
 - **P6,** the commit slack as a season parameter, `commitSlack` ([§8.4](#84-season-scoring)), whose testnet value comes later;
 - **P16,** one settlement transaction per run, with a per-level fallback ([§7.3](#73-verification-cost));
-- **P17,** the draw check by slot, with the draw computed only by the core ([§8.2](#82-challenge-000005-eth-per-run)).
+- **P17,** the draw check by slot, with the draw computed only by the core ([§8.2](#82-challenge-paid-runs)).
 
 ## Repository files
 
