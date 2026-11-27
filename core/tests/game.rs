@@ -484,16 +484,59 @@ fn wall_at_x_30(game: &mut Game) {
     cutting(game, at(30, 1), at(30, 59), &wall);
 }
 
-/// [R4.8-5] [R4.8-6] A capture that leaves the bosses on either side of a wall separates them: the level
-/// is cleared at step 3, with the claim of the 58 trail cells raised to the target.
+/// [R4.8-5] [R4.8-6] A capture that leaves the bosses on either side of a wall separates them,
+/// but its claim of 172 bp is under the floor of 3,750 bp: both sides stay open, and the level
+/// goes on with the claim of the 58 trail cells.
 #[test]
-fn separating_the_bosses_clears_the_level_at_the_target() {
+fn separating_the_bosses_under_the_floor_does_not_clear() {
     let mut game = twin_game(at(10, 10));
     wall_at_x_30(&mut game);
     let end = game.step(InputMask::UP).unwrap();
     assert_eq!(
         (end, game.captured, game.claim_bp().unwrap(), game.separated),
-        (Some(EndReason::Cleared), 58, 7_500, true)
+        (None, 58, 172, true)
+    );
+}
+
+/// [R4.8-6] With a target of 344 bp, the floor is 172 bp, which the separating capture's claim
+/// reaches: the level is cleared at step 3, with the claim raised to the target.
+#[test]
+fn separating_the_bosses_at_the_floor_clears_at_the_target() {
+    let mut game = twin_game(at(10, 10));
+    game.target_bp = 344;
+    wall_at_x_30(&mut game);
+    let end = game.step(InputMask::UP).unwrap();
+    assert_eq!(
+        (end, game.claim_bp().unwrap()),
+        (Some(EndReason::Cleared), 344)
+    );
+}
+
+/// [R4.8-6] With a target of 347 bp, the floor is 173 bp, one above the separating capture's
+/// claim: the level goes on.
+#[test]
+fn separating_the_bosses_one_under_the_floor_does_not_clear() {
+    let mut game = twin_game(at(10, 10));
+    game.target_bp = 347;
+    wall_at_x_30(&mut game);
+    let end = game.step(InputMask::UP).unwrap();
+    assert_eq!((end, game.claim_bp().unwrap()), (None, 172));
+}
+
+/// [R4.8-5] [R4.8-6] The bosses stay apart, so a later capture that brings the claim to the floor
+/// clears the level: a wall at y = 16 left of x = 30 takes the 1,247 cells below it, boss 1 above
+/// it, for 3,879 bp, raised to the target.
+#[test]
+fn a_later_capture_reaching_the_floor_clears_with_the_bosses_apart() {
+    let mut game = twin_game(at(10, 10));
+    wall_at_x_30(&mut game);
+    game.step(InputMask::UP).unwrap();
+    let wall: Vec<(u8, u8)> = (1..30).map(|x| (x, 16)).collect();
+    cutting(&mut game, at(1, 16), at(30, 16), &wall);
+    let end = game.step(InputMask::LEFT).unwrap();
+    assert_eq!(
+        (end, game.captured, game.claim_bp().unwrap(), game.separated),
+        (Some(EndReason::Cleared), 58 + 1_247, 7_500, true)
     );
 }
 
@@ -508,7 +551,7 @@ fn a_separating_capture_counts_both_fills() {
 }
 
 /// [R4.8-6] Separation raises the claim to the target, never lowers it: with a target of 5 bp,
-/// the claim stays 172 bp.
+/// the floor is 2 bp, and the claim stays 172 bp.
 #[test]
 fn separation_keeps_a_claim_above_the_target() {
     let mut game = twin_game(at(10, 10));

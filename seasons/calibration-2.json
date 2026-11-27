@@ -19,7 +19,7 @@
     "0x707a28d515655c5c992335ef52552acff01bdf75110c141319c540234487acd8"
   ],
   "medianPoints": 10000,
-  "rulesVersion": 4,
+  "rulesVersion": 5,
   "weightsBp": [
     12790,
     12904,

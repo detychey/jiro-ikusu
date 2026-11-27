@@ -45,7 +45,8 @@ pub struct Game {
     pub claimable: NonZeroU16,
     pub target_bp: u16,
     pub time_limit: u16,
-    /// A capture separated the two bosses, which clears the level [R4.8-6].
+    /// The last capture's fills found the two bosses in different regions [R4.8-5]. Walls only
+    /// grow, so once set it stays set.
     pub separated: bool,
     pub end: Option<EndReason>,
     stack: [u16; CAPTURE_STACK],
@@ -80,15 +81,22 @@ impl Game {
     }
 
     /// The claim in basis points: captured × 10,000 / claimable, rounded down [R4.1-8], raised
-    /// to the target once the bosses are separated [R4.8-6].
+    /// to the target once the bosses are separated and the claim has reached the separation
+    /// floor [R4.8-6].
     pub fn claim_bp(&self) -> Result<u16, Error> {
         let claim =
             u16::try_from(claim_bp(self.captured, self.claimable)).map_err(|_| Error::Invariant)?;
-        Ok(if self.separated {
+        Ok(if self.separated && claim >= self.separation_floor_bp() {
             claim.max(self.target_bp)
         } else {
             claim
         })
+    }
+
+    /// The claim at which separated bosses clear the level: half the target, rounded down
+    /// [R4.8-6].
+    pub fn separation_floor_bp(&self) -> u16 {
+        self.target_bp / 2
     }
 
     /// Processes the next tick with `mask` in force, steps 1 to 7, and returns how the level

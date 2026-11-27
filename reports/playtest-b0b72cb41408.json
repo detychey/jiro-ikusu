@@ -791,7 +791,7 @@
     "committer"
   ],
   "referenceMix": true,
-  "rulesVersion": 4,
+  "rulesVersion": 5,
   "runs": 1000,
   "seed": 1
 }

@@ -1,5 +1,5 @@
-//! Capture (README §4.8): a cut that reaches `CLAIMED` claims every region no boss is in, and
-//! a cut that leaves two bosses in different regions separates them.
+//! Capture (README §4.8): a cut that reaches `CLAIMED` claims every region no boss is in. A cut
+//! that leaves two bosses in different regions separates them, and both regions stay open.
 
 use crate::boss::{Boss, Bosses};
 use crate::consts::{CAPTURE_PASS_WORK, CAPTURE_STACK};
