@@ -8,9 +8,11 @@
 //! playtest [--levels <dir>] --policy <name> [--runs <n>] [--seed <n>] --shard <i>/<n>
 //!          [--calibration <file>] --out <file.json>
 //! playtest [--levels <dir>] --merge <dir> [--calibration <file>] --out <file.md>
+//! playtest [--levels <dir>] --openings [--runs <n>] [--seed <n>] --out <file.md>
 //!
 //! `--levels` defaults to `levels`. `--shard` and `--merge` are the bot-advantage study of plan
-//! M4.13: see `shard` and `merge`.
+//! M4.13: see `shard` and `merge`. `--openings` measures the straight-cut openings of the
+//! twin-boss levels (plan M5.19): see `openings`.
 //!
 //! Without `--policy`, the bots are the reference mix of the targets file: the `--check` file,
 //! or `<dir>/targets.json`. Reports go to `reports/` only for the reference report's own
@@ -36,6 +38,7 @@ use crate::levels::level_index;
 use crate::scenarios::play::{header, play};
 
 mod merge;
+mod openings;
 mod shard;
 #[cfg(test)]
 mod tests;
@@ -46,7 +49,8 @@ const USAGE: &str = concat!(
     "<dir>] --policy <name> --nonce <hex> --level-index <i> --out <file> | jiro-tools playtest ",
     "[--levels <dir>] --policy <name> [--runs <n>] [--seed <n>] --shard <i>/<n> [--calibration ",
     "<file>] --out <file.json> | jiro-tools playtest [--levels <dir>] --merge <dir> ",
-    "[--calibration <file>] --out <file.md>"
+    "[--calibration <file>] --out <file.md> | jiro-tools playtest [--levels <dir>] --openings ",
+    "[--runs <n>] [--seed <n>] --out <file.md>"
 );
 
 /// The run count and seed of the committed reference report.
@@ -103,6 +107,9 @@ pub struct Targets {
 pub fn run(args: &[&str]) -> Result<(), String> {
     if args.contains(&"--merge") {
         return merge::run(args);
+    }
+    if args.contains(&"--openings") {
+        return openings::run(args);
     }
     let args = parse(args)?;
     let levels = load_levels(&args.levels)?;
