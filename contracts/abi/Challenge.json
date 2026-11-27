@@ -262,6 +262,11 @@
         "name": "ticks",
         "type": "uint32",
         "internalType": "uint32"
+      },
+      {
+        "name": "tickets",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "stateMutability": "view"
@@ -412,6 +417,12 @@
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
+      },
+      {
+        "name": "tickets",
+        "type": "uint32",
+        "indexed": false,
+        "internalType": "uint32"
       }
     ],
     "anonymous": false

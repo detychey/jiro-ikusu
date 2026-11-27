@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {CommonBase} from "forge-std/Base.sol";
 import {StdCheats} from "forge-std/StdCheats.sol";
 import {StdUtils} from "forge-std/StdUtils.sol";
-import {Season, SeasonParams, SeasonState, BestRun} from "../src/Season.sol";
+import {Season, SeasonParams, SeasonState, PlayerTally} from "../src/Season.sol";
 import {IReferee} from "../src/interfaces/IReferee.sol";
 import {MockReferee} from "../src/mocks/MockReferee.sol";
 
@@ -15,14 +15,22 @@ uint16 constant RAKE_BP = 1_000;
 uint64 constant LENGTH = 14 days;
 uint64 constant GRACE = 48 hours;
 uint64 constant COMMIT_SLACK = 120;
-uint32 constant MAX_RUN_SCORE = 393_210;
-uint32 constant MAX_RUN_TICKS = 16_200;
+// The six tickets of a run whose games all reach their target (README §8.4).
+uint32 constant MAX_RUN_TICKETS = 60_000;
+// The target of every `defaultLevelOf` level: D5's default.
+uint16 constant DEFAULT_TARGET_BP = 7_500;
+
+/// The level bytes whose id `defaultParams` puts in `slot`: 472 bytes, as level bytes v1 are,
+/// with `DEFAULT_TARGET_BP` as the target at offset 470 (README §5). MockReferee validates nothing else.
+function defaultLevelOf(uint256 slot) pure returns (bytes memory) {
+    return bytes.concat(abi.encodePacked("level", slot), new bytes(433), abi.encodePacked(DEFAULT_TARGET_BP));
+}
 
 function defaultParams(IReferee referee) pure returns (SeasonParams memory params) {
     params.referee = referee;
     params.rulesVersion = RULES_VERSION;
     for (uint256 slot; slot < 16; ++slot) {
-        params.levelIds[slot] = keccak256(abi.encodePacked("level", slot));
+        params.levelIds[slot] = keccak256(defaultLevelOf(slot));
         params.weightsBp[slot] = uint16(10_000 + slot);
     }
     params.runFee = RUN_FEE;
@@ -30,7 +38,6 @@ function defaultParams(IReferee referee) pure returns (SeasonParams memory param
     params.length = LENGTH;
     params.grace = GRACE;
     params.commitSlack = COMMIT_SLACK;
-    params.minClears = 1;
 }
 
 function stateOf(Season season, uint256 number) view returns (SeasonState memory state) {
@@ -39,14 +46,15 @@ function stateOf(Season season, uint256 number) view returns (SeasonState memory
         state.closed,
         state.refereeCodehash,
         state.fees,
+        state.games,
+        state.tickets,
         state.playersPot,
-        state.totalClaimed,
-        state.totalQualifiedPoints
+        state.totalClaimed
     ) = season.seasons(number);
 }
 
-function bestRunOf(Season season, uint256 number, address player) view returns (BestRun memory run) {
-    (run.runId, run.score, run.ticks, run.qualified) = season.bestRunOf(number, player);
+function tallyOf(Season season, uint256 number, address player) view returns (PlayerTally memory tally) {
+    (tally.games, tally.tickets, tally.claimed) = season.tallyOf(number, player);
 }
 
 function settlementEndOf(Season season, uint256 number) view returns (uint256) {
@@ -120,22 +128,21 @@ contract SeasonTest is Test {
         season.open(params);
     }
 
-    function payFees(uint256 number, uint256 count) private {
+    /// `count` runs bought by `player`: their fees and their 6 games each.
+    function payFees(uint256 number, address player, uint256 count) private {
         uint256 runFee = season.paramsOf(number).runFee;
         vm.deal(challenge, challenge.balance + runFee * count);
         for (uint256 i; i < count; ++i) {
             vm.prank(challenge);
-            season.payFee{value: runFee}(number);
+            season.payFee{value: runFee}(number, player);
         }
     }
 
-    function recordRun(uint256 number, address player, uint32 score, uint32 ticks, uint8 clears)
-        private
-        returns (uint256 runId)
-    {
+    /// The tickets of one of `player`'s runs, settled on time.
+    function addTickets(uint256 number, address player, uint32 tickets) private returns (uint256 runId) {
         runId = nextRunId++;
         vm.prank(challenge);
-        season.recordRun(number, player, runId, score, ticks, clears);
+        season.addTickets(number, player, runId, tickets);
     }
 
     function warpPastSettlement(uint256 number) private {
@@ -181,88 +188,49 @@ contract SeasonTest is Test {
         season.bindChallenge(alice);
     }
 
-    // Points.
+    // Games and tickets.
 
-    function test_RecordRun_ABetterRunReplacesAWorseOne() public {
+    function test_PayFee_AddsSixGamesToThePlayer() public {
         uint256 number = openDefaultSeason();
-        recordRun(number, alice, 1_000, 900, 1);
-        uint256 better = recordRun(number, alice, 2_000, 900, 1);
-        assertEq(bestRunOf(season, number, alice).runId, better);
+        payFees(number, alice, 2);
+        assertEq(tallyOf(season, number, alice).games, 12);
     }
 
-    function test_RecordRun_AWorseRunNeverReplacesABetterOne() public {
+    function test_PayFee_AddsSixGamesToTheSeason() public {
         uint256 number = openDefaultSeason();
-        uint256 better = recordRun(number, alice, 2_000, 900, 1);
-        recordRun(number, alice, 1_999, 10, 6);
-        assertEq(bestRunOf(season, number, alice).runId, better);
+        payFees(number, alice, 2);
+        payFees(number, bob, 1);
+        assertEq(stateOf(season, number).games, 18);
     }
 
-    function test_RecordRun_AScoreTieGoesToFewerTicks() public {
+    function test_AddTickets_AddsTheTicketsToThePlayer() public {
         uint256 number = openDefaultSeason();
-        recordRun(number, alice, 1_000, 900, 1);
-        uint256 faster = recordRun(number, alice, 1_000, 899, 1);
-        assertEq(bestRunOf(season, number, alice).runId, faster);
+        addTickets(number, alice, 41_000);
+        addTickets(number, alice, 9_500);
+        assertEq(tallyOf(season, number, alice).tickets, 50_500);
     }
 
-    function test_RecordRun_AFullTieKeepsTheRunRecordedFirst() public {
+    function test_AddTickets_AddsTheTicketsToTheSeason() public {
         uint256 number = openDefaultSeason();
-        uint256 first = recordRun(number, alice, 1_000, 900, 1);
-        recordRun(number, alice, 1_000, 900, 1);
-        assertEq(bestRunOf(season, number, alice).runId, first);
+        addTickets(number, alice, 41_000);
+        addTickets(number, bob, 9_500);
+        addTickets(number, carol, 0);
+        assertEq(stateOf(season, number).tickets, 50_500);
     }
 
-    function test_RecordRun_AHigherScoringRunThatClearsTooFewLevelsNeverReplacesAQualifyingOne() public {
-        SeasonParams memory params = defaultParams(referee);
-        params.minClears = 2;
-        uint256 number = openSeason(params);
-        uint256 qualifying = recordRun(number, alice, 100, 900, 2);
-        recordRun(number, alice, MAX_RUN_SCORE, 10, 1);
-        assertEq(bestRunOf(season, number, alice).runId, qualifying);
-    }
-
-    function test_RecordRun_AQualifyingRunReplacesAHigherScoringOneThatClearsTooFewLevels() public {
-        SeasonParams memory params = defaultParams(referee);
-        params.minClears = 2;
-        uint256 number = openSeason(params);
-        recordRun(number, alice, MAX_RUN_SCORE, 10, 1);
-        uint256 qualifying = recordRun(number, alice, 100, 900, 2);
-        assertEq(bestRunOf(season, number, alice).runId, qualifying);
-    }
-
-    function test_RecordRun_TotalQualifiedPointsSumsTheQualifiedBestScores() public {
+    function test_AddTickets_EmitsTicketsAdded() public {
         uint256 number = openDefaultSeason();
-        recordRun(number, alice, 1_000, 900, 1);
-        recordRun(number, alice, 1_500, 900, 1);
-        recordRun(number, bob, 700, 900, 3);
-        recordRun(number, carol, 5_000, 900, 0);
-        assertEq(stateOf(season, number).totalQualifiedPoints, 2_200);
+        vm.expectEmit(address(season));
+        emit Season.TicketsAdded(number, alice, nextRunId, 41_000);
+        addTickets(number, alice, 41_000);
     }
 
-    function test_Claim_APlayerWithNoQualifyingRunEarnsNoShareAtMinClears1() public {
+    function test_Claim_RevertsForAPlayerWithNoGame() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 2);
-        recordRun(number, alice, 1_000, 900, 1);
-        recordRun(number, bob, 5_000, 900, 0);
+        payFees(number, alice, 1);
         closeAfterSettlement(number);
-
-        assertEq(claimAs(alice, number), stateOf(season, number).playersPot);
         vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(Season.NotQualified.selector, number, bob));
-        season.claim(number);
-    }
-
-    function test_Claim_APlayerWithNoQualifyingRunEarnsNoShareAtMinClears2() public {
-        SeasonParams memory params = defaultParams(referee);
-        params.minClears = 2;
-        uint256 number = openSeason(params);
-        payFees(number, 2);
-        recordRun(number, alice, 1_000, 900, 2);
-        recordRun(number, bob, 5_000, 900, 1);
-        closeAfterSettlement(number);
-
-        assertEq(claimAs(alice, number), stateOf(season, number).playersPot);
-        vm.prank(bob);
-        vm.expectRevert(abi.encodeWithSelector(Season.NotQualified.selector, number, bob));
+        vm.expectRevert(abi.encodeWithSelector(Season.NoGames.selector, number, bob));
         season.claim(number);
     }
 
@@ -293,8 +261,8 @@ contract SeasonTest is Test {
     function test_Open_LeavesTheParametersOfEarlierSeasonsUnchanged() public {
         SeasonParams memory first = defaultParams(referee);
         uint256 number = openSeason(first);
-        payFees(number, 1);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 1);
+        addTickets(number, alice, 41_000);
         vm.warp(season.endOf(number));
         SeasonParams memory second = defaultParams(new MockReferee(RULES_VERSION + 1));
         second.rulesVersion = RULES_VERSION + 1;
@@ -305,7 +273,6 @@ contract SeasonTest is Test {
         second.length = 1;
         second.grace = 1;
         second.commitSlack = 1;
-        second.minClears = 6;
         openSeason(second);
         closeAfterSettlement(number);
 
@@ -342,7 +309,6 @@ contract SeasonTest is Test {
         params.length = 1;
         params.grace = 1;
         params.commitSlack = 1;
-        params.minClears = 1;
         assertEq(abi.encode(season.paramsOf(openSeason(params))), abi.encode(params));
     }
 
@@ -354,7 +320,6 @@ contract SeasonTest is Test {
         params.length = 7_776_000;
         params.grace = 2_592_000;
         params.commitSlack = 3_600;
-        params.minClears = 6;
         assertEq(abi.encode(season.paramsOf(openSeason(params))), abi.encode(params));
     }
 
@@ -431,23 +396,11 @@ contract SeasonTest is Test {
         expectOpenRevert(params, abi.encodeWithSelector(Season.CommitSlackOutOfRange.selector, 3_601));
     }
 
-    function test_Open_RevertsWithAZeroMinClears() public {
-        SeasonParams memory params = defaultParams(referee);
-        params.minClears = 0;
-        expectOpenRevert(params, abi.encodeWithSelector(Season.MinClearsOutOfRange.selector, 0));
-    }
-
-    function test_Open_RevertsWithAMinClearsAbove6() public {
-        SeasonParams memory params = defaultParams(referee);
-        params.minClears = 7;
-        expectOpenRevert(params, abi.encodeWithSelector(Season.MinClearsOutOfRange.selector, 7));
-    }
-
     // Settlement lookups.
 
     function test_SlotOf_ReturnsTheLevelsDrawSlot() public {
         uint256 number = openDefaultSeason();
-        assertEq(season.slotOf(number, keccak256(abi.encodePacked("level", uint256(9)))), 9);
+        assertEq(season.slotOf(number, keccak256(defaultLevelOf(9))), 9);
     }
 
     function test_SlotOf_RevertsForALevelNotInTheSeason() public {
@@ -469,14 +422,14 @@ contract SeasonTest is Test {
 
     function test_WeightOf_ReturnsTheWeightOfTheLevelsSlot() public {
         uint256 number = openDefaultSeason();
-        assertEq(season.weightOf(number, keccak256(abi.encodePacked("level", uint256(9)))), 10_009);
+        assertEq(season.weightOf(number, keccak256(defaultLevelOf(9))), 10_009);
     }
 
     // Fees.
 
     function test_PayFee_AddsTheFeeToTheSeasonsFees() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 3);
+        payFees(number, alice, 3);
         assertEq(stateOf(season, number).fees, 3 * RUN_FEE);
     }
 
@@ -485,14 +438,14 @@ contract SeasonTest is Test {
         vm.deal(alice, RUN_FEE);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Season.NotChallenge.selector, alice));
-        season.payFee{value: RUN_FEE}(number);
+        season.payFee{value: RUN_FEE}(number, alice);
     }
 
     function test_PayFee_RevertsBeforeAnySeasonOpens() public {
         vm.deal(challenge, RUN_FEE);
         vm.prank(challenge);
         vm.expectRevert(abi.encodeWithSelector(Season.NotAcceptingRuns.selector, 1));
-        season.payFee{value: RUN_FEE}(1);
+        season.payFee{value: RUN_FEE}(1, alice);
     }
 
     function test_PayFee_RevertsOnceTheSeasonEnds() public {
@@ -501,7 +454,7 @@ contract SeasonTest is Test {
         vm.deal(challenge, RUN_FEE);
         vm.prank(challenge);
         vm.expectRevert(abi.encodeWithSelector(Season.NotAcceptingRuns.selector, number));
-        season.payFee{value: RUN_FEE}(number);
+        season.payFee{value: RUN_FEE}(number, alice);
     }
 
     function test_PayFee_RevertsForASeasonOtherThanTheOneAcceptingRuns() public {
@@ -511,7 +464,7 @@ contract SeasonTest is Test {
         vm.deal(challenge, RUN_FEE);
         vm.prank(challenge);
         vm.expectRevert(abi.encodeWithSelector(Season.NotAcceptingRuns.selector, first));
-        season.payFee{value: RUN_FEE}(first);
+        season.payFee{value: RUN_FEE}(first, alice);
     }
 
     function test_PayFee_RevertsBelowTheFee() public {
@@ -519,7 +472,7 @@ contract SeasonTest is Test {
         vm.deal(challenge, RUN_FEE);
         vm.prank(challenge);
         vm.expectRevert(abi.encodeWithSelector(Season.WrongFee.selector, RUN_FEE - 1, RUN_FEE));
-        season.payFee{value: RUN_FEE - 1}(number);
+        season.payFee{value: RUN_FEE - 1}(number, alice);
     }
 
     function test_PayFee_RevertsAboveTheFee() public {
@@ -527,22 +480,22 @@ contract SeasonTest is Test {
         vm.deal(challenge, RUN_FEE + 1);
         vm.prank(challenge);
         vm.expectRevert(abi.encodeWithSelector(Season.WrongFee.selector, RUN_FEE + 1, RUN_FEE));
-        season.payFee{value: RUN_FEE + 1}(number);
+        season.payFee{value: RUN_FEE + 1}(number, alice);
     }
 
-    function test_RecordRun_RevertsForAnyoneButChallenge() public {
+    function test_AddTickets_RevertsForAnyoneButChallenge() public {
         uint256 number = openDefaultSeason();
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Season.NotChallenge.selector, alice));
-        season.recordRun(number, alice, 1, 1_000, 900, 1);
+        season.addTickets(number, alice, 1, 41_000);
     }
 
-    function test_RecordRun_RevertsOnceTheSeasonIsClosed() public {
+    function test_AddTickets_RevertsOnceTheSeasonIsClosed() public {
         uint256 number = openDefaultSeason();
         closeAfterSettlement(number);
         vm.prank(challenge);
         vm.expectRevert(abi.encodeWithSelector(Season.SeasonAlreadyClosed.selector, number));
-        season.recordRun(number, alice, 1, 1_000, 900, 1);
+        season.addTickets(number, alice, 1, 41_000);
     }
 
     // Closing seasons.
@@ -570,16 +523,16 @@ contract SeasonTest is Test {
 
     function test_CloseSeason_SendsNoEth() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 4);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
         assertEq(address(season).balance, 4 * RUN_FEE);
     }
 
     function test_CloseSeason_CreditsTheRakeToTheTreasury() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 4);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
         assertEq(season.rakeOwed(), rakeOf(4 * RUN_FEE, RAKE_BP));
     }
@@ -589,8 +542,8 @@ contract SeasonTest is Test {
         params.rakeBp = uint16(bound(rakeBp, 0, 2_000));
         uint256 number = openSeason(params);
         uint256 fees = RUN_FEE * bound(runCount, 1, 50);
-        payFees(number, fees / RUN_FEE);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, fees / RUN_FEE);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
 
         uint256 rake = season.rakeOwed();
@@ -601,8 +554,8 @@ contract SeasonTest is Test {
 
     function test_WithdrawRake_SendsTheCreditToTheTreasury() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 4);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
         vm.prank(makeAddr("anyone"));
         season.withdrawRake();
@@ -611,8 +564,8 @@ contract SeasonTest is Test {
 
     function test_WithdrawRake_ASecondWithdrawalSendsNothing() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 4);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
         season.withdrawRake();
         assertEq(season.withdrawRake(), 0);
@@ -623,8 +576,8 @@ contract SeasonTest is Test {
         RejectingTreasury rejecting = new RejectingTreasury();
         season = deploySeason(address(rejecting));
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 4);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
         uint256 rake = rakeOf(4 * RUN_FEE, RAKE_BP);
 
@@ -636,8 +589,8 @@ contract SeasonTest is Test {
     function test_CloseSeason_WorksWithATreasuryThatRejectsEth() public {
         season = deploySeason(address(new RejectingTreasury()));
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 4);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
         assertTrue(stateOf(season, number).closed);
     }
@@ -645,37 +598,34 @@ contract SeasonTest is Test {
     function test_Claim_WorksWithATreasuryThatRejectsEth() public {
         season = deploySeason(address(new RejectingTreasury()));
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 4);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
         claimAs(alice, number);
         assertEq(alice.balance, 4 * RUN_FEE - rakeOf(4 * RUN_FEE, RAKE_BP));
     }
 
-    // Rollover.
+    // No rollover.
 
-    function test_CloseSeason_RollsThePotOfASeasonWithNoQualifiedPointsIntoTheNextSeasonToCloseUnraked() public {
-        uint256 empty = openDefaultSeason();
-        payFees(empty, 4);
-        recordRun(empty, alice, 5_000, 900, 0);
-        vm.warp(season.endOf(empty));
+    function test_CloseSeason_KeepsEachSeasonsPotToItself() public {
+        uint256 first = openDefaultSeason();
+        payFees(first, alice, 4);
+        vm.warp(season.endOf(first));
         uint256 next = openDefaultSeason();
-        payFees(next, 2);
-        recordRun(next, bob, 1_000, 900, 1);
-        closeAfterSettlement(empty);
+        payFees(next, bob, 2);
+        addTickets(next, bob, 41_000);
+        closeAfterSettlement(first);
         closeAfterSettlement(next);
-
-        uint256 rolledOver = 4 * RUN_FEE - rakeOf(4 * RUN_FEE, RAKE_BP);
-        assertEq(stateOf(season, next).playersPot, 2 * RUN_FEE - rakeOf(2 * RUN_FEE, RAKE_BP) + rolledOver);
+        assertEq(stateOf(season, next).playersPot, 2 * RUN_FEE - rakeOf(2 * RUN_FEE, RAKE_BP));
     }
 
-    function test_CloseSeason_RollsOverASeasonWhoseOnlyQualifiedPlayersScoredZero() public {
+    function test_Claim_ASeasonWithNoTicketPaysItsPlayersPotBack() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 0, 900, 1);
-        recordRun(number, bob, 0, 900, 2);
+        payFees(number, alice, 3);
+        payFees(number, bob, 1);
         closeAfterSettlement(number);
-        assertEq(season.pendingRollover(), 4 * RUN_FEE - rakeOf(4 * RUN_FEE, RAKE_BP));
+        uint256 playersPot = 4 * RUN_FEE - rakeOf(4 * RUN_FEE, RAKE_BP);
+        assertEq(claimAs(alice, number) + claimAs(bob, number), playersPot);
     }
 
     function test_CloseSeason_ClosesSeasonsOnlyInOrder() public {
@@ -703,32 +653,41 @@ contract SeasonTest is Test {
         assertEq(season.closeSeason(), second);
     }
 
-    function test_Claim_RevertsForASeasonThatRolledOver() public {
+    function test_CloseSeason_EmitsSeasonClosed() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 1);
-        recordRun(number, alice, 0, 900, 1);
-        closeAfterSettlement(number);
-        vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(Season.SeasonRolledOver.selector, number));
-        season.claim(number);
+        payFees(number, alice, 4);
+        warpPastSettlement(number);
+        uint256 rake = rakeOf(4 * RUN_FEE, RAKE_BP);
+        vm.expectEmit(address(season));
+        emit Season.SeasonClosed(number, rake, 4 * RUN_FEE - rake);
+        season.closeSeason();
     }
 
     // Claims.
 
-    function test_Claim_PaysTheShareProRataByBestScore() public {
+    function test_Claim_PaysThePrizeOfThePlayersGames() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, alice, 100, 900, 1);
-        recordRun(number, bob, 300, 900, 1);
+        payFees(number, alice, 1);
+        payFees(number, bob, 1);
+        addTickets(number, alice, 60_000);
+        addTickets(number, bob, 30_000);
         closeAfterSettlement(number);
-        uint256 playersPot = 4 * RUN_FEE - rakeOf(4 * RUN_FEE, RAKE_BP);
-        assertEq(claimAs(bob, number), playersPot * 3 / 4);
+        uint256 prize = season.prizeOf(number, bob);
+        assertEq(claimAs(bob, number), prize);
+    }
+
+    function test_Claim_MarksThePlayerClaimed() public {
+        uint256 number = openDefaultSeason();
+        payFees(number, alice, 1);
+        closeAfterSettlement(number);
+        claimAs(alice, number);
+        assertTrue(tallyOf(season, number, alice).claimed);
     }
 
     function test_Claim_RevertsBeforeTheClose() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 1);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 1);
+        addTickets(number, alice, 41_000);
         warpPastSettlement(number);
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Season.SeasonNotClosed.selector, number));
@@ -737,8 +696,8 @@ contract SeasonTest is Test {
 
     function test_Claim_ADoubleClaimReverts() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 1);
-        recordRun(number, alice, 1_000, 900, 1);
+        payFees(number, alice, 1);
+        addTickets(number, alice, 41_000);
         closeAfterSettlement(number);
         claimAs(alice, number);
         vm.prank(alice);
@@ -749,28 +708,31 @@ contract SeasonTest is Test {
     function test_Claim_RoundsDownAndKeepsTheDust() public {
         SeasonParams memory params = defaultParams(referee);
         params.runFee = 10;
-        params.rakeBp = 0;
         uint256 number = openSeason(params);
-        payFees(number, 1);
-        recordRun(number, alice, 1, 900, 1);
-        recordRun(number, bob, 1, 900, 1);
-        recordRun(number, carol, 1, 900, 1);
+        payFees(number, alice, 1);
+        payFees(number, bob, 1);
+        payFees(number, carol, 1);
+        addTickets(number, alice, 60_000);
+        addTickets(number, bob, 60_000);
+        addTickets(number, carol, 50_000);
         closeAfterSettlement(number);
         claimAs(alice, number);
         claimAs(bob, number);
         claimAs(carol, number);
 
-        assertEq(carol.balance, 3);
-        assertEq(address(season).balance, 1);
+        // A players' pot of 27 wei, shared 60 : 60 : 50, is 9.53, 9.53 and 7.94 wei.
+        assertEq(carol.balance, 7);
+        assertEq(address(season).balance, season.rakeOwed() + 2);
         assertTrue(season.isSolvent());
     }
 
     function test_Claim_ReenteredFromTheReceiverPaysNothingMore() public {
         ReenteringClaimer claimer = new ReenteringClaimer(season);
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, address(claimer), 100, 900, 1);
-        recordRun(number, bob, 100, 900, 1);
+        payFees(number, address(claimer), 2);
+        payFees(number, bob, 2);
+        addTickets(number, address(claimer), 41_000);
+        addTickets(number, bob, 41_000);
         closeAfterSettlement(number);
         claimer.claim(number);
 
@@ -782,15 +744,15 @@ contract SeasonTest is Test {
     function test_Claim_RevertsAndKeepsTheShareWhenTheClaimantRejectsEth() public {
         address rejectingClaimant = address(new RejectingTreasury());
         uint256 number = openDefaultSeason();
-        payFees(number, 4);
-        recordRun(number, rejectingClaimant, 1_000, 900, 1);
+        payFees(number, rejectingClaimant, 4);
+        addTickets(number, rejectingClaimant, 41_000);
         closeAfterSettlement(number);
         uint256 share = 4 * RUN_FEE - rakeOf(4 * RUN_FEE, RAKE_BP);
 
         vm.prank(rejectingClaimant);
         vm.expectRevert(abi.encodeWithSelector(Season.TransferFailed.selector, rejectingClaimant, share));
         season.claim(number);
-        assertFalse(season.claimed(number, rejectingClaimant), "claimed");
+        assertFalse(tallyOf(season, number, rejectingClaimant).claimed, "claimed");
         assertEq(stateOf(season, number).totalClaimed, 0, "total claimed");
         assertEq(address(season).balance, 4 * RUN_FEE, "balance");
     }
@@ -799,14 +761,15 @@ contract SeasonTest is Test {
 
     function test_IsSolvent_IsFalseWhenTheBalanceDoesNotCoverTheFees() public {
         uint256 number = openDefaultSeason();
-        payFees(number, 2);
+        payFees(number, alice, 2);
         vm.deal(address(season), 2 * RUN_FEE - 1);
         assertFalse(season.isSolvent());
     }
 }
 
 /// Drives Season as its Challenge and operator, with every input bounded to a valid one, so
-/// that each call changes state or returns early instead of reverting.
+/// that each call changes state or returns early instead of reverting. Each run bought adds its
+/// tickets at most once, at most 60,000, as Challenge settles it.
 contract SeasonHandler is CommonBase, StdCheats, StdUtils {
     Season public immutable season;
     MockReferee private immutable referee;
@@ -814,6 +777,9 @@ contract SeasonHandler is CommonBase, StdCheats, StdUtils {
     address[] private players;
     uint256 private nextRunId = 1;
     mapping(uint256 season => uint256) public claimedOf;
+    /// Claims that paid a player more than their run fees, which no claim may (README §8.4).
+    uint256 public overpaidClaims;
+    mapping(uint256 season => mapping(address player => uint256)) private settledRuns;
 
     constructor(Season season_, MockReferee referee_, address operator_) {
         season = season_;
@@ -824,40 +790,39 @@ contract SeasonHandler is CommonBase, StdCheats, StdUtils {
         }
     }
 
-    function openSeason(uint16 rakeBp, uint64 length, uint64 grace, uint8 minClears) external {
+    function playersOf() external view returns (address[] memory) {
+        return players;
+    }
+
+    function openSeason(uint16 rakeBp, uint64 length, uint64 grace, uint256 runFee) external {
         uint256 current = season.currentSeason();
         if (current != 0 && block.timestamp < season.endOf(current)) return;
         SeasonParams memory params = defaultParams(referee);
         params.rakeBp = uint16(bound(rakeBp, 0, 2_000));
         params.length = uint64(bound(length, 1, 3 days));
         params.grace = uint64(bound(grace, 1, 2 days));
-        params.minClears = uint8(bound(minClears, 1, 6));
+        params.runFee = bound(runFee, 1, 1 ether);
         vm.prank(operator);
         season.open(params);
     }
 
-    function payFee() external {
+    function payFee(uint256 playerSeed) external {
         uint256 current = season.currentSeason();
         if (current == 0 || block.timestamp >= season.endOf(current)) return;
         uint256 runFee = season.paramsOf(current).runFee;
         vm.deal(address(this), runFee);
-        season.payFee{value: runFee}(current);
+        season.payFee{value: runFee}(current, players[bound(playerSeed, 0, players.length - 1)]);
     }
 
-    function recordRun(uint256 playerSeed, uint256 seasonSeed, uint32 score, uint32 ticks, uint8 clears) external {
+    function addTickets(uint256 playerSeed, uint256 seasonSeed, uint32 tickets) external {
         uint256 firstOpen = season.lastClosedSeason() + 1;
         uint256 current = season.currentSeason();
         if (firstOpen > current) return;
         uint256 number = bound(seasonSeed, firstOpen, current);
         address player = players[bound(playerSeed, 0, players.length - 1)];
-        season.recordRun(
-            number,
-            player,
-            nextRunId++,
-            uint32(bound(score, 0, MAX_RUN_SCORE)),
-            uint32(bound(ticks, 0, MAX_RUN_TICKS)),
-            uint8(bound(clears, 0, 6))
-        );
+        if (settledRuns[number][player] * 6 >= tallyOf(season, number, player).games) return;
+        ++settledRuns[number][player];
+        season.addTickets(number, player, nextRunId++, uint32(bound(tickets, 0, MAX_RUN_TICKETS)));
     }
 
     function warp(uint256 seconds_) external {
@@ -875,12 +840,12 @@ contract SeasonHandler is CommonBase, StdCheats, StdUtils {
         if (lastClosed == 0) return;
         uint256 number = bound(seasonSeed, 1, lastClosed);
         address player = players[bound(playerSeed, 0, players.length - 1)];
-        if (
-            stateOf(season, number).totalQualifiedPoints == 0 || !bestRunOf(season, number, player).qualified
-                || season.claimed(number, player)
-        ) return;
+        PlayerTally memory tally = tallyOf(season, number, player);
+        if (tally.games == 0 || tally.claimed) return;
         vm.prank(player);
-        claimedOf[number] += season.claim(number);
+        uint256 amount = season.claim(number);
+        claimedOf[number] += amount;
+        if (amount > tally.games / 6 * season.paramsOf(number).runFee) ++overpaidClaims;
     }
 
     function withdrawRake() external {
@@ -902,7 +867,7 @@ contract SeasonInvariantTest is Test {
     }
 
     function owedBySeason() private view returns (uint256 owed) {
-        owed = season.pendingRollover() + season.rakeOwed();
+        owed = season.rakeOwed();
         for (uint256 number = 1; number <= season.currentSeason(); ++number) {
             SeasonState memory state = stateOf(season, number);
             owed += state.closed ? state.playersPot - handler.claimedOf(number) : state.fees;
@@ -920,6 +885,28 @@ contract SeasonInvariantTest is Test {
     function invariant_ClaimsNeverExceedThePlayersPot() public view {
         for (uint256 number = 1; number <= season.lastClosedSeason(); ++number) {
             assertLe(handler.claimedOf(number), stateOf(season, number).playersPot);
+        }
+    }
+
+    /// README §8.4: no game earns more than its fee, so no player claims more than their run fees.
+    function invariant_NoPlayerClaimsMoreThanTheirFees() public view {
+        assertEq(handler.overpaidClaims(), 0);
+    }
+
+    /// The season's games and tickets are its players' sums. A closed season's never change.
+    function invariant_TheSeasonsSumsAreItsPlayersSums() public view {
+        address[] memory players = handler.playersOf();
+        for (uint256 number = season.lastClosedSeason() + 1; number <= season.currentSeason(); ++number) {
+            uint256 games;
+            uint256 tickets;
+            for (uint256 p; p < players.length; ++p) {
+                PlayerTally memory tally = tallyOf(season, number, players[p]);
+                games += tally.games;
+                tickets += tally.tickets;
+            }
+            SeasonState memory state = stateOf(season, number);
+            assertEq(state.games, games, "games");
+            assertEq(state.tickets, tickets, "tickets");
         }
     }
 }

@@ -15,22 +15,20 @@ export interface SeasonParamsInput {
   length: BigNumberish;
   grace: BigNumberish;
   commitSlack: BigNumberish;
-  minClears: BigNumberish;
 }
 
-export type SeasonParams = [string, bigint, string[], bigint[], bigint, bigint, bigint, bigint, bigint, bigint] & { referee: string; rulesVersion: bigint; levelIds: string[]; weightsBp: bigint[]; runFee: bigint; rakeBp: bigint; grace: bigint; commitSlack: bigint; minClears: bigint };
+export type SeasonParams = [string, bigint, string[], bigint[], bigint, bigint, bigint, bigint, bigint] & { referee: string; rulesVersion: bigint; levelIds: string[]; weightsBp: bigint[]; runFee: bigint; rakeBp: bigint; grace: bigint; commitSlack: bigint };
 
 export interface Season extends BaseContract {
+  GAMES_PER_RUN: BaseContractMethod<[], bigint, bigint>;
   MAX_COMMIT_SLACK: BaseContractMethod<[], bigint, bigint>;
   MAX_GRACE: BaseContractMethod<[], bigint, bigint>;
   MAX_LENGTH: BaseContractMethod<[], bigint, bigint>;
-  MAX_MIN_CLEARS: BaseContractMethod<[], bigint, bigint>;
   MAX_RAKE_BP: BaseContractMethod<[], bigint, bigint>;
-  bestRunOf: BaseContractMethod<[season: BigNumberish, player: AddressLike], [bigint, bigint, bigint, boolean] & { runId: bigint; score: bigint; ticks: bigint; qualified: boolean }, [bigint, bigint, bigint, boolean] & { runId: bigint; score: bigint; ticks: bigint; qualified: boolean }>;
+  addTickets: BaseContractMethod<[season: BigNumberish, player: AddressLike, runId: BigNumberish, tickets: BigNumberish], void, ContractTransactionResponse>;
   bindChallenge: BaseContractMethod<[challenge_: AddressLike], void, ContractTransactionResponse>;
   challenge: BaseContractMethod<[], string, string>;
   claim: BaseContractMethod<[season: BigNumberish], bigint, ContractTransactionResponse>;
-  claimed: BaseContractMethod<[season: BigNumberish, player: AddressLike], boolean, boolean>;
   closeSeason: BaseContractMethod<[], bigint, ContractTransactionResponse>;
   commitSlackOf: BaseContractMethod<[season: BigNumberish], bigint, bigint>;
   currentSeason: BaseContractMethod<[], bigint, bigint>;
@@ -40,26 +38,26 @@ export interface Season extends BaseContract {
   open: BaseContractMethod<[params: SeasonParamsInput], bigint, ContractTransactionResponse>;
   operator: BaseContractMethod<[], string, string>;
   paramsOf: BaseContractMethod<[season: BigNumberish], SeasonParams, SeasonParams>;
-  payFee: BaseContractMethod<[season: BigNumberish], void, ContractTransactionResponse>;
-  pendingRollover: BaseContractMethod<[], bigint, bigint>;
+  payFee: BaseContractMethod<[season: BigNumberish, player: AddressLike], void, ContractTransactionResponse>;
+  prizeOf: BaseContractMethod<[season: BigNumberish, player: AddressLike], bigint, bigint>;
   rakeOwed: BaseContractMethod<[], bigint, bigint>;
-  recordRun: BaseContractMethod<[season: BigNumberish, player: AddressLike, runId: BigNumberish, score: BigNumberish, ticks: BigNumberish, clears: BigNumberish], void, ContractTransactionResponse>;
   refereeOf: BaseContractMethod<[season: BigNumberish], [string, bigint] & { referee: string; rulesVersion: bigint }, [string, bigint] & { referee: string; rulesVersion: bigint }>;
-  seasons: BaseContractMethod<[season: BigNumberish], [bigint, boolean, string, bigint, bigint, bigint, bigint] & { start: bigint; closed: boolean; refereeCodehash: string; fees: bigint; playersPot: bigint; totalClaimed: bigint; totalQualifiedPoints: bigint }, [bigint, boolean, string, bigint, bigint, bigint, bigint] & { start: bigint; closed: boolean; refereeCodehash: string; fees: bigint; playersPot: bigint; totalClaimed: bigint; totalQualifiedPoints: bigint }>;
+  seasons: BaseContractMethod<[season: BigNumberish], [bigint, boolean, string, bigint, bigint, bigint, bigint, bigint] & { start: bigint; closed: boolean; refereeCodehash: string; fees: bigint; games: bigint; tickets: bigint; playersPot: bigint; totalClaimed: bigint }, [bigint, boolean, string, bigint, bigint, bigint, bigint, bigint] & { start: bigint; closed: boolean; refereeCodehash: string; fees: bigint; games: bigint; tickets: bigint; playersPot: bigint; totalClaimed: bigint }>;
   settlementEndOf: BaseContractMethod<[season: BigNumberish], bigint, bigint>;
   slotOf: BaseContractMethod<[season: BigNumberish, levelId: BytesLike], bigint, bigint>;
+  tallyOf: BaseContractMethod<[season: BigNumberish, player: AddressLike], [bigint, bigint, boolean] & { games: bigint; tickets: bigint; claimed: boolean }, [bigint, bigint, boolean] & { games: bigint; tickets: bigint; claimed: boolean }>;
   treasury: BaseContractMethod<[], string, string>;
   weightOf: BaseContractMethod<[season: BigNumberish, levelId: BytesLike], bigint, bigint>;
   withdrawRake: BaseContractMethod<[], bigint, ContractTransactionResponse>;
 }
 
 export interface SeasonEvents {
-  BestRunRecorded: { season: bigint; player: string; runId: bigint; score: bigint; ticks: bigint; qualified: boolean };
   ChallengeBound: { challenge: string };
   Claimed: { season: bigint; player: string; amount: bigint };
   RakeWithdrawn: { amount: bigint };
-  SeasonClosed: { season: bigint; rake: bigint; playersPot: bigint; rolledOver: boolean };
+  SeasonClosed: { season: bigint; rake: bigint; playersPot: bigint };
   SeasonOpened: { season: bigint; referee: string; refereeCodehash: string; start: bigint; end: bigint };
+  TicketsAdded: { season: bigint; player: string; runId: bigint; tickets: bigint };
 }
 
 export function connectSeason(address: string, runner: ContractRunner): Season {

@@ -12,7 +12,7 @@ import {Outcome} from "../src/interfaces/IReferee.sol";
 import {ZkReferee} from "../src/ZkReferee.sol";
 import {runOf} from "./Challenge.t.sol";
 import {stateOf} from "./Season.t.sol";
-import {SettlementFixture, settlementOf} from "./Settlement.t.sol";
+import {SettlementFixture, settlementOf, ticketOf} from "./Settlement.t.sol";
 import {ZkFixtures} from "./ZkVerify.t.sol";
 
 /// ZkReferee (plan M4.10) over RISC Zero's 3.1 Groth16 verifier, with the real proofs of
@@ -99,11 +99,26 @@ contract ZkRefereeTest is SettlementFixture, ZkFixtures {
 
     // Settlement through Challenge.
 
+    /// The run's tickets, from the Outcomes the proof commits and the levels' targets (README §8.4).
+    function provenTickets() private view returns (uint32 tickets) {
+        bytes[6] memory levels = runLevels();
+        Outcome[6] memory outcomes = zkReferee.verifyRun(levels, runJournals(), runWeights(), runProof());
+        for (uint256 i; i < 6; ++i) {
+            tickets += ticketOf(outcomes[i], levels[i]);
+        }
+    }
+
     function test_SettleRun_SettlesTheProvenRun() public {
         uint256 runId = committedRunOf(runJournals());
+        uint32 tickets = provenTickets();
         vm.expectEmit(address(challenge));
         emit Challenge.RunSettled(
-            runId, alice, uint32(nativeTotal("score")), uint32(nativeTotal("ticks")), uint8(nativeTotal("clears"))
+            runId,
+            alice,
+            uint32(nativeTotal("score")),
+            uint32(nativeTotal("ticks")),
+            uint8(nativeTotal("clears")),
+            tickets
         );
         challenge.settleRun(runId, runLevels(), runJournals(), runProof());
         assertEq(uint8(settlementOf(challenge, runId).status), uint8(SettlementStatus.Settled), "status");

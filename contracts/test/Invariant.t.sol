@@ -5,9 +5,9 @@ import {ArbBlockhashEntropy} from "../src/ArbBlockhashEntropy.sol";
 import {Challenge, Run, Settlement, SettlementStatus} from "../src/Challenge.sol";
 import {MockArbSys} from "../src/mocks/MockArbSys.sol";
 import {MockReferee} from "../src/mocks/MockReferee.sol";
-import {Season, BestRun} from "../src/Season.sol";
+import {Season, PlayerTally} from "../src/Season.sol";
 import {ChallengeFixture, ChallengeHandler, MAX_PLAY_SECONDS, runOf, sixJournalsOf} from "./Challenge.t.sol";
-import {bestRunOf, settlementEndOf, stateOf} from "./Season.t.sol";
+import {settlementEndOf, stateOf, tallyOf} from "./Season.t.sol";
 import {
     PlayedLevel,
     TICKS_PER_SECOND,
@@ -26,6 +26,8 @@ import {
 contract SettlementHandler is ChallengeHandler {
     address private immutable treasury;
     mapping(uint256 season => uint256) public claimedOf;
+    /// Claims that paid a player more than their run fees, which no claim may (README §8.4).
+    uint256 public overpaidClaims;
     uint256 public paidOut;
 
     constructor(
@@ -132,15 +134,15 @@ contract SettlementHandler is ChallengeHandler {
         season.closeSeason();
     }
 
-    /// Claims the first unclaimed share among the closed seasons and the players, from seeded ones.
+    /// Claims the first unclaimed prize among the closed seasons and the players, from seeded ones.
     function claim(uint256 playerSeed, uint256 seasonSeed) external {
         uint256 lastClosed = season.lastClosedSeason();
         for (uint256 s; s < lastClosed; ++s) {
             uint256 number = 1 + (seasonSeed % lastClosed + s) % lastClosed;
-            if (stateOf(season, number).totalQualifiedPoints == 0) continue;
             for (uint256 p; p < players.length; ++p) {
                 address player = players[(playerSeed % players.length + p) % players.length];
-                if (bestRunOf(season, number, player).qualified && !season.claimed(number, player)) {
+                PlayerTally memory tally = tallyOf(season, number, player);
+                if (tally.games != 0 && !tally.claimed) {
                     claimAs(player, number);
                     return;
                 }
@@ -154,6 +156,7 @@ contract SettlementHandler is ChallengeHandler {
         season.claim(number);
         uint256 paid = player.balance - balanceBefore;
         claimedOf[number] += paid;
+        if (paid > tallyOf(season, number, player).games / 6 * season.paramsOf(number).runFee) ++overpaidClaims;
         paidOut += paid;
     }
 
@@ -197,28 +200,52 @@ contract InvariantTest is ChallengeFixture {
         assertEq(address(challenge).balance, 0);
     }
 
-    /// Season ranks only on-time settled runs, with the score and ticks Challenge settled them with.
-    function invariant_BestRunsAreOnTimeSettledRunsOfTheirPlayer() public view {
+    /// README §8.4: each player's games are 6 per run they bought in the season, and their
+    /// tickets the sum of their on-time settled runs' tickets; a late run adds none. A closed
+    /// season's never change.
+    function invariant_TalliesCountRunsBoughtAndOnTimeTickets() public view {
         address[] memory players = handler.playersOf();
-        for (uint256 number = 1; number <= season.currentSeason(); ++number) {
+        for (uint256 number = season.lastClosedSeason() + 1; number <= season.currentSeason(); ++number) {
+            (uint256[] memory games, uint256[] memory tickets) = runSumsOf(number, players);
             for (uint256 p; p < players.length; ++p) {
-                BestRun memory best = bestRunOf(season, number, players[p]);
-                if (best.runId == 0) continue;
-                Run memory run = runOf(challenge, best.runId);
-                Settlement memory settlement = settlementOf(challenge, best.runId);
-                assertEq(uint8(settlement.status), uint8(SettlementStatus.Settled), "settled");
-                assertLe(
-                    run.committedAt,
-                    run.revealedAt + (settlement.ticks + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND
-                        + season.commitSlackOf(number),
-                    "on time"
-                );
-                assertEq(run.player, players[p], "player");
-                assertEq(run.season, number, "season");
-                assertEq(best.score, settlement.score, "score");
-                assertEq(best.ticks, settlement.ticks, "ticks");
-                assertEq(best.qualified, settlement.clears >= season.paramsOf(number).minClears, "qualified");
+                PlayerTally memory tally = tallyOf(season, number, players[p]);
+                assertEq(tally.games, games[p], "games");
+                assertEq(tally.tickets, tickets[p], "tickets");
             }
         }
+    }
+
+    /// README §8.4: no game earns more than its fee, so no player claims more than their run fees.
+    function invariant_NoPlayerClaimsMoreThanTheirFees() public view {
+        assertEq(handler.overpaidClaims(), 0);
+    }
+
+    /// Each player's games of their runs in season `number`, and tickets of those settled on time.
+    function runSumsOf(uint256 number, address[] memory players)
+        private
+        view
+        returns (uint256[] memory games, uint256[] memory tickets)
+    {
+        games = new uint256[](players.length);
+        tickets = new uint256[](players.length);
+        uint256 commitSlack = season.commitSlackOf(number);
+        for (uint256 runId = 1; runId <= challenge.runCount(); ++runId) {
+            Run memory run = runOf(challenge, runId);
+            if (run.season != number) continue;
+            uint256 p = indexOf(players, run.player);
+            games[p] += 6;
+            Settlement memory settlement = settlementOf(challenge, runId);
+            if (settlement.status != SettlementStatus.Settled) continue;
+            assertLe(
+                run.committedAt,
+                run.revealedAt + (settlement.ticks + TICKS_PER_SECOND - 1) / TICKS_PER_SECOND + commitSlack,
+                "on time"
+            );
+            tickets[p] += settlement.tickets;
+        }
+    }
+
+    function indexOf(address[] memory players, address player) private pure returns (uint256 p) {
+        while (players[p] != player) ++p;
     }
 }
