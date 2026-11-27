@@ -1,8 +1,8 @@
 # Jiro-ikusu implementation plan
 
-**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. M4, the referees and the contracts, closed with M4.14 on 2026-11-09: a run settled end to end on Arbitrum Sepolia. On 2026-11-10 the owner made the browser the game's platform, with a phone version later (README §13 D1). On 2026-11-11 the owner scheduled M3, that phone version, as the same web client made touch-first (README §13 D16); its first item is M3.11.** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
+**Status: adopted on 2026-10-27. On 2026-10-28 the owner answered every open decision (README §13), and on 2026-10-29 D14, which M0.7's review raised. M0's rules freeze closed with M0.7: M0.1-M0.7 have all merged. M2, the browser, closed with M2.10 on 2026-10-31, and M1, the core, with M1.13 on 2026-11-02. M4, the referees and the contracts, closed with M4.14 on 2026-11-09: a run settled end to end on Arbitrum Sepolia. On 2026-11-10 the owner made the browser the game's platform, with a phone version later (README §13 D1). On 2026-11-11 the owner scheduled M3, that phone version, as the same web client made touch-first (README §13 D16); its first item is M3.11. On 2026-11-27 the owner put the phone version's remaining items (M3.14-M3.23) aside to reach testnet-1 faster, and chose the v1 payout for it (M5.14-M5.17).** This file is `IMPLEMENTATION_PLAN.md`, at the repository root. The PR that adds it also lists it in the README's "Repository files" and links it from README §9. It covers README §9 milestones M0 to M5. M6 (Superchallenge) is deferred ([`TODO.md`](TODO.md)).
 
-[`README.md`](README.md) is the normative specification, and this plan turns it into 74 work items. Six are conditional (M1.14, M1.15, M3.21, M3.22, M4.10, M4.15) and three are optional (M3.20, M3.23, M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
+[`README.md`](README.md) is the normative specification, and this plan turns it into 81 work items. Six are conditional (M1.14, M1.15, M3.21, M3.22, M4.10, M4.15) and three are optional (M3.20, M3.23, M4.13). A coding agent completes and checks each item as one pull request in the cloud container, and the user reviews and merges it. If this plan and the README disagree, the README wins. An item that needs a README change makes that change in its own PR and says so in the PR body.
 
 The order:
 
@@ -1449,7 +1449,7 @@ Each milestone's README §9 "done when" closes when these items merge:
 
 ## 8. M3 Phone version
 
-Scheduled by the owner on 2026-11-11 (README §13 D16). [`docs/PHONE.md`](docs/PHONE.md) is its specification: the web client, touch-first, installable for Training, with Challenge in wallet browsers. Its [§12.1](docs/PHONE.md#121-the-owners-decisions) records the owner's answers of 2026-11-11 to its decisions; OD2, the hidden-page policy, stays open until M3.16 (P21).
+Scheduled by the owner on 2026-11-11 (README §13 D16). **Put aside on 2026-11-27:** the owner paused M3.14-M3.23 to reach testnet-1 faster; M3.11-M3.13 have merged, and the items below wait until the owner resumes them. [`docs/PHONE.md`](docs/PHONE.md) is its specification: the web client, touch-first, installable for Training, with Challenge in wallet browsers. Its [§12.1](docs/PHONE.md#121-the-owners-decisions) records the owner's answers of 2026-11-11 to its decisions; OD2, the hidden-page policy, stays open until M3.16 (P21).
 
 The items below are part of this plan: they are in the item count, §4, §11-§14 and §16. Ids start at M3.11: M3.1-M3.10 were the handheld items removed on 2026-11-10, and ids are never reused (§1.1). The phases are in [`docs/PHONE.md` §1.2](docs/PHONE.md#12-what-comes-first-and-what-comes-after), the dependency graph and the owner rounds in its [§11](docs/PHONE.md#11-work-breakdown) and in §12 and §13 here, and A1-A15 below are its acceptance criteria ([§10](docs/PHONE.md#10-acceptance-criteria)).
 
@@ -2130,14 +2130,18 @@ Commands below use Foundry. If M0.2 chose ethblockdigger's harness (P2), M0.2's 
 | M5.2 | Challenge run flow in the browser | M5.1 | L | none |
 | M5.3 | Settlement, season pages, replay of committed runs | M2.3, M4.9, M5.2 | L | none |
 | M5.5 | Season settlement, testnet-1 parameters and runbook | M5.3, M5.8 | M | Choose the proving route; approve the parameters, the schedule and the prover's secret |
-| M5.6 | Testnet season 1 | M5.3, M5.5, M5.9, M5.12 | M | Testers, play, approvals |
+| M5.6 | Testnet season 1 | M5.3, M5.5, M5.9, M5.17 | M | Testers, play, approvals |
 | M5.7 | Challenge page wiring | M5.2 | M | none |
 | M5.8 | Season operations: status, close, withdraw and claim; testnet-0 close | M4.14 | M | none |
 | M5.9 | GPU proving on a rented card | M5.5, M5.10 | M | Rent the GPU and run the measurement on it |
 | M5.10 | RISC Zero 3.1.0: the patched verifier, generation 2 on Arbitrum Sepolia | M4.14, M5.8 | M | Approve deploying generation 2 (round F4) |
 | M5.11 | Proving-cycle cap: design | M5.9 | S | Approve the cap's mechanism and value by merging (round F5) |
-| M5.12 | Rules version 3: the cycle cap and the fast cut always on; generation 3 | M5.11 | L | Approve deploying generation 3 (round F6) |
+| M5.12 | Rules version 3: the cycle cap and the fast cut always on | M5.11 | L | none |
 | M5.13 | Settlement cost: hashes-only settlement, proof aggregation and a prover bounty; design | M5.6 | M | Approve the design by merging (round G4) |
+| M5.14 | The v1 payout: README and docs | M5.9 | M | none |
+| M5.15 | The v1 payout in the contracts: capped tickets and the bot-neutral pot | M5.14 | L | none |
+| M5.16 | Paid levels and testnet-1's v1 season file | M5.12, M5.14 | M | none |
+| M5.17 | Generation 3 on Arbitrum Sepolia | M5.12, M5.15, M5.16 | M | Approve deploying generation 3 (round F6) |
 
 Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4.11) with MockReferee, `e2e.yml` on nitro-devnode with the real referee, or Arbitrum Sepolia.
 
@@ -2262,12 +2266,12 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 #### M5.6 Testnet season 1
 
 - **Goal:** README §9's M5 done-when: a full season closes and pays out on testnet.
-- **Checkpoints,** each a commit on the draft PR: open; mid-season status; the best runs settled, after the end; close after end plus grace; claims and the report. `send_later` reminders are set for mid-season and for end plus grace.
+- **Checkpoints,** each a commit on the draft PR: open; mid-season status; the scoring runs settled, after the end; close after end plus grace; claims and the report. `send_later` reminders are set for mid-season and for end plus grace.
 - **Deliverables:**
   - testnet season 1, opened on Arbitrum Sepolia with `seasons/testnet-1.json`;
   - testers playing in the browser, and bots playing from the tester key;
-  - best runs settled: by players with Stylus; with zk, by the operator's `web/scripts/settle.mjs` from chain data, at mid-season and after the end, proven on a rented GPU that M5.9 measured (round G2, M5.5), or by players who prove their own;
-  - after the end plus the grace period, any address closes the season, qualified players claim, and `season.mjs withdraw` sends the rake to the treasury;
+  - every scoring run settled (the v1 payout, M5.15): by players with Stylus; with zk, by the operator's `web/scripts/settle.mjs` from chain data, at mid-season and after the end, proven on a rented GPU that M5.9 measured (round G2, M5.5), or by players who prove their own; on testnet-1 the operator settles every scoring run whatever it costs (owner, 2026-11-27);
+  - after the end plus the grace period, any address closes the season, players claim their games' prizes, and `season.mjs withdraw` sends the rake to the treasury;
   - `docs/TESTNET-1-REPORT.md`:
     - runs, settled runs, and gas and verification cost per settled run;
     - deadline margins and misses, interrupted levels included;
@@ -2275,12 +2279,13 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
     - payouts, the rake sent to the treasury, and `isSolvent` after every claim;
     - suspicious patterns found in the published journals;
     - how players use the commit (X): from the published journals, the share of levels each person and each bot ended with X, which informs whether X stays (`TODO.md`, owner, 2026-11-27);
+    - per paid level, the share of people's games that ran out of lives and the people's average ticket, from replaying every committed journal, which the owner uses to replace a level at the next open (owner, 2026-11-27: between seasons, decided by a person, replace, never remove, at most one new level a season) and to tune the paid levels toward an average ticket of 0.80 to 0.85;
     - a summary of the tester feedback.
   - `deployments/arbitrum-sepolia.json`, with a new generation appended if anything was redeployed.
 - **Done when:**
   - the season closed through a permissionless `closeSeason` transaction;
   - at least one player claimed a pro-rata payout, and `isSolvent` held after every claim;
-  - each claim paid exactly bestScore × playersPot / totalQualifiedPoints, rounded down, and playersPot − Σ shares, claimed or not, is less than the number of qualified players, in wei (rounding dust);
+  - each claim paid exactly the bot-neutral pot's prizes of the player's settled games (README §8.4, M5.14), rounded down; no game was paid more than its fee; and the pot minus Σ prizes, claimed or not, is less than the number of claimants, in wei (rounding dust);
   - (user) at least one settled run was played by a person in the browser, not by a bot: the user names its run id.
 
   This closes README §9's M5, so this PR updates the status lines.
@@ -2407,24 +2412,22 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Verify with:** `zk-host execute` on the worst-case inputs, with their cycle counts in the PR.
 - **Skills:** `deterministic-core`, `parity-testing`. **README:** §4, §5, §8.4. **Needs user:** approve the mechanism and the value by merging (round F5).
 
-#### M5.12 Rules version 3: the cycle cap and the fast cut always on; generation 3
+#### M5.12 Rules version 3: the cycle cap and the fast cut always on
 
 - **Goal:** testnet-1 opens on rules version 3: M5.11's cycle cap, and the fast cut always on while cutting.
-- **Why:** filed on 2026-11-27. The owner chose the fast cut always on, keeping the commit (X) for now, in one rules version with the cap (owner, 2026-11-27: "fast cut always on, keep X, bundle with the cap"). This supersedes the 2026-11-10 deferral of the slow-cut question to testnet-1's data (`TODO.md`). Generation 2's `ZkReferee` pins rules version 2 and its image id, so rules version 3 needs generation 3.
+- **Why:** filed on 2026-11-27. The owner chose the fast cut always on, keeping the commit (X) for now, in one rules version with the cap (owner, 2026-11-27: "fast cut always on, keep X, bundle with the cap"). This supersedes the 2026-11-10 deferral of the slow-cut question to testnet-1's data (`TODO.md`). Generation 2's `ZkReferee` pins rules version 2 and its image id, so rules version 3 needs generation 3, which M5.17 deploys with the v1 payout's contracts.
 - **Deliverables:**
   - the core: while cutting, the player always takes two sub-steps, as with A held today ([README §4.5](README.md#45-player)); B still wins; the A bit of [README §6.1](README.md#61-input-mask)'s input mask either becomes reserved and rejected, as bit 7 is (§6.3), or is ignored: the PR chooses, and bumps the journal format's version if the byte format changes; M5.11's cap; `RULES_VERSION` 3;
   - README §2 (the controls table: A removed), §4.5, §6.1 and §6.3, §13 D8, and the text M5.11 approved;
   - `vectors/` regenerated, with the moved outcomes explained; the playtest bots without A; the playtest, its report and `levels/README.md`; `calibration-1.json` regenerated in place, since no season that references it has opened; `seasons/testnet-1.json` at rules version 3;
   - the web client: no A binding, the touch controls without it, `docs/PHONE.md`; Training's bests restart, being kept per rules version;
   - the zk guest rebuilt: a new image id, the fixtures of `contracts/test/fixtures/zk-proofs.json` proven again, as M5.10 did;
-  - generation 3 on Arbitrum Sepolia, as M5.10 deployed generation 2, after round F6; it opens no season.
 - **Done when:**
   - `cargo test` and the parity checks pass on rules version 3, and `vectors/` replays on the core, the wasm build and the zk guest;
   - `playtest --check levels/targets.json` passes, or the PR presents the moved clear rates for the owner's decision;
-  - `ci.yml` and `zk-prove.yml`'s pull-request run are green on the PR's final head;
-  - generation 3 is the newest generation of `deployments/arbitrum-sepolia.json`, its `ZkReferee` reads `rulesVersion()` 3 and the build's image id, its sources are verified on Sourcify, and `preflight.mjs --check-solvent` reads `ready: yes`.
+  - `ci.yml` and `zk-prove.yml`'s pull-request run are green on the PR's final head.
 - **Verify with:** M5.10's commands, plus `jiro-tools playtest --check levels/targets.json` and `calibrate --check`.
-- **Skills:** `deterministic-core`, `journal-codec`, `parity-testing`, `onchain-referee`. **README:** §2, §4, §6.1, §6.3, §13 D8. **Needs user:** approve deploying generation 3 (round F6). The item may split the deployment into its own item if it outgrows L (§1).
+- **Skills:** `deterministic-core`, `journal-codec`, `parity-testing`, `onchain-referee`. **README:** §2, §4, §6.1, §6.3, §13 D8. **Needs user:** none; the moved clear rates, if `playtest --check` fails.
 
 #### M5.13 Settlement cost: hashes-only settlement, proof aggregation and a prover bounty; design
 
@@ -2437,13 +2440,66 @@ Each verify line says which chain it uses: the local chain of `localnet.mjs` (M4
 - **Deliverables:** a decision PR; any prototype stays on an unmerged branch:
   - **hashes-only zk settlement:** the entry point, its interface beside the Stylus referee's, which needs the bytes, and the gas before and after on the committed fixtures;
   - **the aggregated batch:** the set verifier and its emergency stop, the batch step on the GPU and its time, and the gas per batch and per run;
-  - **the prover fee:** who funds it (the rake, the pot, the player or a sponsor), its amount, which runs earn it (only each player's best run at close, so that provers cannot farm fees on runs a later best replaces), when it is paid, whether the payee is bound into the proven claim (a guest change, so a new image id) against copied submissions, the operator as the prover of last resort, and the grace third-party provers need;
+  - **the prover fee:** who funds it (the rake, the pot, the player or a sponsor), its amount, which runs earn it (every scoring run of the v1 payout, M5.15, once settled, each at most once), the operator's cap of 80 % of each run's rake (owner, 2026-11-27) and the player's bounty above it, when it is paid, whether the payee is bound into the proven claim (a guest change, so a new image id) against copied submissions, the operator as the prover of last resort, and the grace third-party provers need;
   - **the x402 proof endpoint:** its request (a committed run's id, so that every job was paid for by a run fee), how a proof of 35 s to several minutes is delivered when x402 defines no asynchronous job and its facilitator calls time out after 90 s by default (payment on fetch once the proof is ready, or upfront for a job id), the token and price, the facilitator on Arbitrum (x402.org's public one serves only Base Sepolia among EVM testnets; self-facilitation is documented), and how `settle.mjs` buys proofs through it;
   - **optionally,** delta-encoded journal ticks, a journal format v2, to cut `commitRun`'s calldata, with its saving;
   - the README §7 and §8 text, the contract changes and the new generation it implies, and the follow-up implementation items.
 - **Done when:** the PR presents the gas per settled run before and after, measured with `forge test --gas-report`, the fee's rules and economics, the x402 endpoint's flow, and the README text, and the owner merges it.
 - **Verify with:** `forge test --gas-report` on the prototype branch; `zk-host` for the batch step.
 - **Skills:** `onchain-referee`, `security`, `gas`, `concepts`. **README:** §7.2, §7.3, §7.5, §8. **Needs user:** approve the design by merging (round G4).
+
+#### M5.14 The v1 payout: README and docs
+
+- **Goal:** the README states the v1 payout that testnet-1 plays under, as the owner chose it on 2026-11-27.
+- **Why:** filed on 2026-11-27. The owner followed the nine recommendations of the reward and anti-bot research of 2026-11-25 (owner, 2026-11-27: "Let's follow all your recommendations for the 9 items"), and chose to ship them in generation 3, before testnet-1:
+  1. **Payout:** one season pot; every paid game earns its ticket, w = min(claim, target) / target, or 0 when the lives ran out; the pot is shared by the bot-neutral pot at close: prize per game = f × [(1 − r) + s × (w − w̄)], with s = min((1 − r) / w̄, r / (1 − w̄)), where f is the fee per game, r the rake and w̄ the season's average ticket. No game earns more than its fee. This replaces D10's best run per player, pro rata by score, and its qualification (`minClears`);
+  2. **paid levels:** copies of the 16 levels with 3 more lives and a target of 5,000 bp, tuned toward a measured people's average ticket of 0.80 to 0.85; the 16 levels stay as they are for Training and records;
+  3. **weights:** equal;
+  4. **rake:** 20 % (`rakeBp` 2,000, the README's maximum);
+  5. **fee:** in ETH, about 0.05 USD a game, 0.30 USD a run, set at each open;
+  6. **proof costs:** the operator spends at most 80 % of each run's rake on proving and settling it, retries and fees included; a costlier run is proven when someone posts a bounty (M5.13). On testnet-1 the operator settles every scoring run whatever it costs;
+  7. **retiring levels:** between seasons, decided by a person from replays; a level is replaced, never removed, and at most one new level comes each season;
+  8. **house bot:** only in unpaid seasons, from a published address;
+  9. **no gas refund** from the pot in v1.
+- **Deliverables:** README §7.3, §7.4, §8.2 and §8.4, §13 D10 and the decision rows above, with the formula, worked examples and the reasons (the bot edge ρ, the house condition); `docs/ECONOMY.md`: the threat table (Sybil wallets, paid re-rolls, proof-cost drain, steering level statistics) and the derived numbers at ETH 1,700 USD and 0.02 gwei; `docs/SEASON_RUNBOOK.md`: settling every scoring run, the cost cap, and the review of levels between seasons.
+- **Done when:** the README, `docs/ECONOMY.md` and `docs/SEASON_RUNBOOK.md` state the nine decisions, `scripts/check-rule-tags.sh` and `scripts/check-drift.sh` pass, and the PR lists every README edit with its reason.
+- **Verify with:** `bash scripts/check-rule-tags.sh`; `bash scripts/check-drift.sh .`
+- **Skills:** `onchain-referee`, `concepts`. **README:** §7.3, §7.4, §8.2, §8.4, §13. **Needs user:** none: the owner's decisions of 2026-11-27.
+
+#### M5.15 The v1 payout in the contracts: capped tickets and the bot-neutral pot
+
+- **Goal:** `Season` and `Challenge` pay M5.14's v1 payout, so that generation 3 runs it.
+- **Why:** filed on 2026-11-27, from M5.14's decisions 1 and 6.
+- **Deliverables:**
+  - `Challenge`: each settled level's ticket from its Outcome, capped, 0 when the lives ran out; every settled run adds its games' tickets to its player and to the season;
+  - `Season`: per-player tickets and games, the close math of the bot-neutral pot in integers, claims of each player's prizes, no rollover into the pot, the rake at close, `isSolvent` kept; D10's best-run ranking and `minClears` removed;
+  - Foundry tests: Σ claims ≤ pot, no game paid more than its fee, the worked examples of M5.14, rounding dust below the number of claimants, and fuzzing over tickets and games; `contracts/abi/` regenerated; `docs/ECONOMY.md`'s threat rows tied to their tests;
+  - `web/`: the season pages and claims show tickets and prizes; `web/scripts/settle.mjs` settles every scoring run, cheapest first, not each player's best; `scripts/contracts/` (`season.mjs`, `e2e.mjs`, `localnet.mjs`) follow.
+- **Done when:** `forge test` passes with the new tests; `node --test scripts/contracts/` and the web tests pass; `localnet.mjs --check` and `e2e.mjs --network local` settle, close and claim under the v1 payout.
+- **Verify with:** `cd contracts && forge test`; `node --test scripts/contracts/*.test.mjs`; `node scripts/contracts/e2e.mjs --network local`.
+- **Skills:** `onchain-referee`, `security`, `testing`. **README:** §8.4. **Needs user:** none.
+
+#### M5.16 Paid levels and testnet-1's v1 season file
+
+- **Goal:** the paid level set and the season file testnet-1 opens with.
+- **Why:** filed on 2026-11-27, from M5.14's decisions 2 to 5, measured on rules version 3 (M5.12), since the fast cut always on changes play.
+- **Deliverables:**
+  - 16 paid copies of the levels, each with 3 more lives and a target of 5,000 bp, built by the level tool, valid, with their ids, in `levels/` beside the 16 levels and in `levels/README.md`;
+  - the playtest on the paid set: the bot edge ρ for the reference mix and with 20 % and 40 % novices, the clear rates, the ticks per run and the proving cycles per run, in `reports/`;
+  - `seasons/testnet-1.json`: the paid level ids, equal weights, `rakeBp` 2,000, a fee of about 0.30 USD a run in ETH at the open's price, rules version 3, and no `minClears`;
+  - the web client: Challenge plays the paid copies, and Training keeps the 16 levels.
+- **Done when:** the level tool validates the 16 paid copies, the playtest report shows ρ for the three populations, and `season.mjs open`'s checks pass on the season file against a local chain.
+- **Verify with:** `jiro-tools level validate levels/paid/*.bin` (or the set's path); `jiro-tools playtest`; `node scripts/contracts/localnet.mjs --check`.
+- **Skills:** `deterministic-core`, `parity-testing`. **README:** §5, §8.4. **Needs user:** none.
+
+#### M5.17 Generation 3 on Arbitrum Sepolia
+
+- **Goal:** generation 3 on Arbitrum Sepolia: the rules version 3 `ZkReferee` and the v1 payout's `Season` and `Challenge`, the generation testnet-1 opens on.
+- **Why:** filed on 2026-11-27, split out of M5.12 when the v1 payout joined generation 3.
+- **Deliverables:** `docs/DEPLOYMENT.md` §2's preflight, fork rehearsal, deployment, Sourcify verification and solvency check, as M5.10 deployed generation 2, after round F6; the record in `deployments/arbitrum-sepolia.json` and a `docs/DEPLOYMENT.md` section; it opens no season: M5.6 opens testnet-1.
+- **Done when:** generation 3 is the newest generation of `deployments/arbitrum-sepolia.json`, earlier generations unchanged; its `ZkReferee` reads `rulesVersion()` 3, the build's image id and the 3.1 stop; its four sources are verified on Sourcify; `preflight.mjs --check-solvent` reads `ready: yes`; and `season.mjs status --network arbitrum-sepolia` passes.
+- **Verify with:** M5.10's commands.
+- **Skills:** `onchain-referee`, `security`, `ship`. **README:** none. **Needs user:** approve deploying generation 3 (round F6).
 
 ## 11. Decision schedule
 
@@ -2461,7 +2517,7 @@ Each decision, or each part of one, is closed by the owner or by exactly one ite
 | D7 | Minion patrol rule; stranded minions | Approach agreed by the owner, 2026-10-28; measured in M1.7; final in M1.7, or in M1.14 (and M1.15 if the rule changes) | M1.9, M1.10, M2.6 | The right-hand rule with the orientation step, if the coverage test finds 0 traps on 100,000 boards; otherwise a replacement specified in M1.14 and approved before it is built, or a bounded trap rate the user accepts, written into README §4.7. Stranded minions are destroyed, and respawn when their countdown of R, which counts the tick of destruction, reaches zero: at tick t + R − 1 ([README §4.7](README.md#47-minions), PIN-17). |
 | D8 | Key mapping | Owner, 2026-10-28; pinned in M0.5 | M1.1, M2.1 | Decided: Key0-3 = A, B, X, Y; Y and the joystick press unused and not journaled; keys configurable in the browser (M2.1) |
 | D9 | Boss size | Owner, 2026-10-28; pinned in M0.5 and M0.6 | M1.3, M1.5 | Decided: a square B × B body, B per level, B = 2 to 8, default 5 |
-| D10 | Ranking and payout | Owner, 2026-10-28; qualification and contract details in M0.7 | M4.5 | Decided: best settled run per player per season; pro-rata payout among qualified players. M0.7: ties go to fewer ticks, and a qualifying run clears at least `minClears` levels, a season parameter defaulting to 1, and ranks above any run that doesn't (README §8.4). |
+| D10 | Ranking and payout | Owner, 2026-10-28; qualification and contract details in M0.7 | M4.5 | Decided: best settled run per player per season; pro-rata payout among qualified players. M0.7: ties go to fewer ticks, and a qualifying run clears at least `minClears` levels, a season parameter defaulting to 1, and ranks above any run that doesn't (README §8.4). Replaced on 2026-11-27 by the v1 payout (owner): one season pot of capped tickets, shared by the bot-neutral pot (M5.14, M5.15). |
 | D11 | Superchallenge design | Deferred | none | Stays in [`TODO.md`](TODO.md) |
 | D12 | Chain, currency, season length | Owner, 2026-10-28; pinned in M0.7 | M4.3, M4.5, M4.6 | Decided: native ETH; Arbitrum Sepolia for M4 and M5, Arbitrum One later, reusing ethblockdigger's contracts; a 0.00005 ETH Challenge run; 14-day seasons on testnet (`testnet-0` aside), likely on mainnet too. |
 | D13 | Names | Owner, 2026-10-28; crate and contract names in M0.5 | M0.4 (crates), M4.1 (contracts) | Decided: Jiro-ikusu ([`name.md`](name.md)); the crates and contracts listed in README §13 D13, approved by merging M0.5 |
@@ -2637,7 +2693,7 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
   - Then switch CI to the public profile (§1.3, P14): an agent's follow-up PR changes the workflows' triggers (`docs/TOOLING.md`), and you merge it.
 - [x] **F4, critical** (M5.10 ready: its fixtures, fork rehearsal and preflight done): approve deploying generation 2 on Arbitrum Sepolia from M5.10's PR head: `ZkReferee` over RISC Zero's 3.1 emergency stop `0xA1DCB16cb765b3CA71605339F0C37Bfe0F60bA29`, image id `0xc9634ada…15a8`, rules version 2, the deployer as operator and treasury as in generation 1. An agent session with `DEPLOYER_KEY` deploys it and records it in the PR; then merge M5.10. Once M5.10's done-when lines are ticked, M5.9's 3.1.0 GPU session can start (G2b).
 - [ ] **F5, critical** (M5.11 ready): approve the proving-cycle cap's mechanism and value, and testnet-1's grace, by merging M5.11.
-- [ ] **F6, critical** (M5.12 ready: its vectors, playtest and fixtures done): approve deploying generation 3 on Arbitrum Sepolia from M5.12's PR head, at rules version 3, as generation 2 was deployed.
+- [ ] **F6, critical** (M5.17 ready: M5.12, M5.15 and M5.16 merged, the fork rehearsal and preflight done): approve deploying generation 3 on Arbitrum Sepolia from M5.17's PR head, at rules version 3 with the v1 payout, as generation 2 was deployed.
 
 ### Round G: testnet season
 
@@ -2656,6 +2712,8 @@ To answer a (user) line, comment on the PR (text, or JSON in a code block) or up
 - [ ] **G4** (M5.13 ready, after testnet-1): approve the settlement-cost design, hashes-only settlement, aggregation, the prover fee and the x402 proof endpoint, by merging M5.13.
 
 ### Round H: phone version
+
+Put aside with M3.14-M3.23 on 2026-11-27 (owner), until the phone version resumes.
 
 Device steps run on the PR's HTTPS preview, on your own phones: rows 1 and 3 of [`docs/PHONE.md` §9.5](docs/PHONE.md#95-devices) at least.
 
