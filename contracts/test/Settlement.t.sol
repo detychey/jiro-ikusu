@@ -746,8 +746,8 @@ contract SettlementTest is SettlementFixture {
     function test_SettleRun_RecordsTheTicketsOfTheVectorsResults() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRun();
         settleRun(runId, played);
-        // Cleared twice, out of lives, cleared, 2,749 of 7,500 bp at the time limit, cleared.
-        assertEq(settlementOf(challenge, runId).tickets, 10_000 + 10_000 + 0 + 10_000 + 3_665 + 10_000);
+        // Cleared four times, 2,749 of 7,500 bp at the time limit, cleared.
+        assertEq(settlementOf(challenge, runId).tickets, 10_000 + 10_000 + 10_000 + 10_000 + 3_665 + 10_000);
     }
 
     function test_SettleRun_AGameAboveItsTargetEarnsAFullTicket() public {

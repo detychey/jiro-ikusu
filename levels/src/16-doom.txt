@@ -1,8 +1,8 @@
 boss_size=8
-boss_spawn=6,4,20,10
+boss_spawn=1,2,2,30
 boss_period=1
 second_boss_size=6
-second_boss_spawn=34,6,48,12
+second_boss_spawn=10,2,13,30
 second_boss_period=2
 minion_period=1
 respawn_delay=45

@@ -2,23 +2,23 @@
   "levels": [
     {
       "index": 10,
-      "levelId": "0x45e8a6bb2549fb218e00cab36535f7438a04a83a2616fcecf294a7185ae16f6c",
+      "levelId": "0xf18311cb0098dce7a14e6453442b77bdb252cb5a27890c20f104bc5a7294606c",
       "mix": null,
       "name": "maze",
       "policies": {
         "splitter": {
-          "areaClearRatePerMille": 235,
-          "clearRatePerMille": 477,
+          "areaClearRatePerMille": 210,
+          "clearRatePerMille": 502,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 523,
+          "deathRatePerMille": 498,
           "effectiveClaimQuartilesBp": [
             0,
-            0,
+            7000,
             7000
           ],
-          "medianTicksUsed": 351,
+          "medianTicksUsed": 312,
           "runs": 1000,
-          "separationClearRatePerMille": 242,
+          "separationClearRatePerMille": 292,
           "timeLimitRatePerMille": 0,
           "workBudgetRatePerMille": 0
         }
@@ -26,23 +26,23 @@
     },
     {
       "index": 13,
-      "levelId": "0x722a8f08ce2ae9023eed65c63f3c041e2f40c2a651410b1afbf10f07de0931dc",
+      "levelId": "0x1cdf9df33c418c865bf95a3062bee136d54e71b2c24be76e3e18ad977e1fcbf8",
       "mix": null,
       "name": "trio",
       "policies": {
         "splitter": {
-          "areaClearRatePerMille": 174,
-          "clearRatePerMille": 390,
+          "areaClearRatePerMille": 169,
+          "clearRatePerMille": 394,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 610,
+          "deathRatePerMille": 606,
           "effectiveClaimQuartilesBp": [
             0,
             0,
             7000
           ],
-          "medianTicksUsed": 314,
+          "medianTicksUsed": 331,
           "runs": 1000,
-          "separationClearRatePerMille": 216,
+          "separationClearRatePerMille": 225,
           "timeLimitRatePerMille": 0,
           "workBudgetRatePerMille": 0
         }
@@ -50,23 +50,23 @@
     },
     {
       "index": 15,
-      "levelId": "0x26b27ec8b90462bb59c5572fa47d15eb219c8a270c98453279e10516df194feb",
+      "levelId": "0x09bf926c5866eb286846353b5df708c2a0264a30ad8e0967d061cd636ed2bd78",
       "mix": null,
       "name": "swarm",
       "policies": {
         "splitter": {
-          "areaClearRatePerMille": 139,
-          "clearRatePerMille": 279,
+          "areaClearRatePerMille": 116,
+          "clearRatePerMille": 296,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 721,
+          "deathRatePerMille": 704,
           "effectiveClaimQuartilesBp": [
             0,
             0,
             7000
           ],
-          "medianTicksUsed": 341,
+          "medianTicksUsed": 307,
           "runs": 1000,
-          "separationClearRatePerMille": 140,
+          "separationClearRatePerMille": 180,
           "timeLimitRatePerMille": 0,
           "workBudgetRatePerMille": 0
         }
@@ -74,30 +74,30 @@
     },
     {
       "index": 16,
-      "levelId": "0xa05cf301bc7b75d21bdaf467c3ccb501a988f1ca00cf7d9810cb6ce5f35cf1aa",
+      "levelId": "0xa74c099a667c586452a9369984c507cdbc9c67e5c854ef8c58e9798e697cbb54",
       "mix": null,
       "name": "doom",
       "policies": {
         "splitter": {
-          "areaClearRatePerMille": 97,
-          "clearRatePerMille": 230,
+          "areaClearRatePerMille": 102,
+          "clearRatePerMille": 255,
           "commitRatePerMille": 0,
-          "deathRatePerMille": 770,
+          "deathRatePerMille": 745,
           "effectiveClaimQuartilesBp": [
             0,
             0,
-            0
+            7000
           ],
-          "medianTicksUsed": 326,
+          "medianTicksUsed": 302,
           "runs": 1000,
-          "separationClearRatePerMille": 133,
+          "separationClearRatePerMille": 153,
           "timeLimitRatePerMille": 0,
           "workBudgetRatePerMille": 0
         }
       }
     }
   ],
-  "levelsHash": "f832cda54832",
+  "levelsHash": "338a768b2452",
   "policies": [
     "splitter"
   ],
