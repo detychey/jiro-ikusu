@@ -88,7 +88,16 @@ P = 17,000 points (was 10,000), so the twelve single-boss levels keep their medi
 
 ## Bot advantage
 
-Pending: `playtest --policy search` on the four levels runs in this session; its figures follow in this PR.
+`playtest --policy search`, 100 Training runs per level, seed 1, on the four levels ([`twin-levels-2026-11-27/search/`](twin-levels-2026-11-27/search/)), about 2.5 h on 4 CPUs. Search clears every run. The study of [`bot-advantage.md`](bot-advantage.md) (plan M4.13, 200 Challenge runs) was not rerun: it plays six-level runs on the old levels.
+
+| # | Name | Search: clear (area / separation); claim Q1 / median / Q3 (bp) | Mix median | Search median / mix median | Before: search mean / mix median |
+|---|---|---|---|---|---|
+| 10 | maze | 100 % (90 / 10); 8,171 / 8,724 / 9,073 | 4,510 | 1.93 | 9,816 / 7,119 = 1.38 |
+| 13 | trio | 100 % (99 / 1); 9,177 / 9,334 / 9,449 | 3,370 | 2.77 | 9,817 / 2,749 = 3.57 |
+| 15 | swarm | 100 % (100 / 0); 8,732 / 8,992 / 9,203 | 3,017 | 2.98 | 9,662 / 1,816 = 5.32 |
+| 16 | doom | 100 % (100 / 0); 8,574 / 8,737 / 8,980 | 2,688 | 3.25 | 9,580 / 1,664 = 5.76 |
+
+The "before" column takes search's mean claim from the M4.13 study and the mix median of the last reference report on the old levels (`playtest-b0b72cb41408`); the report gives no mean, so the new column uses search's median. On trio, swarm and doom the gap narrows, from about 3.6 to 5.8 times the mix median to 2.8 to 3.3: two bosses cost search about 500 to 1,100 bp of claim, while the mix's banked claims rise. On maze it widens, from 1.38 to 1.93, as the mix loses the 9,000 bp target that lifted its median. Search ignores the separation, which pays only the target, except on maze (10 % of its clears) and trio (1 %).
 
 ## Reproduce
 
@@ -99,6 +108,7 @@ cargo run -p jiro-tools --release --locked -- level build levels/src levels
 cargo run -p jiro-tools --release --locked -- calibrate --check --out seasons/calibration-2.json
 mkdir -p twin && cp levels/{10-maze,13-trio,15-swarm,16-doom}.bin twin/
 cargo run -p jiro-tools --release --locked -- playtest --levels twin --policy splitter --out reports/twin-levels-2026-11-27/splitter
+cargo run -p jiro-tools --release --locked -- playtest --levels twin --policy search --runs 100 --out reports/twin-levels-2026-11-27/search
 referee/zk/target/release/zk-host execute reports/twin-levels-2026-11-27/ vectors/levels/
 ```
 
