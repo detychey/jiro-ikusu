@@ -160,7 +160,16 @@ P = 17,000 points, up from 10,000. The twelve single-boss levels keep their medi
 
 ## Bot advantage
 
-Pending. `playtest --policy search` (100 runs per level) is rerunning on these four levels; its figures follow in this PR. The second pass measured search median over mix median at 1.93 (maze), 2.77 (trio), 2.98 (swarm) and 3.25 (doom) on rules version 4.
+`playtest --policy search`, 100 runs per level, on rules version 5 ([`search/`](twin-levels-2026-11-27/search/playtest-f832cda54832.md)). Search clears every run. It separates only on maze, on 5 % of its runs.
+
+| # | Name | Search median (bp) | Mix median (bp) | Ratio |
+|---|---|---|---|---|
+| 10 | maze | 8,724 | 4,495 | 1.94 |
+| 13 | trio | 9,334 | 3,340 | 2.79 |
+| 15 | swarm | 8,992 | 2,975 | 3.02 |
+| 16 | doom | 8,737 | 2,682 | 3.26 |
+
+The second pass, on rules version 4, measured 1.93, 2.77, 2.98 and 3.25. On the old single-boss levels, M4.13 measured search mean over mix mean at 1.38, 3.57, 5.32 and 5.76. M4.13's six-level study was not rerun.
 
 ## Reproduce
 
