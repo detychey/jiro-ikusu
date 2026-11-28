@@ -19,7 +19,7 @@ X is the key that prints that letter on your keyboard layout, where the browser 
 
 ## 3. Rules that matter for a run
 
-- **You capture the field** by cutting from the border and back. A Challenge level is cleared at its target claim, 50 % of the field, and gives you 3 more lives than the same level in Training, whose targets are 75 % to 90 %. A level lasts at most 3 minutes.
+- **You capture the field** by cutting from the border and back. A Challenge level is cleared at its target claim, 50 % of the field, and gives you 3 more lives than the same level in Training, whose targets are 70 % to 81.5 %. On the four levels with two bosses, a capture that separates them also clears the level once you hold half the target, 25 % of the field. A level lasts at most 3 minutes.
 - **Running out of lives scores 0 for the level.** X banks the claim you have: commit when the rest of the level is not worth the risk.
 - **A run is six levels,** drawn from the 16 paid levels by the chain after you pay, and played back to back. Each level is one paid game.
 - **Every game earns a ticket:** your claim over the level's target, capped at 1, or 0 when you ran out of lives. A cleared level is a full ticket.

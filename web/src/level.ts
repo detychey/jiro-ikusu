@@ -1,8 +1,9 @@
 // A level as the editor holds it (plan M2.5): its cells and its fields. The editor has no format
-// of its own: the core's codec turns this model into level bytes v1 and back (README §5, P10),
-// through jiro-wasm's edit buffers, and only the core says whether a level is valid.
+// of its own: the core's codec turns this model into level bytes v1 or v2 and back (README §5,
+// P10), through jiro-wasm's edit buffers, and only the core says whether a level is valid.
 
-export const LEVEL_LEN = 472;
+/** Level bytes v2, a level with two bosses: the longest level bytes. */
+export const LEVEL_V2_LEN = 478;
 export const FIELD_CELLS = 60;
 export const MINION_SLOTS = 3;
 /** The player's start cell (README §4.3). */
@@ -28,11 +29,28 @@ export interface Level {
   timeLimit: number;
   lives: number;
   targetBp: number;
+  /** The second boss of level bytes v2; every field 0 on a level with one boss. */
+  secondBoss: SecondBoss;
+}
+
+export interface SecondBoss {
+  size: number;
+  spawn: { x0: number; y0: number; x1: number; y1: number };
+  period: number;
+}
+
+/** The second boss fields of a level with one boss. */
+export function noSecondBoss(): SecondBoss {
+  return { size: 0, spawn: { x0: 0, y0: 0, x1: 0, y1: 0 }, period: 0 };
+}
+
+export function hasSecondBoss({ secondBoss: { size, spawn, period } }: Level): boolean {
+  return [size, spawn.x0, spawn.y0, spawn.x1, spawn.y1, period].some((value) => value !== 0);
 }
 
 /** The fields of `level` besides its cells, in the order of jiro-wasm's EDIT_FIELDS. */
 export function editFields(level: Level): number[] {
-  const { spawn } = level;
+  const { spawn, secondBoss } = level;
   return [
     level.bossSize,
     spawn.x0,
@@ -47,10 +65,16 @@ export function editFields(level: Level): number[] {
     level.timeLimit,
     level.lives,
     level.targetBp,
+    secondBoss.size,
+    secondBoss.spawn.x0,
+    secondBoss.spawn.y0,
+    secondBoss.spawn.x1,
+    secondBoss.spawn.y1,
+    secondBoss.period,
   ];
 }
 
-export const EDIT_FIELDS = 18;
+export const EDIT_FIELDS = 24;
 
 /** The level of `cells` and of `fields` in the order of jiro-wasm's EDIT_FIELDS. */
 export function editedLevel(cells: Uint8Array, fields: number[]): Level {
@@ -67,6 +91,11 @@ export function editedLevel(cells: Uint8Array, fields: number[]): Level {
     timeLimit: field(15),
     lives: field(16),
     targetBp: field(17),
+    secondBoss: {
+      size: field(18),
+      spawn: { x0: field(19), y0: field(20), x1: field(21), y1: field(22) },
+      period: field(23),
+    },
   };
 }
 

@@ -164,7 +164,7 @@ fn every_game_vector_verifies_to_its_outcome_or_reverts_with_its_code() {
             ),
         }
     }
-    assert_eq!(games.len(), 41, "vectors/game holds 41 vectors");
+    assert_eq!(games.len(), 47, "vectors/game holds 47 vectors");
 }
 
 #[test]
@@ -241,8 +241,8 @@ fn every_malformed_level_vector_reverts_with_its_code() {
     }
     assert_eq!(
         malformed.len(),
-        25,
-        "vectors/format holds 25 malformed levels"
+        35,
+        "vectors/format holds 35 malformed levels"
     );
 }
 

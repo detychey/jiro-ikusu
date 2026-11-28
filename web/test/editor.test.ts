@@ -6,11 +6,13 @@ import { Core, CoreError, fromHex, hex } from "../src/core";
 import { describeError, ERRORS } from "../src/errors";
 import {
   FIELD_CELLS,
+  hasSecondBoss,
   isBorder,
   isObstacle,
   type Level,
   minionAt,
   MINION_SLOTS,
+  noSecondBoss,
   numberSpawns,
   setObstacle,
   toggleMinion,
@@ -46,12 +48,13 @@ function blankLevel(): Level {
     timeLimit: 0,
     lives: 0,
     targetBp: 0,
+    secondBoss: noSecondBoss(),
   };
 }
 
 /** The `key=value` header of a level source (levels/README.md), as numbers. */
 function sourceHeader(source: string): Record<string, number[]> {
-  const lines = source.split("\n").slice(0, 8);
+  const lines = (source.split("\n\n")[0] ?? "").split("\n");
   return Object.fromEntries(lines.map((line) => {
     const [key = "", value = ""] = line.split("=");
     return [key, value.split(",").map(Number)];
@@ -86,8 +89,8 @@ function generator(seed: number): (low: number, high: number) => number {
   };
 }
 
-/** A random level: up to 6 obstacle blocks, a boss spawn area, and up to 3 minions on the
- *  border, with every field in its range. */
+/** A random level: up to 6 obstacle blocks, a boss spawn area, on one level in three a second
+ *  boss spawn area, and up to 3 minions on the border, with every field in its range. */
 function randomLevel(draw: (low: number, high: number) => number): Level {
   const level = blankLevel();
   for (let block = draw(0, 6); block > 0; block -= 1) {
@@ -102,6 +105,16 @@ function randomLevel(draw: (low: number, high: number) => number): Level {
   const [x0, y0] = [draw(1, last), draw(1, last)];
   level.spawn = { x0, y0, x1: draw(x0, Math.min(last, x0 + 8)), y1: draw(y0, Math.min(last, y0 + 8)) };
   level.bossPeriod = draw(1, 8);
+  if (draw(1, 3) === 1) {
+    const size = draw(2, 8);
+    const end = FIELD_CELLS - 1 - size;
+    const [sx0, sy0] = [draw(1, end), draw(1, end)];
+    level.secondBoss = {
+      size,
+      spawn: { x0: sx0, y0: sy0, x1: draw(sx0, Math.min(end, sx0 + 8)), y1: draw(sy0, Math.min(end, sy0 + 8)) },
+      period: draw(1, 8),
+    };
+  }
   for (let minion = draw(0, MINION_SLOTS); minion > 0; minion -= 1) {
     toggleMinion(level, { x: draw(0, FIELD_CELLS - 1), y: [0, FIELD_CELLS - 1][draw(0, 1)] ?? 0 });
   }
@@ -143,16 +156,26 @@ describe("level editor", () => {
   });
 
   it.each(levelFiles)("draws the obstacles and minions of %s as its level source", (name) => {
-    expect(renderRows(decoded(levelBytes(name)))).toEqual(levelSource(name).split("\n").slice(9, 9 + FIELD_CELLS));
+    const field = levelSource(name).split("\n\n")[1] ?? "";
+    expect(renderRows(decoded(levelBytes(name)))).toEqual(field.split("\n").slice(0, FIELD_CELLS));
   });
 
   it.each(levelFiles)("reads the fields of %s as its level source gives them", (name) => {
     const level = decoded(levelBytes(name));
-    const { spawn } = level;
+    const { spawn, secondBoss } = level;
+    const second = secondBoss.spawn;
+    const secondFields = hasSecondBoss(level)
+      ? {
+          second_boss_size: [secondBoss.size],
+          second_boss_spawn: [second.x0, second.y0, second.x1, second.y1],
+          second_boss_period: [secondBoss.period],
+        }
+      : {};
     expect({
       boss_size: [level.bossSize],
       boss_spawn: [spawn.x0, spawn.y0, spawn.x1, spawn.y1],
       boss_period: [level.bossPeriod],
+      ...secondFields,
       minion_period: [level.minionPeriod],
       respawn_delay: [level.respawnDelay],
       time_limit: [level.timeLimit],
@@ -179,8 +202,8 @@ describe("level editor", () => {
   });
 
   it("gives each level rule a message of its own", () => {
-    const meanings = Array.from({ length: 20 }, (_, i) => ERRORS[20 + i]?.[1]);
-    expect(new Set(meanings).size).toBe(20);
+    const meanings = Array.from({ length: 26 }, (_, i) => ERRORS[20 + i]?.[1]);
+    expect(new Set(meanings).size).toBe(26);
   });
 
   it.each([

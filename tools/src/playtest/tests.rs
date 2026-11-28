@@ -49,6 +49,7 @@ fn sample(end: EndReason, effective_bp: u16) -> Sample {
         effective_bp,
         ticks_used: 100,
         events: 0,
+        separated: false,
     }
 }
 
@@ -280,6 +281,30 @@ fn stats_count_the_ends_and_take_quartiles_of_unsorted_runs() {
             stats.per_mille(stats.cleared)
         ),
         ([2, 2, 2, 1, 1], [0, 3_000, 7_000], 250)
+    );
+}
+
+/// Two clears by area and one by separating the bosses, of four runs.
+#[test]
+fn stats_split_the_clears_by_area_and_by_separation() {
+    let separated = Sample {
+        separated: true,
+        ..sample(EndReason::Cleared, 7_500)
+    };
+    let samples = [
+        sample(EndReason::Cleared, 7_600),
+        sample(EndReason::Cleared, 7_700),
+        separated,
+        sample(EndReason::OutOfLives, 0),
+    ];
+    let stats = Stats::of(samples.iter());
+    assert_eq!(
+        (
+            stats.json()["clearRatePerMille"].as_u64(),
+            stats.json()["areaClearRatePerMille"].as_u64(),
+            stats.json()["separationClearRatePerMille"].as_u64()
+        ),
+        (Some(750), Some(500), Some(250))
     );
 }
 

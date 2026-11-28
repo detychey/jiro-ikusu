@@ -1,5 +1,5 @@
-// Writes vectors/derivations.json (README §6.6): level seeds and deflection keys, level ids,
-// boss starts, draws and run commitments, computed with ethers independently of the core, and
+// Writes vectors/derivations.json (README §6.6): level seeds and both bosses' deflection keys,
+// level ids, both bosses' starts, draws and run commitments, computed with ethers independently of the core, and
 // run nonces and settlement deadlines (README §7.2), which only the contracts compute.
 // Usage: node derivations.mjs [--write]; without --write, prints the fixture.
 import { writeFileSync } from "node:fs";
@@ -20,6 +20,7 @@ import {
   levelSeed,
   openField,
   runNonceOf,
+  twinField,
   wideSpawn,
 } from "./lib.mjs";
 
@@ -29,6 +30,7 @@ const levels = {
   "open-field": openField,
   "blocked-start": blockedStart,
   "wide-spawn": wideSpawn,
+  "twin-field": twinField,
   "walls-and-minions": {
     ...openField,
     obstacles: [...Array(20).keys()].map((k) => ({ x: 10 + k, y: 15 })).concat([{ x: 45, y: 40 }, { x: 46, y: 40 }]),
@@ -50,7 +52,13 @@ const nonces = [exampleRunNonce, ...[...Array(99).keys()].map(fixtureNonce)];
 const levelSeeds = nonces.slice(0, 10).flatMap((runNonce) =>
   [0, 1, 2, 3, 4, 5].map((levelIndex) => {
     const seed = levelSeed(runNonce, levelIndex);
-    return { runNonce: hex(runNonce), levelIndex, seed: hex(seed), deflectionKey: deflectionKey(seed) };
+    return {
+      runNonce: hex(runNonce),
+      levelIndex,
+      seed: hex(seed),
+      deflectionKey: deflectionKey(seed, 0),
+      secondDeflectionKey: deflectionKey(seed, 1),
+    };
   }),
 );
 
@@ -71,15 +79,22 @@ const rectangles = [
 ];
 // Each rectangle gets the worked example's seeds for levelIndex 0 and 2, then 8 more.
 const seedsFor = (r) => [0, 2, ...[...Array(8).keys()].map((k) => (10 + 8 * r + k) % levelSeeds.length)];
-const bossStarts = rectangles.flatMap(([x0, y0, x1, y1], r) =>
-  seedsFor(r).map((s) => levelSeeds[s]).map(({ seed }) => {
-    const spawn = { x0, y0, x1, y1 };
-    if (x0 > x1 || y0 > y1) return { spawn, seed, start: null };
-    const level = encodeLevel({ ...openField, spawnRect: [x0, y0, x1, y1] });
-    const { candidates, pick, x, y, vx, vy } = bossStart(level, getBytes(seed));
-    return { spawn, seed, start: { candidates, index: pick, x, y, vx, vy } };
-  }),
-);
+// Boss 0's starts from each rectangle as its spawn rectangle, and boss 1's from each as its own.
+const startsOf = (boss) =>
+  rectangles.flatMap(([x0, y0, x1, y1], r) =>
+    seedsFor(r).map((s) => levelSeeds[s]).map(({ seed }) => {
+      const spawn = { x0, y0, x1, y1 };
+      if (x0 > x1 || y0 > y1) return { spawn, seed, start: null };
+      const rect = [x0, y0, x1, y1];
+      const level = encodeLevel(
+        boss === 0 ? { ...openField, spawnRect: rect } : { ...twinField, secondBoss: { ...twinField.secondBoss, spawnRect: rect } },
+      );
+      const { candidates, pick, x, y, vx, vy } = bossStart(level, getBytes(seed), boss);
+      return { spawn, seed, start: { candidates, index: pick, x, y, vx, vy } };
+    }),
+  );
+const bossStarts = startsOf(0);
+const secondBossStarts = startsOf(1);
 
 const draws = nonces.map((runNonce) => {
   const { swaps, slots } = draw(runNonce);
@@ -141,7 +156,11 @@ const deadlines = deadlineRuns.flatMap(({ revealedAt, commitSlack, ticksUsed }) 
 });
 
 const fixture =
-  JSON.stringify({ levelSeeds, levelIds, bossStarts, draws, runCommitments, runNonces, deadlines }, null, 2) + "\n";
+  JSON.stringify(
+    { levelSeeds, levelIds, bossStarts, secondBossStarts, draws, runCommitments, runNonces, deadlines },
+    null,
+    2,
+  ) + "\n";
 if (process.argv[2] === "--write") writeFileSync(FIXTURE, fixture);
 else if (process.argv.length > 2) throw new Error("usage: derivations.mjs [--write]");
 else process.stdout.write(fixture);

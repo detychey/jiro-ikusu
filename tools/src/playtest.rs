@@ -9,11 +9,13 @@
 //! playtest [--levels <dir>] --policy <name> [--runs <n>] [--seed <n>] --shard <i>/<n>
 //!          [--calibration <file>] --out <file.json>
 //! playtest [--levels <dir>] --merge <dir> [--calibration <file>] --out <file.md>
+//! playtest [--levels <dir>] --openings [--runs <n>] [--seed <n>] --out <file.md>
 //! playtest [--levels <dir>] --edge <file.md> [--runs <n>] [--seed <n>]
 //!
 //! `--levels` defaults to `levels`. `--shard` and `--merge` are the bot-advantage study of plan
-//! M4.13: see `shard` and `merge`. `--edge` is the bot edge of a level set (plan M5.16): see
-//! `edge`.
+//! M4.13: see `shard` and `merge`. `--openings` measures the straight-cut openings of the
+//! twin-boss levels (plan M5.19): see `openings`. `--edge` is the bot edge of a level set (plan
+//! M5.16): see `edge`.
 //!
 //! Without `--policy`, the bots are the reference mix of the targets file: the `--check` file,
 //! or `<dir>/targets.json`. Reports go to `reports/` only for the reference report's own
@@ -26,6 +28,7 @@ use std::thread;
 
 use jiro_core::consts::{BP, EVENT_LEN, HEADER_LEN, RULES_VERSION, RUN_LEVELS, SEASON_LEVELS};
 use jiro_core::game::EndReason;
+use jiro_core::grid::claim_bp;
 use jiro_core::journal::{self, Header, Mode};
 use jiro_core::keccak::keccak256;
 use jiro_core::level::{Level, decode, level_id};
@@ -41,6 +44,7 @@ use crate::vectors::traceless_vector;
 
 mod edge;
 mod merge;
+mod openings;
 mod shard;
 #[cfg(test)]
 mod tests;
@@ -51,7 +55,8 @@ const USAGE: &str = concat!(
     "<dir>] --policy <name> --nonce <hex> --level-index <i> --out <file> | jiro-tools playtest ",
     "[--levels <dir>] --policy <name> [--runs <n>] [--seed <n>] --shard <i>/<n> [--calibration ",
     "<file>] --out <file.json> | jiro-tools playtest [--levels <dir>] --merge <dir> ",
-    "[--calibration <file>] --out <file.md> | jiro-tools playtest [--levels <dir>] --edge ",
+    "[--calibration <file>] --out <file.md> | jiro-tools playtest [--levels <dir>] --openings ",
+    "[--runs <n>] [--seed <n>] --out <file.md> | jiro-tools playtest [--levels <dir>] --edge ",
     "<file.md> [--runs <n>] [--seed <n>]"
 );
 
@@ -94,6 +99,9 @@ pub(crate) struct Sample {
     pub(crate) ticks_used: u16,
     /// The journal's events.
     pub(crate) events: u16,
+    /// Whether the level cleared by separating two bosses: the dividing wall of README §4.8,
+    /// reached with the claim at the separation floor but under the target.
+    pub(crate) separated: bool,
 }
 
 /// The reference mix and the bands of `levels/targets.json` (P11).
@@ -107,6 +115,9 @@ pub struct Targets {
 pub fn run(args: &[&str]) -> Result<(), String> {
     if args.contains(&"--merge") {
         return merge::run(args);
+    }
+    if args.contains(&"--openings") {
+        return openings::run(args);
     }
     if args.contains(&"--edge") {
         return edge::run(args);
@@ -366,6 +377,10 @@ pub(crate) fn play_level(
     let outcome = replay(&level.bytes, &journal, BP)
         .map_err(|error| format!("{}: replay rule {}", context(), error.code()))?;
     let game = recorder.game();
+    let area_claim = claim_bp(game.captured, game.claimable);
+    let separated = game.end == Some(EndReason::Cleared)
+        && game.separated
+        && area_claim < u32::from(game.target_bp);
     let played = (game.end, game.claim_bp().ok(), game.ticks_used);
     if played
         != (
@@ -385,6 +400,7 @@ pub(crate) fn play_level(
             effective_bp,
             ticks_used: outcome.ticks_used,
             events,
+            separated,
         },
     ))
 }
@@ -571,6 +587,8 @@ impl Targets {
 pub(crate) struct Stats {
     pub(crate) runs: u32,
     pub(crate) cleared: u32,
+    /// The clears by separating two bosses; the other clears are by area.
+    separated: u32,
     died: u32,
     committed: u32,
     timed_out: u32,
@@ -591,6 +609,7 @@ impl Stats {
         Self {
             runs: samples.len() as u32,
             cleared: count(EndReason::Cleared),
+            separated: samples.iter().filter(|s| s.separated).count() as u32,
             died: count(EndReason::OutOfLives),
             committed: count(EndReason::Committed),
             timed_out: count(EndReason::TimeLimit),
@@ -609,6 +628,8 @@ impl Stats {
         json!({
             "runs": self.runs,
             "clearRatePerMille": self.per_mille(self.cleared),
+            "areaClearRatePerMille": self.per_mille(self.cleared - self.separated),
+            "separationClearRatePerMille": self.per_mille(self.separated),
             "deathRatePerMille": self.per_mille(self.died),
             "commitRatePerMille": self.per_mille(self.committed),
             "timeLimitRatePerMille": self.per_mille(self.timed_out),
@@ -622,9 +643,11 @@ impl Stats {
         let pct = |count| percent(self.per_mille(count));
         let [q1, median, q3] = self.effective_bp;
         format!(
-            "| {name} | {} | {} | {} | {} | {} | {} | {q1} / {median} / {q3} | {} |\n",
+            "| {name} | {} | {} | {} | {} | {} | {} | {} | {} | {q1} / {median} / {q3} | {} |\n",
             self.runs,
             pct(self.cleared),
+            pct(self.cleared - self.separated),
+            pct(self.separated),
             pct(self.died),
             pct(self.committed),
             pct(self.timed_out),
@@ -699,8 +722,10 @@ impl Report<'_> {
         let names: Vec<&str> = self.policies.iter().map(|policy| policy.name()).collect();
         let mut markdown = format!(
             "# Playtest {}\n\nGenerated by `jiro-tools playtest`: rules version {RULES_VERSION}, seed {}, \
-             {} runs per policy and level, policies {}{}. Effective claim: `claim_bp`, or 0 \
-             when the lives ran out (D5). Quartiles at index (n − 1) × k / 4 of the sorted runs.\n",
+             {} runs per policy and level, policies {}{}. A clear is by area, or by a capture \
+             that separates two bosses with the claim at the separation floor but under the \
+             target (README §4.8). Effective claim: `claim_bp`, or 0 when the lives ran out \
+             (D5). Quartiles at index (n − 1) × k / 4 of the sorted runs.\n",
             self.levels_hash(),
             self.seed,
             self.runs,
@@ -710,7 +735,7 @@ impl Report<'_> {
         let mut levels = Vec::new();
         for (i, level) in self.levels.iter().enumerate() {
             markdown.push_str(&format!(
-                "\n## {:02} {}\n\n`{}`\n\n| Policy | Runs | Clear | Death | Commit | Time limit | Work budget | Effective claim Q1 / median / Q3 (bp) | Median ticks |\n|---|---|---|---|---|---|---|---|---|\n",
+                "\n## {:02} {}\n\n`{}`\n\n| Policy | Runs | Clear | By area | By separation | Death | Commit | Time limit | Work budget | Effective claim Q1 / median / Q3 (bp) | Median ticks |\n|---|---|---|---|---|---|---|---|---|---|---|\n",
                 level.index,
                 level.name,
                 hex(&level_id(&level.bytes)),

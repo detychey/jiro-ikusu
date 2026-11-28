@@ -23,6 +23,7 @@ fn level(minions: &[(u8, u8)], obstacles: &[(u8, u8)]) -> Level {
         time_limit: 2_700,
         lives: 3,
         target_bp: 7_500,
+        second_boss: None,
     };
     for (slot, &(x, y)) in level.minion_spawns.iter_mut().zip(minions) {
         *slot = Pos { x, y };

@@ -50,7 +50,7 @@ Five directions were drawn up: Claimed Chrome (chrome cell letters over an attra
 
 ## 3. Color
 
-[README §4.1](../README.md#41-grid) freezes the field's colors as rule text: open field black (R4.1-3), claimed land blue (R4.1-4), trail red (R4.1-5). [`brand/src/palette.txt`](../brand/src/palette.txt) owns every hex value, and the build fails when `CELL_COLORS` or `ENTITY_COLORS` in render.ts, or a `:root` variable of style.css, disagrees with it, or when `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits ([§12](#12-assets-and-build)). Contrast is WCAG 2.2.
+[README §4.1](../README.md#41-grid) freezes the field's colors as rule text: open field black (R4.1-3), claimed land blue (R4.1-4), trail red (R4.1-5). [`brand/src/palette.txt`](../brand/src/palette.txt) owns every hex value, and the build fails when `CELL_COLORS` or `ENTITY_COLORS` in render.ts, or a `:root` variable of style.css, disagrees with it, or when `SPAWN_AREA_COLOR` or `SECOND_SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not its boss's hex plus two alpha digits ([§12](#12-assets-and-build)). Contrast is WCAG 2.2.
 
 **Game colors,** in `CELL_COLORS` and `ENTITY_COLORS` of render.ts:
 
@@ -61,6 +61,7 @@ Five directions were drawn up: Claimed Chrome (chrome cell letters over an attra
 | trail | `#FF2A2A` | `TRAIL`, the live cut: the cut and the hyphen, nothing else. Never in the UI | 5.62:1 on field, 1.53:1 on claim |
 | player | `#FFFFFF` | The player: every glyph's line, tile rims, text in art; focus and the current page in the UI | 5.70:1 on claim |
 | boss | `#FF3CF0` | The boss, and its spawn area at 33 % in the level editor's field (the game's field view, not the UI). Never in the UI | 7.16:1 on field |
+| second-boss | `#FFE03C` | The second boss of a level with two (README §4.6), and its spawn area at 33 % in the level editor's field, in the game only: yellow, so that the two bosses read apart | 15.98:1 on field |
 | minion | `#3CFF78` | The minions, in the game only | 4.28:1 on claim |
 | invulnerable-player | `#9A9A9A` | The player while invulnerable, in the game only | 2.03:1 on claim ([§9](#9-game-canvas-presentation-planned)) |
 
@@ -294,7 +295,7 @@ node brand/build.mjs          # writes every output that is missing or stale
 node brand/build.mjs --check  # writes nothing, and exits 1 when an output is stale
 ```
 
-Both rebuild everything in memory and exit 1, writing nothing, when a palette hex disagrees with `CELL_COLORS` or `ENTITY_COLORS` in render.ts or with a style.css `:root` variable of the same name (`--accent` must equal claim, `--focus` player), `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not the boss hex plus two alpha digits, a scene breaks a legality rule ([§6](#6-banner-icon-and-social-card)), the shelf leaves no empty cell before a kana or a tile, a checksum (the cells per color that `brand/src/` records for each full-color lockup and scene) differs, or `web/public/brand/` holds a file that is not an output. `--check` also fails on a stale output: SVG and ICO byte for byte, PNG by decoded pixels as this build encodes them, so a zlib update can make only `favicon.ico`, which holds deflated PNGs, stale.
+Both rebuild everything in memory and exit 1, writing nothing, when a palette hex disagrees with `CELL_COLORS` or `ENTITY_COLORS` in render.ts or with a style.css `:root` variable of the same name (`--accent` must equal claim, `--focus` player), `SPAWN_AREA_COLOR` or `SECOND_SPAWN_AREA_COLOR` in `web/src/pages/editor.ts` is not its boss's hex plus two alpha digits, a scene breaks a legality rule ([§6](#6-banner-icon-and-social-card)), the shelf leaves no empty cell before a kana or a tile, a checksum (the cells per color that `brand/src/` records for each full-color lockup and scene) differs, or `web/public/brand/` holds a file that is not an output. `--check` also fails on a stale output: SVG and ICO byte for byte, PNG by decoded pixels as this build encodes them, so a zlib update can make only `favicon.ico`, which holds deflated PNGs, stale.
 
 CI runs `--check` as the step "Brand assets are up to date (web)" of the web job in `.github/workflows/ci.yml`, whose path filter includes `brand/**`. A pull request that changes `brand/**` commits the rebuilt `web/public/` with it, and updates this guide when a rule, or a value it quotes, changes (`CLAUDE.md`).
 
@@ -369,7 +370,7 @@ The assets, in `web/public/`; px per cell is an SVG's base scale:
 - Write a never-write form ([§1](#1-name)), put Volfied, Qix or Taito in an asset or its metadata, or call the minions Sparx.
 - Recreate Volfied: chrome beyond the flat bands, bevels, dark outlines, italics, teal or steel, flares or streaks through letters, red katakana, painted backdrops, TM marks.
 - Draw the cut as a symmetric Π, through a letter, or twice.
-- Use gradients, blur, rounded corners, rotation, skew or stretching, glow beyond the hero halo, or shadows beyond the wordmark's shelf, the button shelf and the pixel-voice drop. Use translucent color anywhere but the end overlay, its fade, the capture highlight and the capture sparks ([§10](#10-motion-and-sound)) and the level editor's spawn area (the boss at 33 %, `SPAWN_AREA_COLOR` in `web/src/pages/editor.ts`).
+- Use gradients, blur, rounded corners, rotation, skew or stretching, glow beyond the hero halo, or shadows beyond the wordmark's shelf, the button shelf and the pixel-voice drop. Use translucent color anywhere but the end overlay, its fade, the capture highlight and the capture sparks ([§10](#10-motion-and-sound)) and the level editor's spawn areas (each boss at 33 %, `SPAWN_AREA_COLOR` and `SECOND_SPAWN_AREA_COLOR` in `web/src/pages/editor.ts`).
 - Put the full-color logo on claim blue or a photo.
 - Draw ghosts, halos, sparks or textures in the canvas, or minions in brand art.
 - Use magenta, green, the trail's red or an art tone other than claim-deep in the UI, or red for navigation or selection.

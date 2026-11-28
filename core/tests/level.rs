@@ -1,12 +1,12 @@
-//! Level bytes v1, validity, the level-start grid, the rail and claim_bp (README §4.1, §4.2,
+//! Level bytes v1 and v2, validity, the level-start grid, the rail and claim_bp (README §4.1, §4.2,
 //! §5). Test levels are built in code.
 
 use std::num::NonZeroU16;
 
 use jiro_core::Error;
-use jiro_core::consts::{CAPTURE_STACK, CELLS, LEVEL_LEN, PLAYER_START};
+use jiro_core::consts::{CAPTURE_STACK, CELLS, LEVEL_LEN, LEVEL_V2_LEN, PLAYER_START};
 use jiro_core::grid::claim_bp;
-use jiro_core::level::{Level, LevelStart, Rect, decode, encode, level_id, validate};
+use jiro_core::level::{BossRecord, Level, LevelStart, Rect, decode, encode, level_id, validate};
 use jiro_core::types::{Cell, CellIndex, Pos};
 
 /// The open-field level of README §5's worked example.
@@ -28,6 +28,7 @@ fn open_field() -> Level {
         time_limit: 2_700,
         lives: 3,
         target_bp: 7_500,
+        second_boss: None,
     }
 }
 
@@ -107,7 +108,7 @@ fn level_bytes_other_than_472_are_rejected() {
 #[test]
 fn unknown_level_version_is_rejected() {
     for version in [0, 2, 255] {
-        let mut bytes = encode(&open_field());
+        let mut bytes = encode(&open_field()).to_vec();
         bytes[0] = version;
         assert_eq!(
             decode(&bytes),
@@ -611,7 +612,7 @@ fn first_broken_rule_wins() {
         bytes.pop();
         bytes
     };
-    let mut bad_version_border = encode(&with_obstacles(field(), [(0, 0)]));
+    let mut bad_version_border = encode(&with_obstacles(field(), [(0, 0)])).to_vec();
     bad_version_border[0] = 2;
     let decode_cases: [(&str, Vec<u8>, Error); 2] = [
         ("length, version", short_bad_version, Error::LevelLength),
@@ -966,4 +967,146 @@ fn the_bitmap_of_a_level_s_obstacle_bits_is_its_obstacles() {
         *cell = bit;
     }
     assert_eq!(Level::obstacle_bitmap(&cells), level.obstacles);
+}
+
+/// The open field with a second boss of B = 4, move period 3, spawning in (40, 40) to (50, 50).
+fn twin_field() -> Level {
+    Level {
+        second_boss: Some(BossRecord {
+            size: 4,
+            spawn: Rect {
+                x0: 40,
+                y0: 40,
+                x1: 50,
+                y1: 50,
+            },
+            period: 3,
+        }),
+        ..open_field()
+    }
+}
+
+fn twin_with(change: impl FnOnce(&mut BossRecord)) -> Level {
+    let mut level = twin_field();
+    change(level.second_boss.as_mut().unwrap());
+    level
+}
+
+/// README §5: a level with two bosses is v2, 478 bytes, v1's 472 with version 2, then the second
+/// boss's size, spawn rectangle and period; one with one boss stays v1, so its id survives.
+#[test]
+fn a_second_boss_makes_the_level_bytes_v2() {
+    let (twin, single) = (encode(&twin_field()), encode(&open_field()));
+    assert_eq!(
+        (twin.len(), twin[0], &twin[LEVEL_LEN..], &twin[1..LEVEL_LEN]),
+        (LEVEL_V2_LEN, 2, &[4, 40, 40, 50, 50, 3][..], &single[1..])
+    );
+    assert_eq!((single.len(), single[0]), (LEVEL_LEN, 1));
+}
+
+#[test]
+fn level_bytes_v2_round_trip() {
+    let bytes = encode(&twin_field());
+    assert_eq!(decode(&bytes), Ok(twin_field()));
+}
+
+/// Code 21: the version byte must match the length, 1 for 472 bytes and 2 for 478.
+#[test]
+fn a_version_that_does_not_match_the_length_is_rejected() {
+    let mut v2_as_v1 = encode(&twin_field()).to_vec();
+    v2_as_v1[0] = 1;
+    let mut v1_as_v2 = encode(&open_field()).to_vec();
+    v1_as_v2[0] = 2;
+    assert_eq!(
+        (decode(&v2_as_v1), decode(&v1_as_v2)),
+        (Err(Error::LevelVersion), Err(Error::LevelVersion))
+    );
+}
+
+#[test]
+fn level_bytes_between_472_and_478_are_rejected() {
+    let bytes = encode(&twin_field());
+    for length in [LEVEL_LEN + 1, LEVEL_V2_LEN - 1] {
+        assert_eq!(
+            decode(&bytes[..length]),
+            Err(Error::LevelLength),
+            "{length}"
+        );
+    }
+}
+
+/// Codes 40 to 43: the second boss's fields follow the first boss's range rules.
+#[test]
+fn second_boss_ranges_are_rejected() {
+    let cases = [
+        (twin_with(|boss| boss.size = 1), Error::SecondBossSize),
+        (twin_with(|boss| boss.size = 9), Error::SecondBossSize),
+        (
+            twin_with(|boss| boss.spawn.x0 = 51),
+            Error::SecondSpawnOrder,
+        ),
+        (
+            twin_with(|boss| boss.spawn.x1 = 56),
+            Error::SecondSpawnBounds,
+        ),
+        (
+            twin_with(|boss| boss.spawn.y0 = 0),
+            Error::SecondSpawnBounds,
+        ),
+        (twin_with(|boss| boss.period = 0), Error::SecondBossPeriod),
+    ];
+    for (level, error) in cases {
+        assert_eq!(decode_error(&level), error, "{:?}", level.second_boss);
+    }
+}
+
+/// Code 44: from every start, the second boss's body covers only open cells.
+#[test]
+fn second_boss_body_covering_an_obstacle_is_rejected() {
+    let level = with_obstacles(twin_field(), [(53, 53)]);
+    assert_eq!(validity_error(&level), Error::SecondBossSpawn);
+}
+
+/// Code 45: the two bosses' possible start bodies are disjoint. Grown by B − 1, the first
+/// rectangle reaches (38, 38); a second one from (38, 38) overlaps it, one from (39, 20) touches it.
+#[test]
+fn overlapping_start_bodies_are_rejected() {
+    let overlapping = twin_with(|boss| {
+        boss.spawn = Rect {
+            x0: 38,
+            y0: 38,
+            x1: 50,
+            y1: 50,
+        }
+    });
+    let touching = twin_with(|boss| {
+        boss.spawn = Rect {
+            x0: 39,
+            y0: 20,
+            x1: 50,
+            y1: 50,
+        }
+    });
+    assert_eq!(
+        (validity_error(&overlapping), validity(&touching).is_ok()),
+        (Error::BossSpawnsOverlap, true)
+    );
+}
+
+/// The second boss's rules come last: after the target (34) among the ranges, and after the
+/// player start (39) among the validity rules.
+#[test]
+fn second_boss_rules_come_after_the_first_level_s() {
+    let ranges = Level {
+        target_bp: 0,
+        ..twin_with(|boss| boss.size = 1)
+    };
+    let validity_rules = with_obstacles(
+        twin_with(|boss| boss.spawn.x0 = 30),
+        [(29, 58), (30, 58), (31, 58), (53, 53)],
+    );
+    assert_eq!(
+        (decode_error(&ranges), validity_error(&validity_rules)),
+        (Error::Target, Error::PlayerStartRail)
+    );
 }

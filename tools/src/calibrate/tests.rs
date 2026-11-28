@@ -22,6 +22,7 @@ fn sample(ticks_used: u16, events: u16) -> Sample {
         effective_bp: 5_000,
         ticks_used,
         events,
+        separated: false,
     }
 }
 

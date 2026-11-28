@@ -44,6 +44,7 @@ fn a_game_that_ran_out_of_lives_has_a_ticket_of_0() {
         effective_bp: 0,
         ticks_used: 900,
         events: 300,
+        separated: false,
     };
     assert_eq!(Tally::of(&[sample], 5_000).tickets_bp, 0);
 }
