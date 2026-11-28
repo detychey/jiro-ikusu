@@ -746,8 +746,9 @@ contract SettlementTest is SettlementFixture {
     function test_SettleRun_RecordsTheTicketsOfTheVectorsResults() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRun();
         settleRun(runId, played);
-        // Cleared, out of lives twice, cleared, 2,749 of 7,500 bp at the time limit, out of lives.
-        assertEq(settlementOf(challenge, runId).tickets, 10_000 + 0 + 0 + 10_000 + 3_665 + 0);
+        // Cleared, 2,315 of 7,000 bp at the time limit, out of lives, cleared, 2,749 of 7,500 bp at
+        // the time limit, cleared.
+        assertEq(settlementOf(challenge, runId).tickets, 10_000 + 3_307 + 0 + 10_000 + 3_665 + 10_000);
     }
 
     function test_SettleRun_AGameAboveItsTargetEarnsAFullTicket() public {
@@ -765,14 +766,14 @@ contract SettlementTest is SettlementFixture {
     function test_SettleRun_ACommittedGameKeepsTheTicketOfItsClaim() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(1, 3_000);
         settleRun(runId, played);
-        // 3,000 bp of targets of 7,500 (four levels), 9,000 and 8,000 bp.
-        assertEq(settlementOf(challenge, runId).tickets, 4 * 4_000 + 3_333 + 3_750);
+        // 3,000 bp of targets of 7,500 (two levels), 7,000 (three levels) and 8,000 bp.
+        assertEq(settlementOf(challenge, runId).tickets, 2 * 4_000 + 3 * 4_285 + 3_750);
     }
 
     function test_SettleRun_AGameEndedByTheWorkBudgetKeepsTheTicketOfItsClaim() public {
         (uint256 runId, PlayedLevel[6] memory played) = committedRunWith(END_REASON_WORK_BUDGET, 3_000);
         settleRun(runId, played);
-        assertEq(settlementOf(challenge, runId).tickets, 4 * 4_000 + 3_333 + 3_750);
+        assertEq(settlementOf(challenge, runId).tickets, 2 * 4_000 + 3 * 4_285 + 3_750);
     }
 
     function testFuzz_SettleRun_TicketsFollowTheClaimTheTargetAndTheEndReason(uint8 endReason, uint16 claimBp) public {

@@ -1,0 +1,108 @@
+{
+  "levels": [
+    {
+      "index": 10,
+      "levelId": "0x45e8a6bb2549fb218e00cab36535f7438a04a83a2616fcecf294a7185ae16f6c",
+      "mix": null,
+      "name": "maze",
+      "policies": {
+        "splitter": {
+          "areaClearRatePerMille": 236,
+          "clearRatePerMille": 472,
+          "commitRatePerMille": 0,
+          "deathRatePerMille": 528,
+          "effectiveClaimQuartilesBp": [
+            0,
+            0,
+            7000
+          ],
+          "medianTicksUsed": 352,
+          "runs": 1000,
+          "separationClearRatePerMille": 236,
+          "timeLimitRatePerMille": 0,
+          "workBudgetRatePerMille": 0
+        }
+      }
+    },
+    {
+      "index": 13,
+      "levelId": "0x722a8f08ce2ae9023eed65c63f3c041e2f40c2a651410b1afbf10f07de0931dc",
+      "mix": null,
+      "name": "trio",
+      "policies": {
+        "splitter": {
+          "areaClearRatePerMille": 174,
+          "clearRatePerMille": 377,
+          "commitRatePerMille": 0,
+          "deathRatePerMille": 623,
+          "effectiveClaimQuartilesBp": [
+            0,
+            0,
+            7000
+          ],
+          "medianTicksUsed": 315,
+          "runs": 1000,
+          "separationClearRatePerMille": 203,
+          "timeLimitRatePerMille": 0,
+          "workBudgetRatePerMille": 0
+        }
+      }
+    },
+    {
+      "index": 15,
+      "levelId": "0x26b27ec8b90462bb59c5572fa47d15eb219c8a270c98453279e10516df194feb",
+      "mix": null,
+      "name": "swarm",
+      "policies": {
+        "splitter": {
+          "areaClearRatePerMille": 139,
+          "clearRatePerMille": 263,
+          "commitRatePerMille": 0,
+          "deathRatePerMille": 737,
+          "effectiveClaimQuartilesBp": [
+            0,
+            0,
+            7000
+          ],
+          "medianTicksUsed": 341,
+          "runs": 1000,
+          "separationClearRatePerMille": 124,
+          "timeLimitRatePerMille": 0,
+          "workBudgetRatePerMille": 0
+        }
+      }
+    },
+    {
+      "index": 16,
+      "levelId": "0xa05cf301bc7b75d21bdaf467c3ccb501a988f1ca00cf7d9810cb6ce5f35cf1aa",
+      "mix": null,
+      "name": "doom",
+      "policies": {
+        "splitter": {
+          "areaClearRatePerMille": 98,
+          "clearRatePerMille": 214,
+          "commitRatePerMille": 0,
+          "deathRatePerMille": 786,
+          "effectiveClaimQuartilesBp": [
+            0,
+            0,
+            0
+          ],
+          "medianTicksUsed": 327,
+          "runs": 1000,
+          "separationClearRatePerMille": 116,
+          "timeLimitRatePerMille": 0,
+          "workBudgetRatePerMille": 0
+        }
+      }
+    }
+  ],
+  "levelsHash": "f832cda54832",
+  "policies": [
+    "splitter"
+  ],
+  "referenceMix": false,
+  "rulesVersion": 5,
+  "runs": 1000,
+  "seed": 1
+}
