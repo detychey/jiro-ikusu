@@ -3,7 +3,7 @@
 //! and budget, and replays every journal of the studied policy, failing at the first mismatch.
 //! It plays no game: the shards hold the scripted policies' games too.
 
-mod report;
+pub(in crate::playtest) mod report;
 #[cfg(test)]
 mod tests;
 

@@ -662,6 +662,43 @@ fn a_nonce_plays_the_level_it_draws_as_a_challenge_level() {
 }
 
 #[test]
+fn a_nonce_writes_a_game_vector_to_a_json_out() {
+    let dir = scratch("nonce-vector");
+    let out = dir.join("level.json");
+    let (run_nonce, level_index) = nonce_drawing_l01();
+    let (levels, nonce_hex, index, out_text) = (
+        levels_dir().display().to_string(),
+        hex(&run_nonce),
+        level_index.to_string(),
+        out.display().to_string(),
+    );
+    let args = [
+        "--levels",
+        &levels,
+        "--policy",
+        "greedy",
+        "--nonce",
+        &nonce_hex,
+        "--level-index",
+        &index,
+        "--out",
+        &out_text,
+    ];
+    run(&args).expect("playtest");
+    let vector: Value =
+        serde_json::from_str(&fs::read_to_string(&out).expect("vector")).expect("json");
+    let journal = parse_hex(vector["journal"].as_str().expect("journal")).expect("hex");
+    let outcome = replay(&l01().bytes, &journal, BP).expect("the drawn level replays");
+    assert_eq!(
+        (
+            vector["kind"].as_str(),
+            vector["outcome"]["claimBp"].as_u64()
+        ),
+        (Some("game"), Some(u64::from(outcome.claim_bp)))
+    );
+}
+
+#[test]
 fn a_nonce_refuses_a_level_its_run_does_not_draw() {
     let dir = scratch("nonce-missing");
     fs::copy(levels_dir().join("01-open.bin"), dir.join("01-open.bin")).expect("copy");

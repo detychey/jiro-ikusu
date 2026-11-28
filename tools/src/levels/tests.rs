@@ -187,6 +187,68 @@ fn the_levels_table_lists_the_id_of_every_bin_file() {
 }
 
 #[test]
+fn the_levels_table_lists_the_id_of_every_paid_copy() {
+    let levels = crate::repo_root().join("levels");
+    let table = fs::read_to_string(levels.join("README.md")).expect("levels/README.md");
+    for (file, text) in sources() {
+        let level = decode(&build(&text).expect("build")).expect("decode");
+        let stem = Path::new(&file)
+            .file_stem()
+            .expect("stem")
+            .to_string_lossy()
+            .into_owned();
+        let paid = fs::read(levels.join(format!("paid/{stem}.bin"))).expect("paid copy");
+        let (index, name) = stem.split_once('-').expect("NN-name");
+        let row = format!(
+            "| {index} | {name} | `{}` | {} | 5000 bp |",
+            hex(&level_id(&paid)),
+            level.lives + 3
+        );
+        assert!(table.contains(&row), "{row}");
+    }
+}
+
+#[test]
+fn a_paid_copy_has_3_more_lives_and_a_target_of_5000_bp() {
+    let level = rich_level();
+    let paid = decode(&paid_copy(&level).expect("valid")).expect("decode");
+    assert_eq!(
+        paid,
+        Level {
+            lives: 5,
+            target_bp: 5_000,
+            ..level
+        }
+    );
+}
+
+#[test]
+fn build_writes_the_paid_copy_of_each_level() {
+    let dir = scratch("paid-copies");
+    fs::write(dir.join("src/01-open.txt"), l01()).expect("source");
+    build_dir(&dir.join("src"), &dir.join("out")).expect("build");
+    let level = decode(&build(&l01()).expect("build")).expect("decode");
+    let paid = fs::read(dir.join("out/paid/01-open.bin")).expect("paid copy");
+    assert_eq!(paid, paid_copy(&level).expect("valid").to_vec());
+}
+
+#[test]
+fn build_refuses_a_level_whose_paid_copy_has_too_many_lives() {
+    let dir = scratch("paid-lives");
+    fs::write(
+        dir.join("src/01-open.txt"),
+        with_line(&l01(), 7, "lives=253"),
+    )
+    .expect("source");
+    let error = build_dir(&dir.join("src"), &dir.join("out")).expect_err("no paid copy");
+    assert!(
+        error.contains("253 lives leave no room for 3 more"),
+        "{error}"
+    );
+    assert!(!dir.join("out").exists());
+}
+
+#[test]
 fn the_table_shows_every_knob_and_the_field_of_a_level() {
     let source = rich();
     let bytes = build(&source).expect("the rich level is valid");
@@ -195,6 +257,7 @@ fn the_table_shows_every_knob_and_the_field_of_a_level() {
         level: decode(&bytes).expect("decode"),
         source: source.clone(),
         bytes,
+        paid: bytes,
     };
     let table = table(&[built], None, &BTreeMap::new());
     let row = format!(
@@ -217,6 +280,7 @@ fn the_table_shows_each_level_s_target_clear_rate() {
         level: decode(&bytes).expect("decode"),
         source,
         bytes,
+        paid: bytes,
     };
     let rates: Vec<u16> = (0..16).map(|i| 95 - 5 * i).collect();
     assert!(table(&[built], Some(&rates), &BTreeMap::new()).contains("| 6000 bp | 65 % | – |"));
@@ -231,6 +295,7 @@ fn the_table_shows_each_level_s_measured_clear_rate_by_level_id() {
         level: decode(&bytes).expect("decode"),
         source,
         bytes,
+        paid: bytes,
     };
     let measured = BTreeMap::from([(hex(&level_id(&bytes)), 638)]);
     assert!(table(&[built], None, &measured).contains("| 6000 bp | – | 63.8 % |"));

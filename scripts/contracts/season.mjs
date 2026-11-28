@@ -4,9 +4,11 @@
 //   - open: opens the season of a season file on the newest generation, as Season's operator,
 //     after checking:
 //       - the season file: its keys, and the rules version, level ids and weights of the
-//         calibration file it names, which a season file takes (README §8.4);
-//       - the 16 levels with the level tool: each level id is a level of levels/ that
-//         `jiro-tools level validate` passes (README §8.4, `levelIds`);
+//         calibration file it names, which a season file takes (README §8.4); a season of the
+//         v1 payout names none (`calibration` null) and takes equal weights of 10,000 (D18);
+//       - the 16 levels with the level tool: each level id is a level of levels/ or of its paid
+//         copies in levels/paid/ that `jiro-tools level validate` passes (README §8.4,
+//         `levelIds`);
 //       - for a Stylus referee, that its remaining activation time covers the season's length
 //         plus grace;
 //       - for a ZkReferee outside the local chains, that it calls RISC Zero's pinned emergency
@@ -45,7 +47,7 @@ import { Contract, Wallet, formatEther, getAddress } from "ethers";
 import { readProgramTimeLeft } from "./activation.mjs";
 import { JIRO_TOOLS, LOCAL_NETWORKS, NETWORKS, REPO_ROOT, checkRiscZeroVerifier, connect, deploymentFileOf, privateKeyOf, sendTransaction } from "./deploy.mjs";
 import { isEntryPoint, readDeploymentRecord, recordSeason } from "./deployments.mjs";
-import { botRun, liveCommittedRun, liveContext, measurements, totals } from "./e2e.mjs";
+import { LEVEL_DIRS, botRun, liveCommittedRun, liveContext, measurements, totals } from "./e2e.mjs";
 import { eventOf } from "./localnet.mjs";
 
 const SEASON_KEYS = [
@@ -62,6 +64,8 @@ const SEASON_KEYS = [
   "commitSlack",
 ];
 const FROM_CALIBRATION = ["rulesVersion", "levelIds", "weightsBp"];
+// Every weight of a season of the v1 payout (README §8.4, D18).
+const EQUAL_WEIGHT_BP = 10_000;
 const INTEGER_KEYS = ["rakeBp", "length", "grace", "commitSlack"];
 const abiOf = (name) => JSON.parse(readFileSync(join(REPO_ROOT, "contracts", "abi", `${name}.json`), "utf8"));
 const SEASON_ABI = abiOf("Season");
@@ -127,9 +131,15 @@ export function readSeasonFile(file) {
   if (missing.length > 0) fail(file, `misses ${missing.join(", ")}`);
   if (unknown.length > 0) fail(file, `has unknown keys ${unknown.join(", ")}`);
   if (!NETWORKS[season.network]) fail(file, `names the unknown network ${season.network}`);
-  const calibration = JSON.parse(readFileSync(join(REPO_ROOT, season.calibration), "utf8"));
-  for (const key of FROM_CALIBRATION) {
-    if (JSON.stringify(season[key]) !== JSON.stringify(calibration[key])) fail(file, `its ${key} are not those of ${season.calibration}`);
+  if (season.calibration === null) {
+    if (!Array.isArray(season.weightsBp) || season.weightsBp.length !== 16 || season.weightsBp.some((weight) => weight !== EQUAL_WEIGHT_BP)) {
+      fail(file, `names no calibration, so its 16 weightsBp are all ${EQUAL_WEIGHT_BP} (the v1 payout)`);
+    }
+  } else {
+    const calibration = JSON.parse(readFileSync(join(REPO_ROOT, season.calibration), "utf8"));
+    for (const key of FROM_CALIBRATION) {
+      if (JSON.stringify(season[key]) !== JSON.stringify(calibration[key])) fail(file, `its ${key} are not those of ${season.calibration}`);
+    }
   }
   if (season.referee !== null && season.referee !== getAddress(season.referee)) fail(file, `referee ${season.referee} is not checksummed`);
   if (typeof season.runFee !== "string" || !/^[1-9][0-9]*$/.test(season.runFee)) fail(file, `runFee ${JSON.stringify(season.runFee)} is not a decimal string of wei`);
@@ -161,11 +171,13 @@ function jiroTools(args) {
   return result.stdout;
 }
 
-/** The level tool's check: every level of levels/ is valid, and each of `levelIds` is one of them. */
+/** The level tool's check: every level of levels/ and levels/paid/ is valid, and each of `levelIds` is one of them. */
 export function checkLevels(levelIds, run = jiroTools) {
-  const files = readdirSync(join(REPO_ROOT, "levels"))
-    .filter((name) => name.endsWith(".bin"))
-    .map((name) => join("levels", name));
+  const files = LEVEL_DIRS.flatMap((dir) =>
+    readdirSync(join(REPO_ROOT, dir))
+      .filter((name) => name.endsWith(".bin"))
+      .map((name) => join(dir, name)),
+  );
   run(["level", "validate", ...files]);
   const fileOf = new Map(
     run(["level", "id", ...files])
@@ -174,8 +186,8 @@ export function checkLevels(levelIds, run = jiroTools) {
       .map((line) => line.split(" ")),
   );
   const missing = levelIds.filter((levelId) => !fileOf.has(levelId));
-  if (missing.length > 0) throw new Error(`no valid level of levels/ has the id ${missing.join(", ")}`);
-  console.log(`the ${levelIds.length} levels are valid: ${levelIds.map((levelId) => basename(fileOf.get(levelId), ".bin")).join(", ")}`);
+  if (missing.length > 0) throw new Error(`no valid level of levels/ or levels/paid/ has the id ${missing.join(", ")}`);
+  console.log(`the ${levelIds.length} levels are valid: ${levelIds.map((levelId) => fileOf.get(levelId)).join(", ")}`);
 }
 
 /**

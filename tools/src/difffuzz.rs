@@ -5,12 +5,10 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use jiro_core::keccak::keccak256;
 use jiro_tools::cases::{Case, case};
 
-use crate::json::{Value, hex, object};
 use crate::playtest::number;
-use crate::vectors::{game_inputs, outcome_fields, rewrite, traced_replay};
+use crate::vectors::{rewrite, traceless_vector};
 
 #[cfg(test)]
 mod tests;
@@ -59,17 +57,14 @@ fn case_file(seed: u64, index: u32) -> Result<String, String> {
         journal,
         weight_bp,
     } = case(seed, index)?;
-    let (result, trace) = traced_replay(&level, &journal, weight_bp);
-    let outcome = result
-        .map_err(|error| format!("case {index}: replay of a recorded case gives {error:?}"))?;
-    let mut fields = vec![
-        ("kind", Value::Str("difffuzz".to_string())),
-        ("name", Value::Str(format!("difffuzz-{seed}-{index}"))),
-    ];
-    fields.extend(game_inputs(&level, &header, weight_bp, &journal));
-    fields.push(("outcome", Value::Object(outcome_fields(&outcome))));
-    fields.push(("traceKeccak", Value::Str(hex(&keccak256(&[&trace])))));
-    object(&fields)
+    traceless_vector(
+        "difffuzz",
+        &format!("difffuzz-{seed}-{index}"),
+        &level,
+        &header,
+        weight_bp,
+        &journal,
+    )
 }
 
 fn is_case_file(path: &Path) -> bool {

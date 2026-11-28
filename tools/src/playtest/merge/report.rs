@@ -20,7 +20,7 @@ use crate::scenarios::play::Rng;
 const RESAMPLES: usize = 10_000;
 const RESAMPLE_SEED: u64 = 1;
 /// A ratio over zero.
-const INFINITE: i64 = i64::MAX;
+pub(in crate::playtest) const INFINITE: i64 = i64::MAX;
 
 /// The 95 % percentile interval of `statistic` over `RESAMPLES` resamples of the runs, each of
 /// `runs` runs drawn with replacement: every statistic sees the same resamples.
@@ -108,7 +108,7 @@ fn tenths(value: i64) -> String {
     format!("{sign}{}.{}", value.abs() / 10, value.abs() % 10)
 }
 
-fn thousandths(value: i64) -> String {
+pub(in crate::playtest) fn thousandths(value: i64) -> String {
     match value {
         INFINITE => "∞".to_string(),
         _ => format!("{}.{:03}", value / 1_000, value % 1_000),

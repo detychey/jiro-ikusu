@@ -190,6 +190,29 @@ pub fn game_vector(case: &GameCase) -> Result<(String, Vec<u8>), String> {
     Ok((object(&fields)?, trace))
 }
 
+/// A game vector without a trace file, of kind `kind`: its inputs, its Outcome and its
+/// traceKeccak, which `zk-host execute` checks. The journal must replay.
+pub fn traceless_vector(
+    kind: &str,
+    name: &str,
+    level: &[u8],
+    header: &Header,
+    weight_bp: u16,
+    journal: &[u8],
+) -> Result<String, String> {
+    let (result, trace) = traced_replay(level, journal, weight_bp);
+    let outcome =
+        result.map_err(|error| format!("{name}: replay of a recorded game gives {error:?}"))?;
+    let mut fields = vec![
+        ("kind", Value::Str(kind.to_string())),
+        ("name", Value::Str(name.to_string())),
+    ];
+    fields.extend(game_inputs(level, header, weight_bp, journal));
+    fields.push(("outcome", Value::Object(outcome_fields(&outcome))));
+    fields.push(("traceKeccak", Value::Str(hex(&keccak256(&[&trace])))));
+    object(&fields)
+}
+
 /// The replay's result and its trace: the state hash of every processed tick, in tick order.
 pub fn traced_replay(
     level: &[u8],

@@ -1,5 +1,6 @@
 // The levels the site ships: the 16 of levels/*.bin, by name in index order, which Training
-// scores and a season's draw slots name (README §5, §8.2), and Training's two unscored test levels.
+// scores (README §5); their paid copies of levels/paid/*.bin, which Challenge plays and a season's
+// draw slots name (README §8.2, D17); and Training's two unscored test levels.
 
 import openField from "../../vectors/format/level-open-field.json";
 import wallsAndMinions from "../../vectors/format/level-walls-and-minions.json";
@@ -17,18 +18,34 @@ const SHIPPED_LEVELS: Record<string, string> = import.meta.glob("../../levels/*.
   eager: true,
 });
 
+const PAID_LEVELS: Record<string, string> = import.meta.glob("../../levels/paid/*.bin", {
+  query: "?url",
+  import: "default",
+  eager: true,
+});
+
 async function fetchLevel(url: string): Promise<Uint8Array> {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`could not load the level ${url} (${response.status})`);
   return new Uint8Array(await response.arrayBuffer());
 }
 
-export function shippedLevels(): Promise<[string, Uint8Array][]> {
+function fetchLevels(urls: Record<string, string>): Promise<[string, Uint8Array][]> {
   return Promise.all(
-    Object.entries(SHIPPED_LEVELS)
+    Object.entries(urls)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(async ([path, url]): Promise<[string, Uint8Array]> => [path.replace(/^.*\//, "").replace(/\.bin$/, ""), await fetchLevel(url)]),
   );
+}
+
+/** The 16 levels, by name in index order, which Training plays. */
+export function shippedLevels(): Promise<[string, Uint8Array][]> {
+  return fetchLevels(SHIPPED_LEVELS);
+}
+
+/** The 16 paid copies, by name in index order, which Challenge plays: a season's draw slots name them. */
+export function paidLevels(): Promise<[string, Uint8Array][]> {
+  return fetchLevels(PAID_LEVELS);
 }
 
 /** The scoring of a calibration file (README §8.4): its rules version, and the level ids and

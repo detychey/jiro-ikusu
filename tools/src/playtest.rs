@@ -5,14 +5,17 @@
 //! playtest [--levels <dir>] [--only <n>|<a>-<b>] [--runs <n>] [--seed <n>] [--policy <name>]
 //!          [--out <dir>] [--check <targets.json>]
 //! playtest [--levels <dir>] --policy <name> --nonce <hex> --level-index <i> --out <file>
+//!          (a journal, or a game vector without a trace file when <file> ends in .json)
 //! playtest [--levels <dir>] --policy <name> [--runs <n>] [--seed <n>] --shard <i>/<n>
 //!          [--calibration <file>] --out <file.json>
 //! playtest [--levels <dir>] --merge <dir> [--calibration <file>] --out <file.md>
 //! playtest [--levels <dir>] --openings [--runs <n>] [--seed <n>] --out <file.md>
+//! playtest [--levels <dir>] --edge <file.md> [--runs <n>] [--seed <n>]
 //!
 //! `--levels` defaults to `levels`. `--shard` and `--merge` are the bot-advantage study of plan
 //! M4.13: see `shard` and `merge`. `--openings` measures the straight-cut openings of the
-//! twin-boss levels (plan M5.19): see `openings`.
+//! twin-boss levels (plan M5.19): see `openings`. `--edge` is the bot edge of a level set (plan
+//! M5.16): see `edge`.
 //!
 //! Without `--policy`, the bots are the reference mix of the targets file: the `--check` file,
 //! or `<dir>/targets.json`. Reports go to `reports/` only for the reference report's own
@@ -37,7 +40,9 @@ use crate::bots::Policy;
 use crate::json::{hex, parse_hex};
 use crate::levels::level_index;
 use crate::scenarios::play::{header, play};
+use crate::vectors::traceless_vector;
 
+mod edge;
 mod merge;
 mod openings;
 mod shard;
@@ -51,7 +56,8 @@ const USAGE: &str = concat!(
     "[--levels <dir>] --policy <name> [--runs <n>] [--seed <n>] --shard <i>/<n> [--calibration ",
     "<file>] --out <file.json> | jiro-tools playtest [--levels <dir>] --merge <dir> ",
     "[--calibration <file>] --out <file.md> | jiro-tools playtest [--levels <dir>] --openings ",
-    "[--runs <n>] [--seed <n>] --out <file.md>"
+    "[--runs <n>] [--seed <n>] --out <file.md> | jiro-tools playtest [--levels <dir>] --edge ",
+    "<file.md> [--runs <n>] [--seed <n>]"
 );
 
 /// The run count and seed of the committed reference report.
@@ -112,6 +118,9 @@ pub fn run(args: &[&str]) -> Result<(), String> {
     }
     if args.contains(&"--openings") {
         return openings::run(args);
+    }
+    if args.contains(&"--edge") {
+        return edge::run(args);
     }
     let args = parse(args)?;
     let levels = load_levels(&args.levels)?;
@@ -483,14 +492,27 @@ pub(crate) fn drawn_level<'a>(
 }
 
 /// Plays the level that the Challenge run `nonce` draws at `--level-index`, writes its journal
-/// to `--out`, and prints the Outcome (plan M4.16).
+/// to `--out`, or its game vector to a `.json` `--out` (plan M5.16: `zk-host execute-run` takes
+/// six), and prints the Outcome (plan M4.16).
 fn play_one(args: &Args, levels: &[LevelFile], nonce: [u8; 32]) -> Result<(), String> {
     let (Some(policy), Some(level_index)) = (args.policy, args.level_index) else {
         return Err("--nonce plays one level: give --policy".to_string());
     };
     let (slot, level, header) = drawn_level(levels, &args.levels, nonce, level_index)?;
     let (journal, sample) = play_level(level, &header, policy)?;
-    fs::write(&args.out, &journal).map_err(|e| format!("{}: {e}", args.out.display()))?;
+    let contents = match args.out.extension().is_some_and(|ext| ext == "json") {
+        true => traceless_vector(
+            "game",
+            &format!("{:02}-{}-{}", level.index, level.name, policy.name()),
+            &level.bytes,
+            &header,
+            BP,
+            &journal,
+        )?
+        .into_bytes(),
+        false => journal,
+    };
+    fs::write(&args.out, contents).map_err(|e| format!("{}: {e}", args.out.display()))?;
     println!(
         "draw slot {slot}, level {:02} {}: {:?}, effective claim {} bp, {} ticks; journal {}",
         level.index,

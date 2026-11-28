@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, afterEach, before, beforeEach, describe, test } from "node:test";
-import { Contract } from "ethers";
+import { Contract, keccak256 } from "ethers";
 import { NETWORKS, REPO_ROOT, buildContracts, connect } from "./deploy.mjs";
 import { prependGeneration, readDeploymentRecord } from "./deployments.mjs";
 import { checkHappyPath, deployLocalnet, startAnvil } from "./localnet.mjs";
@@ -14,6 +14,7 @@ import {
   claimShare,
   closeSeasons,
   countRuns,
+  openSeason,
   playBotRuns,
   printStatus,
   readSeasonFile,
@@ -46,12 +47,29 @@ test("seasons/testnet-0.json holds plan M4.14's provisional season, its referee 
   );
 });
 
-test("seasons/testnet-1.json holds plan M5.5's season of testers, its referee null until open", () => {
-  const { network, referee, runFee, rakeBp, length, grace, commitSlack } = readSeasonFile(join(REPO_ROOT, "seasons", "testnet-1.json"));
+const TESTNET_1 = join(REPO_ROOT, "seasons", "testnet-1.json");
+const PAID_DIR = join(REPO_ROOT, "levels", "paid");
+const paidLevelIds = () =>
+  readdirSync(PAID_DIR)
+    .filter((name) => name.endsWith(".bin"))
+    .sort()
+    .map((name) => keccak256(readFileSync(join(PAID_DIR, name))));
+
+test("seasons/testnet-1.json holds plan M5.16's season of testers on the v1 payout, its referee null until open", () => {
+  const { network, calibration, referee, runFee, rakeBp, length, grace, commitSlack } = readSeasonFile(TESTNET_1);
   assert.deepEqual(
-    { network, referee, runFee, rakeBp, length, grace, commitSlack },
-    { network: "arbitrum-sepolia", referee: null, runFee: "50000000000000", rakeBp: 1_000, length: 1_209_600, grace: 86_400, commitSlack: 120 },
+    { network, calibration, referee, runFee, rakeBp, length, grace, commitSlack },
+    { network: "arbitrum-sepolia", calibration: null, referee: null, runFee: "176000000000000", rakeBp: 2_000, length: 1_209_600, grace: 86_400, commitSlack: 120 },
   );
+});
+
+test("seasons/testnet-1.json draws the paid copies of levels/paid/, in index order", () => {
+  assert.deepEqual(readSeasonFile(TESTNET_1).levelIds, paidLevelIds());
+});
+
+test("a season file that names no calibration and weighs a level other than 10,000 is refused", () => {
+  const weightsBp = Array.from({ length: 16 }, (_, slot) => (slot === 5 ? 9_999 : 10_000));
+  assert.throws(() => readSeasonFile(seasonFileWith({ calibration: null, weightsBp })), /names no calibration, so its 16 weightsBp are all 10000/);
 });
 
 test("a season file with weights other than its calibration file's is refused", () => {
@@ -82,10 +100,20 @@ test("Season.open's parameters take the deployed referee and the fee in wei", ()
   assert.deepEqual([params.referee, params.runFee, params.length, "minClears" in params], [referee, 50_000_000_000_000n, 86_400n, false]);
 });
 
-test("checkLevels refuses a level id that no level of levels/ has", () => {
+test("checkLevels refuses a level id that no level of levels/ or levels/paid/ has", () => {
   const ids = testnet0().levelIds;
   const run = ([command]) => (command === "level" ? ids.slice(1).map((id, i) => `${id} levels/${i}.bin`).join("\n") : "");
-  assert.throws(() => checkLevels(ids, run), new RegExp(`no valid level of levels/ has the id ${ids[0]}`));
+  assert.throws(() => checkLevels(ids, run), new RegExp(`no valid level of levels/ or levels/paid/ has the id ${ids[0]}`));
+});
+
+test("checkLevels validates the paid copies of levels/paid/ with the 16 levels", () => {
+  const validated = [];
+  const run = ([command, subcommand, ...files]) => {
+    if (subcommand === "validate") validated.push(...files);
+    return files.map((file) => `${keccak256(readFileSync(join(REPO_ROOT, file)))} ${file}`).join("\n");
+  };
+  checkLevels(paidLevelIds(), run);
+  assert.equal(validated.filter((file) => file.startsWith(join("levels", "paid"))).length, 16);
 });
 
 test("countRuns counts each run at every stage it reached", () => {
@@ -275,6 +303,26 @@ describe("season operations on the local chain", () => {
     await provider.send("evm_setNextBlockTimestamp", [Number(await season.endOf(1))]);
     await provider.send("evm_mine", []);
     assert.deepEqual(await playBots(1), []);
+  });
+
+  test("open opens seasons/testnet-1.json, its checks passed, once the local season has ended", async () => {
+    const workDir = mkdtempSync(join(tmpdir(), "season-open-test-"));
+    try {
+      const recordFile = join(workDir, "local.json");
+      writeFileSync(recordFile, readFileSync(join(recordDir, "local.json")));
+      const seasonFile = join(workDir, "testnet-1.json");
+      writeFileSync(seasonFile, JSON.stringify({ ...JSON.parse(readFileSync(TESTNET_1, "utf8")), network: "local" }));
+      await provider.send("evm_setNextBlockTimestamp", [Number(await season.endOf(1))]);
+      const run = ([, , ...files]) => files.map((file) => `${keccak256(readFileSync(join(REPO_ROOT, file)))} ${file}`).join("\n");
+      const { number } = await openSeason({ provider, operator: await provider.getSigner(0), seasonFile, recordFile, run });
+      const params = await season.paramsOf(number);
+      assert.deepEqual(
+        [number, [...params.levelIds], params.weightsBp.map(Number), params.runFee, params.rakeBp],
+        [2, paidLevelIds(), Array(16).fill(10_000), 176_000_000_000_000n, 2_000n],
+      );
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
   });
 
   test("status fails when a Season is not solvent", async () => {

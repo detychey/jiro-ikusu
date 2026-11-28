@@ -11,18 +11,19 @@ import { averageTicket, checkSeason, seasonEntries } from "../src/run/season";
 import { freshStore, runEnv, shippedLevels } from "./challenge";
 import { loadEngine, repo } from "./drive";
 
-const CALIBRATION = JSON.parse(readFileSync(new URL("seasons/calibration-2.json", repo), "utf8"));
+// The season of testers, which draws the paid levels that Challenge plays (README §8.2, D17).
+const SEASON = JSON.parse(readFileSync(new URL("seasons/testnet-1.json", repo), "utf8"));
 const core = await loadEngine();
 const LEVELS = shippedLevels();
 const SHIPPED_IDS = LEVELS.map((level) => hex(core.levelId(level)));
 const OTHER_ID = `0x${"ab".repeat(32)}`;
 
 function seasonWith(rulesVersion: number, levelIds: string[]): AcceptingSeason {
-  const params = { rulesVersion: BigInt(rulesVersion), levelIds, weightsBp: CALIBRATION.weightsBp.map(BigInt), commitSlack: 120n };
+  const params = { rulesVersion: BigInt(rulesVersion), levelIds, weightsBp: SEASON.weightsBp.map(BigInt), commitSlack: 120n };
   return { number: 1n, runFee: 50_000_000_000_000n, end: 2_000_000_000n, params: params as unknown as SeasonParams };
 }
 
-const withOtherLevel = (slot: number) => CALIBRATION.levelIds.map((id: string, i: number) => (i === slot ? OTHER_ID : id));
+const withOtherLevel = (slot: number) => SEASON.levelIds.map((id: string, i: number) => (i === slot ? OTHER_ID : id));
 
 /** A run env whose Challenge counts the startRun calls, which these tests never let through. */
 async function envWithStartRun() {
@@ -32,12 +33,12 @@ async function envWithStartRun() {
 }
 
 describe("the season check", () => {
-  it("passes the season of seasons/calibration-2.json, whose 16 levels the page ships", () => {
-    expect(() => checkSeason(core.rulesVersion, SHIPPED_IDS, seasonWith(CALIBRATION.rulesVersion, CALIBRATION.levelIds).params)).not.toThrow();
+  it("passes the season of seasons/testnet-1.json, whose 16 paid levels the page ships", () => {
+    expect(() => checkSeason(core.rulesVersion, SHIPPED_IDS, seasonWith(SEASON.rulesVersion, SEASON.levelIds).params)).not.toThrow();
   });
 
   it("refuses a season with another rules version", () => {
-    expect(() => checkSeason(core.rulesVersion, SHIPPED_IDS, seasonWith(core.rulesVersion + 1, CALIBRATION.levelIds).params)).toThrow(
+    expect(() => checkSeason(core.rulesVersion, SHIPPED_IDS, seasonWith(core.rulesVersion + 1, SEASON.levelIds).params)).toThrow(
       `it accepts rules version ${core.rulesVersion + 1}, and the page plays rules version ${core.rulesVersion}`,
     );
   });
@@ -49,7 +50,7 @@ describe("the season check", () => {
   });
 
   it("refuses a season drawing from another number of levels", () => {
-    expect(() => checkSeason(core.rulesVersion, SHIPPED_IDS, seasonWith(core.rulesVersion, CALIBRATION.levelIds.slice(1)).params)).toThrow(
+    expect(() => checkSeason(core.rulesVersion, SHIPPED_IDS, seasonWith(core.rulesVersion, SEASON.levelIds.slice(1)).params)).toThrow(
       "it draws from 15 levels, and the page ships 16",
     );
   });
@@ -58,7 +59,7 @@ describe("the season check", () => {
 describe("buying a run", () => {
   it("never calls startRun in a season with another rules version", async () => {
     const { env, startRun } = await envWithStartRun();
-    await expect(buyRun(env, seasonWith(core.rulesVersion + 1, CALIBRATION.levelIds), "0x0000000000000000000000000000000000000002")).rejects.toThrow(
+    await expect(buyRun(env, seasonWith(core.rulesVersion + 1, SEASON.levelIds), "0x0000000000000000000000000000000000000002")).rejects.toThrow(
       "this page cannot play the season",
     );
     expect(startRun).not.toHaveBeenCalled();
@@ -76,7 +77,7 @@ describe("buying a run", () => {
 describe("buying a run in the season shown", () => {
   it("never calls startRun once another season accepts runs", async () => {
     const { env, startRun } = await envWithStartRun();
-    const accepting = seasonWith(CALIBRATION.rulesVersion, CALIBRATION.levelIds);
+    const accepting = seasonWith(SEASON.rulesVersion, SEASON.levelIds);
     const season = {
       currentSeason: async () => 2n,
       paramsOf: async () => ({ ...accepting.params, runFee: accepting.runFee }),

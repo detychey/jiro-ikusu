@@ -3,6 +3,8 @@
 //!
 //! level build <src dir> <out dir> | validate <file>... | id <file>... | render <file>
 //!
+//! `build` also writes each level's paid copy to `<out dir>/paid/` (README §8.2, D17).
+//!
 //! A source is the header, one `key=value` line per key of `KEYS` in that order, with the three
 //! `SECOND_BOSS_KEYS` after `boss_period` on a level with two bosses, a blank line, then the
 //! 60 × 60 field, row y on line 10 + y, or 13 + y with two bosses: `#` an obstacle, `.` an open
@@ -47,6 +49,13 @@ const KEYS: [&str; 8] = [
     "lives",
     "target_bp",
 ];
+
+/// A paid copy's lives over its level's, and its target (README §8.2, D17).
+const PAID_EXTRA_LIVES: u8 = 3;
+const PAID_TARGET_BP: u16 = 5_000;
+
+/// Where `build` writes the paid copies, under its out dir.
+const PAID_DIR: &str = "paid";
 
 /// The header keys of a second boss, which follow `boss_period` on a level with two bosses.
 const SECOND_BOSS_KEYS: [&str; 3] = [
@@ -192,6 +201,24 @@ pub fn render(level: &Level) -> Result<String, String> {
         }
     }
     Ok(text)
+}
+
+/// The bytes of `level`'s paid copy: the same level with `PAID_EXTRA_LIVES` more lives and a
+/// target of `PAID_TARGET_BP`, valid.
+fn paid_copy(level: &Level) -> Result<LevelBytes, String> {
+    let lives = level.lives.checked_add(PAID_EXTRA_LIVES).ok_or_else(|| {
+        format!(
+            "{} lives leave no room for {PAID_EXTRA_LIVES} more",
+            level.lives
+        )
+    })?;
+    let bytes = encode(&Level {
+        lives,
+        target_bp: PAID_TARGET_BP,
+        ..*level
+    });
+    check(&bytes).map_err(|error| format!("its paid copy breaks rule {}", error.code()))?;
+    Ok(bytes)
 }
 
 /// The rules of README §5, in its order: the byte ranges, then validity.
@@ -547,17 +574,19 @@ fn failures(errors: Vec<String>) -> Result<(), String> {
     }
 }
 
-/// A built level: its file stem `NN-name`, its source and its bytes.
+/// A built level: its file stem `NN-name`, its source, its bytes and its paid copy's bytes.
 struct Built {
     stem: String,
     source: String,
     bytes: LevelBytes,
     level: Level,
+    paid: LevelBytes,
 }
 
-/// Builds every source of `src` into `out`: the `.bin` files and the generated README.md. A
-/// broken source fails the build, and nothing is written. The build replaces only the level
-/// files of `out`, so a `.bin` file whose source is gone does not survive.
+/// Builds every source of `src` into `out`: the `.bin` files, their paid copies in `out/paid/`,
+/// and the generated README.md. A broken source fails the build, and nothing is written. The
+/// build replaces only the level files of `out` and `out/paid/`, so a `.bin` file whose source
+/// is gone does not survive.
 fn build_dir(src: &Path, out: &Path) -> Result<(), String> {
     let mut sources = Vec::new();
     for entry in fs::read_dir(src).map_err(|e| format!("{}: {e}", src.display()))? {
@@ -590,20 +619,26 @@ fn build_dir(src: &Path, out: &Path) -> Result<(), String> {
         match build(&source) {
             Ok(bytes) => {
                 let level = decode(&bytes).map_err(|error| rule_error(&file, error))?;
-                built.push(Built {
-                    stem,
-                    source,
-                    bytes,
-                    level,
-                });
+                match paid_copy(&level) {
+                    Ok(paid) => built.push(Built {
+                        stem,
+                        source,
+                        bytes,
+                        level,
+                        paid,
+                    }),
+                    Err(message) => errors.push(format!("{file}: {message}")),
+                }
             }
             Err(error) => errors.push(error.describe(&file)),
         }
     }
     failures(errors)?;
     let mut files = BTreeMap::new();
+    let mut paid_files = BTreeMap::new();
     for level in &built {
         files.insert(format!("{}.bin", level.stem), level.bytes.to_vec());
+        paid_files.insert(format!("{}.bin", level.stem), level.paid.to_vec());
     }
     let targets_file = out.join("targets.json");
     let targets = targets_file
@@ -628,7 +663,8 @@ fn build_dir(src: &Path, out: &Path) -> Result<(), String> {
         "README.md".to_string(),
         table(&built, clear_rates, &measured).into_bytes(),
     );
-    rewrite(out, is_level_file, &files)
+    rewrite(out, is_level_file, &files)?;
+    rewrite(&out.join(PAID_DIR), is_level_file, &paid_files)
 }
 
 /// The reference mix's clear rate of each level of a playtest report, in tenths of a percent, by
@@ -710,6 +746,20 @@ fn table(built: &[Built], clear_rates: Option<&[u16]>, measured: &BTreeMap<Strin
             l.target_bp,
         ));
     }
+    text.push_str(
+        &PAID_INTRO
+            .replace("{dir}", PAID_DIR)
+            .replace("{extra}", &PAID_EXTRA_LIVES.to_string())
+            .replace("{target}", &PAID_TARGET_BP.to_string()),
+    );
+    for level in built {
+        let (index, name) = level.stem.split_once('-').expect("checked by level_index");
+        text.push_str(&format!(
+            "| {index} | {name} | `{}` | {} | {PAID_TARGET_BP} bp |\n",
+            hex(&level_id(&level.paid)),
+            level.level.lives + PAID_EXTRA_LIVES,
+        ));
+    }
     for level in built {
         let (_, field) = level
             .source
@@ -722,6 +772,17 @@ fn table(built: &[Built], clear_rates: Option<&[u16]>, measured: &BTreeMap<Strin
     }
     text
 }
+
+const PAID_INTRO: &str = "
+## Paid copies
+
+Challenge seasons draw from the paid copies, which the same build writes to `levels/{dir}/`:
+each level with {extra} more lives and a target of {target} bp, all else the same (README
+§8.2, D17). Training plays the levels above.
+
+| # | Name | Paid `level_id` | Lives | Target |
+|---|---|---|---|---|
+";
 
 const TABLE_INTRO: &str = "\
 # Levels
